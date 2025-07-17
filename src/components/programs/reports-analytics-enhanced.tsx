@@ -23,7 +23,7 @@ import {
 } from "@heroicons/react/24/outline"
 
 interface ReportsAnalyticsProps {
-  permissions: any
+  permissions: Record<string, boolean>
   selectedProject: number | null
   onProjectSelect: (projectId: number | null) => void
 }
@@ -41,7 +41,7 @@ interface Report {
   nextScheduled?: string
   status: 'active' | 'draft' | 'archived'
   metrics: string[]
-  filters: Record<string, any>
+  filters: Record<string, unknown>
   visualizations: string[]
   dataSource: string[]
   createdBy: string
@@ -503,7 +503,7 @@ export function ReportsAnalytics({ permissions, selectedProject, onProjectSelect
         ].map(mode => (
           <button
             key={mode.key}
-            onClick={() => setViewMode(mode.key as any)}
+            onClick={() => setViewMode(mode.key as 'dashboard' | 'reports' | 'analytics')}
             className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               viewMode === mode.key
                 ? 'bg-white text-blue-600 shadow-sm'
@@ -1162,7 +1162,7 @@ export function ReportsAnalytics({ permissions, selectedProject, onProjectSelect
                   </label>
                   <select
                     value={reportForm.type}
-                    onChange={(e) => setReportForm(prev => ({ ...prev, type: e.target.value as any }))}
+                    onChange={(e) => setReportForm(prev => ({ ...prev, type: e.target.value as ReportFormData['type'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
@@ -1181,7 +1181,7 @@ export function ReportsAnalytics({ permissions, selectedProject, onProjectSelect
                   </label>
                   <select
                     value={reportForm.category}
-                    onChange={(e) => setReportForm(prev => ({ ...prev, category: e.target.value as any }))}
+                    onChange={(e) => setReportForm(prev => ({ ...prev, category: e.target.value as ReportFormData['category'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
@@ -1200,7 +1200,7 @@ export function ReportsAnalytics({ permissions, selectedProject, onProjectSelect
                   </label>
                   <select
                     value={reportForm.frequency}
-                    onChange={(e) => setReportForm(prev => ({ ...prev, frequency: e.target.value as any }))}
+                    onChange={(e) => setReportForm(prev => ({ ...prev, frequency: e.target.value as ReportFormData['frequency'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
@@ -1220,7 +1220,7 @@ export function ReportsAnalytics({ permissions, selectedProject, onProjectSelect
                   </label>
                   <select
                     value={reportForm.format}
-                    onChange={(e) => setReportForm(prev => ({ ...prev, format: e.target.value as any }))}
+                    onChange={(e) => setReportForm(prev => ({ ...prev, format: e.target.value as ReportFormData['format'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     required
                   >

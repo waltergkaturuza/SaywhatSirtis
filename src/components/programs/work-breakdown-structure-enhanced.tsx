@@ -17,7 +17,7 @@ import {
 } from "@heroicons/react/24/outline"
 
 interface WBSProps {
-  permissions: any
+  permissions: Record<string, boolean>
   selectedProject: number | null
   onProjectSelect: (projectId: number | null) => void
 }

@@ -14,7 +14,7 @@ interface NotificationRule {
 
 interface NotificationsSettingsProps {
   notificationRules: NotificationRule[]
-  permissions: any
+  permissions: Record<string, boolean>
   onEdit: (rule: NotificationRule) => void
   onDelete: (id: string) => void
   onAdd: () => void

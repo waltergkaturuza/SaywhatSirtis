@@ -4,12 +4,12 @@ import { PlusIcon, PencilIcon, TrashIcon, PuzzlePieceIcon, CheckIcon, XMarkIcon 
 interface Integration {
   id: string
   enabled: boolean
-  config: any
+  config: Record<string, unknown>
 }
 
 interface IntegrationsSettingsProps {
   integrations: Integration[]
-  permissions: any
+  permissions: Record<string, boolean>
   onEdit: (integration: Integration) => void
   onDelete: (id: string) => void
   onAdd: () => void

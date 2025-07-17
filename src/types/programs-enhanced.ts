@@ -411,7 +411,7 @@ export interface ProjectReport {
   generatedDate: string
   generatedBy: string
   recipients: string[]
-  data: any
+  data: Record<string, unknown>
   charts: ReportChart[]
   recommendations: string[]
 }
@@ -420,8 +420,8 @@ export interface ReportChart {
   id: string
   type: 'line' | 'bar' | 'pie' | 'scatter' | 'gantt' | 'burndown'
   title: string
-  data: any
-  config: any
+  data: Record<string, unknown>
+  config: Record<string, unknown>
 }
 
 // Dashboard Configuration
@@ -431,7 +431,7 @@ export interface DashboardWidget {
   title: string
   size: 'small' | 'medium' | 'large'
   position: { x: number; y: number }
-  config: any
+  config: Record<string, unknown>
   dataSource: string
   refreshInterval: number
 }

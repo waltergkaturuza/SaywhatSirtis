@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { ExclamationTriangleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline"
 
 interface RiskManagementProps {
-  permissions: any
+  permissions: Record<string, boolean>
   selectedProject: number | null
 }
 

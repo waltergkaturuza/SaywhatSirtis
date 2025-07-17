@@ -17,7 +17,7 @@ import {
 } from "@heroicons/react/24/outline"
 
 interface RiskManagementProps {
-  permissions: any
+  permissions: Record<string, boolean>
   selectedProject: number | null
   onProjectSelect: (projectId: number | null) => void
 }
@@ -1050,7 +1050,7 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
                   </label>
                   <select
                     value={riskForm.category}
-                    onChange={(e) => setRiskForm(prev => ({ ...prev, category: e.target.value as any }))}
+                    onChange={(e) => setRiskForm(prev => ({ ...prev, category: e.target.value as RiskFormData['category'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
@@ -1069,7 +1069,7 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
                   </label>
                   <select
                     value={riskForm.probability}
-                    onChange={(e) => setRiskForm(prev => ({ ...prev, probability: e.target.value as any }))}
+                    onChange={(e) => setRiskForm(prev => ({ ...prev, probability: e.target.value as RiskFormData['probability'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
@@ -1087,7 +1087,7 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
                   </label>
                   <select
                     value={riskForm.impact}
-                    onChange={(e) => setRiskForm(prev => ({ ...prev, impact: e.target.value as any }))}
+                    onChange={(e) => setRiskForm(prev => ({ ...prev, impact: e.target.value as RiskFormData['impact'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     required
                   >

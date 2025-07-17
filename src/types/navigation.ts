@@ -25,7 +25,7 @@ export interface ModuleConfig {
 export interface DashboardWidget {
   id: string
   title: string
-  component: React.ComponentType<any>
+  component: React.ComponentType<Record<string, unknown>>
   size: "sm" | "md" | "lg" | "xl"
   order: number
   requiredPermissions?: string[]

@@ -18,7 +18,7 @@ import NotificationsSettings from "./project-settings/NotificationsSettings"
 import AccessControlSettings from "./project-settings/AccessControlSettings"
 
 interface ProjectSettingsProps {
-  permissions: any
+  permissions: Record<string, boolean>
   selectedProject: number | null
   onProjectSelect: (projectId: number | null) => void
 }
@@ -27,7 +27,7 @@ interface ProjectSettings {
   templates: Template[]
   workflows: Workflow[]
   customFields: CustomField[]
-  integrations: Record<string, { enabled: boolean; config: any }>
+  integrations: Record<string, { enabled: boolean; config: Record<string, unknown> }>
   notifications: NotificationRule[]
   accessControl: AccessRule[]
 }
@@ -49,7 +49,7 @@ interface TemplateField {
   name: string
   type: 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'boolean' | 'file'
   required: boolean
-  defaultValue?: any
+  defaultValue?: unknown
   options?: string[]
   validation?: string
 }
@@ -74,7 +74,7 @@ interface CustomField {
   section: 'basic' | 'financial' | 'technical' | 'custom'
   validation?: string
   options: string[]
-  defaultValue?: any
+  defaultValue?: unknown
 }
 
 interface NotificationRule {
@@ -219,7 +219,7 @@ export function ProjectSettings({ permissions, selectedProject, onProjectSelect 
     }
   }
 
-  const updateSettings = async (section: keyof ProjectSettings, data: any) => {
+  const updateSettings = async (section: keyof ProjectSettings, data: unknown) => {
     setIsLoading(true)
     try {
       // API call to update settings
@@ -341,7 +341,7 @@ export function ProjectSettings({ permissions, selectedProject, onProjectSelect 
   }
 
   // Integration handlers
-  const handleIntegrationChange = (key: string, updatedIntegration: any) => {
+  const handleIntegrationChange = (key: string, updatedIntegration: Record<string, unknown>) => {
     setSettings(prev => ({
       ...prev,
       integrations: {

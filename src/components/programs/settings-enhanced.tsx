@@ -10,7 +10,7 @@ import IntegrationsSettings from "./settings/IntegrationsSettings"
 import CustomFieldsSettings from "./settings/CustomFieldsSettings"
 
 interface SettingsProps {
-  permissions: any
+  permissions: Record<string, boolean>
   selectedProject: number | null
   onProjectSelect: (projectId: number | null) => void
 }
@@ -55,7 +55,7 @@ interface ProjectSettings {
     reportingFrequency: string
     escalationRules: boolean
   }
-  integrations: Record<string, { enabled: boolean; config: any }>
+  integrations: Record<string, { enabled: boolean; config: Record<string, unknown> }>
 }
 
 interface CustomField {
@@ -172,7 +172,7 @@ export function Settings({ permissions, selectedProject, onProjectSelect }: Sett
   }, [])
 
   // Settings update handler
-  const updateSettings = async (section: keyof ProjectSettings, data: any) => {
+  const updateSettings = async (section: keyof ProjectSettings, data: unknown) => {
     setIsLoading(true)
     try {
       // API call would go here
@@ -474,7 +474,7 @@ export function Settings({ permissions, selectedProject, onProjectSelect }: Sett
                 </label>
                 <select
                   value={customFieldForm.type}
-                  onChange={(e) => setCustomFieldForm(prev => ({ ...prev, type: e.target.value as any }))}
+                  onChange={(e) => setCustomFieldForm(prev => ({ ...prev, type: e.target.value as CustomField['type'] }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
@@ -533,7 +533,7 @@ export function Settings({ permissions, selectedProject, onProjectSelect }: Sett
                 </label>
                 <select
                   value={customFieldForm.applies_to}
-                  onChange={(e) => setCustomFieldForm(prev => ({ ...prev, applies_to: e.target.value as any }))}
+                  onChange={(e) => setCustomFieldForm(prev => ({ ...prev, applies_to: e.target.value as CustomField['applies_to'] }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   required
                 >

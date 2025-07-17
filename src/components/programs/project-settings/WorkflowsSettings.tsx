@@ -15,7 +15,7 @@ interface Workflow {
 
 interface WorkflowsSettingsProps {
   workflows: Workflow[]
-  permissions: any
+  permissions: Record<string, boolean>
   onEdit: (workflow: Workflow) => void
   onDelete: (id: string) => void
   onAdd: () => void

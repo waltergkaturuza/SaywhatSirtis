@@ -154,8 +154,8 @@ export interface InventoryReport {
   type: 'asset-register' | 'depreciation' | 'location' | 'category' | 'maintenance' | 'audit'
   generatedAt: string
   generatedBy: string
-  parameters: Record<string, any>
-  data: any[]
+  parameters: Record<string, unknown>
+  data: Asset[]
   totalValue: number
   totalAssets: number
 }

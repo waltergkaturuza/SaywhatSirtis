@@ -18,14 +18,14 @@ interface TemplateField {
   name: string
   type: 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'boolean' | 'file'
   required: boolean
-  defaultValue?: any
+  defaultValue?: unknown
   options?: string[]
   validation?: string
 }
 
 interface TemplatesSettingsProps {
   templates: Template[]
-  permissions: any
+  permissions: Record<string, boolean>
   onEdit: (template: Template) => void
   onDelete: (id: string) => void
   onAdd: () => void

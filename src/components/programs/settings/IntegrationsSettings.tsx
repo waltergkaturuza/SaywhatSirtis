@@ -2,7 +2,7 @@ import React from "react"
 
 interface IntegrationConfig {
   enabled: boolean
-  config: any
+  config: Record<string, unknown>
 }
 
 interface IntegrationsSettingsProps {
