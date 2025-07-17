@@ -1,0 +1,1324 @@
+"use client"
+
+import { ModulePage } from "@/components/layout/enhanced-layout"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { CheckCircleIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline"
+
+import { 
+  PerformancePlanFormData, 
+  defaultPlanFormData, 
+  performancePlanSteps,
+  getPriorityColor,
+  getStatusColor
+} from "@/components/hr/performance/performance-plan-types"
+
+export default function CreatePerformancePlanPage() {
+  const router = useRouter()
+  const [currentStep, setCurrentStep] = useState(1)
+  const [formData, setFormData] = useState<PerformancePlanFormData>(defaultPlanFormData)
+
+  const metadata = {
+    title: "Create Performance Plan",
+    description: "Develop comprehensive performance plan with goals and expectations",
+    breadcrumbs: [
+      { name: "SIRTIS" },
+      { name: "HR Management", href: "/hr/dashboard" },
+      { name: "Performance", href: "/hr/performance" },
+      { name: "Plans", href: "/hr/performance/plans" },
+      { name: "Create Plan" }
+    ]
+  }
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleArrayChange = (arrayName: keyof PerformancePlanFormData, index: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [arrayName]: (prev[arrayName] as any[]).map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }))
+  }
+
+  const addArrayItem = (arrayName: keyof PerformancePlanFormData, template: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [arrayName]: [...(prev[arrayName] as any[]), template]
+    }))
+  }
+
+  const removeArrayItem = (arrayName: keyof PerformancePlanFormData, index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      [arrayName]: (prev[arrayName] as any[]).filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleNext = () => {
+    if (currentStep < performancePlanSteps.length) {
+      setCurrentStep(currentStep + 1)
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSavingDraft, setIsSavingDraft] = useState(false)
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    try {
+      const response = await fetch('/api/hr/plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          formData,
+          isDraft: false
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        alert(result.message || 'Performance plan submitted successfully!')
+        router.push("/hr/performance/plans")
+      } else {
+        alert(result.error || 'Failed to submit performance plan')
+      }
+    } catch (error) {
+      console.error('Error submitting performance plan:', error)
+      alert('An error occurred while submitting the performance plan')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSaveDraft = async () => {
+    setIsSavingDraft(true)
+    try {
+      const response = await fetch('/api/hr/plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          formData,
+          isDraft: true
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        alert(result.message || 'Draft saved successfully!')
+      } else {
+        alert(result.error || 'Failed to save draft')
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error)
+      alert('An error occurred while saving the draft')
+    } finally {
+      setIsSavingDraft(false)
+    }
+  }
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employee Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.employeeName}
+                  onChange={(e) => handleInputChange("employeeName", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter employee name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employee ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.employeeId}
+                  onChange={(e) => handleInputChange("employeeId", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter employee ID"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Position/Job Title
+                </label>
+                <input
+                  type="text"
+                  value={formData.position}
+                  onChange={(e) => handleInputChange("position", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter position"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Department
+                </label>
+                <select
+                  value={formData.department}
+                  onChange={(e) => handleInputChange("department", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Department</option>
+                  <option value="programs">Programs</option>
+                  <option value="finance">Finance</option>
+                  <option value="hr">Human Resources</option>
+                  <option value="operations">Operations</option>
+                  <option value="communications">Communications</option>
+                  <option value="monitoring">M&E</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Direct Supervisor
+                </label>
+                <select
+                  value={formData.supervisor}
+                  onChange={(e) => handleInputChange("supervisor", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Supervisor</option>
+                  <option value="john.doe">John Doe - Programs Director</option>
+                  <option value="jane.smith">Jane Smith - HR Manager</option>
+                  <option value="mike.johnson">Mike Johnson - Operations Manager</option>
+                  <option value="sarah.williams">Sarah Williams - Finance Manager</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Plan Year
+                </label>
+                <select
+                  value={formData.planYear}
+                  onChange={(e) => handleInputChange("planYear", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Plan Period</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Plan Type
+                  </label>
+                  <select
+                    value={formData.planType}
+                    onChange={(e) => handleInputChange("planType", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="annual">Annual Plan</option>
+                    <option value="quarterly">Quarterly Plan</option>
+                    <option value="project">Project-Based Plan</option>
+                    <option value="probation">Probation Plan</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => handleInputChange("startDate", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => handleInputChange("endDate", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">Strategic Goals</h3>
+              <p className="text-blue-700">Define key strategic objectives that align with organizational goals and priorities.</p>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">Goals</h3>
+              <button
+                onClick={() => addArrayItem("strategicGoals", {
+                  goal: "",
+                  description: "",
+                  priority: "medium",
+                  successMetrics: "",
+                  targetDate: "",
+                  progress: 0,
+                  status: "not-started"
+                })}
+                className="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Goal
+              </button>
+            </div>
+
+            {formData.strategicGoals.map((goal, index) => (
+              <div key={index} className="border rounded-lg p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-lg font-semibold text-gray-900">Strategic Goal {index + 1}</h4>
+                  {formData.strategicGoals.length > 1 && (
+                    <button
+                      onClick={() => removeArrayItem("strategicGoals", index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Goal Statement
+                  </label>
+                  <input
+                    type="text"
+                    value={goal.goal}
+                    onChange={(e) => handleArrayChange("strategicGoals", index, "goal", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter clear, specific goal statement..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Detailed Description
+                  </label>
+                  <textarea
+                    value={goal.description}
+                    onChange={(e) => handleArrayChange("strategicGoals", index, "description", e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Provide detailed description of the goal and its importance..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Priority Level
+                    </label>
+                    <select
+                      value={goal.priority}
+                      onChange={(e) => handleArrayChange("strategicGoals", index, "priority", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="high">High Priority</option>
+                      <option value="medium">Medium Priority</option>
+                      <option value="low">Low Priority</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Target Date
+                    </label>
+                    <input
+                      type="date"
+                      value={goal.targetDate}
+                      onChange={(e) => handleArrayChange("strategicGoals", index, "targetDate", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={goal.status}
+                      onChange={(e) => handleArrayChange("strategicGoals", index, "status", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="not-started">Not Started</option>
+                      <option value="in-progress">In Progress</option>
+                      <option value="on-hold">On Hold</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Success Metrics & KPIs
+                  </label>
+                  <textarea
+                    value={goal.successMetrics}
+                    onChange={(e) => handleArrayChange("strategicGoals", index, "successMetrics", e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Define how success will be measured (quantifiable metrics)..."
+                  />
+                </div>
+
+                <div className="flex items-center space-x-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(goal.priority)}`}>
+                    {goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1)} Priority
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(goal.status)}`}>
+                    {goal.status.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="bg-green-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-green-900 mb-2">KPIs & Metrics</h3>
+              <p className="text-green-700">Define measurable key performance indicators to track progress and success.</p>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">Performance Indicators</h3>
+              <button
+                onClick={() => addArrayItem("kpis", {
+                  indicator: "",
+                  description: "",
+                  target: "",
+                  measurement: "",
+                  frequency: "monthly",
+                  weight: 20,
+                  currentValue: ""
+                })}
+                className="inline-flex items-center px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add KPI
+              </button>
+            </div>
+
+            {formData.kpis.map((kpi, index) => (
+              <div key={index} className="border rounded-lg p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-lg font-semibold text-gray-900">KPI {index + 1}</h4>
+                  {formData.kpis.length > 1 && (
+                    <button
+                      onClick={() => removeArrayItem("kpis", index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Indicator Name
+                    </label>
+                    <input
+                      type="text"
+                      value={kpi.indicator}
+                      onChange={(e) => handleArrayChange("kpis", index, "indicator", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g., Customer Satisfaction Score"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Target Value
+                    </label>
+                    <input
+                      type="text"
+                      value={kpi.target}
+                      onChange={(e) => handleArrayChange("kpis", index, "target", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g., 85% or 50 units"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={kpi.description}
+                    onChange={(e) => handleArrayChange("kpis", index, "description", e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Describe what this KPI measures and why it's important..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      How to Measure
+                    </label>
+                    <input
+                      type="text"
+                      value={kpi.measurement}
+                      onChange={(e) => handleArrayChange("kpis", index, "measurement", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="e.g., Survey scores"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Frequency
+                    </label>
+                    <select
+                      value={kpi.frequency}
+                      onChange={(e) => handleArrayChange("kpis", index, "frequency", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="quarterly">Quarterly</option>
+                      <option value="annually">Annually</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Weight (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={kpi.weight}
+                      onChange={(e) => handleArrayChange("kpis", index, "weight", parseInt(e.target.value))}
+                      min="0"
+                      max="100"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Current Value
+                    </label>
+                    <input
+                      type="text"
+                      value={kpi.currentValue}
+                      onChange={(e) => handleArrayChange("kpis", index, "currentValue", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="Current baseline"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-blue-900 mb-2">Total Weight</h4>
+              <p className="text-blue-700">
+                Current total: {formData.kpis.reduce((sum, kpi) => sum + kpi.weight, 0)}% 
+                {formData.kpis.reduce((sum, kpi) => sum + kpi.weight, 0) !== 100 && (
+                  <span className="text-orange-600 ml-2">
+                    (Should total 100%)
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        )
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-purple-900 mb-2">Development Objectives</h3>
+              <p className="text-purple-700">Plan professional growth opportunities and skill development initiatives.</p>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">Development Areas</h3>
+              <button
+                onClick={() => addArrayItem("developmentObjectives", {
+                  objective: "",
+                  description: "",
+                  competencyArea: "",
+                  developmentActivities: "",
+                  resources: "",
+                  timeline: "",
+                  successCriteria: ""
+                })}
+                className="inline-flex items-center px-3 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Objective
+              </button>
+            </div>
+
+            {formData.developmentObjectives.map((objective, index) => (
+              <div key={index} className="border rounded-lg p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-lg font-semibold text-gray-900">Development Objective {index + 1}</h4>
+                  {formData.developmentObjectives.length > 1 && (
+                    <button
+                      onClick={() => removeArrayItem("developmentObjectives", index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Development Objective
+                  </label>
+                  <input
+                    type="text"
+                    value={objective.objective}
+                    onChange={(e) => handleArrayChange("developmentObjectives", index, "objective", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., Improve project management skills"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={objective.description}
+                    onChange={(e) => handleArrayChange("developmentObjectives", index, "description", e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Detailed description of the development need..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Competency Area
+                    </label>
+                    <select
+                      value={objective.competencyArea}
+                      onChange={(e) => handleArrayChange("developmentObjectives", index, "competencyArea", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">Select Area</option>
+                      <option value="technical">Technical Skills</option>
+                      <option value="leadership">Leadership</option>
+                      <option value="communication">Communication</option>
+                      <option value="management">Management</option>
+                      <option value="analytical">Analytical</option>
+                      <option value="interpersonal">Interpersonal</option>
+                      <option value="digital">Digital Literacy</option>
+                      <option value="strategic">Strategic Thinking</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Timeline
+                    </label>
+                    <input
+                      type="text"
+                      value={objective.timeline}
+                      onChange={(e) => handleArrayChange("developmentObjectives", index, "timeline", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="e.g., 6 months, Q2 2025"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Development Activities
+                  </label>
+                  <textarea
+                    value={objective.developmentActivities}
+                    onChange={(e) => handleArrayChange("developmentObjectives", index, "developmentActivities", e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Specific activities, training, courses, mentoring, job rotation, etc..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Resources Required
+                  </label>
+                  <textarea
+                    value={objective.resources}
+                    onChange={(e) => handleArrayChange("developmentObjectives", index, "resources", e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Training budget, time allocation, materials, mentors, etc..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Success Criteria
+                  </label>
+                  <textarea
+                    value={objective.successCriteria}
+                    onChange={(e) => handleArrayChange("developmentObjectives", index, "successCriteria", e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="How will success be measured and demonstrated..."
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+
+      case 5:
+        return (
+          <div className="space-y-6">
+            <div className="bg-indigo-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-indigo-900 mb-2">Behavioral Expectations</h3>
+              <p className="text-indigo-700">Define expected behaviors and core values alignment for this role.</p>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">Core Behaviors</h3>
+              <button
+                onClick={() => addArrayItem("behavioralExpectations", {
+                  behavior: "",
+                  description: "",
+                  examples: "",
+                  importance: "medium"
+                })}
+                className="inline-flex items-center px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Behavior
+              </button>
+            </div>
+
+            {formData.behavioralExpectations.map((behavior, index) => (
+              <div key={index} className="border rounded-lg p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-lg font-semibold text-gray-900">Behavioral Expectation {index + 1}</h4>
+                  {formData.behavioralExpectations.length > 1 && (
+                    <button
+                      onClick={() => removeArrayItem("behavioralExpectations", index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Behavior/Value
+                    </label>
+                    <input
+                      type="text"
+                      value={behavior.behavior}
+                      onChange={(e) => handleArrayChange("behavioralExpectations", index, "behavior", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="e.g., Professional Communication"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Importance Level
+                    </label>
+                    <select
+                      value={behavior.importance}
+                      onChange={(e) => handleArrayChange("behavioralExpectations", index, "importance", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="critical">Critical</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={behavior.description}
+                    onChange={(e) => handleArrayChange("behavioralExpectations", index, "description", e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Describe what this behavior looks like and why it's important..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Examples & Observable Actions
+                  </label>
+                  <textarea
+                    value={behavior.examples}
+                    onChange={(e) => handleArrayChange("behavioralExpectations", index, "examples", e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Provide specific examples of how this behavior should be demonstrated..."
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    behavior.importance === 'critical' ? 'bg-red-100 text-red-800' :
+                    behavior.importance === 'high' ? 'bg-orange-100 text-orange-800' :
+                    behavior.importance === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {behavior.importance.charAt(0).toUpperCase() + behavior.importance.slice(1)} Importance
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+
+      case 6:
+        return (
+          <div className="space-y-6">
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-orange-900 mb-2">Resources & Support</h3>
+              <p className="text-orange-700">Identify resources, training, and support needed for success.</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              <div className="border rounded-lg p-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Resource Requirements</h4>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Resources Needed
+                    </label>
+                    <textarea
+                      value={formData.resourcesNeeded}
+                      onChange={(e) => handleInputChange("resourcesNeeded", e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="List all resources needed (equipment, software, budget, tools, access to systems, etc.)..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Training Requirements
+                    </label>
+                    <textarea
+                      value={formData.trainingRequirements}
+                      onChange={(e) => handleInputChange("trainingRequirements", e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="Specify training programs, courses, certifications, workshops needed..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mentorship & Coaching Needs
+                    </label>
+                    <textarea
+                      value={formData.mentorshipNeeds}
+                      onChange={(e) => handleInputChange("mentorshipNeeds", e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="Identify mentoring relationships, coaching support, or knowledge transfer needs..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Support from Manager
+                    </label>
+                    <textarea
+                      value={formData.supportFromManager}
+                      onChange={(e) => handleInputChange("supportFromManager", e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      placeholder="Define specific support, guidance, and assistance needed from direct supervisor..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-yellow-900 mb-2">Resource Planning Tips</h4>
+                <ul className="text-yellow-700 text-sm space-y-1">
+                  <li>• Be specific about resource requirements and timelines</li>
+                  <li>• Consider budget implications and approval processes</li>
+                  <li>• Identify internal vs. external training options</li>
+                  <li>• Plan for both immediate and long-term development needs</li>
+                  <li>• Consider workload adjustments needed for training time</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 7:
+        return (
+          <div className="space-y-6">
+            <div className="bg-teal-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-teal-900 mb-2">Review Schedule</h3>
+              <p className="text-teal-700">Plan regular review milestones to track progress and provide feedback.</p>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">Review Milestones</h3>
+              <button
+                onClick={() => addArrayItem("reviewMilestones", {
+                  milestone: "",
+                  date: "",
+                  reviewType: "informal",
+                  expectedOutcomes: ""
+                })}
+                className="inline-flex items-center px-3 py-1 bg-teal-600 text-white rounded-md hover:bg-teal-700"
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Milestone
+              </button>
+            </div>
+
+            {formData.reviewMilestones.map((milestone, index) => (
+              <div key={index} className="border rounded-lg p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-lg font-semibold text-gray-900">Review Milestone {index + 1}</h4>
+                  {formData.reviewMilestones.length > 1 && (
+                    <button
+                      onClick={() => removeArrayItem("reviewMilestones", index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Milestone Name
+                    </label>
+                    <input
+                      type="text"
+                      value={milestone.milestone}
+                      onChange={(e) => handleArrayChange("reviewMilestones", index, "milestone", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      placeholder="e.g., Quarter 1 Review"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Review Date
+                    </label>
+                    <input
+                      type="date"
+                      value={milestone.date}
+                      onChange={(e) => handleArrayChange("reviewMilestones", index, "date", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Review Type
+                    </label>
+                    <select
+                      value={milestone.reviewType}
+                      onChange={(e) => handleArrayChange("reviewMilestones", index, "reviewType", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    >
+                      <option value="informal">Informal Check-in</option>
+                      <option value="formal">Formal Review</option>
+                      <option value="360">360-Degree Review</option>
+                      <option value="self-assessment">Self Assessment</option>
+                      <option value="peer-review">Peer Review</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Expected Outcomes & Focus Areas
+                  </label>
+                  <textarea
+                    value={milestone.expectedOutcomes}
+                    onChange={(e) => handleArrayChange("reviewMilestones", index, "expectedOutcomes", e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="What should be achieved or discussed during this review..."
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    milestone.reviewType === 'formal' ? 'bg-blue-100 text-blue-800' :
+                    milestone.reviewType === '360' ? 'bg-purple-100 text-purple-800' :
+                    milestone.reviewType === 'self-assessment' ? 'bg-green-100 text-green-800' :
+                    milestone.reviewType === 'peer-review' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {milestone.reviewType.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Review
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-blue-900 mb-2">Review Schedule Guidelines</h4>
+              <ul className="text-blue-700 text-sm space-y-1">
+                <li>• Plan regular intervals (monthly, quarterly, etc.)</li>
+                <li>• Include both formal and informal check-ins</li>
+                <li>• Allow time for course corrections and adjustments</li>
+                <li>• Consider peak workload periods when scheduling</li>
+                <li>• Include milestone celebrations for achievements</li>
+              </ul>
+            </div>
+          </div>
+        )
+
+      case 8:
+        return (
+          <div className="space-y-6">
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-yellow-900 mb-2">Final Review</h3>
+              <p className="text-yellow-700">Please review all information before submitting the performance plan.</p>
+            </div>
+
+            {/* Summary Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white border rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3">Employee Information</h4>
+                <div className="space-y-2 text-sm">
+                  <div><span className="font-medium">Name:</span> {formData.employeeName}</div>
+                  <div><span className="font-medium">Position:</span> {formData.position}</div>
+                  <div><span className="font-medium">Department:</span> {formData.department}</div>
+                  <div><span className="font-medium">Supervisor:</span> {formData.supervisor}</div>
+                </div>
+              </div>
+
+              <div className="bg-white border rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3">Plan Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div><span className="font-medium">Plan Year:</span> {formData.planYear}</div>
+                  <div><span className="font-medium">Type:</span> {formData.planType}</div>
+                  <div><span className="font-medium">Period:</span> {formData.startDate} to {formData.endDate}</div>
+                  <div><span className="font-medium">Status:</span> {formData.status}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Goals Summary */}
+            <div className="bg-white border rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-3">Strategic Goals Summary ({formData.strategicGoals.length})</h4>
+              <div className="space-y-2">
+                {formData.strategicGoals.map((goal, index) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <span>{goal.goal}</span>
+                    <div className="flex space-x-2">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(goal.priority)}`}>
+                        {goal.priority}
+                      </span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(goal.status)}`}>
+                        {goal.status.replace('-', ' ')}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* KPIs Summary */}
+            <div className="bg-white border rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-3">KPIs & Metrics Summary ({formData.kpis.length})</h4>
+              <div className="space-y-2">
+                {formData.kpis.map((kpi, index) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <span>{kpi.indicator}</span>
+                    <div className="flex space-x-2">
+                      <span className="px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-medium">
+                        Target: {kpi.target}
+                      </span>
+                      <span className="px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-medium">
+                        {kpi.weight}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-xs text-gray-600">
+                Total Weight: {formData.kpis.reduce((sum, kpi) => sum + kpi.weight, 0)}%
+              </div>
+            </div>
+
+            {/* Development Objectives Summary */}
+            <div className="bg-white border rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-3">Development Objectives Summary ({formData.developmentObjectives.length})</h4>
+              <div className="space-y-2">
+                {formData.developmentObjectives.map((objective, index) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <span>{objective.objective}</span>
+                    <div className="flex space-x-2">
+                      <span className="px-2 py-1 rounded bg-purple-100 text-purple-800 text-xs font-medium">
+                        {objective.competencyArea}
+                      </span>
+                      <span className="px-2 py-1 rounded bg-gray-100 text-gray-800 text-xs font-medium">
+                        {objective.timeline}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Behavioral Expectations Summary */}
+            <div className="bg-white border rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-3">Behavioral Expectations Summary ({formData.behavioralExpectations.length})</h4>
+              <div className="space-y-2">
+                {formData.behavioralExpectations.map((behavior, index) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <span>{behavior.behavior}</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      behavior.importance === 'critical' ? 'bg-red-100 text-red-800' :
+                      behavior.importance === 'high' ? 'bg-orange-100 text-orange-800' :
+                      behavior.importance === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {behavior.importance}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Review Schedule Summary */}
+            <div className="bg-white border rounded-lg p-4">
+              <h4 className="font-semibold text-gray-900 mb-3">Review Schedule Summary ({formData.reviewMilestones.length})</h4>
+              <div className="space-y-2">
+                {formData.reviewMilestones.map((milestone, index) => (
+                  <div key={index} className="flex justify-between items-center text-sm">
+                    <span>{milestone.milestone}</span>
+                    <div className="flex space-x-2">
+                      <span className="px-2 py-1 rounded bg-teal-100 text-teal-800 text-xs font-medium">
+                        {milestone.date}
+                      </span>
+                      <span className="px-2 py-1 rounded bg-gray-100 text-gray-800 text-xs font-medium">
+                        {milestone.reviewType}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Agreement Section */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Agreement and Sign-off</h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employee Comments
+                  </label>
+                  <textarea
+                    value={formData.employeeComments}
+                    onChange={(e) => handleInputChange("employeeComments", e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Employee's comments on the performance plan..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Supervisor Comments
+                  </label>
+                  <textarea
+                    value={formData.supervisorComments}
+                    onChange={(e) => handleInputChange("supervisorComments", e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Supervisor's comments and expectations..."
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="employeeAgreement"
+                    checked={formData.employeeAgreement}
+                    onChange={(e) => handleInputChange("employeeAgreement", e.target.checked)}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="employeeAgreement" className="ml-2 block text-sm text-gray-700">
+                    Employee agrees with the performance plan and understands the expectations
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center">
+              <div className="flex items-center space-x-2">
+                <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                <span className="text-sm text-gray-600">Ready to submit performance plan</span>
+              </div>
+            </div>
+          </div>
+        )
+
+      default:
+        return (
+          <div className="text-center py-8">
+            <p className="text-gray-500">Step content coming soon...</p>
+          </div>
+        )
+    }
+  }
+
+  return (
+    <ModulePage metadata={metadata}>
+      <div className="max-w-6xl mx-auto">
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            {performancePlanSteps.map((step, index) => (
+              <div key={step.id} className="flex items-center">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                  step.id <= currentStep 
+                    ? 'bg-blue-600 border-blue-600 text-white' 
+                    : 'border-gray-300 text-gray-500'
+                }`}>
+                  {step.id < currentStep ? (
+                    <CheckCircleIcon className="w-5 h-5" />
+                  ) : (
+                    step.id
+                  )}
+                </div>
+                <div className="ml-3 min-w-0">
+                  <p className={`text-sm font-medium ${
+                    step.id <= currentStep ? 'text-blue-600' : 'text-gray-500'
+                  }`}>
+                    {step.title}
+                  </p>
+                  <p className="text-xs text-gray-500">{step.description}</p>
+                </div>
+                {index < performancePlanSteps.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-4 ${
+                    step.id < currentStep ? 'bg-blue-600' : 'bg-gray-300'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="bg-white shadow-lg rounded-lg p-6">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">{performancePlanSteps[currentStep - 1].title}</h2>
+            <p className="text-gray-600">{performancePlanSteps[currentStep - 1].description}</p>
+          </div>
+
+          {renderStepContent()}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between pt-6 border-t">
+            <button
+              onClick={handlePrevious}
+              disabled={currentStep === 1}
+              className={`px-4 py-2 border rounded-md ${
+                currentStep === 1 
+                  ? 'border-gray-300 text-gray-400 cursor-not-allowed' 
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Previous
+            </button>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={handleSaveDraft}
+                disabled={isSavingDraft}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingDraft ? 'Saving...' : 'Save as Draft'}
+              </button>
+
+              {currentStep === performancePlanSteps.length ? (
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit Plan'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleNext}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Next
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </ModulePage>
+  )
+}
