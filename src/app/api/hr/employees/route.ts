@@ -2,13 +2,29 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { 
+  createSuccessResponse, 
+  createErrorResponse, 
+  handlePrismaError,
+  validateRequiredFields,
+  validateEmail,
+  sanitizeInput,
+  logError,
+  HttpStatus,
+  ErrorCodes
+} from '@/lib/api-utils'
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      const { response, status } = createErrorResponse(
+        'Authentication required',
+        HttpStatus.UNAUTHORIZED,
+        { code: ErrorCodes.UNAUTHORIZED }
+      )
+      return NextResponse.json(response, { status })
     }
 
     // Get all users (employees) with active status
@@ -30,17 +46,20 @@ export async function GET() {
       orderBy: { lastName: 'asc' }
     })
 
-    return NextResponse.json({
-      success: true,
-      data: employees
+    const response = createSuccessResponse(employees, {
+      message: `Retrieved ${employees.length} employees`,
+      meta: { count: employees.length }
     })
+
+    return NextResponse.json(response)
   } catch (error) {
-    console.error('Error fetching employees:', error)
-    return NextResponse.json({ 
-      success: false,
-      error: 'Failed to fetch employees',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    logError(error, {
+      endpoint: '/api/hr/employees',
+      userId: 'unknown'
+    })
+
+    const { response, status } = handlePrismaError(error)
+    return NextResponse.json(response, { status })
   }
 }
 
@@ -49,18 +68,39 @@ export async function POST(request: Request) {
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      const { response, status } = createErrorResponse(
+        'Authentication required',
+        HttpStatus.UNAUTHORIZED,
+        { code: ErrorCodes.UNAUTHORIZED }
+      )
+      return NextResponse.json(response, { status })
     }
 
     const body = await request.json()
     const { formData } = body
 
     // Validate required fields
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.position || !formData.department) {
-      return NextResponse.json({ 
-        success: false,
-        error: 'Missing required fields' 
-      }, { status: 400 })
+    const validationError = validateRequiredFields(formData, [
+      'firstName', 'lastName', 'email', 'position', 'department'
+    ])
+    
+    if (validationError) {
+      const { response, status } = createErrorResponse(
+        validationError,
+        HttpStatus.BAD_REQUEST,
+        { code: ErrorCodes.VALIDATION_ERROR }
+      )
+      return NextResponse.json(response, { status })
+    }
+
+    // Validate email format
+    if (!validateEmail(formData.email)) {
+      const { response, status } = createErrorResponse(
+        'Invalid email format',
+        HttpStatus.BAD_REQUEST,
+        { code: ErrorCodes.VALIDATION_ERROR }
+      )
+      return NextResponse.json(response, { status })
     }
 
     // Check if employee email already exists
@@ -69,38 +109,46 @@ export async function POST(request: Request) {
     })
 
     if (existingUser) {
-      return NextResponse.json({ 
-        success: false,
-        error: 'Employee with this email already exists' 
-      }, { status: 400 })
+      const { response, status } = createErrorResponse(
+        'Employee with this email already exists',
+        HttpStatus.CONFLICT,
+        { code: ErrorCodes.DUPLICATE_ENTRY }
+      )
+      return NextResponse.json(response, { status })
+    }
+
+    // Sanitize input data
+    const sanitizedData = {
+      email: formData.email.toLowerCase().trim(),
+      firstName: sanitizeInput(formData.firstName),
+      lastName: sanitizeInput(formData.lastName),
+      phone: formData.phone ? sanitizeInput(formData.phone) : null,
+      department: sanitizeInput(formData.department),
+      position: sanitizeInput(formData.position),
+      employeeId: formData.employeeId ? sanitizeInput(formData.employeeId) : null,
     }
 
     // Create new employee
     const newEmployee = await prisma.user.create({
       data: {
-        email: formData.email,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone || null,
-        department: formData.department,
-        position: formData.position,
-        employeeId: formData.employeeId || null,
+        ...sanitizedData,
         hashedPassword: '$2a$10$rZvGJ5xI7gMEwAi8IWW8KO7/Eo3QKsVxQhVJ2X7w9m0N1QmRZJQzK', // Default password
         isActive: true
       }
     })
 
-    return NextResponse.json({ 
-      success: true, 
-      data: newEmployee,
-      message: 'Employee created successfully'
-    }, { status: 201 })
+    const response = createSuccessResponse(newEmployee, {
+      message: `Employee ${newEmployee.firstName} ${newEmployee.lastName} created successfully`
+    })
+
+    return NextResponse.json(response, { status: HttpStatus.CREATED })
   } catch (error) {
-    console.error('Error creating employee:', error)
-    return NextResponse.json({ 
-      success: false,
-      error: 'Failed to create employee',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    logError(error, {
+      endpoint: '/api/hr/employees',
+      userId: 'unknown'
+    })
+
+    const { response, status } = handlePrismaError(error)
+    return NextResponse.json(response, { status })
   }
 }
