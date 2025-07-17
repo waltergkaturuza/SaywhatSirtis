@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
-import { PrismaClient } from '@prisma/client'
+import { authOptions } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
-const prisma = new PrismaClient()
+
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
     
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -15,107 +16,68 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // Basic validation
-    if (!body.name || !body.description) {
+    if (!body.name || !body.description || !body.startDate || !body.endDate || !body.country) {
       return NextResponse.json({ 
-        error: "Missing required fields: name and description are required" 
+        success: false,
+        error: "Missing required fields: name, description, startDate, endDate, and country are required" 
       }, { status: 400 })
     }
 
-    // Generate project code if not provided
-    const projectCode = body.projectCode || `PROJ-${Date.now()}`
-
-    // For now, we'll just return a success response
-    // In a real implementation, you'd save to database
-    const projectData = {
-      id: Date.now(),
-      projectCode,
-      name: body.name,
-      description: body.description,
-      category: body.category || 'development',
-      priority: body.priority || 'medium',
-      startDate: body.startDate,
-      endDate: body.endDate,
-      budget: body.budget,
-      currency: body.currency || 'USD',
-      country: body.country,
-      province: body.province,
-      manager: body.manager,
-      status: 'draft',
-      createdAt: new Date().toISOString(),
-      createdBy: session.user?.email || 'system'
-    }
-
-    console.log('Project creation request:', projectData)
+    // Create the project in the database
+    const project = await prisma.project.create({
+      data: {
+        name: body.name,
+        description: body.description,
+        timeframe: body.timeframe || `${body.startDate} to ${body.endDate}`,
+        startDate: new Date(body.startDate),
+        endDate: new Date(body.endDate),
+        country: body.country,
+        province: body.province || null,
+        objectives: JSON.stringify(body.objectives || []),
+        budget: body.budget ? parseFloat(body.budget) : null,
+        actualSpent: 0
+      }
+    })
 
     return NextResponse.json({ 
       success: true, 
       message: "Project created successfully",
-      project: projectData
-    })
+      data: project
+    }, { status: 201 })
 
   } catch (error) {
     console.error('Project creation error:', error)
     return NextResponse.json({ 
-      error: "Internal server error" 
+      success: false,
+      error: "Failed to create project",
+      message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
+}
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession()
+    const session = await getServerSession(authOptions)
     
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Return mock projects for now
-    const mockProjects = [
-      {
-        id: 1,
-        projectCode: "PROJ-001",
-        name: "Community Health Initiative",
-        description: "Improving healthcare access in rural communities",
-        category: "development",
-        priority: "high",
-        status: "active",
-        progress: 65,
-        budget: 150000,
-        currency: "USD",
-        startDate: "2024-01-15",
-        endDate: "2024-12-15",
-        country: "Afghanistan",
-        province: "Kabul",
-        manager: "John Doe"
-      },
-      {
-        id: 2,
-        projectCode: "PROJ-002", 
-        name: "Education Support Program",
-        description: "Supporting primary education in underserved areas",
-        category: "development",
-        priority: "medium",
-        status: "planning",
-        progress: 25,
-        budget: 200000,
-        currency: "USD",
-        startDate: "2024-03-01",
-        endDate: "2025-02-28",
-        country: "Afghanistan",
-        province: "Herat",
-        manager: "Jane Smith"
-      }
-    ]
-
-    return NextResponse.json({ 
-      success: true,
-      projects: mockProjects
+    const projects = await prisma.project.findMany({
+      orderBy: { createdAt: 'desc' }
     })
 
+    return NextResponse.json({
+      success: true,
+      data: projects
+    })
   } catch (error) {
-    console.error('Projects fetch error:', error)
+    console.error('Error fetching projects:', error)
     return NextResponse.json({ 
-      error: "Internal server error" 
+      success: false,
+      error: 'Failed to fetch projects',
+      message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }

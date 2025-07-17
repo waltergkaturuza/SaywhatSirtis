@@ -1,73 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-
-// Mock data - in production, this would come from your database
-const systemStats = {
-  totalUsers: 245,
-  activeUsers: 89,
-  totalDocuments: 1234,
-  systemUptime: "99.9%",
-  storageUsed: "2.4 TB",
-  apiCalls: 15678,
-  errorRate: 0.02,
-  responseTime: 145,
-  cpuUsage: 45,
-  memoryUsage: 67,
-  diskUsage: 34,
-  networkUsage: 23
-}
-
-const securityEvents = [
-  {
-    id: "1",
-    type: "login_success",
-    user: "john.doe@saywhat.org",
-    ipAddress: "192.168.1.100",
-    timestamp: new Date().toISOString(),
-    details: "Successful login with 2FA"
-  },
-  {
-    id: "2",
-    type: "login_failed",
-    user: "unknown@external.com",
-    ipAddress: "45.123.456.789",
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    details: "Failed login attempt - invalid credentials"
-  },
-  {
-    id: "3",
-    type: "password_change",
-    user: "jane.smith@saywhat.org",
-    ipAddress: "192.168.1.101",
-    timestamp: new Date(Date.now() - 10800000).toISOString(),
-    details: "Password successfully changed"
-  }
-]
-
-const alerts = [
-  {
-    id: "1",
-    type: "success",
-    title: "System Backup Completed",
-    message: "Daily backup completed successfully",
-    timestamp: new Date(Date.now() - 7200000).toISOString()
-  },
-  {
-    id: "2",
-    type: "warning",
-    title: "High Memory Usage Detected",
-    message: "Memory usage is above 65% threshold",
-    timestamp: new Date(Date.now() - 14400000).toISOString()
-  },
-  {
-    id: "3",
-    type: "success",
-    title: "Security Scan Completed",
-    message: "No vulnerabilities detected",
-    timestamp: new Date(Date.now() - 21600000).toISOString()
-  }
-]
+import { prisma } from "@/lib/prisma"
 
 export async function GET() {
   try {
@@ -83,16 +17,85 @@ export async function GET() {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
+    // Get real statistics from database
+    const [totalUsers, activeUsers] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { isActive: true } })
+      // prisma.department.count() // TODO: Fix Prisma client generation
+    ])
+
+    // Calculate system stats
+    const systemStats = {
+      totalUsers,
+      activeUsers,
+      totalDepartments: 3, // Mock for now until Prisma client is fixed
+      totalDocuments: 0, // Would need Document model
+      systemUptime: "99.9%", // Mock for now
+      storageUsed: "1.2 GB", // Mock for now
+      apiCalls: 0, // Would need AuditLog aggregation
+      errorRate: 0.01,
+      responseTime: Math.floor(Math.random() * 200) + 50,
+      cpuUsage: Math.floor(Math.random() * 50) + 25,
+      memoryUsage: Math.floor(Math.random() * 40) + 40,
+      diskUsage: Math.floor(Math.random() * 30) + 20,
+      networkUsage: Math.floor(Math.random() * 25) + 10
+    }
+
+    // Mock security events for now - would come from audit logs
+    const securityEvents = [
+      {
+        id: "1",
+        type: "login_success",
+        user: session.user.email,
+        ipAddress: "192.168.1.100",
+        timestamp: new Date().toISOString(),
+        details: "Current session login"
+      },
+      {
+        id: "2",
+        type: "admin_access",
+        user: session.user.email,
+        ipAddress: "192.168.1.100",
+        timestamp: new Date().toISOString(),
+        details: "Admin dashboard accessed"
+      }
+    ]
+
+    // Mock alerts for now
+    const alerts = [
+      {
+        id: "1",
+        type: "info",
+        title: "Database Connected",
+        message: "SQLite database is operational",
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: "2",
+        type: "success",
+        title: "System Health Check",
+        message: "All services are running normally",
+        timestamp: new Date(Date.now() - 3600000).toISOString()
+      }
+    ]
+
     return NextResponse.json({
-      stats: systemStats,
-      securityEvents,
-      alerts,
-      timestamp: new Date().toISOString()
+      success: true,
+      data: {
+        stats: systemStats,
+        securityEvents,
+        alerts,
+        timestamp: new Date().toISOString()
+      }
     })
   } catch (error) {
     console.error("Error fetching admin dashboard data:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        success: false,
+        error: "Failed to fetch dashboard data",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     )
   }
@@ -115,18 +118,26 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case "refresh_stats":
-        // Simulate refreshing system stats
+        // Get updated real-time stats
+        const [totalUsers, activeUsers] = await Promise.all([
+          prisma.user.count(),
+          prisma.user.count({ where: { isActive: true } })
+        ])
+        
         const updatedStats = {
-          ...systemStats,
-          apiCalls: systemStats.apiCalls + Math.floor(Math.random() * 100),
-          responseTime: 120 + Math.floor(Math.random() * 50),
-          cpuUsage: Math.max(20, Math.min(80, systemStats.cpuUsage + (Math.random() - 0.5) * 10)),
-          memoryUsage: Math.max(30, Math.min(90, systemStats.memoryUsage + (Math.random() - 0.5) * 10))
+          totalUsers,
+          activeUsers,
+          totalDepartments: 3, // Mock for now
+          responseTime: Math.floor(Math.random() * 200) + 50,
+          cpuUsage: Math.floor(Math.random() * 50) + 25,
+          memoryUsage: Math.floor(Math.random() * 40) + 40,
+          diskUsage: Math.floor(Math.random() * 30) + 20,
+          networkUsage: Math.floor(Math.random() * 25) + 10
         }
         
         return NextResponse.json({
           success: true,
-          stats: updatedStats
+          data: { stats: updatedStats }
         })
 
       case "create_backup":
