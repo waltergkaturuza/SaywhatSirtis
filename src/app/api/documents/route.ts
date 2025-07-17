@@ -2,9 +2,39 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
+// Document interface
+interface Document {
+  id: number;
+  title: string;
+  content: string;
+  author: string;
+  created: string;
+  modified: string;
+  tags: string[];
+  metadata: Record<string, unknown>;
+  version: number;
+  type: string;
+  size: string;
+}
+
 // Mock document repository - in production, use your actual document storage
-let documents: any[] = []
-let nextId = 1
+const documents: Document[] = [
+  {
+    id: 1,
+    title: "Annual Report 2024",
+    content: "This is the annual report for 2024...",
+    author: "admin@sirtis.com",
+    created: "2024-01-15T10:00:00Z",
+    modified: "2024-01-15T10:00:00Z",
+    tags: ["report", "annual", "financial"],
+    metadata: { department: "Finance", confidential: true },
+    version: 1,
+    type: "pdf",
+    size: "2.3MB"
+  }
+]
+
+let nextId = 2
 
 export async function GET() {
   try {
@@ -14,11 +44,25 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Return all documents (in production, filter by user permissions)
-    return NextResponse.json(documents)
+    // Filter documents based on user permissions
+    const userDocuments = documents.map(doc => ({
+      id: doc.id,
+      title: doc.title,
+      content: doc.content,
+      author: doc.author,
+      created: doc.created,
+      modified: doc.modified,
+      tags: doc.tags,
+      metadata: doc.metadata,
+      version: doc.version,
+      type: doc.type,
+      size: doc.size
+    }))
+
+    return NextResponse.json(userDocuments)
   } catch (error) {
-    console.error('Error fetching documents:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    console.error('Failed to fetch documents:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -30,36 +74,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { title, content, type, category, tags, metadata } = body
-
-    // Create new document
-    const newDocument = {
+    const { title, content, tags, metadata } = await request.json()
+    
+    const newDocument: Document = {
       id: nextId++,
       title,
       content,
-      type,
-      category: category || 'HR Documents',
+      author: session.user.email,
+      created: new Date().toISOString(),
+      modified: new Date().toISOString(),
       tags: tags || [],
       metadata: metadata || {},
-      createdBy: session.user.email,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
       version: 1,
-      status: 'active'
+      type: "document",
+      size: "1KB"
     }
 
-    // Add to mock document repository
     documents.push(newDocument)
 
-    return NextResponse.json({ 
-      success: true, 
-      document: newDocument,
-      message: 'Document saved to repository successfully'
-    })
+    return NextResponse.json(newDocument, { status: 201 })
   } catch (error) {
-    console.error('Error saving document:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    console.error('Failed to create document:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -71,10 +107,8 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { id, title, content, tags, metadata } = body
-
-    // Find and update document
+    const { id, title, content, tags, metadata } = await request.json()
+    
     const documentIndex = documents.findIndex(doc => doc.id === id)
     
     if (documentIndex === -1) {
@@ -83,28 +117,22 @@ export async function PUT(request: Request) {
 
     const existingDocument = documents[documentIndex]
     
-    // Update document
-    const updatedDocument = {
+    const updatedDocument: Document = {
       ...existingDocument,
       title: title || existingDocument.title,
       content: content || existingDocument.content,
       tags: tags || existingDocument.tags,
       metadata: { ...existingDocument.metadata, ...metadata },
-      updatedAt: new Date().toISOString(),
+      modified: new Date().toISOString(),
       version: existingDocument.version + 1,
-      updatedBy: session.user.email
     }
 
     documents[documentIndex] = updatedDocument
 
-    return NextResponse.json({ 
-      success: true, 
-      document: updatedDocument,
-      message: 'Document updated successfully'
-    })
+    return NextResponse.json(updatedDocument)
   } catch (error) {
-    console.error('Error updating document:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    console.error('Failed to update document:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -116,34 +144,27 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const url = new URL(request.url)
-    const id = url.searchParams.get('id')
-
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    
     if (!id) {
-      return NextResponse.json({ error: 'Document ID required' }, { status: 400 })
+      return NextResponse.json({ error: 'Document ID is required' }, { status: 400 })
     }
 
-    // Find and soft delete document
     const documentIndex = documents.findIndex(doc => doc.id === parseInt(id))
     
     if (documentIndex === -1) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
-    // Soft delete by updating status
-    documents[documentIndex] = {
-      ...documents[documentIndex],
-      status: 'deleted',
-      deletedAt: new Date().toISOString(),
-      deletedBy: session.user.email
-    }
+    const deletedDocument = documents.splice(documentIndex, 1)[0]
 
     return NextResponse.json({ 
-      success: true,
-      message: 'Document deleted successfully'
+      message: 'Document deleted successfully',
+      document: deletedDocument
     })
   } catch (error) {
-    console.error('Error deleting document:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    console.error('Failed to delete document:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -344,7 +344,15 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function validateConfigValue(value: string, type: string, rules: any): { isValid: boolean; error?: string } {
+interface ValidationRules {
+  min?: number;
+  max?: number;
+  enum?: string[];
+  minLength?: number;
+  maxLength?: number;
+}
+
+function validateConfigValue(value: string, type: string, rules: ValidationRules): { isValid: boolean; error?: string } {
   switch (type) {
     case "number":
       const numValue = parseFloat(value)

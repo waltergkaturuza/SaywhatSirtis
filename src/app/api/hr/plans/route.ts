@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
 // Mock database - in production, use your actual database
-let plans: any[] = []
+const plans: Record<string, unknown>[] = []
 let nextId = 1
 
 export async function GET() {
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 }
 
 // Function to save plan to documents repository
-async function saveToDocumentRepository(plan: any) {
+async function saveToDocumentRepository(plan: Record<string, unknown>) {
   try {
     // Generate document content
     const documentContent = generatePlanDocument(plan)
@@ -80,7 +80,7 @@ async function saveToDocumentRepository(plan: any) {
       content: documentContent,
       type: 'performance_plan',
       category: 'HR Documents',
-      tags: ['performance', 'plan', 'hr', plan.department?.toLowerCase()],
+      tags: ['performance', 'plan', 'hr', (plan.department as string)?.toLowerCase()],
       metadata: {
         employeeName: plan.employeeName,
         position: plan.position,
@@ -102,7 +102,7 @@ async function saveToDocumentRepository(plan: any) {
 }
 
 // Function to generate document content from plan data
-function generatePlanDocument(plan: any) {
+function generatePlanDocument(plan: Record<string, unknown>) {
   const date = new Date().toLocaleDateString()
   
   return `
@@ -116,7 +116,7 @@ function generatePlanDocument(plan: any) {
 
 ## Performance Goals
 
-${plan.goals?.map((goal: any, index: number) => `
+${plan.goals?.map((goal: Record<string, unknown>, index: number) => `
 ${index + 1}. **${goal.title}**
    - Description: ${goal.description}
    - Target Date: ${goal.targetDate}
@@ -127,7 +127,7 @@ ${index + 1}. **${goal.title}**
 
 ## Key Performance Indicators (KPIs)
 
-${plan.kpis?.map((kpi: any, index: number) => `
+${plan.kpis?.map((kpi: Record<string, unknown>, index: number) => `
 ${index + 1}. **${kpi.name}**
    - Metric: ${kpi.metric}
    - Target: ${kpi.target}
@@ -137,7 +137,7 @@ ${index + 1}. **${kpi.name}**
 
 ## Development Areas
 
-${plan.developmentAreas?.map((area: any, index: number) => `
+${plan.developmentAreas?.map((area: Record<string, unknown>, index: number) => `
 ${index + 1}. **${area.area}**
    - Current Level: ${area.currentLevel}
    - Target Level: ${area.targetLevel}
@@ -148,7 +148,7 @@ ${index + 1}. **${area.area}**
 
 ## Training and Development Plan
 
-${plan.trainingPlan?.map((training: any, index: number) => `
+${plan.trainingPlan?.map((training: Record<string, unknown>, index: number) => `
 ${index + 1}. **${training.program}**
    - Provider: ${training.provider}
    - Duration: ${training.duration}
@@ -159,7 +159,7 @@ ${index + 1}. **${training.program}**
 
 ## Review Schedule
 
-${plan.reviewSchedule?.map((review: any, index: number) => `
+${plan.reviewSchedule?.map((review: Record<string, unknown>, index: number) => `
 ${index + 1}. **${review.type} Review**
    - Date: ${review.date}
    - Focus Areas: ${review.focusAreas}

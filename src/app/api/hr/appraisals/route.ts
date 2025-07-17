@@ -2,8 +2,36 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
+// Performance appraisal interface
+interface PerformanceAppraisal {
+  id: number;
+  employeeId: string;
+  employeeName?: string;
+  position?: string;
+  department?: string;
+  reviewerId: string;
+  reviewPeriod?: {
+    start: string;
+    end: string;
+  } | string;
+  period: string;
+  status: 'draft' | 'submitted' | 'completed';
+  ratings: Record<string, unknown>;
+  comments: string;
+  goals: Record<string, unknown>[];
+  overallRating?: number;
+  performanceAreas?: Record<string, unknown>[];
+  achievements?: Record<string, unknown>[];
+  developmentPlan?: Record<string, unknown>[];
+  employeeComments?: string;
+  supervisorComments?: string;
+  hrComments?: string;
+  created: string;
+  updated: string;
+}
+
 // Mock database - in production, use your actual database
-let appraisals: any[] = []
+const appraisals: PerformanceAppraisal[] = []
 let nextId = 1
 
 export async function GET() {
@@ -69,7 +97,7 @@ export async function POST(request: Request) {
 }
 
 // Function to save appraisal to documents repository
-async function saveToDocumentRepository(appraisal: any) {
+async function saveToDocumentRepository(appraisal: PerformanceAppraisal) {
   try {
     // Generate document content
     const documentContent = generateAppraisalDocument(appraisal)
@@ -103,7 +131,7 @@ async function saveToDocumentRepository(appraisal: any) {
 }
 
 // Function to generate document content from appraisal data
-function generateAppraisalDocument(appraisal: any) {
+function generateAppraisalDocument(appraisal: PerformanceAppraisal) {
   const date = new Date().toLocaleDateString()
   
   return `
@@ -112,12 +140,12 @@ function generateAppraisalDocument(appraisal: any) {
 **Employee:** ${appraisal.employeeName}
 **Position:** ${appraisal.position}
 **Department:** ${appraisal.department}
-**Review Period:** ${appraisal.reviewPeriod?.start} to ${appraisal.reviewPeriod?.end}
+**Review Period:** ${typeof appraisal.reviewPeriod === 'object' ? `${appraisal.reviewPeriod?.start} to ${appraisal.reviewPeriod?.end}` : appraisal.reviewPeriod || 'Not specified'}
 **Date Generated:** ${date}
 
 ## Performance Assessment
 
-${appraisal.performanceAreas?.map((area: any) => `
+${appraisal.performanceAreas?.map((area: Record<string, unknown>) => `
 ### ${area.name}
 - **Weight:** ${area.weight}%
 - **Rating:** ${area.rating}/5
@@ -126,7 +154,7 @@ ${appraisal.performanceAreas?.map((area: any) => `
 
 ## Key Achievements
 
-${appraisal.achievements?.map((achievement: any, index: number) => `
+${appraisal.achievements?.map((achievement: Record<string, unknown>, index: number) => `
 ${index + 1}. **${achievement.title}**
    - Description: ${achievement.description}
    - Impact: ${achievement.impact}
@@ -135,7 +163,7 @@ ${index + 1}. **${achievement.title}**
 
 ## Goals for Next Period
 
-${appraisal.goals?.map((goal: any, index: number) => `
+${appraisal.goals?.map((goal: Record<string, unknown>, index: number) => `
 ${index + 1}. **${goal.title}**
    - Description: ${goal.description}
    - Target Date: ${goal.targetDate}
@@ -145,7 +173,7 @@ ${index + 1}. **${goal.title}**
 
 ## Development Plan
 
-${appraisal.developmentPlan?.map((item: any, index: number) => `
+${appraisal.developmentPlan?.map((item: Record<string, unknown>, index: number) => `
 ${index + 1}. **${item.area}**
    - Current Level: ${item.currentLevel}
    - Target Level: ${item.targetLevel}
@@ -166,7 +194,7 @@ ${appraisal.supervisorComments || 'No supervisor comments provided'}
 ${appraisal.hrComments || 'No HR comments provided'}
 
 ## Overall Rating
-**${appraisal.overallRating}/5** - ${getRatingLabel(appraisal.overallRating)}
+**${appraisal.overallRating || 0}/5** - ${getRatingLabel(appraisal.overallRating || 0)}
 
 ---
 *This document was automatically generated from the SIRTIS Performance Management System*

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
 // Mock database - in production, use your actual database
-let employees: any[] = []
+const employees: Record<string, unknown>[] = []
 let nextId = 1
 
 export async function GET() {
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 }
 
 // Function to save employee to documents repository
-async function saveToDocumentRepository(employee: any) {
+async function saveToDocumentRepository(employee: Record<string, unknown>) {
   try {
     // Generate document content
     const documentContent = generateEmployeeDocument(employee)
@@ -82,7 +82,7 @@ async function saveToDocumentRepository(employee: any) {
       content: documentContent,
       type: 'employee_profile',
       category: 'HR Documents',
-      tags: ['employee', 'profile', 'hr', employee.department?.toLowerCase()],
+      tags: ['employee', 'profile', 'hr', (employee.department as string)?.toLowerCase()],
       metadata: {
         employeeId: employee.employeeId,
         employeeName: `${employee.firstName} ${employee.lastName}`,
@@ -105,7 +105,7 @@ async function saveToDocumentRepository(employee: any) {
 }
 
 // Function to generate document content from employee data
-function generateEmployeeDocument(employee: any) {
+function generateEmployeeDocument(employee: Record<string, unknown>) {
   const date = new Date().toLocaleDateString()
   
   return `
@@ -151,20 +151,20 @@ function generateEmployeeDocument(employee: any) {
 - **Pay Frequency:** ${employee.payFrequency}
 
 ### Benefits
-${employee.benefits?.length > 0 ? employee.benefits.map((benefit: string) => `- ${benefit}`).join('\n') : 'No benefits specified'}
+${Array.isArray(employee.benefits) && employee.benefits.length > 0 ? employee.benefits.map((benefit: string) => `- ${benefit}`).join('\n') : 'No benefits specified'}
 
 ## Education & Skills
 
 - **Education Level:** ${employee.education}
 
 ### Skills
-${employee.skills?.length > 0 ? employee.skills.map((skill: string) => `- ${skill}`).join('\n') : 'No skills specified'}
+${Array.isArray(employee.skills) && employee.skills.length > 0 ? employee.skills.map((skill: string) => `- ${skill}`).join('\n') : 'No skills specified'}
 
 ### Certifications
-${employee.certifications?.length > 0 ? employee.certifications.map((cert: string) => `- ${cert}`).join('\n') : 'No certifications specified'}
+${Array.isArray(employee.certifications) && employee.certifications.length > 0 ? employee.certifications.map((cert: string) => `- ${cert}`).join('\n') : 'No certifications specified'}
 
 ### Training Requirements
-${employee.trainingRequired?.length > 0 ? employee.trainingRequired.map((training: string) => `- ${training}`).join('\n') : 'No training requirements'}
+${Array.isArray(employee.trainingRequired) && employee.trainingRequired.length > 0 ? employee.trainingRequired.map((training: string) => `- ${training}`).join('\n') : 'No training requirements'}
 
 ## Access & Security
 
@@ -172,7 +172,7 @@ ${employee.trainingRequired?.length > 0 ? employee.trainingRequired.map((trainin
 - **Security Clearance:** ${employee.securityClearance}
 
 ### System Access
-${employee.systemAccess?.length > 0 ? employee.systemAccess.map((system: string) => `- ${system}`).join('\n') : 'No system access specified'}
+${Array.isArray(employee.systemAccess) && employee.systemAccess.length > 0 ? employee.systemAccess.map((system: string) => `- ${system}`).join('\n') : 'No system access specified'}
 
 ## Documents & Onboarding Status
 
