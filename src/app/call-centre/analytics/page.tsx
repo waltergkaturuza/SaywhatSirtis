@@ -17,6 +17,8 @@ import {
 
 export default function CallCentreAnalyticsPage() {
   const { data: session } = useSession()
+  const [dateRange, setDateRange] = useState('7days')
+  const [selectedOfficer, setSelectedOfficer] = useState('all')
   
   // Check user permissions
   const userPermissions = session?.user?.permissions || []
@@ -37,9 +39,6 @@ export default function CallCentreAnalyticsPage() {
       </div>
     )
   }
-
-  const [dateRange, setDateRange] = useState('7days')
-  const [selectedOfficer, setSelectedOfficer] = useState('all')
 
   // Analytics data
   const analyticsData = {

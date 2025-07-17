@@ -17,27 +17,6 @@ import {
 
 export default function NewCallEntryPage() {
   const { data: session } = useSession()
-  
-  // Check user permissions
-  const userPermissions = session?.user?.permissions || []
-  const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
-                             userPermissions.includes('programs.head') ||
-                             userPermissions.includes('callcentre.officer')
-
-  if (!canAccessCallCentre) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Access Restricted</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            This module is restricted to Call Centre officers and Head of Programs only.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [caseGenerated, setCaseGenerated] = useState(false)
   const [generatedCaseNumber, setGeneratedCaseNumber] = useState('')
@@ -53,7 +32,6 @@ export default function NewCallEntryPage() {
     date: currentDateTime.toISOString().split('T')[0],
     time: currentDateTime.toTimeString().split(' ')[0].slice(0, 5),
     callNumber: callNumber,
-    
     // Form fields
     callerPhoneNumber: '',
     modeOfCommunication: 'inbound',
@@ -78,6 +56,31 @@ export default function NewCallEntryPage() {
     clientSex: 'N/A',
     comment: ''
   })
+  
+  // Check user permissions
+  const userPermissions = session?.user?.permissions || []
+  const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
+                             userPermissions.includes('programs.head') ||
+                             userPermissions.includes('callcentre.officer')
+
+  if (!canAccessCallCentre) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Access Restricted</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            This module is restricted to Call Centre officers and Head of Programs only.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Update formData to match expected fields
+  const updateFormData = (updates: Partial<typeof formData>) => {
+    setFormData(prev => ({ ...prev, ...updates }))
+  }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
