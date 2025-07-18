@@ -26,7 +26,7 @@ export default function Header({ onMenuClick, currentModule }: HeaderProps) {
   const userNavigation = [
     { name: "Your Profile", href: "/profile" },
     { name: "Settings", href: "/settings" },
-    { name: "Sign out", onClick: () => signOut() }
+    { name: "Sign out", onClick: () => signOut({ callbackUrl: "/auth/signin" }) }
   ]
 
   return (

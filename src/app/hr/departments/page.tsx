@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { ModulePage } from "@/components/layout/enhanced-layout"
 import Link from 'next/link'
 import { 
   BuildingOfficeIcon,
@@ -45,10 +46,14 @@ export default function DepartmentsPage() {
       if (!response.ok) {
         throw new Error('Failed to fetch departments')
       }
-      const data = await response.json()
-      setDepartments(data)
+      const result = await response.json()
+      // Handle API response structure
+      const data = result.success ? result.data : result
+      // Ensure data is an array
+      setDepartments(Array.isArray(data) ? data : [])
     } catch (err) {
       setError('Failed to load departments')
+      setDepartments([]) // Set empty array on error
       console.error('Error fetching departments:', err)
     } finally {
       setLoading(false)
@@ -114,27 +119,29 @@ export default function DepartmentsPage() {
     )
   }
 
+  const metadata = {
+    title: "Departments",
+    description: "Manage organizational departments and structure",
+    breadcrumbs: [
+      { name: "SIRTIS", href: "/" },
+      { name: "HR Management", href: "/hr" },
+      { name: "Departments" }
+    ]
+  }
+
+  const actions = (
+    <button
+      onClick={() => setShowAddForm(true)}
+      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+    >
+      <PlusIcon className="h-5 w-5 mr-2" />
+      Add Department
+    </button>
+  )
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-              <BuildingOfficeIcon className="h-8 w-8 text-blue-600 mr-3" />
-              Departments
-            </h1>
-            <p className="text-gray-600 mt-1">Manage organizational departments and structure</p>
-          </div>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Add Department
-          </button>
-        </div>
-      </div>
+    <ModulePage metadata={metadata} actions={actions}>
+      <div className="space-y-6">
 
       {/* Error Message */}
       {error && (
@@ -215,7 +222,7 @@ export default function DepartmentsPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {departments.map((department) => (
+            {Array.isArray(departments) && departments.map((department) => (
               <div key={department.id} className="p-6 hover:bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -314,6 +321,7 @@ export default function DepartmentsPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ModulePage>
   )
 }

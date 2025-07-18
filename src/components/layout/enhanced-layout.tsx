@@ -4,10 +4,12 @@ import { ReactNode, useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { usePathname, useRouter } from "next/navigation"
 import { getModuleById, getModuleNavigation } from "@/config/modules"
+import { cn } from "@/lib/utils"
 import DynamicSidebar from "@/components/layout/dynamic-sidebar"
 import Header from "./header"
 import Chatbot from "@/components/chatbot/chatbot"
 import { ModulePageProps } from "@/types/navigation"
+import { CollapsibleSidebar } from "@/components/ui/collapsible-sidebar"
 import { 
   HomeIcon, 
   ArrowLeftIcon, 
@@ -93,6 +95,8 @@ export function ModulePage({
   filters, 
   sidebar 
 }: ModulePageProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
   return (
     <div className="space-y-6">
       {/* Page Header with Navigation */}
@@ -123,17 +127,18 @@ export function ModulePage({
       {/* Page Content */}
       <div className="flex gap-6">
         {/* Main Content */}
-        <div className={`flex-1 ${sidebar ? 'lg:mr-80' : ''}`}>
+        <div className={cn(
+          "flex-1 transition-all duration-300",
+          sidebar ? (isCollapsed ? 'lg:mr-20' : 'lg:mr-96') : ''
+        )}>
           {children}
         </div>
 
-        {/* Sidebar */}
+        {/* Collapsible Sidebar */}
         {sidebar && (
-          <div className="hidden lg:block lg:fixed lg:right-6 lg:top-32 lg:w-80 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto">
-            <div className="bg-white shadow rounded-lg p-6 mb-20">
-              {sidebar}
-            </div>
-          </div>
+          <CollapsibleSidebar onCollapseChange={setIsCollapsed}>
+            {sidebar}
+          </CollapsibleSidebar>
         )}
       </div>
     </div>

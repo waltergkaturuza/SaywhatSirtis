@@ -26,7 +26,11 @@ import {
   ChartBarIcon,
   StarIcon,
   BookmarkIcon,
-  PlusIcon
+  PlusIcon,
+  CloudIcon,
+  GlobeAltIcon,
+  DevicePhoneMobileIcon,
+  ChatBubbleLeftRightIcon
 } from "@heroicons/react/24/outline";
 
 // Security classifications
@@ -468,6 +472,101 @@ export default function DocumentsPage() {
               >
                 <ChartPieIcon className="h-5 w-5 mr-2" />
                 View Analytics
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Cloud Integrations */}
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Cloud Integrations</h3>
+            <p className="text-sm text-gray-500 mt-1">Connect and sync with your cloud storage providers</p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Microsoft 365 */}
+              <button
+                onClick={() => window.location.href = '/documents/microsoft365'}
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <CloudIcon className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Microsoft 365</h4>
+                  <p className="text-sm text-gray-500">Access Office 365 documents</p>
+                </div>
+              </button>
+
+              {/* SharePoint */}
+              <button
+                onClick={() => window.location.href = '/documents/sharepoint'}
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                  <FolderIcon className="h-6 w-6 text-indigo-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">SharePoint</h4>
+                  <p className="text-sm text-gray-500">SharePoint document libraries</p>
+                </div>
+              </button>
+
+              {/* OneDrive */}
+              <button
+                onClick={() => window.location.href = '/documents/onedrive'}
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="flex-shrink-0 w-10 h-10 bg-sky-100 rounded-lg flex items-center justify-center mr-3">
+                  <CloudArrowUpIcon className="h-6 w-6 text-sky-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">OneDrive</h4>
+                  <p className="text-sm text-gray-500">Personal cloud storage</p>
+                </div>
+              </button>
+
+              {/* Teams */}
+              <button
+                onClick={() => window.location.href = '/documents/teams'}
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                  <ChatBubbleLeftRightIcon className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Microsoft Teams</h4>
+                  <p className="text-sm text-gray-500">Team collaboration files</p>
+                </div>
+              </button>
+
+              {/* Google Drive */}
+              <button
+                onClick={() => window.location.href = '/documents/googledrive'}
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                  <GlobeAltIcon className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Google Drive</h4>
+                  <p className="text-sm text-gray-500">Google workspace files</p>
+                </div>
+              </button>
+
+              {/* Dropbox */}
+              <button
+                onClick={() => window.location.href = '/documents/dropbox'}
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                  <DevicePhoneMobileIcon className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">Dropbox</h4>
+                  <p className="text-sm text-gray-500">Dropbox cloud storage</p>
+                </div>
               </button>
             </div>
           </div>

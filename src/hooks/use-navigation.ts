@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, usePathname } from "next/navigation"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState, useEffect } from "react"
 
 export interface NavigationInfo {
   currentModule: string | null
@@ -21,12 +21,17 @@ export function useNavigation(): NavigationInfo & {
 } {
   const router = useRouter()
   const pathname = usePathname()
+  const [canGoBack, setCanGoBack] = useState(false)
+
+  // Use useEffect to set canGoBack on client side only to avoid hydration mismatch
+  useEffect(() => {
+    setCanGoBack(window.history.length > 1)
+  }, [])
 
   const navigationInfo = useMemo((): NavigationInfo => {
     const pathSegments = pathname.split('/').filter(Boolean)
     const currentModule = pathSegments[0] || null
     const isHomePage = pathname === "/"
-    const canGoBack = typeof window !== 'undefined' && window.history.length > 1
     
     const moduleHomePath = currentModule ? `/${currentModule}` : null
     const parentPath = pathSegments.length > 1 
@@ -41,7 +46,7 @@ export function useNavigation(): NavigationInfo & {
       moduleHomePath,
       parentPath
     }
-  }, [pathname])
+  }, [pathname, canGoBack])
 
   const goHome = useCallback(() => {
     router.push('/')

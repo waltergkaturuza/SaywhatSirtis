@@ -472,6 +472,90 @@ model AuditLog {
 }
 
 // =============================================
+// RECRUITMENT MANAGEMENT
+// =============================================
+
+model JobPosting {
+  id               String           @id @default(cuid())
+  title            String
+  department       String
+  location         String
+  type             JobType          @default(FULL_TIME)
+  level            JobLevel         @default(MID)
+  status           JobStatus        @default(DRAFT)
+  description      String?
+  requirements     String           // JSON string of requirements array
+  responsibilities String           // JSON string of responsibilities array
+  salaryMin        Decimal?
+  salaryMax        Decimal?
+  currency         String           @default("USD")
+  benefits         String           // JSON string of benefits array
+  applicationCount Int              @default(0)
+  postedDate       DateTime?
+  closingDate      DateTime?
+  createdBy        String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  
+  // Relationships
+  applications     Application[]
+  
+  @@map("job_postings")
+}
+
+model Application {
+  id              String             @id @default(cuid())
+  jobId           String
+  candidateName   String
+  email           String
+  phone           String?
+  status          ApplicationStatus  @default(SUBMITTED)
+  resumeUrl       String?
+  coverLetter     String?
+  appliedDate     DateTime           @default(now())
+  lastUpdated     DateTime           @updatedAt
+  notes           String?
+  score           Int?
+  
+  // Relationships
+  job             JobPosting         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@map("applications")
+}
+
+// Recruitment Enums
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  TEMPORARY
+}
+
+enum JobLevel {
+  ENTRY
+  MID
+  SENIOR
+  EXECUTIVE
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  ON_HOLD
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  REVIEWING
+  SHORTLISTED
+  INTERVIEWED
+  OFFERED
+  HIRED
+  REJECTED
+}
+
+// =============================================
 // ENUMS
 // =============================================
 

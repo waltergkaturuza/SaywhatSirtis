@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { ModulePage } from "@/components/layout/enhanced-layout"
 import {
   PhoneIcon,
   ChartBarIcon,
@@ -101,68 +102,69 @@ export default function CallCentrePage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Call Centre Management</h1>
-              <p className="text-sm text-gray-600">Comprehensive call management and case tracking system</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{session?.user?.name}</p>
-                <p className="text-xs text-gray-500">Call Centre Officer</p>
-              </div>
-              <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">
-                  {session?.user?.name?.charAt(0) || 'U'}
-                </span>
-              </div>
-            </div>
-          </div>
+    <ModulePage
+      metadata={{
+        title: "Call Centre Management",
+        description: "Comprehensive call management and case tracking system",
+        breadcrumbs: [
+          { name: "SIRTIS", href: "/" },
+          { name: "Call Centre", href: "/call-centre" }
+        ]
+      }}
+      actions={
+        <div className="flex space-x-3">
+          <Link
+            href="/call-centre/new-call"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            New Call
+          </Link>
+          <Link
+            href="/call-centre/analytics"
+            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <ChartBarIcon className="h-4 w-4 mr-2" />
+            Analytics
+          </Link>
         </div>
-
-        {/* Navigation Tabs */}
-        <div className="border-t border-gray-200">
-          <nav className="px-6">
-            <div className="flex space-x-8">
-              {navigation.map((item) => (
-                <Link
-                  key={item.value}
-                  href={item.href}
-                  className={`group py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-                    activeView === item.value
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                  onClick={() => setActiveView(item.value)}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span>{item.name}</span>
-                </Link>
-              ))}
-            </div>
-          </nav>
-        </div>
+      }
+    >
+      {/* Navigation Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          {navigation.map((item) => (
+            <Link
+              key={item.value}
+              href={item.href}
+              className={`group py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+                activeView === item.value
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              onClick={() => setActiveView(item.value)}
+            >
+              <item.icon className="h-5 w-5" />
+              <span>{item.name}</span>
+            </Link>
+          ))}
+        </nav>
       </div>
 
       {/* Main Content */}
-      <div className="px-6 py-6">
-        {activeView === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Quick Stats */}
-            <QuickStats />
-            
-            {/* Dashboard Overview */}
-            <DashboardOverview />
-            
-            {/* Performance Metrics */}
-            <PerformanceMetrics />
-            
-            {/* Recent Activities */}
-            <RecentActivities />
+      {activeView === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Quick Stats */}
+          <QuickStats />
+          
+          {/* Dashboard Overview */}
+          <DashboardOverview />
+          
+          {/* Performance Metrics */}
+          <PerformanceMetrics />
+          
+          {/* Recent Activities */}
+          <RecentActivities />
             
             {/* Quick Actions */}
             <div className="bg-white rounded-lg shadow p-6">
@@ -204,7 +206,6 @@ export default function CallCentrePage() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </ModulePage>
   )
 }

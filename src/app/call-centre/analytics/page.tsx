@@ -2,23 +2,111 @@
 
 import React, { useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { ModulePage } from "@/components/layout/enhanced-layout"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  ComposedChart,
+  RadialBarChart,
+  RadialBar
+} from 'recharts'
+import {
+  Phone,
+  TrendingUp,
+  TrendingDown,
+  UserCheck,
+  Clock,
+  Award,
+  AlertTriangle,
+  Download,
+  Filter,
+  Calendar,
+  Target,
+  Activity,
+  RefreshCw,
   ChartBarIcon,
-  ArrowTrendingUpIcon,
-  CalendarIcon,
-  FunnelIcon,
-  DocumentArrowDownIcon,
-  PrinterIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  DocumentTextIcon,
-  ClockIcon
-} from '@heroicons/react/24/outline'
+  Users,
+  CheckCircle,
+  XCircle,
+  Headphones
+} from 'lucide-react'
+
+// Mock data for call centre analytics
+const callMetrics = {
+  totalCalls: 1247,
+  answeredCalls: 1156,
+  missedCalls: 91,
+  averageWaitTime: 45,
+  averageCallDuration: 8.5,
+  resolutionRate: 87.3,
+  satisfactionScore: 4.2,
+  activeAgents: 12,
+  peakHours: "2:00 PM - 4:00 PM"
+}
+
+const callTrends = [
+  { date: 'Mon', incoming: 180, answered: 165, resolved: 142, satisfaction: 4.1 },
+  { date: 'Tue', incoming: 220, answered: 205, resolved: 178, satisfaction: 4.3 },
+  { date: 'Wed', incoming: 195, answered: 182, resolved: 160, satisfaction: 4.0 },
+  { date: 'Thu', incoming: 240, answered: 225, resolved: 198, satisfaction: 4.4 },
+  { date: 'Fri', incoming: 280, answered: 260, resolved: 230, satisfaction: 4.5 },
+  { date: 'Sat', incoming: 150, answered: 140, resolved: 125, satisfaction: 4.2 },
+  { date: 'Sun', incoming: 132, answered: 120, resolved: 108, satisfaction: 4.1 }
+]
+
+const callTypes = [
+  { name: 'Technical Support', value: 35, color: '#3B82F6' },
+  { name: 'Billing Inquiry', value: 25, color: '#10B981' },
+  { name: 'Product Information', value: 20, color: '#F59E0B' },
+  { name: 'Complaints', value: 12, color: '#EF4444' },
+  { name: 'General Inquiry', value: 8, color: '#8B5CF6' }
+]
+
+const agentPerformance = [
+  { name: 'Agent 1', callsHandled: 95, avgDuration: 7.2, satisfaction: 4.5, resolution: 92 },
+  { name: 'Agent 2', callsHandled: 87, avgDuration: 8.1, satisfaction: 4.3, resolution: 88 },
+  { name: 'Agent 3', callsHandled: 92, avgDuration: 7.8, satisfaction: 4.4, resolution: 90 },
+  { name: 'Agent 4', callsHandled: 78, avgDuration: 9.2, satisfaction: 4.1, resolution: 85 },
+  { name: 'Agent 5', callsHandled: 85, avgDuration: 8.5, satisfaction: 4.2, resolution: 87 }
+]
+
+const hourlyData = [
+  { hour: '08:00', calls: 15, wait: 30 },
+  { hour: '09:00', calls: 25, wait: 35 },
+  { hour: '10:00', calls: 40, wait: 45 },
+  { hour: '11:00', calls: 55, wait: 50 },
+  { hour: '12:00', calls: 35, wait: 40 },
+  { hour: '13:00', calls: 30, wait: 35 },
+  { hour: '14:00', calls: 65, wait: 60 },
+  { hour: '15:00', calls: 70, wait: 65 },
+  { hour: '16:00', calls: 60, wait: 55 },
+  { hour: '17:00', calls: 45, wait: 50 }
+]
+
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
 
 export default function CallCentreAnalyticsPage() {
   const { data: session } = useSession()
-  const [dateRange, setDateRange] = useState('7days')
-  const [selectedOfficer, setSelectedOfficer] = useState('all')
+  const [selectedPeriod, setSelectedPeriod] = useState('7d')
+  const [refreshing, setRefreshing] = useState(false)
   
   // Check user permissions
   const userPermissions = session?.user?.permissions || []
@@ -26,377 +114,371 @@ export default function CallCentreAnalyticsPage() {
                              userPermissions.includes('programs.head') ||
                              userPermissions.includes('callcentre.officer')
 
+  const metadata = {
+    title: "Call Centre Analytics",
+    description: "Comprehensive call centre performance metrics and insights",
+    breadcrumbs: [
+      { name: "SIRTIS" },
+      { name: "Call Centre", href: "/call-centre" },
+      { name: "Analytics" }
+    ]
+  }
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    setTimeout(() => setRefreshing(false), 2000)
+  }
+
   if (!canAccessCallCentre) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
+      <ModulePage metadata={metadata}>
+        <div className="text-center py-12">
+          <AlertTriangle className="mx-auto h-12 w-12 text-red-500" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">Access Restricted</h3>
           <p className="mt-1 text-sm text-gray-500">
             This module is restricted to Call Centre officers and Head of Programs only.
           </p>
         </div>
-      </div>
+      </ModulePage>
     )
   }
 
-  // Analytics data
-  const analyticsData = {
-    totalCalls: 1247,
-    validCalls: 1119,
-    invalidCalls: 128,
-    validCallRate: 89.7,
-    totalCases: 142,
-    resolvedCases: 98,
-    pendingCases: 44,
-    caseResolutionRate: 69.0,
-    averageCallDuration: '4.2 min',
-    averageResponseTime: '1.3 min'
-  }
-
-  const callsByDay = [
-    { day: 'Mon', calls: 186, valid: 167 },
-    { day: 'Tue', calls: 195, valid: 175 },
-    { day: 'Wed', calls: 172, valid: 154 },
-    { day: 'Thu', calls: 208, valid: 188 },
-    { day: 'Fri', calls: 223, valid: 201 },
-    { day: 'Sat', calls: 145, valid: 126 },
-    { day: 'Sun', calls: 118, valid: 108 }
-  ]
-
-  const callsByLanguage = [
-    { language: 'English', calls: 505, percentage: 40.5 },
-    { language: 'Shona', calls: 426, percentage: 34.2 },
-    { language: 'Ndebele', calls: 316, percentage: 25.3 }
-  ]
-
-  const callsByProvince = [
-    { province: 'Harare', calls: 324, percentage: 26.0 },
-    { province: 'Bulawayo', calls: 287, percentage: 23.0 },
-    { province: 'Chitungwiza', calls: 186, percentage: 14.9 },
-    { province: 'Gweru', calls: 142, percentage: 11.4 },
-    { province: 'Mutare', calls: 126, percentage: 10.1 },
-    { province: 'Masvingo', calls: 95, percentage: 7.6 },
-    { province: 'Others', calls: 87, percentage: 7.0 }
-  ]
-
-  const callPurposes = [
-    { purpose: 'HIV Information & Counselling', calls: 312, percentage: 25.0 },
-    { purpose: 'Youth Employment Inquiry', calls: 287, percentage: 23.0 },
-    { purpose: 'Scholarship/Bursary Information', calls: 198, percentage: 15.9 },
-    { purpose: 'Technical Skills Training', calls: 156, percentage: 12.5 },
-    { purpose: 'Business Development Support', calls: 134, percentage: 10.7 },
-    { purpose: 'General Program Information', calls: 98, percentage: 7.9 },
-    { purpose: 'Other', calls: 62, percentage: 5.0 }
-  ]
-
-  const officerPerformance = [
-    { name: 'Mary Chikuni', calls: 342, validRate: 92.3, cases: 28, satisfaction: 4.8 },
-    { name: 'David Nyathi', calls: 318, validRate: 89.1, cases: 24, satisfaction: 4.6 },
-    { name: 'Alice Mandaza', calls: 295, validRate: 95.5, cases: 31, satisfaction: 4.9 },
-    { name: 'Peter Masvingo', calls: 292, validRate: 87.2, cases: 22, satisfaction: 4.4 }
-  ]
-
-  const exportToPDF = () => {
-    window.print()
-  }
-
-  const exportToCSV = () => {
-    const csvData = [
-      ['Metric', 'Value'],
-      ['Total Calls', analyticsData.totalCalls],
-      ['Valid Calls', analyticsData.validCalls],
-      ['Invalid Calls', analyticsData.invalidCalls],
-      ['Valid Call Rate (%)', analyticsData.validCallRate],
-      ['Total Cases', analyticsData.totalCases],
-      ['Resolved Cases', analyticsData.resolvedCases],
-      ['Pending Cases', analyticsData.pendingCases],
-      ['Case Resolution Rate (%)', analyticsData.caseResolutionRate]
-    ]
-
-    const csvContent = csvData.map(row => row.join(',')).join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `call-centre-analytics-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                <ChartBarIcon className="h-8 w-8 mr-3 text-blue-600" />
-                Call Centre Analytics
-              </h1>
-              <p className="text-gray-600 mt-1">Comprehensive analytics and reporting dashboard</p>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={exportToCSV}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-                Export CSV
-              </button>
-              <button
-                onClick={exportToPDF}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700"
-              >
-                <PrinterIcon className="h-4 w-4 mr-2" />
-                Print Report
-              </button>
-            </div>
-          </div>
+    <ModulePage 
+      metadata={metadata}
+      actions={
+        <div className="flex items-center space-x-4">
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="90d">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            onClick={handleRefresh}
+            variant="outline" 
+            size="sm"
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
         </div>
-
-        {/* Filters */}
-        <div className="border-t border-gray-200 px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <CalendarIcon className="h-5 w-5 text-gray-400" />
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="7days">Last 7 Days</option>
-                <option value="30days">Last 30 Days</option>
-                <option value="90days">Last 90 Days</option>
-                <option value="custom">Custom Range</option>
-              </select>
-            </div>
-            <div className="flex items-center space-x-2">
-              <FunnelIcon className="h-5 w-5 text-gray-400" />
-              <select
-                value={selectedOfficer}
-                onChange={(e) => setSelectedOfficer(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Officers</option>
-                <option value="mary">Mary Chikuni</option>
-                <option value="david">David Nyathi</option>
-                <option value="alice">Alice Mandaza</option>
-                <option value="peter">Peter Masvingo</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Analytics Content */}
-      <div className="px-6 py-6 space-y-6">
-        {/* Key Metrics */}
+      }
+    >
+      <div className="space-y-6">
+        {/* Key Performance Indicators */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100">
-                <ChartBarIcon className="h-6 w-6 text-blue-600" />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Calls</p>
+                  <p className="text-2xl font-bold text-gray-900">{callMetrics.totalCalls.toLocaleString()}</p>
+                  <p className="text-xs text-green-600 flex items-center mt-1">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    +8.2% from last week
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Phone className="h-6 w-6 text-blue-600" />
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Calls</p>
-                <p className="text-2xl font-semibold text-gray-900">{analyticsData.totalCalls.toLocaleString()}</p>
-                <p className="text-sm text-green-600 flex items-center">
-                  <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-                  +12.5% from last period
-                </p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100">
-                <CheckCircleIcon className="h-6 w-6 text-green-600" />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Answer Rate</p>
+                  <p className="text-2xl font-bold text-gray-900">{((callMetrics.answeredCalls / callMetrics.totalCalls) * 100).toFixed(1)}%</p>
+                  <p className="text-xs text-green-600 flex items-center mt-1">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    {callMetrics.answeredCalls} answered
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <UserCheck className="h-6 w-6 text-green-600" />
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Valid Call Rate</p>
-                <p className="text-2xl font-semibold text-gray-900">{analyticsData.validCallRate}%</p>
-                <p className="text-sm text-green-600 flex items-center">
-                  <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-                  +2.3% from last period
-                </p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100">
-                <DocumentTextIcon className="h-6 w-6 text-purple-600" />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Avg Wait Time</p>
+                  <p className="text-2xl font-bold text-gray-900">{callMetrics.averageWaitTime}s</p>
+                  <p className="text-xs text-orange-600 flex items-center mt-1">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Target: 30s
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-orange-600" />
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Cases</p>
-                <p className="text-2xl font-semibold text-gray-900">{analyticsData.totalCases}</p>
-                <p className="text-sm text-green-600 flex items-center">
-                  <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-                  +8.7% from last period
-                </p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-orange-100">
-                <ClockIcon className="h-6 w-6 text-orange-600" />
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Satisfaction</p>
+                  <p className="text-2xl font-bold text-gray-900">{callMetrics.satisfactionScore}/5</p>
+                  <p className="text-xs text-purple-600 flex items-center mt-1">
+                    <Award className="h-3 w-3 mr-1" />
+                    Excellent rating
+                  </p>
+                </div>
+                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Award className="h-6 w-6 text-purple-600" />
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Resolution Rate</p>
-                <p className="text-2xl font-semibold text-gray-900">{analyticsData.caseResolutionRate}%</p>
-                <p className="text-sm text-green-600 flex items-center">
-                  <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-                  +5.2% from last period
-                </p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Daily Call Volume */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Call Volume</h3>
-            <div className="space-y-3">
-              {callsByDay.map((day) => (
-                <div key={day.day} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700 w-12">{day.day}</span>
-                  <div className="flex-1 mx-4">
-                    <div className="w-full bg-gray-200 rounded-full h-4 relative">
-                      <div
-                        className="bg-blue-600 h-4 rounded-full"
-                        style={{ width: `${(day.calls / 250) * 100}%` }}
-                      ></div>
-                      <div
-                        className="bg-green-500 h-4 rounded-full absolute top-0"
-                        style={{ width: `${(day.valid / 250) * 100}%` }}
-                      ></div>
+        {/* Analytics Tabs */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Call Overview</TabsTrigger>
+            <TabsTrigger value="performance">Agent Performance</TabsTrigger>
+            <TabsTrigger value="trends">Call Trends</TabsTrigger>
+            <TabsTrigger value="insights">Insights</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Call Volume Trends */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daily Call Volume</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <ComposedChart data={callTrends}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="incoming" fill="#3B82F6" name="Incoming Calls" />
+                      <Bar yAxisId="left" dataKey="answered" fill="#10B981" name="Answered Calls" />
+                      <Line yAxisId="right" type="monotone" dataKey="satisfaction" stroke="#8B5CF6" strokeWidth={3} name="Satisfaction" />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Call Types Distribution */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Call Types Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={callTypes}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}%`}
+                      >
+                        {callTypes.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Hourly Call Pattern */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Hourly Call Pattern & Wait Times</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={hourlyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Tooltip />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="calls" fill="#3B82F6" name="Call Volume" />
+                    <Line yAxisId="right" type="monotone" dataKey="wait" stroke="#EF4444" strokeWidth={2} name="Wait Time (sec)" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="performance" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Agent Performance Metrics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={agentPerformance} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis yAxisId="left" />
+                    <YAxis yAxisId="right" orientation="right" />
+                    <Tooltip />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="callsHandled" fill="#3B82F6" name="Calls Handled" />
+                    <Bar yAxisId="left" dataKey="resolution" fill="#10B981" name="Resolution %" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {agentPerformance.map((agent, index) => (
+                <Card key={agent.name}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-gray-900">{agent.name}</h3>
+                      <Badge variant={agent.resolution > 90 ? "default" : agent.resolution > 85 ? "secondary" : "outline"}>
+                        {agent.resolution}% Resolution
+                      </Badge>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold text-gray-900">{day.calls}</div>
-                    <div className="text-xs text-green-600">{day.valid} valid</div>
-                  </div>
-                </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Calls Handled</span>
+                        <span className="font-medium">{agent.callsHandled}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Avg Duration</span>
+                        <span className="font-medium">{agent.avgDuration}m</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Satisfaction</span>
+                        <span className="font-medium">{agent.satisfaction}/5</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-          </div>
+          </TabsContent>
 
-          {/* Language Distribution */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Calls by Language</h3>
-            <div className="space-y-4">
-              {callsByLanguage.map((lang) => (
-                <div key={lang.language} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">{lang.language}</span>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-32 bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${lang.percentage}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm text-gray-600 w-12 text-right">{lang.percentage}%</span>
-                    <span className="text-sm font-semibold text-gray-900 w-12 text-right">{lang.calls}</span>
-                  </div>
-                </div>
-              ))}
+          <TabsContent value="trends" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Resolution Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={callTrends}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Area type="monotone" dataKey="answered" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} name="Answered" />
+                      <Area type="monotone" dataKey="resolved" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.6} name="Resolved" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Satisfaction Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={callTrends}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis domain={[3.5, 5]} />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="satisfaction" stroke="#8B5CF6" strokeWidth={3} name="Customer Satisfaction" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
             </div>
-          </div>
-        </div>
+          </TabsContent>
 
-        {/* More Analytics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Provinces */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Calls by Province</h3>
-            <div className="space-y-3">
-              {callsByProvince.map((province) => (
-                <div key={province.province} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">{province.province}</span>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-purple-600 h-2 rounded-full"
-                        style={{ width: `${province.percentage}%` }}
-                      ></div>
+          <TabsContent value="insights" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Performance Insights</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Strong Performance</p>
+                      <p className="text-xs text-gray-600">Call resolution rate increased by 5% this week</p>
                     </div>
-                    <span className="text-sm text-gray-600 w-12 text-right">{province.percentage}%</span>
-                    <span className="text-sm font-semibold text-gray-900 w-12 text-right">{province.calls}</span>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Call Purposes */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Call Purposes</h3>
-            <div className="space-y-3">
-              {callPurposes.map((purpose) => (
-                <div key={purpose.purpose} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700 flex-1 pr-3">{purpose.purpose}</span>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-20 bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-orange-600 h-2 rounded-full"
-                        style={{ width: `${purpose.percentage}%` }}
-                      ></div>
+                  <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                    <Clock className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Peak Hours</p>
+                      <p className="text-xs text-gray-600">Highest call volume between 2-4 PM daily</p>
                     </div>
-                    <span className="text-sm text-gray-600 w-12 text-right">{purpose.percentage}%</span>
-                    <span className="text-sm font-semibold text-gray-900 w-12 text-right">{purpose.calls}</span>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+                  <div className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Attention Needed</p>
+                      <p className="text-xs text-gray-600">Wait times exceed target during peak hours</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* Officer Performance Table */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Officer Performance</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Officer Name
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Calls
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Valid Rate
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cases Created
-                  </th>
-                  <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Satisfaction
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {officerPerformance.map((officer) => (
-                  <tr key={officer.name} className="hover:bg-gray-50">
-                    <td className="py-4 px-4 text-sm font-medium text-gray-900">{officer.name}</td>
-                    <td className="py-4 px-4 text-sm text-gray-900">{officer.calls}</td>
-                    <td className="py-4 px-4 text-sm text-gray-900">{officer.validRate}%</td>
-                    <td className="py-4 px-4 text-sm text-gray-900">{officer.cases}</td>
-                    <td className="py-4 px-4 text-sm text-gray-900">⭐ {officer.satisfaction}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recommendations</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-3 border-l-4 border-blue-500 bg-blue-50">
+                    <h4 className="font-medium text-blue-900">Staffing Optimization</h4>
+                    <p className="text-sm text-blue-700">Consider adding 2 more agents during 2-4 PM peak hours</p>
+                  </div>
+                  <div className="p-3 border-l-4 border-green-500 bg-green-50">
+                    <h4 className="font-medium text-green-900">Training Success</h4>
+                    <p className="text-sm text-green-700">Agent performance improvement shows training effectiveness</p>
+                  </div>
+                  <div className="p-3 border-l-4 border-purple-500 bg-purple-50">
+                    <h4 className="font-medium text-purple-900">Customer Feedback</h4>
+                    <p className="text-sm text-purple-700">Implement feedback collection for unresolved cases</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
-    </div>
+    </ModulePage>
   )
 }
