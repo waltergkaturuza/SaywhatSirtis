@@ -2,7 +2,7 @@ services:
   - type: web
     name: sirtis-web
     env: node
-    buildCommand: npm install --legacy-peer-deps && npx prisma generate && npm run build
+    buildCommand: npm run render:deploy
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -10,6 +10,8 @@ services:
       - key: NEXTAUTH_URL
         sync: false
     autoDeploy: true
+    region: oregon
+    plan: starter
     
 databases:
   - name: sirtis-db

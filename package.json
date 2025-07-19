@@ -12,8 +12,9 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "render:build": "npm install --legacy-peer-deps && npx prisma generate && npm run build",
-    "render:start": "next start"
+    "render:build": "npm ci --legacy-peer-deps && npx prisma generate && npm run build",
+    "render:start": "next start",
+    "render:deploy": "npm ci --legacy-peer-deps --registry https://registry.npmjs.org/ && npx prisma generate && npm run build"
   },
   "dependencies": {
     "@azure/msal-node": "^3.6.3",
