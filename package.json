@@ -12,7 +12,7 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "render:build": "npm install && prisma generate && next build",
+    "render:build": "npm install --legacy-peer-deps && npx prisma generate && npm run build",
     "render:start": "next start"
   },
   "dependencies": {
@@ -83,7 +83,7 @@
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
     "xlsx": "^0.18.5",
-    "zod": "^4.0.5"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
