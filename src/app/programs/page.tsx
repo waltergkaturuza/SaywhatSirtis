@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { ModulePage } from "@/components/layout/enhanced-layout"
@@ -56,7 +56,7 @@ interface ProgramPermissions {
   canViewSensitiveData: boolean
 }
 
-export default function EnhancedProgramsPage() {
+function EnhancedProgramsContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -258,7 +258,7 @@ export default function EnhancedProgramsPage() {
       case "projects":
         return (
           <ProjectManagement 
-            permissions={permissions} 
+            permissions={permissions as unknown as Record<string, boolean>} 
             selectedProject={selectedProject}
             onProjectSelect={setSelectedProject}
           />
@@ -266,7 +266,7 @@ export default function EnhancedProgramsPage() {
       case "project-table":
         return (
           <ProjectTable 
-            permissions={permissions} 
+            permissions={permissions as unknown as Record<string, boolean>} 
             viewMode={viewMode}
             onProjectSelect={setSelectedProject}
             selectedProject={selectedProject}
@@ -275,7 +275,7 @@ export default function EnhancedProgramsPage() {
       case "gantt":
         return (
           <ProjectGantt 
-            permissions={permissions}
+            permissions={permissions as unknown as Record<string, boolean>}
             selectedProject={selectedProject}
             onProjectSelect={setSelectedProject}
           />
@@ -283,7 +283,7 @@ export default function EnhancedProgramsPage() {
       case "wbs":
         return (
           <WorkBreakdownStructure 
-            permissions={permissions}
+            permissions={permissions as unknown as Record<string, boolean>}
             selectedProject={selectedProject}
             onProjectSelect={setSelectedProject}
           />
@@ -291,21 +291,21 @@ export default function EnhancedProgramsPage() {
       case "milestones":
         return (
           <MilestoneTracker 
-            permissions={permissions}
+            permissions={permissions as unknown as Record<string, boolean>}
             selectedProject={selectedProject}
           />
         )
       case "resources":
         return (
           <ResourceManagement 
-            permissions={permissions}
+            permissions={permissions as unknown as Record<string, boolean>}
             selectedProject={selectedProject}
           />
         )
       case "risks":
         return (
           <RiskManagement 
-            permissions={permissions}
+            permissions={permissions as unknown as Record<string, boolean>}
             selectedProject={selectedProject}
             onProjectSelect={setSelectedProject}
           />
@@ -313,7 +313,7 @@ export default function EnhancedProgramsPage() {
       case "reports":
         return (
           <ReportsAnalytics 
-            permissions={permissions}
+            permissions={permissions as unknown as Record<string, boolean>}
             selectedProject={selectedProject}
             onProjectSelect={setSelectedProject}
           />
@@ -321,7 +321,7 @@ export default function EnhancedProgramsPage() {
       case "settings":
         return (
           <ProjectSettings 
-            permissions={permissions}
+            permissions={permissions as unknown as Record<string, boolean>}
             selectedProject={selectedProject}
             onProjectSelect={setSelectedProject}
           />
@@ -329,7 +329,7 @@ export default function EnhancedProgramsPage() {
       default:
         return (
           <ProjectDashboard 
-            permissions={permissions}
+            permissions={permissions as unknown as Record<string, boolean>}
             onProjectSelect={setSelectedProject}
             selectedProject={selectedProject}
           />
@@ -476,5 +476,13 @@ export default function EnhancedProgramsPage() {
         </div>
       </div>
     </ModulePage>
+  )
+}
+
+export default function EnhancedProgramsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <EnhancedProgramsContent />
+    </Suspense>
   )
 }

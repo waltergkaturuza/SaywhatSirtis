@@ -302,6 +302,37 @@ export default function DashboardPage() {
           </Card>
         </div>
 
+        {/* Phase 3 AI Insights Banner */}
+        <div className="bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-600 rounded-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
+                <Zap className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">SIRTIS Copilot & AI Features Active</h3>
+                <p className="text-emerald-100">
+                  AI assistant available in bottom-right corner • Predictive analytics • Real-time collaboration
+                </p>
+              </div>
+            </div>
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline" 
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                asChild
+              >
+                <a href="/phase3">
+                  Explore AI Features
+                </a>
+              </Button>
+              <Badge variant="secondary" className="bg-white/20 text-white">
+                Copilot Ready ✨
+              </Badge>
+            </div>
+          </div>
+        </div>
+
         {/* Main Analytics Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">

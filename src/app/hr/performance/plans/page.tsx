@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
@@ -23,7 +23,7 @@ import {
   ArrowPathIcon
 } from "@heroicons/react/24/outline"
 
-export default function PerformancePlansPage() {
+function PerformancePlansContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState("my-plans")
@@ -789,5 +789,13 @@ export default function PerformancePlansPage() {
         </div>
       )}
     </ModulePage>
+  )
+}
+
+export default function PerformancePlansPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PerformancePlansContent />
+    </Suspense>
   )
 }

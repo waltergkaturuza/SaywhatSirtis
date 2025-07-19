@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import DashboardLayout from "@/components/layout/dashboard-layout"
 import { ArrowLeftIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 export default function CaseViewPage() {
@@ -70,14 +71,15 @@ export default function CaseViewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center space-x-3">
-                <Link
+    <DashboardLayout>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="bg-white shadow rounded-lg mb-6">
+          <div className="py-6 px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-3">
+                  <Link
                   href="/call-centre/case-management"
                   className="p-2 rounded-md hover:bg-gray-100"
                 >
@@ -259,6 +261,7 @@ export default function CaseViewPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   )
 }

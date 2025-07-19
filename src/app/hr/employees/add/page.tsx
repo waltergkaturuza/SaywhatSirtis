@@ -147,14 +147,19 @@ export default function AddEmployeePage() {
       const result = await response.json()
 
       if (response.ok) {
-        alert(result.message || 'Employee created successfully!')
+        // Success - show success message and redirect
         router.push("/hr/employees")
       } else {
-        alert(result.error || 'Failed to create employee')
+        // Handle different error types
+        if (response.status === 401) {
+          alert('Authentication required. Please log in to create employees. Visit /auth/signin to authenticate.')
+        } else {
+          alert(result.error || result.message || 'Failed to create employee')
+        }
       }
     } catch (error) {
       console.error("Error creating employee:", error)
-      alert('An error occurred while creating the employee')
+      alert('An error occurred while creating the employee. Please try again.')
     }
   }
 

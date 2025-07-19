@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
 
     // Build where clause
-    const where: any = {}
+    const where: Record<string, unknown> = {}
     if (status && status !== 'all') {
       where.status = status.toUpperCase()
     }
@@ -233,7 +233,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Prepare update data
-    const sanitizedData: any = {}
+    const sanitizedData: Record<string, unknown> = {}
     
     if (updateData.title) sanitizedData.title = sanitizeInput(updateData.title)
     if (updateData.department) sanitizedData.department = sanitizeInput(updateData.department)

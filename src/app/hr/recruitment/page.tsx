@@ -167,19 +167,26 @@ export default function RecruitmentPage() {
           method: 'DELETE',
         })
 
+        const result = await response.json()
+
         if (response.ok) {
-          const result = await response.json()
           if (result.success) {
             await loadJobs()
-            console.log('Job deleted successfully')
+            // Success - job deleted
           } else {
-            console.error('Failed to delete job:', result.message)
+            alert(result.message || 'Failed to delete job')
           }
         } else {
-          console.error('Failed to delete job:', response.statusText)
+          // Handle different error types
+          if (response.status === 401) {
+            alert('Authentication required. Please log in to delete jobs. Visit /auth/signin to authenticate.')
+          } else {
+            alert(result.error || result.message || 'Failed to delete job')
+          }
         }
       } catch (error) {
         console.error('Error deleting job:', error)
+        alert('An error occurred while deleting the job. Please try again.')
       }
     }
   }

@@ -229,15 +229,24 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectProps) {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create project')
+        if (response.status === 401) {
+          throw new Error('Please log in to create projects. Visit /auth/signin to authenticate.')
+        }
+        throw new Error(result.error || result.message || 'Failed to create project')
       }
 
-      console.log('Project created successfully:', result.project)
+      console.log('Project created successfully:', result.data || result.project)
       onSuccess()
     } catch (err: unknown) {
       console.error('Error creating project:', err)
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      setErrors({ submit: `Failed to create project: ${errorMessage}. Please try again.` })
+      
+      // Show more helpful error messages
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('log in')) {
+        setErrors({ submit: `Authentication Required: ${errorMessage}` })
+      } else {
+        setErrors({ submit: `Failed to create project: ${errorMessage}. Please try again.` })
+      }
     } finally {
       setIsSubmitting(false)
     }

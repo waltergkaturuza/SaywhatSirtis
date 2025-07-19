@@ -49,7 +49,7 @@ export default function CreateTrainingPage() {
     
     // Participants & Assessment
     targetAudience: "",
-    departments: [],
+    departments: [] as string[],
     mandatory: false,
     assessmentRequired: false,
     certificateIssued: false,
@@ -393,6 +393,395 @@ export default function CreateTrainingPage() {
                       placeholder="List required materials, handouts, etc..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Schedule */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Schedule</h2>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Schedule Type *
+                  </label>
+                  <select
+                    value={formData.scheduleType}
+                    onChange={(e) => handleInputChange("scheduleType", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                  >
+                    <option value="">Select Schedule Type</option>
+                    <option value="fixed">Fixed Schedule</option>
+                    <option value="flexible">Flexible Schedule</option>
+                    <option value="on-demand">On-Demand</option>
+                    <option value="recurring">Recurring Sessions</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Start Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => handleInputChange("startDate", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      End Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => handleInputChange("endDate", e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Training Sessions
+                  </label>
+                  {formData.sessions.map((session, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+                          <input
+                            type="date"
+                            value={session.date}
+                            onChange={(e) => handleArrayChange("sessions", index, { ...session, date: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
+                          <input
+                            type="time"
+                            value={session.startTime}
+                            onChange={(e) => handleArrayChange("sessions", index, { ...session, startTime: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
+                          <input
+                            type="time"
+                            value={session.endTime}
+                            onChange={(e) => handleArrayChange("sessions", index, { ...session, endTime: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Location</label>
+                          <input
+                            type="text"
+                            value={session.location}
+                            onChange={(e) => handleArrayChange("sessions", index, { ...session, location: e.target.value })}
+                            placeholder="Room/Location"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                      </div>
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => removeArrayItem("sessions", index)}
+                          className="mt-2 text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Remove Session
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addArrayItem("sessions", { date: "", startTime: "", endTime: "", location: "" })}
+                    className="text-indigo-600 hover:text-indigo-800 text-sm"
+                  >
+                    + Add Session
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Registration Deadline
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.registrationDeadline}
+                    onChange={(e) => handleInputChange("registrationDeadline", e.target.value)}
+                    className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Resources */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Resources</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Primary Trainer/Instructor *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.trainer}
+                      onChange={(e) => handleInputChange("trainer", e.target.value)}
+                      placeholder="Enter trainer name"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Primary Location
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.location}
+                      onChange={(e) => handleInputChange("location", e.target.value)}
+                      placeholder="Training venue/location"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maximum Participants *
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.maxParticipants}
+                      onChange={(e) => handleInputChange("maxParticipants", e.target.value)}
+                      placeholder="Enter maximum capacity"
+                      min="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Total Budget
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                      <input
+                        type="number"
+                        value={formData.budget}
+                        onChange={(e) => handleInputChange("budget", e.target.value)}
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cost Per Participant
+                  </label>
+                  <div className="relative w-full md:w-64">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <input
+                      type="number"
+                      value={formData.costPerParticipant}
+                      onChange={(e) => handleInputChange("costPerParticipant", e.target.value)}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Additional Resources & Equipment
+                  </label>
+                  <textarea
+                    value={formData.resources}
+                    onChange={(e) => handleInputChange("resources", e.target.value)}
+                    rows={4}
+                    placeholder="List any special equipment, software, or resources needed..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">External Provider</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="externalProvider"
+                        checked={formData.externalProvider}
+                        onChange={(e) => handleInputChange("externalProvider", e.target.checked)}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="externalProvider" className="ml-2 text-sm text-gray-700">
+                        Use external training provider
+                      </label>
+                    </div>
+                    
+                    {formData.externalProvider && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Provider Details
+                        </label>
+                        <textarea
+                          value={formData.providerDetails}
+                          onChange={(e) => handleInputChange("providerDetails", e.target.value)}
+                          rows={3}
+                          placeholder="Enter external provider information, contact details, etc..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Settings */}
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Settings</h2>
+                
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Participant Settings</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Target Audience
+                      </label>
+                      <textarea
+                        value={formData.targetAudience}
+                        onChange={(e) => handleInputChange("targetAudience", e.target.value)}
+                        rows={2}
+                        placeholder="Describe the target audience for this training..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Target Departments
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {["HR", "IT", "Finance", "Operations", "Marketing", "Sales", "Legal", "Executive"].map(dept => (
+                          <label key={dept} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={formData.departments.includes(dept)}
+                              onChange={(e) => {
+                                const newDepartments = e.target.checked
+                                  ? [...formData.departments, dept]
+                                  : formData.departments.filter(d => d !== dept)
+                                handleInputChange("departments", newDepartments)
+                              }}
+                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">{dept}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="mandatory"
+                        checked={formData.mandatory}
+                        onChange={(e) => handleInputChange("mandatory", e.target.checked)}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="mandatory" className="ml-2 text-sm text-gray-700">
+                        Mandatory training for selected departments
+                      </label>
+                    </div>
+
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="approvalRequired"
+                        checked={formData.approvalRequired}
+                        onChange={(e) => handleInputChange("approvalRequired", e.target.checked)}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="approvalRequired" className="ml-2 text-sm text-gray-700">
+                        Require manager approval for enrollment
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Assessment & Certification</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="assessmentRequired"
+                        checked={formData.assessmentRequired}
+                        onChange={(e) => handleInputChange("assessmentRequired", e.target.checked)}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="assessmentRequired" className="ml-2 text-sm text-gray-700">
+                        Assessment required for completion
+                      </label>
+                    </div>
+
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="certificateIssued"
+                        checked={formData.certificateIssued}
+                        onChange={(e) => handleInputChange("certificateIssued", e.target.checked)}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="certificateIssued" className="ml-2 text-sm text-gray-700">
+                        Issue certificate upon completion
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-medium text-blue-900 mb-4">Program Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p><span className="font-medium">Title:</span> {formData.title || "Not specified"}</p>
+                      <p><span className="font-medium">Category:</span> {formData.category || "Not specified"}</p>
+                      <p><span className="font-medium">Duration:</span> {formData.duration || "Not specified"}</p>
+                      <p><span className="font-medium">Format:</span> {formData.format || "Not specified"}</p>
+                    </div>
+                    <div>
+                      <p><span className="font-medium">Trainer:</span> {formData.trainer || "Not specified"}</p>
+                      <p><span className="font-medium">Max Participants:</span> {formData.maxParticipants || "Not specified"}</p>
+                      <p><span className="font-medium">Start Date:</span> {formData.startDate || "Not specified"}</p>
+                      <p><span className="font-medium">Mandatory:</span> {formData.mandatory ? "Yes" : "No"}</p>
+                    </div>
                   </div>
                 </div>
               </div>

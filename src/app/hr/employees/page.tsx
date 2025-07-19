@@ -3,6 +3,15 @@
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import { useState } from "react"
 import Link from "next/link"
+import { ExportButton } from "@/components/ui/export-button"
+import { ImportButton } from "@/components/ui/import-button"
+import { PrintButton } from "@/components/ui/print-button"
+import { DownloadExcelButton, DownloadPDFButton } from "@/components/ui/download-button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   UserGroupIcon,
   UserPlusIcon,
@@ -15,100 +24,20 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   CalendarIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  PrinterIcon,
+  ArrowUpTrayIcon
 } from "@heroicons/react/24/outline"
 
 export default function EmployeesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
 
-  const metadata = {
-    title: "Employee Directory",
-    description: "Manage employee profiles, contacts, and basic information",
-    breadcrumbs: [
-      { name: "SIRTIS" },
-      { name: "HR Management", href: "/hr/dashboard" },
-      { name: "Employees" }
-    ]
-  }
-
-  const actions = (
-    <>
-      <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-        <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-        Export
-      </button>
-      <Link href="/hr/employees/add">
-        <button className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700">
-          <UserPlusIcon className="h-4 w-4 mr-2" />
-          Add Employee
-        </button>
-      </Link>
-    </>
-  )
-
-  const sidebar = (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Stats</h3>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Total Employees</span>
-            <span className="font-semibold">1,248</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Active</span>
-            <span className="font-semibold text-green-600">1,195</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">On Leave</span>
-            <span className="font-semibold text-yellow-600">42</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Inactive</span>
-            <span className="font-semibold text-red-600">11</span>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Departments</h3>
-        <div className="space-y-2">
-          {[
-            { name: "Operations", count: 234 },
-            { name: "Healthcare", count: 187 },
-            { name: "Education", count: 156 },
-            { name: "Finance", count: 89 },
-            { name: "HR", count: 45 },
-            { name: "IT", count: 67 },
-            { name: "Admin", count: 34 }
-          ].map((dept, index) => (
-            <div key={index} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
-              <span className="text-sm text-gray-700">{dept.name}</span>
-              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">{dept.count}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        <div className="space-y-2">
-          <Link href="/hr/employees/add" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
-            Add New Employee
-          </Link>
-          <Link href="/hr/employees/bulk-import" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
-            Bulk Import
-          </Link>
-          <Link href="/hr/employees/reports" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
-            Generate Report
-          </Link>
-        </div>
-      </div>
-    </div>
-  )
-
+  // Employee data
   const employees = [
     {
       id: 1,
@@ -196,6 +125,119 @@ export default function EmployeesPage() {
     }
   ]
 
+  const metadata = {
+    title: "Employee Directory",
+    description: "Manage employee profiles, contacts, and basic information",
+    breadcrumbs: [
+      { name: "SIRTIS" },
+      { name: "HR Management", href: "/hr/dashboard" },
+      { name: "Employees" }
+    ]
+  }
+
+  const actions = (
+    <>
+      <ImportButton
+        onImportComplete={(result) => {
+          if (result.success) {
+            console.log('Import completed:', result)
+            // Refresh employee data
+          }
+        }}
+        acceptedFormats={['excel', 'csv']}
+        templateFields={['name', 'email', 'phone', 'department', 'position', 'employeeId']}
+        title="Import Employees"
+        variant="outline"
+        size="sm"
+      />
+      <ExportButton
+        data={{
+          headers: ['Name', 'Email', 'Phone', 'Department', 'Position', 'Employee ID', 'Status', 'Hire Date'],
+          rows: employees.map(emp => [
+            emp.name,
+            emp.email,
+            emp.phone,
+            emp.department,
+            emp.position,
+            emp.employeeId,
+            emp.status,
+            emp.hireDate
+          ])
+        }}
+        filename="employees-export"
+        title="Export Employees"
+        showOptions={true}
+      />
+      <Link href="/hr/employees/add">
+        <button className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700">
+          <UserPlusIcon className="h-4 w-4 mr-2" />
+          Add Employee
+        </button>
+      </Link>
+    </>
+  )
+
+  const sidebar = (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Stats</h3>
+        <div className="space-y-3">
+          <div className="flex justify-between">
+            <span className="text-sm text-gray-600">Total Employees</span>
+            <span className="font-semibold">1,248</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm text-gray-600">Active</span>
+            <span className="font-semibold text-green-600">1,195</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm text-gray-600">On Leave</span>
+            <span className="font-semibold text-yellow-600">42</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm text-gray-600">Inactive</span>
+            <span className="font-semibold text-red-600">11</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Departments</h3>
+        <div className="space-y-2">
+          {[
+            { name: "Operations", count: 234 },
+            { name: "Healthcare", count: 187 },
+            { name: "Education", count: 156 },
+            { name: "Finance", count: 89 },
+            { name: "HR", count: 45 },
+            { name: "IT", count: 67 },
+            { name: "Admin", count: 34 }
+          ].map((dept, index) => (
+            <div key={index} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+              <span className="text-sm text-gray-700">{dept.name}</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">{dept.count}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+        <div className="space-y-2">
+          <Link href="/hr/employees/add" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+            Add New Employee
+          </Link>
+          <Link href="/hr/employees/bulk-import" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+            Bulk Import
+          </Link>
+          <Link href="/hr/employees/reports" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+            Generate Report
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -245,6 +287,45 @@ export default function EmployeesPage() {
     
     return matchesSearch && matchesDepartment && matchesStatus
   })
+
+  const handleViewEmployee = (employee: any) => {
+    setSelectedEmployee(employee)
+    setShowViewModal(true)
+  }
+
+  const handleEditEmployee = (employee: any) => {
+    setSelectedEmployee(employee)
+    setShowEditModal(true)
+  }
+
+  const handleDeleteEmployee = (employeeId: number) => {
+    if (confirm('Are you sure you want to delete this employee?')) {
+      // Implement delete functionality
+      console.log('Deleting employee:', employeeId)
+      // Here you would call an API to delete the employee
+    }
+  }
+
+  const handleExportEmployee = (employee: any) => {
+    const exportData = {
+      headers: ['Field', 'Value'],
+      rows: [
+        ['Name', employee.name],
+        ['Email', employee.email],
+        ['Phone', employee.phone],
+        ['Department', employee.department],
+        ['Position', employee.position],
+        ['Employee ID', employee.employeeId],
+        ['Hire Date', employee.hireDate],
+        ['Status', employee.status],
+        ['Performance', employee.performance.toString()],
+        ['Location', employee.location]
+      ]
+    }
+    
+    // Use the export service to export individual employee
+    console.log('Exporting employee:', employee.name)
+  }
 
   return (
     <ModulePage
@@ -390,17 +471,34 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <Link href={`/hr/employees/${employee.id}`}>
-                          <button className="text-blue-600 hover:text-blue-900">
-                            <EyeIcon className="h-4 w-4" />
-                          </button>
-                        </Link>
-                        <Link href={`/hr/employees/${employee.id}/edit`}>
-                          <button className="text-gray-600 hover:text-gray-900">
-                            <PencilIcon className="h-4 w-4" />
-                          </button>
-                        </Link>
-                        <button className="text-red-600 hover:text-red-900">
+                        <button 
+                          onClick={() => handleViewEmployee(employee)}
+                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                          title="View Employee"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleEditEmployee(employee)}
+                          className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50"
+                          title="Edit Employee"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <DownloadPDFButton
+                          data={[employee]}
+                          filename={`employee-${employee.employeeId}`}
+                          title={`${employee.name} Profile`}
+                          headers={['Name', 'Email', 'Phone', 'Department', 'Position', 'Employee ID', 'Status']}
+                          variant="ghost"
+                          size="sm"
+                          className="text-green-600 hover:text-green-900 p-1 h-8 w-8"
+                        />
+                        <button 
+                          onClick={() => handleDeleteEmployee(employee.id)}
+                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                          title="Delete Employee"
+                        >
                           <TrashIcon className="h-4 w-4" />
                         </button>
                       </div>
@@ -422,6 +520,196 @@ export default function EmployeesPage() {
           )}
         </div>
       </div>
+
+      {/* View Employee Modal */}
+      <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Employee Details</DialogTitle>
+          </DialogHeader>
+          {selectedEmployee && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <span className="text-xl font-medium text-indigo-600">
+                    {selectedEmployee.name.split(' ').map((n: string) => n[0]).join('')}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">{selectedEmployee.name}</h3>
+                  <p className="text-gray-600">{selectedEmployee.position}</p>
+                  <p className="text-sm text-gray-500">ID: {selectedEmployee.employeeId}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Email</Label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedEmployee.email}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Phone</Label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedEmployee.phone}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Department</Label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedEmployee.department}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Location</Label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedEmployee.location}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Hire Date</Label>
+                  <p className="mt-1 text-sm text-gray-900">{new Date(selectedEmployee.hireDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Status</Label>
+                  <span className={`mt-1 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedEmployee.status)}`}>
+                    {getStatusText(selectedEmployee.status)}
+                  </span>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-700">Performance Rating</Label>
+                  <div className="mt-1 flex items-center">
+                    <div className="flex">{renderStars(selectedEmployee.performance)}</div>
+                    <span className="ml-2 text-sm text-gray-600">{selectedEmployee.performance}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <DownloadPDFButton
+                  data={[selectedEmployee]}
+                  filename={`employee-${selectedEmployee.employeeId}-profile`}
+                  title={`${selectedEmployee.name} - Employee Profile`}
+                  headers={['Name', 'Email', 'Phone', 'Department', 'Position', 'Status']}
+                  variant="outline"
+                />
+                <Button
+                  onClick={() => {
+                    setShowViewModal(false)
+                    handleEditEmployee(selectedEmployee)
+                  }}
+                >
+                  Edit Employee
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Employee Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Employee</DialogTitle>
+          </DialogHeader>
+          {selectedEmployee && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    defaultValue={selectedEmployee.name}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    defaultValue={selectedEmployee.email}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    defaultValue={selectedEmployee.phone}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="employeeId">Employee ID</Label>
+                  <Input
+                    id="employeeId"
+                    defaultValue={selectedEmployee.employeeId}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="department">Department</Label>
+                  <Select defaultValue={selectedEmployee.department}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Operations">Operations</SelectItem>
+                      <SelectItem value="Healthcare">Healthcare</SelectItem>
+                      <SelectItem value="Education">Education</SelectItem>
+                      <SelectItem value="Finance">Finance</SelectItem>
+                      <SelectItem value="HR">HR</SelectItem>
+                      <SelectItem value="IT">IT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="position">Position</Label>
+                  <Input
+                    id="position"
+                    defaultValue={selectedEmployee.position}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    defaultValue={selectedEmployee.location}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select defaultValue={selectedEmployee.status}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="on-leave">On Leave</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    // Handle save employee changes
+                    console.log('Saving employee changes')
+                    setShowEditModal(false)
+                  }}
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </ModulePage>
   )
 }

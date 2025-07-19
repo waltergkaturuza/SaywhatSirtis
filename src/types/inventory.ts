@@ -1,6 +1,7 @@
 export interface Asset {
   id: string
   assetNumber: string
+  assetTag?: string
   name: string
   type: AssetType
   category: AssetCategory
@@ -15,30 +16,46 @@ export interface Asset {
   depreciationMethod: 'straight-line' | 'declining-balance' | 'units-of-production'
   procurementDate: string
   lastValuationDate?: string
+  procurementType?: string
+  fundingSource?: string
+  expectedLifespan?: number
+  usageType?: string
   
   // Location & Allocation
   location: Location
   department: string
   assignedTo?: string
   assignedEmail?: string
+  assignedProgram?: string
+  assignedProject?: string
+  custodian?: string
+  coordinates?: {
+    lat: number
+    lng: number
+    lastUpdated: string
+    accuracy?: number
+  }
   
   // Status & Condition
   status: AssetStatus
   condition: AssetCondition
   warrantyExpiry?: string
   maintenanceSchedule?: MaintenanceSchedule[]
+  nextMaintenanceDate?: string
   
   // Tracking & Audit
   rfidTag?: string
   qrCode?: string
   serialNumber?: string
   barcodeId?: string
+  barcode?: string
   
   // Audit Trail
   createdAt: string
   createdBy: string
   updatedAt: string
-  updatedBy: string
+  updatedBy?: string
+  lastModifiedBy?: string
   lastAuditDate?: string
   nextAuditDate?: string
   
@@ -257,4 +274,17 @@ export interface InventoryPermissions {
   canGenerateReports: boolean
   restrictedToLocations?: string[]
   restrictedToDepartments?: string[]
+}
+
+export interface AssetAlert {
+  id: number
+  assetId: number
+  type: 'warranty_expiry' | 'maintenance_due' | 'audit_overdue' | 'compliance_issue' | 'depreciation_threshold' | 'location_alert'
+  message: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  dueDate?: string
+  acknowledged: boolean
+  createdAt: string
+  acknowledgedBy?: string
+  acknowledgedAt?: string
 }

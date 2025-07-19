@@ -857,10 +857,10 @@ export const getModuleById = (id: string): ModuleConfig | undefined => {
 
 // Helper function to get navigation items for a module
 export const getModuleNavigation = (moduleId: string, userPermissions: string[] = []) => {
-  const module = getModuleById(moduleId)
-  if (!module) return []
+  const moduleConfig = getModuleById(moduleId)
+  if (!moduleConfig) return []
 
-  return module.navigation.filter(item => {
+  return moduleConfig.navigation.filter(item => {
     if (!item.requiredPermissions?.length) return true
     return item.requiredPermissions.some(permission => userPermissions.includes(permission))
   })

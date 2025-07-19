@@ -92,14 +92,19 @@ export default function CreatePerformancePlanPage() {
       const result = await response.json()
 
       if (response.ok) {
-        alert(result.message || 'Performance plan submitted successfully!')
+        // Success - redirect to plans page
         router.push("/hr/performance/plans")
       } else {
-        alert(result.error || 'Failed to submit performance plan')
+        // Handle different error types
+        if (response.status === 401) {
+          alert('Authentication required. Please log in to create performance plans. Visit /auth/signin to authenticate.')
+        } else {
+          alert(result.error || result.message || 'Failed to submit performance plan')
+        }
       }
     } catch (error) {
       console.error('Error submitting performance plan:', error)
-      alert('An error occurred while submitting the performance plan')
+      alert('An error occurred while submitting the performance plan. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -124,11 +129,16 @@ export default function CreatePerformancePlanPage() {
       if (response.ok) {
         alert(result.message || 'Draft saved successfully!')
       } else {
-        alert(result.error || 'Failed to save draft')
+        // Handle different error types
+        if (response.status === 401) {
+          alert('Authentication required. Please log in to save drafts. Visit /auth/signin to authenticate.')
+        } else {
+          alert(result.error || result.message || 'Failed to save draft')
+        }
       }
     } catch (error) {
       console.error('Error saving draft:', error)
-      alert('An error occurred while saving the draft')
+      alert('An error occurred while saving the draft. Please try again.')
     } finally {
       setIsSavingDraft(false)
     }

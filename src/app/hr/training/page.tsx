@@ -3,6 +3,12 @@
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import { useState } from "react"
 import Link from "next/link"
+import { ExportButton } from "@/components/ui/export-button"
+import { ImportButton } from "@/components/ui/import-button"
+import { PrintButton } from "@/components/ui/print-button"
+import { DownloadExcelButton, DownloadPDFButton } from "@/components/ui/download-button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import {
   AcademicCapIcon,
   PlusIcon,
@@ -12,6 +18,7 @@ import {
   PlayIcon,
   BookOpenIcon,
   UserGroupIcon,
+  ArrowDownTrayIcon,
   DocumentTextIcon,
   EyeIcon,
   PencilIcon,
@@ -21,6 +28,138 @@ import {
 
 export default function TrainingPage() {
   const [activeTab, setActiveTab] = useState("programs")
+  const [selectedProgram, setSelectedProgram] = useState<any>(null)
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editFormData, setEditFormData] = useState<{
+    title?: string
+    description?: string
+    category?: string
+    duration?: string
+    format?: string
+    capacity?: number
+    instructor?: string
+    status?: string
+    certificationAvailable?: boolean
+    startDate?: string
+    endDate?: string
+  }>({})
+
+  // Training programs data
+  const trainingPrograms = [
+    {
+      id: 1,
+      title: "Leadership Development Program",
+      category: "Leadership",
+      description: "Comprehensive leadership training for management roles",
+      instructor: "Dr. Sarah Johnson",
+      duration: "6 weeks",
+      format: "Blended",
+      enrolled: 25,
+      capacity: 30,
+      startDate: "2024-02-01",
+      endDate: "2024-03-15",
+      status: "active",
+      completion: 68,
+      certificationAvailable: true
+    },
+    {
+      id: 2,
+      title: "Data Analysis with Python",
+      category: "Technical Skills",
+      description: "Learn data analysis techniques using Python and pandas",
+      instructor: "Michael Chen",
+      duration: "4 weeks",
+      format: "Online",
+      enrolled: 18,
+      capacity: 25,
+      startDate: "2024-01-15",
+      endDate: "2024-02-12",
+      status: "active",
+      completion: 45,
+      certificationAvailable: true
+    },
+    {
+      id: 3,
+      title: "Workplace Safety Training",
+      category: "Safety",
+      description: "Mandatory safety training for all employees",
+      instructor: "Safety Team",
+      duration: "2 hours",
+      format: "In-person",
+      enrolled: 150,
+      capacity: 200,
+      startDate: "2024-01-20",
+      endDate: "2024-01-20",
+      status: "completed",
+      completion: 95,
+      certificationAvailable: true
+    },
+    {
+      id: 4,
+      title: "Financial Management Basics",
+      category: "Professional Development",
+      description: "Basic financial management concepts for non-finance staff",
+      instructor: "Jennifer Smith",
+      duration: "3 weeks",
+      format: "Hybrid",
+      enrolled: 12,
+      capacity: 20,
+      startDate: "2024-02-05",
+      endDate: "2024-02-26",
+      status: "upcoming",
+      completion: 0,
+      certificationAvailable: false
+    }
+  ]
+
+  const handleViewProgram = (program: any) => {
+    setSelectedProgram(program)
+    setShowViewModal(true)
+  }
+
+  const handleEditProgram = (program: any) => {
+    setSelectedProgram(program)
+    setEditFormData({
+      title: program.title,
+      description: program.description,
+      category: program.category,
+      duration: program.duration,
+      format: program.format,
+      capacity: program.capacity,
+      instructor: program.instructor,
+      status: program.status,
+      certificationAvailable: program.certificationAvailable,
+      startDate: program.startDate,
+      endDate: program.endDate
+    })
+    setShowEditModal(true)
+  }
+
+  const handleSaveChanges = () => {
+    if (selectedProgram) {
+      // TODO: Implement API call to update training program
+      console.log('Saving program changes:', {
+        programId: selectedProgram.id,
+        updates: editFormData
+      })
+      
+      // Update the local data (in a real app, this would be handled by state management)
+      const updatedProgram = { ...selectedProgram, ...editFormData }
+      console.log('Updated program:', updatedProgram)
+      
+      alert('Program updated successfully!')
+      setShowEditModal(false)
+    }
+  }
+
+  const handleDeleteProgram = (programId: number) => {
+    if (confirm('Are you sure you want to delete this training program?')) {
+      console.log('Deleting program:', programId)
+      // TODO: Implement delete functionality
+      alert('Program deleted successfully!')
+    }
+  }
 
   const metadata = {
     title: "Training Management",
@@ -34,10 +173,36 @@ export default function TrainingPage() {
 
   const actions = (
     <>
-      <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-        <DocumentTextIcon className="h-4 w-4 mr-2" />
-        Training Report
-      </button>
+      <ImportButton
+        onImportComplete={(result) => {
+          if (result.success) {
+            console.log('Training import completed:', result)
+          }
+        }}
+        acceptedFormats={['excel', 'csv']}
+        templateFields={['title', 'description', 'category', 'duration', 'format', 'instructor', 'capacity']}
+        title="Import Training Programs"
+        variant="outline"
+        size="sm"
+      />
+      <ExportButton
+        data={{
+          headers: ['Title', 'Category', 'Duration', 'Format', 'Status', 'Instructor', 'Enrolled/Capacity', 'Completion Rate'],
+          rows: trainingPrograms.map(program => [
+            program.title,
+            program.category,
+            program.duration,
+            program.format,
+            program.status,
+            program.instructor,
+            `${program.enrolled}/${program.capacity}`,
+            `${program.completion}%`
+          ])
+        }}
+        filename="training-programs-export"
+        title="Export Training Programs"
+        showOptions={true}
+      />
       <Link href="/hr/training/create">
         <button className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700">
           <PlusIcon className="h-4 w-4 mr-2" />
@@ -132,73 +297,6 @@ export default function TrainingPage() {
       </div>
     </div>
   )
-
-  const trainingPrograms = [
-    {
-      id: 1,
-      title: "Leadership Development Program",
-      category: "Leadership",
-      description: "Comprehensive leadership training for management roles",
-      instructor: "Dr. Sarah Johnson",
-      duration: "6 weeks",
-      format: "Blended",
-      enrolled: 25,
-      capacity: 30,
-      startDate: "2024-02-01",
-      endDate: "2024-03-15",
-      status: "active",
-      completion: 68,
-      certificationAvailable: true
-    },
-    {
-      id: 2,
-      title: "Data Analysis with Python",
-      category: "Technical Skills",
-      description: "Learn data analysis techniques using Python and pandas",
-      instructor: "Michael Chen",
-      duration: "4 weeks",
-      format: "Online",
-      enrolled: 18,
-      capacity: 25,
-      startDate: "2024-01-15",
-      endDate: "2024-02-12",
-      status: "active",
-      completion: 45,
-      certificationAvailable: true
-    },
-    {
-      id: 3,
-      title: "Workplace Safety Training",
-      category: "Safety",
-      description: "Mandatory safety training for all employees",
-      instructor: "Safety Team",
-      duration: "2 hours",
-      format: "In-person",
-      enrolled: 150,
-      capacity: 200,
-      startDate: "2024-01-20",
-      endDate: "2024-01-20",
-      status: "completed",
-      completion: 95,
-      certificationAvailable: true
-    },
-    {
-      id: 4,
-      title: "Financial Management Basics",
-      category: "Professional Development",
-      description: "Basic financial management concepts for non-finance staff",
-      instructor: "Jennifer Smith",
-      duration: "3 weeks",
-      format: "Hybrid",
-      enrolled: 12,
-      capacity: 20,
-      startDate: "2024-02-05",
-      endDate: "2024-02-26",
-      status: "upcoming",
-      completion: 0,
-      certificationAvailable: false
-    }
-  ]
 
   const enrollments = [
     {
@@ -531,16 +629,56 @@ export default function TrainingPage() {
                             {program.certificationAvailable && (
                               <TrophyIcon className="h-4 w-4 text-yellow-500" title="Certification Available" />
                             )}
-                            <Link href={`/hr/training/programs/${program.id}`}>
-                              <button className="text-blue-600 hover:text-blue-900">
-                                <EyeIcon className="h-4 w-4" />
-                              </button>
-                            </Link>
-                            <Link href={`/hr/training/programs/${program.id}/edit`}>
-                              <button className="text-gray-600 hover:text-gray-900">
-                                <PencilIcon className="h-4 w-4" />
-                              </button>
-                            </Link>
+                            <button 
+                              onClick={() => handleViewProgram(program)}
+                              className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                              title="View Program"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleEditProgram(program)}
+                              className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50"
+                              title="Edit Program"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                // Simple PDF download for individual program
+                                const exportData = {
+                                  headers: ['Field', 'Value'],
+                                  rows: [
+                                    ['Program Title', program.title],
+                                    ['Category', program.category],
+                                    ['Instructor', program.instructor],
+                                    ['Duration', program.duration],
+                                    ['Format', program.format],
+                                    ['Enrollment', `${program.enrolled}/${program.capacity}`],
+                                    ['Start Date', program.startDate],
+                                    ['End Date', program.endDate],
+                                    ['Status', program.status],
+                                    ['Completion Rate', `${program.completion}%`]
+                                  ]
+                                }
+                                
+                                // Use the existing export service
+                                import('@/lib/export-service').then(({ exportService }) => {
+                                  exportService.exportToPDF(exportData, {
+                                    filename: `training-program-${program.title.replace(/\s+/g, '-').toLowerCase()}`,
+                                    title: `Training Program: ${program.title}`,
+                                    format: 'pdf',
+                                    includeLogo: true,
+                                    includeTimestamp: true,
+                                    watermark: true
+                                  })
+                                })
+                              }}
+                              className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-gray-50"
+                              title="Download Program PDF"
+                            >
+                              <ArrowDownTrayIcon className="h-4 w-4" />
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -707,7 +845,9 @@ export default function TrainingPage() {
                         </div>
 
                         <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-                          <button className="text-sm text-blue-600 hover:text-blue-800">Download PDF</button>
+                          <button className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <ArrowDownTrayIcon className="h-4 w-4" />
+                          </button>
                           <button className="text-sm text-gray-600 hover:text-gray-800">Verify</button>
                         </div>
                       </div>
@@ -719,6 +859,285 @@ export default function TrainingPage() {
           </div>
         </div>
       </div>
+
+      {/* View Program Modal */}
+      <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Training Program Details</DialogTitle>
+          </DialogHeader>
+          {selectedProgram && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">{selectedProgram.title}</h3>
+                  <p className="text-gray-600 mt-2">{selectedProgram.description}</p>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Category:</span>
+                    <span className="text-sm font-medium">{selectedProgram.category}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Duration:</span>
+                    <span className="text-sm font-medium">{selectedProgram.duration}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Format:</span>
+                    <span className="text-sm font-medium">{selectedProgram.format}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Instructor:</span>
+                    <span className="text-sm font-medium">{selectedProgram.instructor}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{selectedProgram.enrolled}/{selectedProgram.capacity}</div>
+                  <div className="text-sm text-gray-600">Enrolled</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{selectedProgram.completion}%</div>
+                  <div className="text-sm text-gray-600">Completion Rate</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {selectedProgram.certificationAvailable ? 'Yes' : 'No'}
+                  </div>
+                  <div className="text-sm text-gray-600">Certification</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-sm text-gray-500">Start Date:</span>
+                  <p className="text-sm font-medium">{new Date(selectedProgram.startDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-500">End Date:</span>
+                  <p className="text-sm font-medium">{new Date(selectedProgram.endDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    // Download detailed program info
+                    const exportData = {
+                      headers: ['Field', 'Value'],
+                      rows: [
+                        ['Program Title', selectedProgram.title],
+                        ['Description', selectedProgram.description],
+                        ['Category', selectedProgram.category],
+                        ['Instructor', selectedProgram.instructor],
+                        ['Duration', selectedProgram.duration],
+                        ['Format', selectedProgram.format],
+                        ['Enrollment', `${selectedProgram.enrolled}/${selectedProgram.capacity}`],
+                        ['Start Date', selectedProgram.startDate],
+                        ['End Date', selectedProgram.endDate],
+                        ['Status', selectedProgram.status],
+                        ['Completion Rate', `${selectedProgram.completion}%`],
+                        ['Certification Available', selectedProgram.certificationAvailable ? 'Yes' : 'No']
+                      ]
+                    }
+                    
+                    import('@/lib/export-service').then(({ exportService }) => {
+                      exportService.exportToPDF(exportData, {
+                        filename: `training-program-${selectedProgram.title.replace(/\s+/g, '-').toLowerCase()}-details`,
+                        title: `Training Program Details: ${selectedProgram.title}`,
+                        format: 'pdf',
+                        includeLogo: true,
+                        includeTimestamp: true,
+                        watermark: true
+                      })
+                    })
+                  }}
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                  Download PDF
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowViewModal(false)
+                    handleEditProgram(selectedProgram)
+                  }}
+                >
+                  Edit Program
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Program Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Training Program</DialogTitle>
+          </DialogHeader>
+          {selectedProgram && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Program Title *</label>
+                  <input
+                    type="text"
+                    value={editFormData.title || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                  <select
+                    value={editFormData.category || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    <option value="Leadership">Leadership</option>
+                    <option value="Technical Skills">Technical Skills</option>
+                    <option value="Safety">Safety</option>
+                    <option value="Professional Development">Professional Development</option>
+                    <option value="Compliance">Compliance</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration *</label>
+                  <input
+                    type="text"
+                    value={editFormData.duration || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, duration: e.target.value }))}
+                    placeholder="e.g., 6 weeks, 3 days"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Format *</label>
+                  <select
+                    value={editFormData.format || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, format: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Select Format</option>
+                    <option value="Online">Online</option>
+                    <option value="In-person">In-person</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Blended">Blended</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Capacity *</label>
+                  <input
+                    type="number"
+                    value={editFormData.capacity || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, capacity: parseInt(e.target.value) }))}
+                    min="1"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Instructor *</label>
+                  <input
+                    type="text"
+                    value={editFormData.instructor || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, instructor: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select
+                    value={editFormData.status || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="upcoming">Upcoming</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={editFormData.startDate || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={editFormData.endDate || ''}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  rows={4}
+                  value={editFormData.description || ''}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Describe the training program..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="editCertificationAvailable"
+                  checked={editFormData.certificationAvailable || false}
+                  onChange={(e) => setEditFormData(prev => ({ ...prev, certificationAvailable: e.target.checked }))}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="editCertificationAvailable" className="ml-2 text-sm text-gray-700">
+                  Certification Available upon completion
+                </label>
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveChanges}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </ModulePage>
   )
 }

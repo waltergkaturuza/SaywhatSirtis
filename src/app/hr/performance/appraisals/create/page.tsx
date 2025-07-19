@@ -4,6 +4,9 @@ import { ModulePage } from "@/components/layout/enhanced-layout"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircleIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline"
+import { useNotifications, NotificationContainer } from "@/components/ui/notifications"
+import { LoadingWrapper } from "@/components/ui/skeleton"
+import { hrApi, handleApiError, withRetry } from "@/lib/api-client"
 
 import { 
   AppraisalFormData, 
@@ -171,36 +174,35 @@ export default function CreateAppraisalPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const { notifications, showSuccess, showError, showInfo, removeNotification } = useNotifications()
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
+    
     try {
-      console.log('Submitting appraisal data:', formData)
-      
-      const response = await fetch('/api/hr/appraisals', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const result = await withRetry(
+        () => hrApi.createAppraisal({
           formData,
           isDraft: false
-        })
-      })
+        }),
+        3, // retry up to 3 times
+        1000 // 1 second delay between retries
+      )
 
-      console.log('Response status:', response.status)
-      const result = await response.json()
-      console.log('Response data:', result)
-
-      if (response.ok) {
-        alert(result.message || 'Appraisal submitted successfully!')
+      showSuccess(
+        'Appraisal Submitted Successfully!',
+        result.message || 'The performance appraisal has been saved and submitted for review.'
+      )
+      
+      setTimeout(() => {
         router.push("/hr/performance/appraisals")
-      } else {
-        alert(result.error || 'Failed to submit appraisal')
-      }
+      }, 2000)
     } catch (error) {
-      console.error('Error submitting appraisal:', error)
-      alert('An error occurred while submitting the appraisal')
+      const errorMessage = handleApiError(error)
+      showError(
+        'Submission Failed',
+        errorMessage
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -208,28 +210,23 @@ export default function CreateAppraisalPage() {
 
   const handleSaveDraft = async () => {
     setIsSavingDraft(true)
+    
     try {
-      const response = await fetch('/api/hr/appraisals', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          formData,
-          isDraft: true
-        })
+      const result = await hrApi.createAppraisal({
+        formData,
+        isDraft: true
       })
 
-      const result = await response.json()
-
-      if (response.ok) {
-        alert(result.message || 'Draft saved successfully!')
-      } else {
-        alert(result.error || 'Failed to save draft')
-      }
+      showInfo(
+        'Draft Saved',
+        result.message || 'Your appraisal draft has been saved successfully.'
+      )
     } catch (error) {
-      console.error('Error saving draft:', error)
-      alert('An error occurred while saving the draft')
+      const errorMessage = handleApiError(error)
+      showError(
+        'Save Failed',
+        errorMessage
+      )
     } finally {
       setIsSavingDraft(false)
     }
@@ -1158,6 +1155,12 @@ export default function CreateAppraisalPage() {
           </div>
         </div>
       </div>
+      
+      {/* Notification Container */}
+      <NotificationContainer 
+        notifications={notifications} 
+        onClose={removeNotification} 
+      />
     </ModulePage>
   )
 }

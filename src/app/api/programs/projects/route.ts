@@ -10,7 +10,12 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json({ 
+        success: false,
+        error: "Authentication required", 
+        message: "Please log in to create projects. Visit /auth/signin to authenticate.",
+        code: "UNAUTHORIZED"
+      }, { status: 401 })
     }
 
     const body = await request.json()
@@ -46,7 +51,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
 
   } catch (error) {
-    console.error('Project creation error:', error)
+    console.error('❌ Project creation error:', error)
     return NextResponse.json({ 
       success: false,
       error: "Failed to create project",

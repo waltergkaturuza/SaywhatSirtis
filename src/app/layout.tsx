@@ -5,6 +5,9 @@ import { SessionProvider } from "@/components/providers/session-provider"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { ToastProvider } from "@/components/providers/toast-provider"
+import { OfflineProvider, OfflineIndicator, OfflineSyncStatus } from "@/components/ui/offline-support"
+import { LiveRegion } from "@/components/ui/accessibility"
+import ErrorBoundary from "@/components/ui/error-boundary"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,20 +35,27 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <SessionProvider>
-            <QueryProvider>
-              <ToastProvider>
-                {children}
-              </ToastProvider>
-            </QueryProvider>
-          </SessionProvider>
-        </ThemeProvider>
+        <ErrorBoundary>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <SessionProvider>
+              <QueryProvider>
+                <ToastProvider>
+                  <OfflineProvider>
+                    {children}
+                    <OfflineIndicator />
+                    <OfflineSyncStatus />
+                    <LiveRegion />
+                  </OfflineProvider>
+                </ToastProvider>
+              </QueryProvider>
+            </SessionProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

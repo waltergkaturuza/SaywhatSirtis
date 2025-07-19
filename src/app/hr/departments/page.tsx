@@ -71,15 +71,22 @@ export default function DepartmentsPage() {
         body: JSON.stringify(newDepartment),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to create department')
-      }
+      const result = await response.json()
 
-      await fetchDepartments()
-      setNewDepartment({ name: '', description: '' })
-      setShowAddForm(false)
+      if (response.ok) {
+        await fetchDepartments()
+        setNewDepartment({ name: '', description: '' })
+        setShowAddForm(false)
+      } else {
+        // Handle different error types
+        if (response.status === 401) {
+          setError('Authentication required. Please log in to create departments. Visit /auth/signin to authenticate.')
+        } else {
+          setError(result.error || result.message || 'Failed to create department')
+        }
+      }
     } catch (err) {
-      setError('Failed to create department')
+      setError('Failed to create department. Please try again.')
       console.error('Error creating department:', err)
     }
   }
@@ -94,13 +101,20 @@ export default function DepartmentsPage() {
         method: 'DELETE',
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to delete department')
-      }
+      const result = await response.json()
 
-      await fetchDepartments()
+      if (response.ok) {
+        await fetchDepartments()
+      } else {
+        // Handle different error types
+        if (response.status === 401) {
+          setError('Authentication required. Please log in to delete departments. Visit /auth/signin to authenticate.')
+        } else {
+          setError(result.error || result.message || 'Failed to delete department')
+        }
+      }
     } catch (err) {
-      setError('Failed to delete department')
+      setError('Failed to delete department. Please try again.')
       console.error('Error deleting department:', err)
     }
   }

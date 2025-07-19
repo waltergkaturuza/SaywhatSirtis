@@ -204,20 +204,23 @@ export default function SystemAdminPage() {
         body: JSON.stringify({ action: 'toggle_status', userId })
       })
       
+      const result = await response.json()
+      
       if (response.ok) {
-        const data = await response.json()
         setUsers(prev => prev.map(user => 
-          user.id === userId ? data.user : user
+          user.id === userId ? result.user : user
         ))
+      } else {
+        // Handle different error types
+        if (response.status === 401) {
+          alert('Authentication required. Please log in to manage users. Visit /auth/signin to authenticate.')
+        } else {
+          alert(result.error || result.message || 'Failed to update user status')
+        }
       }
     } catch (error) {
       console.error('Error toggling user status:', error)
-      // Fallback to local update if API fails
-      setUsers(prev => prev.map(user => 
-        user.id === userId 
-          ? { ...user, status: user.status === 'active' ? 'suspended' : 'active' }
-          : user
-      ))
+      alert('An error occurred while updating user status. Please try again.')
     }
   }
 
@@ -238,18 +241,23 @@ export default function SystemAdminPage() {
         })
       })
       
+      const result = await response.json()
+      
       if (response.ok) {
-        const data = await response.json()
         setSystemConfigs(prev => prev.map(config =>
-          config.key === key ? data.config : config
+          config.key === key ? result.config : config
         ))
+      } else {
+        // Handle different error types
+        if (response.status === 401) {
+          alert('Authentication required. Please log in to update system configuration. Visit /auth/signin to authenticate.')
+        } else {
+          alert(result.error || result.message || 'Failed to update system configuration')
+        }
       }
     } catch (error) {
       console.error('Error updating config:', error)
-      // Fallback to local update if API fails
-      setSystemConfigs(prev => prev.map(config =>
-        config.key === key ? { ...config, value } : config
-      ))
+      alert('An error occurred while updating system configuration. Please try again.')
     }
   }
 

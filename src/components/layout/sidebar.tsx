@@ -16,7 +16,11 @@ import {
   FolderIcon,
   InformationCircleIcon,
   Cog6ToothIcon,
-  CogIcon
+  CogIcon,
+  StarIcon,
+  BeakerIcon,
+  BoltIcon,
+  ChatBubbleLeftRightIcon
 } from "@heroicons/react/24/outline"
 
 interface SidebarProps {
@@ -37,6 +41,20 @@ const navigation = [
   { name: "About SIRTIS", href: "/about", icon: InformationCircleIcon, requiredPermissions: [] },
 ]
 
+// Advanced Features Navigation (Phase 2 & 3)
+const advancedNavigation = [
+  { name: "AI & Advanced Features", href: "/phase3", icon: StarIcon, requiredPermissions: [] },
+  { name: "Enhanced UI Components", href: "/test-components/phase2-demo", icon: BeakerIcon, requiredPermissions: [] },
+  { name: "Development Tools", href: "/test-components", icon: BoltIcon, requiredPermissions: ["admin.access"] },
+]
+
+// AI Assistant Info (non-clickable, just shows copilot availability)
+const aiAssistantInfo = {
+  name: "SIRTIS Copilot Available",
+  description: "AI assistant active in bottom-right corner",
+  icon: ChatBubbleLeftRightIcon
+}
+
 function hasPermission(userPermissions: string[], requiredPermissions: string[]) {
   if (requiredPermissions.length === 0) return true
   return requiredPermissions.some(permission => userPermissions.includes(permission))
@@ -50,6 +68,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Filter navigation items based on user permissions
   const filteredNavigation = navigation.filter(item => 
+    hasPermission(userPermissions, item.requiredPermissions)
+  )
+
+  const filteredAdvancedNavigation = advancedNavigation.filter(item => 
     hasPermission(userPermissions, item.requiredPermissions)
   )
 
@@ -133,6 +155,64 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                           ))}
                         </ul>
                       </li>
+                      {filteredAdvancedNavigation.length > 0 && (
+                        <li>
+                          <div className="text-xs font-semibold leading-6 text-gray-400 uppercase tracking-wide">
+                            Advanced Features
+                          </div>
+                          <ul role="list" className="-mx-2 mt-2 space-y-1">
+                            {filteredAdvancedNavigation.map((item) => (
+                              <li key={item.name}>
+                                <Link
+                                  href={item.href}
+                                  onClick={onClose}
+                                  className={cn(
+                                    pathname === item.href
+                                      ? "bg-indigo-50 text-indigo-600"
+                                      : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600",
+                                    "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold"
+                                  )}
+                                >
+                                  <item.icon
+                                    className={cn(
+                                      pathname === item.href
+                                        ? "text-indigo-600"
+                                        : "text-gray-400 group-hover:text-indigo-600",
+                                      "h-6 w-6 shrink-0"
+                                    )}
+                                    aria-hidden="true"
+                                  />
+                                  {item.name}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </li>
+                      )}
+                      
+                      {/* AI Copilot Status Indicator - Mobile */}
+                      <li>
+                        <div className="text-xs font-semibold leading-6 text-gray-400 uppercase tracking-wide">
+                          AI Assistant
+                        </div>
+                        <div className="mt-2 -mx-2">
+                          <div className="group flex gap-x-3 rounded-md p-2 text-sm leading-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+                            <aiAssistantInfo.icon
+                              className="h-5 w-5 shrink-0 text-indigo-500"
+                              aria-hidden="true"
+                            />
+                            <div className="flex-1">
+                              <div className="text-indigo-700 font-medium text-xs">
+                                {aiAssistantInfo.name}
+                              </div>
+                              <div className="text-indigo-600 text-xs mt-0.5">
+                                {aiAssistantInfo.description}
+                              </div>
+                            </div>
+                            <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse self-center"></div>
+                          </div>
+                        </div>
+                      </li>
                     </ul>
                   </nav>
                 </div>
@@ -178,6 +258,63 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     </li>
                   ))}
                 </ul>
+              </li>
+              {filteredAdvancedNavigation.length > 0 && (
+                <li>
+                  <div className="text-xs font-semibold leading-6 text-gray-400 uppercase tracking-wide">
+                    Advanced Features
+                  </div>
+                  <ul role="list" className="-mx-2 mt-2 space-y-1">
+                    {filteredAdvancedNavigation.map((item) => (
+                      <li key={item.name}>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            pathname === item.href
+                              ? "bg-indigo-50 text-indigo-600"
+                              : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600",
+                            "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold"
+                          )}
+                        >
+                          <item.icon
+                            className={cn(
+                              pathname === item.href
+                                ? "text-indigo-600"
+                                : "text-gray-400 group-hover:text-indigo-600",
+                              "h-6 w-6 shrink-0"
+                            )}
+                            aria-hidden="true"
+                          />
+                          {item.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              )}
+              
+              {/* AI Copilot Status Indicator */}
+              <li>
+                <div className="text-xs font-semibold leading-6 text-gray-400 uppercase tracking-wide">
+                  AI Assistant
+                </div>
+                <div className="mt-2 -mx-2">
+                  <div className="group flex gap-x-3 rounded-md p-2 text-sm leading-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+                    <aiAssistantInfo.icon
+                      className="h-5 w-5 shrink-0 text-indigo-500"
+                      aria-hidden="true"
+                    />
+                    <div className="flex-1">
+                      <div className="text-indigo-700 font-medium text-xs">
+                        {aiAssistantInfo.name}
+                      </div>
+                      <div className="text-indigo-600 text-xs mt-0.5">
+                        {aiAssistantInfo.description}
+                      </div>
+                    </div>
+                    <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse self-center"></div>
+                  </div>
+                </div>
               </li>
             </ul>
           </nav>

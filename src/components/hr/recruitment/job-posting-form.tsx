@@ -178,7 +178,7 @@ export default function JobPostingForm({
     }
 
     if (editingJob) {
-      submitData.id = editingJob.id
+      (submitData as any).id = editingJob.id
     }
 
     try {
@@ -559,8 +559,8 @@ export default function JobPostingForm({
                         <PopoverContent className="w-auto p-0">
                           <Calendar
                             mode="single"
-                            selected={formData.postedDate}
-                            onSelect={(date) => setFormData(prev => ({ ...prev, postedDate: date }))}
+                            selected={formData.postedDate || undefined}
+                            onSelect={(date) => setFormData(prev => ({ ...prev, postedDate: date || null }))}
                             initialFocus
                           />
                         </PopoverContent>
@@ -586,8 +586,8 @@ export default function JobPostingForm({
                         <PopoverContent className="w-auto p-0">
                           <Calendar
                             mode="single"
-                            selected={formData.closingDate}
-                            onSelect={(date) => setFormData(prev => ({ ...prev, closingDate: date }))}
+                            selected={formData.closingDate || undefined}
+                            onSelect={(date) => setFormData(prev => ({ ...prev, closingDate: date || null }))}
                             initialFocus
                           />
                         </PopoverContent>

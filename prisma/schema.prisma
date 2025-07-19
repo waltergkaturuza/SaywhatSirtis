@@ -49,6 +49,7 @@ model User {
   calls             Call[]
   projects          ProjectAssignment[]
   auditLogs         AuditLog[]
+  employee          Employee?
   
   @@map("users")
 }
@@ -290,7 +291,367 @@ model Department {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
+  // Relationships
+  employees   Employee[]
+  
   @@map("departments")
+}
+
+// =============================================
+// PAYROLL MANAGEMENT SYSTEM
+// =============================================
+
+model Employee {
+  id                String            @id @default(cuid())
+  employeeId        String            @unique
+  userId            String?           @unique
+  firstName         String
+  lastName          String
+  middleName        String?
+  email             String            @unique
+  phone             String?
+  dateOfBirth       DateTime?
+  hireDate          DateTime
+  terminationDate   DateTime?
+  
+  // Employment Details
+  departmentId      String
+  position          String
+  level             EmployeeLevel     @default(JUNIOR)
+  status            EmployeeStatus    @default(ACTIVE)
+  payGrade          String?
+  reportingTo       String?
+  
+  // Compensation
+  basicSalary       Decimal
+  currency          String            @default("NGN")
+  payFrequency      PayFrequency      @default(MONTHLY)
+  payrollType       PayrollType       @default(SALARY)
+  overtimeRate      Decimal?
+  
+  // Personal Details
+  address           String?
+  city              String?
+  state             String?
+  postalCode        String?
+  country           String            @default("Nigeria")
+  maritalStatus     MaritalStatus?
+  gender            Gender?
+  
+  // Banking Information
+  bankName          String?
+  bankAccountNumber String?
+  bankAccountName   String?
+  bankCode          String?
+  
+  // Tax Information
+  taxId             String?
+  taxExemption      Boolean           @default(false)
+  taxRate           Decimal?
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relationships
+  department        Department        @relation(fields: [departmentId], references: [id])
+  user              User?             @relation(fields: [userId], references: [id])
+  payrollRecords    PayrollRecord[]
+  payslips          Payslip[]
+  allowances        EmployeeAllowance[]
+  deductions        EmployeeDeduction[]
+  timeRecords       TimeRecord[]
+  leaveRecords      LeaveRecord[]
+  
+  @@map("employees")
+}
+
+model PayrollPeriod {
+  id                String            @id @default(cuid())
+  name              String
+  startDate         DateTime
+  endDate           DateTime
+  payDate           DateTime
+  status            PayrollStatus     @default(DRAFT)
+  totalEmployees    Int               @default(0)
+  totalGrossPay     Decimal           @default(0)
+  totalNetPay       Decimal           @default(0)
+  totalDeductions   Decimal           @default(0)
+  totalTax          Decimal           @default(0)
+  processedBy       String?
+  processedAt       DateTime?
+  approvedBy        String?
+  approvedAt        DateTime?
+  paidBy            String?
+  paidAt            DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relationships
+  payrollRecords    PayrollRecord[]
+  payslips          Payslip[]
+  
+  @@map("payroll_periods")
+}
+
+model PayrollRecord {
+  id                String            @id @default(cuid())
+  employeeId        String
+  periodId          String
+  
+  // Salary Components
+  basicSalary       Decimal
+  overtimeHours     Decimal           @default(0)
+  overtimePay       Decimal           @default(0)
+  totalAllowances   Decimal           @default(0)
+  totalDeductions   Decimal           @default(0)
+  grossPay          Decimal
+  
+  // Tax Calculations
+  taxableIncome     Decimal
+  incomeTax         Decimal           @default(0)
+  
+  // Statutory Deductions
+  pensionDeduction  Decimal           @default(0)
+  nhisDeduction     Decimal           @default(0)
+  nsitfDeduction    Decimal           @default(0)
+  
+  // Net Pay
+  netPay            Decimal
+  
+  // Status
+  status            PayrollRecordStatus @default(DRAFT)
+  calculatedAt      DateTime?
+  approvedAt        DateTime?
+  paidAt            DateTime?
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relationships
+  employee          Employee          @relation(fields: [employeeId], references: [id])
+  period            PayrollPeriod     @relation(fields: [periodId], references: [id])
+  payslip           Payslip?
+  allowances        PayrollAllowance[]
+  deductions        PayrollDeduction[]
+  
+  @@unique([employeeId, periodId])
+  @@map("payroll_records")
+}
+
+model Payslip {
+  id                String            @id @default(cuid())
+  employeeId        String
+  periodId          String
+  payrollRecordId   String            @unique
+  
+  // Payslip Details
+  payslipNumber     String            @unique
+  generatedAt       DateTime          @default(now())
+  emailSent         Boolean           @default(false)
+  emailSentAt       DateTime?
+  downloadCount     Int               @default(0)
+  
+  // File Information
+  fileName          String?
+  filePath          String?
+  fileSize          Int?
+  
+  // Relationships
+  employee          Employee          @relation(fields: [employeeId], references: [id])
+  period            PayrollPeriod     @relation(fields: [periodId], references: [id])
+  payrollRecord     PayrollRecord     @relation(fields: [payrollRecordId], references: [id])
+  
+  @@map("payslips")
+}
+
+model AllowanceType {
+  id                String              @id @default(cuid())
+  name              String              @unique
+  description       String?
+  isActive          Boolean             @default(true)
+  isTaxable         Boolean             @default(true)
+  calculation       AllowanceCalculation @default(FIXED)
+  defaultAmount     Decimal?
+  percentage        Decimal?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relationships
+  employeeAllowances EmployeeAllowance[]
+  payrollAllowances  PayrollAllowance[]
+  
+  @@map("allowance_types")
+}
+
+model EmployeeAllowance {
+  id                String            @id @default(cuid())
+  employeeId        String
+  allowanceTypeId   String
+  amount            Decimal
+  isActive          Boolean           @default(true)
+  effectiveDate     DateTime          @default(now())
+  endDate           DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relationships
+  employee          Employee          @relation(fields: [employeeId], references: [id])
+  allowanceType     AllowanceType     @relation(fields: [allowanceTypeId], references: [id])
+  
+  @@unique([employeeId, allowanceTypeId])
+  @@map("employee_allowances")
+}
+
+model PayrollAllowance {
+  id                String            @id @default(cuid())
+  payrollRecordId   String
+  allowanceTypeId   String
+  amount            Decimal
+  
+  // Relationships
+  payrollRecord     PayrollRecord     @relation(fields: [payrollRecordId], references: [id])
+  allowanceType     AllowanceType     @relation(fields: [allowanceTypeId], references: [id])
+  
+  @@map("payroll_allowances")
+}
+
+model DeductionType {
+  id                String              @id @default(cuid())
+  name              String              @unique
+  description       String?
+  isActive          Boolean             @default(true)
+  isStatutory       Boolean             @default(false)
+  calculation       DeductionCalculation @default(FIXED)
+  defaultAmount     Decimal?
+  percentage        Decimal?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relationships
+  employeeDeductions EmployeeDeduction[]
+  payrollDeductions  PayrollDeduction[]
+  
+  @@map("deduction_types")
+}
+
+model EmployeeDeduction {
+  id                String            @id @default(cuid())
+  employeeId        String
+  deductionTypeId   String
+  amount            Decimal
+  isActive          Boolean           @default(true)
+  effectiveDate     DateTime          @default(now())
+  endDate           DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relationships
+  employee          Employee          @relation(fields: [employeeId], references: [id])
+  deductionType     DeductionType     @relation(fields: [deductionTypeId], references: [id])
+  
+  @@unique([employeeId, deductionTypeId])
+  @@map("employee_deductions")
+}
+
+model PayrollDeduction {
+  id                String            @id @default(cuid())
+  payrollRecordId   String
+  deductionTypeId   String
+  amount            Decimal
+  
+  // Relationships
+  payrollRecord     PayrollRecord     @relation(fields: [payrollRecordId], references: [id])
+  deductionType     DeductionType     @relation(fields: [deductionTypeId], references: [id])
+  
+  @@map("payroll_deductions")
+}
+
+model TimeRecord {
+  id                String            @id @default(cuid())
+  employeeId        String
+  date              DateTime
+  clockIn           DateTime?
+  clockOut          DateTime?
+  breakStart        DateTime?
+  breakEnd          DateTime?
+  regularHours      Decimal           @default(0)
+  overtimeHours     Decimal           @default(0)
+  totalHours        Decimal           @default(0)
+  status            TimeRecordStatus  @default(PRESENT)
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relationships
+  employee          Employee          @relation(fields: [employeeId], references: [id])
+  
+  @@unique([employeeId, date])
+  @@map("time_records")
+}
+
+model LeaveType {
+  id                String            @id @default(cuid())
+  name              String            @unique
+  description       String?
+  maxDays           Int?
+  isActive          Boolean           @default(true)
+  requiresApproval  Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relationships
+  leaveRecords      LeaveRecord[]
+  
+  @@map("leave_types")
+}
+
+model LeaveRecord {
+  id                String            @id @default(cuid())
+  employeeId        String
+  leaveTypeId       String
+  startDate         DateTime
+  endDate           DateTime
+  days              Int
+  reason            String?
+  status            LeaveStatus       @default(PENDING)
+  appliedAt         DateTime          @default(now())
+  approvedBy        String?
+  approvedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relationships
+  employee          Employee          @relation(fields: [employeeId], references: [id])
+  leaveType         LeaveType         @relation(fields: [leaveTypeId], references: [id])
+  
+  @@map("leave_records")
+}
+
+model TaxBracket {
+  id                String            @id @default(cuid())
+  name              String
+  minIncome         Decimal
+  maxIncome         Decimal?
+  rate              Decimal
+  flatAmount        Decimal           @default(0)
+  isActive          Boolean           @default(true)
+  effectiveDate     DateTime          @default(now())
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@map("tax_brackets")
+}
+
+model PayrollSettings {
+  id                String            @id @default(cuid())
+  setting           String            @unique
+  value             String
+  description       String?
+  updatedAt         DateTime          @updatedAt
+  
+  @@map("payroll_settings")
 }
 
 model PerformancePlan {
@@ -400,6 +761,26 @@ model AssetMaintenance {
   asset            Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
   
   @@map("asset_maintenance")
+}
+
+// Inventory Audit Model
+model InventoryAudit {
+  id             String         @id @default(cuid())
+  name           String
+  type           AuditType
+  status         AuditStatus    @default(PENDING)
+  scheduledDate  DateTime
+  completedDate  DateTime?
+  auditor        String
+  description    String?
+  findings       String?        // JSON string of findings array
+  recommendations String?       // JSON string of recommendations array
+  assets         String         // JSON string of asset IDs array
+  progress       Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  @@map("inventory_audits")
 }
 
 // =============================================
@@ -730,4 +1111,130 @@ enum FeedbackStatus {
   RESPONDED
   RESOLVED
   ARCHIVED
+}
+
+// =============================================
+// PAYROLL ENUMS
+// =============================================
+
+enum EmployeeLevel {
+  INTERN
+  JUNIOR
+  SENIOR
+  LEAD
+  MANAGER
+  DIRECTOR
+  EXECUTIVE
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+  SUSPENDED
+  ON_LEAVE
+}
+
+enum PayFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+enum PayrollType {
+  SALARY
+  HOURLY
+  CONTRACT
+  COMMISSION
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+  SEPARATED
+}
+
+enum PayrollStatus {
+  DRAFT
+  CALCULATED
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum PayrollRecordStatus {
+  DRAFT
+  CALCULATED
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum AllowanceCalculation {
+  FIXED
+  PERCENTAGE_OF_BASIC
+  PERCENTAGE_OF_GROSS
+  HOURS_BASED
+}
+
+enum DeductionCalculation {
+  FIXED
+  PERCENTAGE_OF_BASIC
+  PERCENTAGE_OF_GROSS
+  PERCENTAGE_OF_TAXABLE
+}
+
+enum TimeRecordStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  OVERTIME
+  HOLIDAY
+  SICK_LEAVE
+  PERSONAL_LEAVE
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AuditType {
+  FULL_INVENTORY
+  PARTIAL_INVENTORY
+  COMPLIANCE_AUDIT
+  FINANCIAL_AUDIT
+  SECURITY_AUDIT
+  QUALITY_AUDIT
+}
+
+enum AuditStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// =============================================
+// SYSTEM SETTINGS
+// =============================================
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String
+  category    String
+  valueType   String   @default("string") // string, number, boolean, json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
 }

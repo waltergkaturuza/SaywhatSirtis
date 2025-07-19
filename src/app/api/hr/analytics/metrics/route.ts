@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause for department filter
-    const whereClause: any = {}
+    const whereClause: Record<string, string> = {}
     if (department !== 'all') {
       whereClause.department = department
     }
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const totalTenure = employees.reduce((sum: number, emp: any) => {
+    const totalTenure = employees.reduce((sum: number, emp: { createdAt: Date }) => {
       const tenure = (now.getTime() - emp.createdAt.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
       return sum + tenure
     }, 0)

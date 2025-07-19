@@ -219,7 +219,7 @@ export default function UploadProgressPage() {
               </label>
               <input
                 type="text"
-                value={`${session?.user?.name} - ${session?.user?.role}`}
+                value={`${session?.user?.name} - ${session?.user?.roles?.[0] || 'User'}`}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
                 disabled
               />

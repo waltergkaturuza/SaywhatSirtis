@@ -12,8 +12,8 @@ import {
   CalendarIcon,
   MapPinIcon,
   UsersIcon,
-  TrendingUpIcon,
-  TrendingDownIcon
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon
 } from "@heroicons/react/24/outline"
 
 export default function ProjectReportsPage() {
@@ -277,9 +277,9 @@ export default function ProjectReportsPage() {
                 <h3 className="text-sm font-medium text-gray-900 truncate">{indicator.name}</h3>
                 <div className={`flex items-center ${indicator.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
                   {indicator.trend === 'up' ? (
-                    <TrendingUpIcon className="h-4 w-4" />
+                    <ArrowTrendingUpIcon className="h-4 w-4" />
                   ) : (
-                    <TrendingDownIcon className="h-4 w-4" />
+                    <ArrowTrendingDownIcon className="h-4 w-4" />
                   )}
                   <span className="text-xs ml-1">{indicator.change}%</span>
                 </div>

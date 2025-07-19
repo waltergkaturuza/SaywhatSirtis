@@ -14,6 +14,8 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { ModuleConfig } from "@/types/navigation"
+import { GlobalSearchTrigger } from "@/components/ui/global-search"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -56,26 +58,16 @@ export default function Header({ onMenuClick, currentModule }: HeaderProps) {
           {/* Flexible spacer */}
           <div className="flex-1" />
           
-          {/* Search - Center positioned */}
-          <form className="relative flex w-96 max-w-md" action="#" method="GET">
-            <label htmlFor="search-field" className="sr-only">
-              Search
-            </label>
-            <MagnifyingGlassIcon
-              className="pointer-events-none absolute inset-y-0 left-0 h-full w-5 text-gray-400 ml-3"
-              aria-hidden="true"
-            />
-            <input
-              id="search-field"
-              className="block h-full w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 sm:text-sm"
-              placeholder="Search documents, projects, people..."
-              type="search"
-              name="search"
-            />
-          </form>
+          {/* Global Search - Center positioned */}
+          <div className="flex items-center">
+            <GlobalSearchTrigger />
+          </div>
           
           {/* Right side controls */}
           <div className="flex items-center gap-x-4 lg:gap-x-6">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            
             <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 transition-colors">
               <span className="sr-only">View notifications</span>
               <BellIcon className="h-6 w-6" aria-hidden="true" />

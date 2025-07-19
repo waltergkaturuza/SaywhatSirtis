@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Mock data for departments - in production, use your actual database
-let departments = [
+const departments = [
   {
     id: '1',
     name: 'Human Resources',

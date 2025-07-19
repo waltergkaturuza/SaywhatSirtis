@@ -1,0 +1,299 @@
+// Render-optimized Prisma schema for PostgreSQL
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Assets Management
+model Asset {
+  id           String   @id @default(cuid())
+  name         String
+  category     AssetCategory
+  status       AssetStatus
+  location     String
+  value        Float
+  description  String?
+  serialNumber String?  @unique
+  purchaseDate DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String
+  
+  // Indexes for performance on Render PostgreSQL
+  @@index([category])
+  @@index([status])
+  @@index([location])
+  @@index([createdAt])
+  @@map("assets")
+}
+
+// Projects Management
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus
+  priority    Priority
+  startDate   DateTime
+  endDate     DateTime?
+  budget      Float?
+  location    String?
+  manager     String
+  team        String[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // Relations
+  tasks       Task[]
+  
+  @@index([status])
+  @@index([priority])
+  @@index([startDate])
+  @@map("projects")
+}
+
+// Task Management
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus
+  priority    Priority
+  assignedTo  String?
+  dueDate     DateTime?
+  projectId   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  // Relations
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTo])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+// HR Management
+model Employee {
+  id           String   @id @default(cuid())
+  employeeId   String   @unique
+  firstName    String
+  lastName     String
+  email        String   @unique
+  phone        String?
+  department   String
+  position     String
+  salary       Float?
+  hireDate     DateTime
+  status       EmployeeStatus
+  manager      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  attendances  Attendance[]
+  leaveRequests LeaveRequest[]
+  
+  @@index([department])
+  @@index([status])
+  @@index([manager])
+  @@map("employees")
+}
+
+// Time & Attendance
+model Attendance {
+  id         String   @id @default(cuid())
+  employeeId String
+  date       DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  hoursWorked Float?
+  status     AttendanceStatus
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  // Relations
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@unique([employeeId, date])
+  @@index([date])
+  @@index([status])
+  @@map("attendances")
+}
+
+// Leave Management
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  employeeId  String
+  type        LeaveType
+  startDate   DateTime
+  endDate     DateTime
+  days        Int
+  reason      String?
+  status      LeaveStatus
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate])
+  @@map("leave_requests")
+}
+
+// Inventory Management
+model InventoryItem {
+  id           String   @id @default(cuid())
+  name         String
+  sku          String   @unique
+  category     String
+  quantity     Int
+  minQuantity  Int
+  unit         String
+  location     String
+  supplier     String?
+  cost         Float?
+  lastUpdated  DateTime @default(now())
+  createdAt    DateTime @default(now())
+  
+  @@index([category])
+  @@index([quantity])
+  @@index([location])
+  @@map("inventory_items")
+}
+
+// Document Management
+model Document {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  fileName    String
+  fileSize    Int
+  mimeType    String
+  category    String
+  tags        String[]
+  uploadedBy  String
+  isPublic    Boolean      @default(false)
+  version     Int          @default(1)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  @@index([category])
+  @@index([uploadedBy])
+  @@index([isPublic])
+  @@map("documents")
+}
+
+// System Settings
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  category  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([category])
+  @@map("system_settings")
+}
+
+// Audit Trail
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  resource  String
+  resourceId String?
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Enums
+enum AssetCategory {
+  EQUIPMENT
+  VEHICLE
+  FURNITURE
+  TECHNOLOGY
+  BUILDING
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  DISPOSED
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+  ON_LEAVE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  REMOTE
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  MATERNITY
+  PATERNITY
+  EMERGENCY
+  UNPAID
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}

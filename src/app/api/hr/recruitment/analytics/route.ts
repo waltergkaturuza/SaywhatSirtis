@@ -35,14 +35,14 @@ export async function GET(request: NextRequest) {
     startDate.setDate(endDate.getDate() - parseInt(timeframe))
 
     // Build where clause for filtering
-    const jobsWhere: any = {
+    const jobsWhere: Record<string, unknown> = {
       createdAt: {
         gte: startDate,
         lte: endDate
       }
     }
-    const applicationsWhere: any = {
-      submittedDate: {
+    const applicationsWhere: Record<string, unknown> = {
+      appliedDate: {
         gte: startDate,
         lte: endDate
       }
@@ -80,10 +80,10 @@ export async function GET(request: NextRequest) {
       }),
       prisma.application.count({ where: applicationsWhere }),
       prisma.application.count({ 
-        where: { ...applicationsWhere, status: 'PENDING' }
+        where: { ...applicationsWhere, status: 'SUBMITTED' }
       }),
       prisma.application.count({ 
-        where: { ...applicationsWhere, status: 'REVIEWED' }
+        where: { ...applicationsWhere, status: 'REVIEWING' }
       }),
       prisma.application.count({ 
         where: { ...applicationsWhere, status: 'INTERVIEWED' }
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
       include: {
         applications: {
           where: {
-            submittedDate: {
+            appliedDate: {
               gte: startDate,
               lte: endDate
             }
@@ -155,9 +155,9 @@ export async function GET(request: NextRequest) {
 
     // Get time series data for applications (last 30 days)
     const applicationTimeSeries = await prisma.application.groupBy({
-      by: ['submittedDate'],
+      by: ['appliedDate'],
       where: {
-        submittedDate: {
+        appliedDate: {
           gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
           lte: new Date()
         },
@@ -171,13 +171,13 @@ export async function GET(request: NextRequest) {
         id: true
       },
       orderBy: {
-        submittedDate: 'asc'
+        appliedDate: 'asc'
       }
     })
 
     // Transform time series data to daily counts
     const dailyApplications = applicationTimeSeries.reduce((acc, item) => {
-      const date = item.submittedDate.toISOString().split('T')[0]
+      const date = item.appliedDate.toISOString().split('T')[0]
       acc[date] = (acc[date] || 0) + item._count.id
       return acc
     }, {} as Record<string, number>)
@@ -208,7 +208,7 @@ export async function GET(request: NextRequest) {
         id: job.id,
         title: job.title,
         department: job.department,
-        applications: job.applications.length,
+        applications: (job as any).applications?.length || 0,
         status: job.status.toLowerCase().replace('_', '-')
       })),
       timeSeriesData: {
