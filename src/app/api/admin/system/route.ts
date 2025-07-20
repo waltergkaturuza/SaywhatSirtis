@@ -225,7 +225,6 @@ export async function PUT(request: NextRequest) {
         userId: session.user.id,
         action: 'UPDATE_SYSTEM_SETTINGS',
         resource: 'SystemSettings',
-        newValues: { settingsCount: settings.length },
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown'
       }

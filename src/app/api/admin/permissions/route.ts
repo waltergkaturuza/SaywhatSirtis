@@ -160,7 +160,6 @@ export async function POST(request: NextRequest) {
         action: 'UPDATE_PERMISSIONS',
         resource: 'User',
         resourceId: userId,
-        details: { permissions },
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
