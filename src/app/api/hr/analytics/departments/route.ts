@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get performance data by department
-    const performanceByDept = await prisma.performanceAppraisal.groupBy({
+    const performanceByDept = await prisma.appraisal.groupBy({
       by: ['employeeId'],
       where: {
         createdAt: {
