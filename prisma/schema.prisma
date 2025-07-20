@@ -1,4 +1,4 @@
-// SIRTIS Database Schema
+// SIRTIS Database Schema - PostgreSQL Production Version
 // SAYWHAT Integrated Real-Time Information System
 
 generator client {
@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -18,92 +18,52 @@ model User {
   id                String              @id @default(cuid())
   email             String              @unique
   username          String?             @unique
-  firstName         String
-  lastName          String
-  phone             String?
-  profileImage      String?
-  department        String
-  position          String
-  employeeId        String?             @unique
+  password          String?
+  name              String?
+  image             String?
+  role              UserRole            @default(USER)
+  department        String?
+  position          String?
   isActive          Boolean             @default(true)
   lastLogin         DateTime?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
-  
-  // Authentication
-  hashedPassword    String
   emailVerified     DateTime?
-  biometricEnabled  Boolean             @default(false)
-  mfaEnabled        Boolean             @default(false)
-  mfaSecret         String?
   
-  // Role-based access control
-  roles             UserRole[]
-  permissions       UserPermission[]
-  
-  // Relationships
+  // Relations
   accounts          Account[]
   sessions          Session[]
-  performancePlans  PerformancePlan[]
-  performanceAppraisals PerformanceAppraisal[]
-  calls             Call[]
-  projects          ProjectAssignment[]
   auditLogs         AuditLog[]
-  employee          Employee?
+  callCentreRecords CallCentreRecord[]
+  projects          Project[]
+  documents         Document[]
+  notifications     Notification[]
   
+  // HR Relations
+  employeeProfile   Employee?
+  leaveRequests     LeaveRequest[]
+  appraisals        Appraisal[]
+  trainings         TrainingEnrollment[]
+  
+  // Inventory Relations
+  assetAssignments  AssetAssignment[]
+  inventoryAudits   InventoryAudit[]
+
   @@map("users")
 }
 
-model Role {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  permissions String      // JSON string of permission array
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relationships
-  userRoles   UserRole[]
-  
-  @@map("roles")
-}
-
-model UserRole {
-  id     String @id @default(cuid())
-  userId String
-  roleId String
-  
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  
-  @@unique([userId, roleId])
-  @@map("user_roles")
-}
-
-model UserPermission {
-  id         String @id @default(cuid())
-  userId     String
-  permission String
-  
-  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@unique([userId, permission])
-  @@map("user_permissions")
-}
-
-// NextAuth.js tables
 model Account {
   id                String  @id @default(cuid())
-  userId            String  @map("user_id")
+  userId            String
   type              String
   provider          String
-  providerAccountId String  @map("provider_account_id")
-  refresh_token     String?
-  access_token      String?
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -114,8 +74,8 @@ model Account {
 
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique @map("session_token")
-  userId       String   @map("user_id")
+  sessionToken String   @unique
+  userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -124,7 +84,7 @@ model Session {
 
 model VerificationToken {
   identifier String
-  token      String
+  token      String   @unique
   expires    DateTime
 
   @@unique([identifier, token])
@@ -132,592 +92,374 @@ model VerificationToken {
 }
 
 // =============================================
-// PROGRAMS MANAGEMENT
+// AUDIT & SYSTEM LOGS
+// =============================================
+
+model AuditLog {
+  id          String            @id @default(cuid())
+  userId      String?
+  action      String
+  resource    String
+  resourceId  String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime          @default(now())
+  severity    AuditLogSeverity  @default(INFO)
+  
+  user        User?             @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// =============================================
+// PROGRAMS & PROJECTS MANAGEMENT
 // =============================================
 
 model Project {
-  id               String              @id @default(cuid())
-  name             String
-  description      String?
-  timeframe        String
-  startDate        DateTime
-  endDate          DateTime
-  country          String
-  province         String?
-  objectives       String      // JSON string of objectives array
-  status           ProjectStatus       @default(PLANNING)
-  budget           Decimal?
-  actualSpent      Decimal?            @default(0)
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  id           String    @id @default(cuid())
+  name         String
+  description  String?   @db.Text
+  objectives   String?   @db.Text // JSON string
+  timeframe    String?
+  startDate    DateTime?
+  endDate      DateTime?
+  country      String?
+  province     String?
+  budget       Float?
+  actualSpent  Float?    @default(0)
+  status       ProjectStatus @default(PLANNING)
+  priority     ProjectPriority @default(MEDIUM)
+  progress     Float?    @default(0)
   
-  // Relationships
-  indicators       ProjectIndicator[]
-  assignments      ProjectAssignment[]
-  progressReports  ProjectProgress[]
-  documents        ProjectDocument[]
+  // Relations
+  managerId    String?
+  manager      User?     @relation(fields: [managerId], references: [id])
+  documents    Document[]
+  activities   ProjectActivity[]
+  reports      ProjectReport[]
   
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
   @@map("projects")
 }
 
-model ProjectIndicator {
-  id          String            @id @default(cuid())
+model ProjectActivity {
+  id          String    @id @default(cuid())
   projectId   String
-  name        String
-  target      String
-  measurement String
-  comment     String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  title       String
+  description String?   @db.Text
+  startDate   DateTime?
+  endDate     DateTime?
+  status      ActivityStatus @default(PENDING)
+  progress    Float?    @default(0)
   
-  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  progress    IndicatorProgress[]
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   
-  @@map("project_indicators")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("project_activities")
 }
 
-model IndicatorProgress {
-  id          String           @id @default(cuid())
-  indicatorId String
-  value       String
-  reportDate  DateTime
-  comment     String?
-  reportedBy  String
-  
-  indicator   ProjectIndicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
-  
-  @@map("indicator_progress")
-}
-
-model ProjectAssignment {
-  id        String   @id @default(cuid())
-  projectId String
-  userId    String
-  role      String   // M&E, CAM, Research Unit, etc.
-  createdAt DateTime @default(now())
-  
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@unique([projectId, userId])
-  @@map("project_assignments")
-}
-
-model ProjectProgress {
-  id          String   @id @default(cuid())
+model ProjectReport {
+  id          String    @id @default(cuid())
   projectId   String
-  reportDate  DateTime
-  narrative   String
-  challenges  String?
-  achievements String?
-  nextSteps   String?
-  reportedBy  String
-  createdAt   DateTime @default(now())
+  title       String
+  content     String    @db.Text
+  reportType  ReportType
+  period      String?
   
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   
-  @@map("project_progress")
-}
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-model ProjectDocument {
-  id          String      @id @default(cuid())
-  projectId   String
-  fileName    String
-  fileSize    Int
-  fileType    String
-  filePath    String
-  uploadedBy  String
-  uploadedAt  DateTime    @default(now())
-  
-  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  @@map("project_documents")
+  @@map("project_reports")
 }
 
 // =============================================
 // CALL CENTRE MANAGEMENT
 // =============================================
 
-model Call {
-  id               String            @id @default(cuid())
-  callNumber       String            @unique
-  officerId        String
-  callerPhone      String
-  callerName       String?
-  callerAge        AgeGroup?
-  gender           Gender?
-  province         Province?
-  address          String?
-  language         Language?
+model CallCentreRecord {
+  id              String            @id @default(cuid())
+  callerName      String?
+  callerPhone     String?
+  callerEmail     String?
+  callType        CallType
+  priority        CallPriority      @default(MEDIUM)
+  subject         String
+  description     String            @db.Text
+  status          CallStatus        @default(OPEN)
+  assignedTo      String?
+  resolution      String?           @db.Text
+  satisfactionRating Int?
   
-  // Call details
-  mode             CommunicationMode
-  howHeardAboutUs  String?
-  isValid          Boolean           @default(true)
-  isRepeatCall     Boolean           @default(false)
-  callDescription  String
-  purpose          CallPurpose
+  // Relations
+  assignedUser    User?             @relation(fields: [assignedTo], references: [id])
+  followUps       CallFollowUp[]
+  attachments     CallAttachment[]
   
-  // Case management
-  isCase           Boolean           @default(false)
-  caseNumber       String?           @unique
-  perpetrator      String?
-  servicesRecommended String?
-  referral         String?
-  clientName       String?
-  clientAge        String?
-  clientSex        String?
-  comment          String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  resolvedAt      DateTime?
+
+  @@map("call_centre_records")
+}
+
+model CallFollowUp {
+  id        String            @id @default(cuid())
+  callId    String
+  notes     String            @db.Text
+  actionTaken String?
   
-  // Status and dates
-  status           CallStatus        @default(OPEN)
-  dueDate          DateTime?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  call      CallCentreRecord  @relation(fields: [callId], references: [id], onDelete: Cascade)
   
-  officer          User              @relation(fields: [officerId], references: [id])
+  createdAt DateTime          @default(now())
+
+  @@map("call_follow_ups")
+}
+
+model CallAttachment {
+  id        String            @id @default(cuid())
+  callId    String
+  fileName  String
+  filePath  String
+  fileSize  Int?
+  mimeType  String?
   
-  @@map("calls")
+  call      CallCentreRecord  @relation(fields: [callId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime          @default(now())
+
+  @@map("call_attachments")
 }
 
 // =============================================
-// HUMAN RESOURCES MANAGEMENT
+// DOCUMENT MANAGEMENT
 // =============================================
 
-model Department {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Document {
+  id          String       @id @default(cuid())
+  title       String
+  fileName    String
+  filePath    String
+  fileSize    Int?
+  mimeType    String?
+  category    DocumentCategory
+  tags        String?      // JSON array of tags
+  description String?      @db.Text
+  version     String?      @default("1.0")
+  isPublic    Boolean      @default(false)
   
-  // Relationships
-  employees   Employee[]
+  // Relations
+  uploadedBy  String?
+  uploader    User?        @relation(fields: [uploadedBy], references: [id])
+  projectId   String?
+  project     Project?     @relation(fields: [projectId], references: [id])
   
-  @@map("departments")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("documents")
 }
 
 // =============================================
-// PAYROLL MANAGEMENT SYSTEM
+// HR MANAGEMENT
 // =============================================
 
 model Employee {
-  id                String            @id @default(cuid())
-  employeeId        String            @unique
-  userId            String?           @unique
-  firstName         String
-  lastName          String
-  middleName        String?
-  email             String            @unique
-  phone             String?
-  dateOfBirth       DateTime?
-  hireDate          DateTime
-  terminationDate   DateTime?
+  id              String          @id @default(cuid())
+  userId          String          @unique
+  employeeId      String          @unique
+  firstName       String
+  lastName        String
+  middleName      String?
+  dateOfBirth     DateTime?
+  gender          Gender?
+  nationality     String?
+  nationalId      String?         @unique
+  passportNumber  String?
+  
+  // Contact Information
+  email           String          @unique
+  phone           String?
+  alternativePhone String?
+  address         String?         @db.Text
+  emergencyContact String?
+  emergencyPhone  String?
   
   // Employment Details
-  departmentId      String
-  position          String
-  level             EmployeeLevel     @default(JUNIOR)
-  status            EmployeeStatus    @default(ACTIVE)
-  payGrade          String?
-  reportingTo       String?
+  department      String?
+  position        String
+  employmentType  EmploymentType  @default(FULL_TIME)
+  startDate       DateTime
+  endDate         DateTime?
+  salary          Float?
+  currency        String?         @default("USD")
+  status          EmployeeStatus  @default(ACTIVE)
   
-  // Compensation
-  basicSalary       Decimal
-  currency          String            @default("NGN")
-  payFrequency      PayFrequency      @default(MONTHLY)
-  payrollType       PayrollType       @default(SALARY)
-  overtimeRate      Decimal?
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveRequests   LeaveRequest[]
+  appraisals      Appraisal[]
+  trainings       TrainingEnrollment[]
+  payrollRecords  PayrollRecord[]
+  attendanceRecords AttendanceRecord[]
   
-  // Personal Details
-  address           String?
-  city              String?
-  state             String?
-  postalCode        String?
-  country           String            @default("Nigeria")
-  maritalStatus     MaritalStatus?
-  gender            Gender?
-  
-  // Banking Information
-  bankName          String?
-  bankAccountNumber String?
-  bankAccountName   String?
-  bankCode          String?
-  
-  // Tax Information
-  taxId             String?
-  taxExemption      Boolean           @default(false)
-  taxRate           Decimal?
-  
-  // Timestamps
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
-  // Relationships
-  department        Department        @relation(fields: [departmentId], references: [id])
-  user              User?             @relation(fields: [userId], references: [id])
-  payrollRecords    PayrollRecord[]
-  payslips          Payslip[]
-  allowances        EmployeeAllowance[]
-  deductions        EmployeeDeduction[]
-  timeRecords       TimeRecord[]
-  leaveRecords      LeaveRecord[]
-  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
   @@map("employees")
 }
 
-model PayrollPeriod {
-  id                String            @id @default(cuid())
-  name              String
-  startDate         DateTime
-  endDate           DateTime
-  payDate           DateTime
-  status            PayrollStatus     @default(DRAFT)
-  totalEmployees    Int               @default(0)
-  totalGrossPay     Decimal           @default(0)
-  totalNetPay       Decimal           @default(0)
-  totalDeductions   Decimal           @default(0)
-  totalTax          Decimal           @default(0)
-  processedBy       String?
-  processedAt       DateTime?
-  approvedBy        String?
-  approvedAt        DateTime?
-  paidBy            String?
-  paidAt            DateTime?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+model Department {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?   @db.Text
+  managerId   String?
+  budget      Float?
+  isActive    Boolean   @default(true)
   
-  // Relationships
-  payrollRecords    PayrollRecord[]
-  payslips          Payslip[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("departments")
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  employeeId  String
+  userId      String
+  leaveType   LeaveType
+  startDate   DateTime
+  endDate     DateTime
+  days        Int
+  reason      String?     @db.Text
+  status      LeaveStatus @default(PENDING)
+  approvedBy  String?
+  approvedAt  DateTime?
+  comments    String?     @db.Text
   
-  @@map("payroll_periods")
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("leave_requests")
+}
+
+model Appraisal {
+  id              String          @id @default(cuid())
+  employeeId      String
+  userId          String
+  reviewPeriod    String
+  overallRating   Float?
+  goals           String?         @db.Text
+  achievements    String?         @db.Text
+  areasImprovement String?        @db.Text
+  nextPeriodGoals String?         @db.Text
+  status          AppraisalStatus @default(DRAFT)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  
+  employee        Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id])
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("appraisals")
+}
+
+model Training {
+  id              String              @id @default(cuid())
+  title           String
+  description     String?             @db.Text
+  category        TrainingCategory
+  duration        Int?                // Duration in hours
+  maxParticipants Int?
+  startDate       DateTime?
+  endDate         DateTime?
+  instructor      String?
+  location        String?
+  isOnline        Boolean             @default(false)
+  status          TrainingStatus      @default(PLANNED)
+  
+  enrollments     TrainingEnrollment[]
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@map("trainings")
+}
+
+model TrainingEnrollment {
+  id              String              @id @default(cuid())
+  trainingId      String
+  employeeId      String
+  userId          String
+  enrollmentDate  DateTime            @default(now())
+  completionDate  DateTime?
+  status          EnrollmentStatus    @default(ENROLLED)
+  score           Float?
+  certificateIssued Boolean           @default(false)
+  
+  training        Training            @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  user            User                @relation(fields: [userId], references: [id])
+  
+  @@unique([trainingId, employeeId])
+  @@map("training_enrollments")
 }
 
 model PayrollRecord {
-  id                String            @id @default(cuid())
-  employeeId        String
-  periodId          String
+  id              String      @id @default(cuid())
+  employeeId      String
+  payPeriod       String      // e.g., "2024-01"
+  basicSalary     Float
+  allowances      Float?      @default(0)
+  deductions      Float?      @default(0)
+  overtime        Float?      @default(0)
+  bonus           Float?      @default(0)
+  grossPay        Float
+  tax             Float?      @default(0)
+  netPay          Float
+  currency        String      @default("USD")
+  status          PayrollStatus @default(DRAFT)
+  paidAt          DateTime?
   
-  // Salary Components
-  basicSalary       Decimal
-  overtimeHours     Decimal           @default(0)
-  overtimePay       Decimal           @default(0)
-  totalAllowances   Decimal           @default(0)
-  totalDeductions   Decimal           @default(0)
-  grossPay          Decimal
+  employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   
-  // Tax Calculations
-  taxableIncome     Decimal
-  incomeTax         Decimal           @default(0)
-  
-  // Statutory Deductions
-  pensionDeduction  Decimal           @default(0)
-  nhisDeduction     Decimal           @default(0)
-  nsitfDeduction    Decimal           @default(0)
-  
-  // Net Pay
-  netPay            Decimal
-  
-  // Status
-  status            PayrollRecordStatus @default(DRAFT)
-  calculatedAt      DateTime?
-  approvedAt        DateTime?
-  paidAt            DateTime?
-  
-  // Timestamps
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
-  // Relationships
-  employee          Employee          @relation(fields: [employeeId], references: [id])
-  period            PayrollPeriod     @relation(fields: [periodId], references: [id])
-  payslip           Payslip?
-  allowances        PayrollAllowance[]
-  deductions        PayrollDeduction[]
-  
-  @@unique([employeeId, periodId])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([employeeId, payPeriod])
   @@map("payroll_records")
 }
 
-model Payslip {
-  id                String            @id @default(cuid())
-  employeeId        String
-  periodId          String
-  payrollRecordId   String            @unique
+model AttendanceRecord {
+  id          String          @id @default(cuid())
+  employeeId  String
+  date        DateTime        @db.Date
+  checkIn     DateTime?
+  checkOut    DateTime?
+  breakStart  DateTime?
+  breakEnd    DateTime?
+  hoursWorked Float?
+  status      AttendanceStatus @default(PRESENT)
+  notes       String?
   
-  // Payslip Details
-  payslipNumber     String            @unique
-  generatedAt       DateTime          @default(now())
-  emailSent         Boolean           @default(false)
-  emailSentAt       DateTime?
-  downloadCount     Int               @default(0)
+  employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   
-  // File Information
-  fileName          String?
-  filePath          String?
-  fileSize          Int?
-  
-  // Relationships
-  employee          Employee          @relation(fields: [employeeId], references: [id])
-  period            PayrollPeriod     @relation(fields: [periodId], references: [id])
-  payrollRecord     PayrollRecord     @relation(fields: [payrollRecordId], references: [id])
-  
-  @@map("payslips")
-}
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
-model AllowanceType {
-  id                String              @id @default(cuid())
-  name              String              @unique
-  description       String?
-  isActive          Boolean             @default(true)
-  isTaxable         Boolean             @default(true)
-  calculation       AllowanceCalculation @default(FIXED)
-  defaultAmount     Decimal?
-  percentage        Decimal?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
-  // Relationships
-  employeeAllowances EmployeeAllowance[]
-  payrollAllowances  PayrollAllowance[]
-  
-  @@map("allowance_types")
-}
-
-model EmployeeAllowance {
-  id                String            @id @default(cuid())
-  employeeId        String
-  allowanceTypeId   String
-  amount            Decimal
-  isActive          Boolean           @default(true)
-  effectiveDate     DateTime          @default(now())
-  endDate           DateTime?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
-  // Relationships
-  employee          Employee          @relation(fields: [employeeId], references: [id])
-  allowanceType     AllowanceType     @relation(fields: [allowanceTypeId], references: [id])
-  
-  @@unique([employeeId, allowanceTypeId])
-  @@map("employee_allowances")
-}
-
-model PayrollAllowance {
-  id                String            @id @default(cuid())
-  payrollRecordId   String
-  allowanceTypeId   String
-  amount            Decimal
-  
-  // Relationships
-  payrollRecord     PayrollRecord     @relation(fields: [payrollRecordId], references: [id])
-  allowanceType     AllowanceType     @relation(fields: [allowanceTypeId], references: [id])
-  
-  @@map("payroll_allowances")
-}
-
-model DeductionType {
-  id                String              @id @default(cuid())
-  name              String              @unique
-  description       String?
-  isActive          Boolean             @default(true)
-  isStatutory       Boolean             @default(false)
-  calculation       DeductionCalculation @default(FIXED)
-  defaultAmount     Decimal?
-  percentage        Decimal?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
-  // Relationships
-  employeeDeductions EmployeeDeduction[]
-  payrollDeductions  PayrollDeduction[]
-  
-  @@map("deduction_types")
-}
-
-model EmployeeDeduction {
-  id                String            @id @default(cuid())
-  employeeId        String
-  deductionTypeId   String
-  amount            Decimal
-  isActive          Boolean           @default(true)
-  effectiveDate     DateTime          @default(now())
-  endDate           DateTime?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
-  // Relationships
-  employee          Employee          @relation(fields: [employeeId], references: [id])
-  deductionType     DeductionType     @relation(fields: [deductionTypeId], references: [id])
-  
-  @@unique([employeeId, deductionTypeId])
-  @@map("employee_deductions")
-}
-
-model PayrollDeduction {
-  id                String            @id @default(cuid())
-  payrollRecordId   String
-  deductionTypeId   String
-  amount            Decimal
-  
-  // Relationships
-  payrollRecord     PayrollRecord     @relation(fields: [payrollRecordId], references: [id])
-  deductionType     DeductionType     @relation(fields: [deductionTypeId], references: [id])
-  
-  @@map("payroll_deductions")
-}
-
-model TimeRecord {
-  id                String            @id @default(cuid())
-  employeeId        String
-  date              DateTime
-  clockIn           DateTime?
-  clockOut          DateTime?
-  breakStart        DateTime?
-  breakEnd          DateTime?
-  regularHours      Decimal           @default(0)
-  overtimeHours     Decimal           @default(0)
-  totalHours        Decimal           @default(0)
-  status            TimeRecordStatus  @default(PRESENT)
-  notes             String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
-  // Relationships
-  employee          Employee          @relation(fields: [employeeId], references: [id])
-  
   @@unique([employeeId, date])
-  @@map("time_records")
-}
-
-model LeaveType {
-  id                String            @id @default(cuid())
-  name              String            @unique
-  description       String?
-  maxDays           Int?
-  isActive          Boolean           @default(true)
-  requiresApproval  Boolean           @default(true)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
-  // Relationships
-  leaveRecords      LeaveRecord[]
-  
-  @@map("leave_types")
-}
-
-model LeaveRecord {
-  id                String            @id @default(cuid())
-  employeeId        String
-  leaveTypeId       String
-  startDate         DateTime
-  endDate           DateTime
-  days              Int
-  reason            String?
-  status            LeaveStatus       @default(PENDING)
-  appliedAt         DateTime          @default(now())
-  approvedBy        String?
-  approvedAt        DateTime?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
-  // Relationships
-  employee          Employee          @relation(fields: [employeeId], references: [id])
-  leaveType         LeaveType         @relation(fields: [leaveTypeId], references: [id])
-  
-  @@map("leave_records")
-}
-
-model TaxBracket {
-  id                String            @id @default(cuid())
-  name              String
-  minIncome         Decimal
-  maxIncome         Decimal?
-  rate              Decimal
-  flatAmount        Decimal           @default(0)
-  isActive          Boolean           @default(true)
-  effectiveDate     DateTime          @default(now())
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
-  @@map("tax_brackets")
-}
-
-model PayrollSettings {
-  id                String            @id @default(cuid())
-  setting           String            @unique
-  value             String
-  description       String?
-  updatedAt         DateTime          @updatedAt
-  
-  @@map("payroll_settings")
-}
-
-model PerformancePlan {
-  id               String              @id @default(cuid())
-  employeeId       String
-  year             Int
-  keyDeliverables  PerformanceDeliverable[]
-  status           PlanStatus          @default(DRAFT)
-  submittedAt      DateTime?
-  approvedAt       DateTime?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
-  
-  employee         User                @relation(fields: [employeeId], references: [id])
-  appraisals       PerformanceAppraisal[]
-  
-  @@unique([employeeId, year])
-  @@map("performance_plans")
-}
-
-model PerformanceDeliverable {
-  id               String           @id @default(cuid())
-  planId           String
-  keyDeliverable   String
-  activity         String
-  timeline         String
-  successIndicator String
-  supportDepartment String?
-  
-  plan             PerformancePlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
-  progress         DeliverableProgress[]
-  
-  @@map("performance_deliverables")
-}
-
-model DeliverableProgress {
-  id             String                @id @default(cuid())
-  deliverableId  String
-  progress       String
-  updateDate     DateTime
-  comment        String?
-  
-  deliverable    PerformanceDeliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
-  
-  @@map("deliverable_progress")
-}
-
-model PerformanceAppraisal {
-  id               String          @id @default(cuid())
-  planId           String
-  employeeId       String
-  period           String          // Q1, Q2, Q3, Annual
-  overallRating    Rating?
-  strengths        String?
-  areasImprovement String?
-  goals            String?
-  status           AppraisalStatus @default(PENDING)
-  submittedAt      DateTime?
-  reviewedAt       DateTime?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  
-  plan             PerformancePlan @relation(fields: [planId], references: [id])
-  employee         User            @relation(fields: [employeeId], references: [id])
-  
-  @@map("performance_appraisals")
+  @@map("attendance_records")
 }
 
 // =============================================
@@ -725,220 +467,148 @@ model PerformanceAppraisal {
 // =============================================
 
 model Asset {
-  id               String        @id @default(cuid())
-  assetNumber      String        @unique
-  assetType        String
-  name             String
-  model            String?
-  procurementValue Decimal
-  depreciationRate Decimal       @default(0)
-  currentValue     Decimal
-  allocation       String
-  location         String
-  condition        AssetCondition @default(GOOD)
-  status           AssetStatus   @default(ACTIVE)
-  procurementDate  DateTime
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id              String            @id @default(cuid())
+  assetTag        String            @unique
+  name            String
+  description     String?           @db.Text
+  category        AssetCategory
+  brand           String?
+  model           String?
+  serialNumber    String?           @unique
+  purchaseDate    DateTime?
+  purchasePrice   Float?
+  currentValue    Float?
+  location        String?
+  condition       AssetCondition    @default(GOOD)
+  status          AssetStatus       @default(ACTIVE)
+  warrantyExpiry  DateTime?
   
-  maintenances     AssetMaintenance[]
+  // Relations
+  assignments     AssetAssignment[]
+  maintenanceRecords MaintenanceRecord[]
+  auditRecords    InventoryAudit[]
   
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
   @@map("assets")
 }
 
-model AssetMaintenance {
-  id               String            @id @default(cuid())
-  assetId          String
-  maintenanceType  MaintenanceType
-  description      String
-  cost             Decimal?
-  scheduledDate    DateTime
-  completedDate    DateTime?
-  performedBy      String?
-  status           MaintenanceStatus @default(SCHEDULED)
-  createdAt        DateTime          @default(now())
+model AssetAssignment {
+  id          String          @id @default(cuid())
+  assetId     String
+  userId      String
+  assignedAt  DateTime        @default(now())
+  returnedAt  DateTime?
+  condition   AssetCondition?
+  notes       String?         @db.Text
   
-  asset            Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset       Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id])
   
-  @@map("asset_maintenance")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("asset_assignments")
 }
 
-// Inventory Audit Model
-model InventoryAudit {
-  id             String         @id @default(cuid())
-  name           String
-  type           AuditType
-  status         AuditStatus    @default(PENDING)
-  scheduledDate  DateTime
-  completedDate  DateTime?
-  auditor        String
-  description    String?
-  findings       String?        // JSON string of findings array
-  recommendations String?       // JSON string of recommendations array
-  assets         String         // JSON string of asset IDs array
-  progress       Int            @default(0)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+model MaintenanceRecord {
+  id              String            @id @default(cuid())
+  assetId         String
+  maintenanceType MaintenanceType
+  description     String            @db.Text
+  cost            Float?
+  scheduledDate   DateTime?
+  completedDate   DateTime?
+  technician      String?
+  status          MaintenanceStatus @default(SCHEDULED)
+  notes           String?           @db.Text
   
+  asset           Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("maintenance_records")
+}
+
+model InventoryAudit {
+  id          String        @id @default(cuid())
+  auditDate   DateTime      @default(now())
+  auditedBy   String
+  assetId     String?
+  findings    String?       @db.Text
+  status      AuditStatus   @default(PENDING)
+  
+  auditor     User          @relation(fields: [auditedBy], references: [id])
+  asset       Asset?        @relation(fields: [assetId], references: [id])
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
   @@map("inventory_audits")
 }
 
 // =============================================
-// DOCUMENT REPOSITORY
+// NOTIFICATIONS & COMMUNICATION
 // =============================================
 
-model Document {
-  id               String       @id @default(cuid())
-  title            String
-  fileName         String
-  fileSize         Int
-  fileType         String
-  filePath         String
-  category         DocumentCategory
-  description      String?
-  tags             String         // JSON string array
-  keywords         String         // AI-generated keywords as JSON string array
-  summary          String?      // AI-generated summary
-  uploadedBy       String
-  isPublic         Boolean      @default(false)
-  downloadCount    Int          @default(0)
-  uploadedAt       DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+model Notification {
+  id          String             @id @default(cuid())
+  userId      String
+  title       String
+  message     String             @db.Text
+  type        NotificationType   @default(INFO)
+  isRead      Boolean            @default(false)
+  actionUrl   String?
   
-  @@map("documents")
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("notifications")
 }
 
 // =============================================
-// FEEDBACK & SENTIMENT ANALYSIS
+// SYSTEM SETTINGS
 // =============================================
 
-model Feedback {
-  id               String         @id @default(cuid())
-  source           FeedbackSource
-  content          String
-  sentiment        SentimentType?
-  sentimentScore   Float?
-  category         String?
-  isAnonymous      Boolean        @default(false)
-  contactInfo      String?
-  status           FeedbackStatus @default(PENDING)
-  response         String?
-  respondedBy      String?
-  respondedAt      DateTime?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+model SystemSetting {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  value       String    @db.Text
+  description String?   @db.Text
+  category    String?
+  isPublic    Boolean   @default(false)
   
-  @@map("feedback")
-}
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-// =============================================
-// SYSTEM AUDIT & LOGGING
-// =============================================
-
-model AuditLog {
-  id           String    @id @default(cuid())
-  userId       String?
-  action       String
-  resource     String
-  resourceId   String?
-  oldValues    Json?
-  newValues    Json?
-  ipAddress    String?
-  userAgent    String?
-  timestamp    DateTime  @default(now())
-  
-  user         User?     @relation(fields: [userId], references: [id])
-  
-  @@map("audit_logs")
-}
-
-// =============================================
-// RECRUITMENT MANAGEMENT
-// =============================================
-
-model JobPosting {
-  id               String           @id @default(cuid())
-  title            String
-  department       String
-  location         String
-  type             JobType          @default(FULL_TIME)
-  level            JobLevel         @default(MID)
-  status           JobStatus        @default(DRAFT)
-  description      String?
-  requirements     String           // JSON string of requirements array
-  responsibilities String           // JSON string of responsibilities array
-  salaryMin        Decimal?
-  salaryMax        Decimal?
-  currency         String           @default("USD")
-  benefits         String           // JSON string of benefits array
-  applicationCount Int              @default(0)
-  postedDate       DateTime?
-  closingDate      DateTime?
-  createdBy        String
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  
-  // Relationships
-  applications     Application[]
-  
-  @@map("job_postings")
-}
-
-model Application {
-  id              String             @id @default(cuid())
-  jobId           String
-  candidateName   String
-  email           String
-  phone           String?
-  status          ApplicationStatus  @default(SUBMITTED)
-  resumeUrl       String?
-  coverLetter     String?
-  appliedDate     DateTime           @default(now())
-  lastUpdated     DateTime           @updatedAt
-  notes           String?
-  score           Int?
-  
-  // Relationships
-  job             JobPosting         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  @@map("applications")
-}
-
-// Recruitment Enums
-enum JobType {
-  FULL_TIME
-  PART_TIME
-  CONTRACT
-  TEMPORARY
-}
-
-enum JobLevel {
-  ENTRY
-  MID
-  SENIOR
-  EXECUTIVE
-}
-
-enum JobStatus {
-  DRAFT
-  ACTIVE
-  CLOSED
-  ON_HOLD
-}
-
-enum ApplicationStatus {
-  SUBMITTED
-  REVIEWING
-  SHORTLISTED
-  INTERVIEWED
-  OFFERED
-  HIRED
-  REJECTED
+  @@map("system_settings")
 }
 
 // =============================================
 // ENUMS
 // =============================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  HR_MANAGER
+  PROJECT_MANAGER
+  CALL_CENTRE_AGENT
+  EMPLOYEE
+  USER
+}
+
+enum AuditLogSeverity {
+  LOW
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
 
 enum ProjectStatus {
   PLANNING
@@ -948,103 +618,155 @@ enum ProjectStatus {
   CANCELLED
 }
 
-enum Gender {
-  MALE
-  FEMALE
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ActivityStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  CUSTOM
+}
+
+enum CallType {
+  INQUIRY
+  COMPLAINT
+  REQUEST
+  EMERGENCY
+  FEEDBACK
   OTHER
-  NA
 }
 
-enum Province {
-  HARARE
-  BULAWAYO
-  MANICALAND
-  MASHONALAND_CENTRAL
-  MASHONALAND_EAST
-  MASHONALAND_WEST
-  MASVINGO
-  MATABELELAND_NORTH
-  MATABELELAND_SOUTH
-  MIDLANDS
-  NA
-}
-
-enum AgeGroup {
-  UNDER_14
-  FIFTEEN_TO_19
-  TWENTY_TO_24
-  TWENTY_FIVE_PLUS
-}
-
-enum Language {
-  SHONA
-  ENGLISH
-  NDEBELE
-  NA
-}
-
-enum CommunicationMode {
-  INBOUND
-  OUTBOUND
-  WHATSAPP
-  WALK_IN
-  TEXT
-}
-
-enum CallPurpose {
-  ARV_THERAPY
-  CANCER_SCREENING
-  CHILD_PROTECTION
-  CONTRACEPTION
-  DSA
-  DROPPED_CALL
-  GBV
-  HIV
-  INFO_COUNSELLING
-  LEGAL_ASSISTANCE
-  MEDICAL_ASSISTANCE
-  MHM
-  MENTAL_HEALTH
-  PRANK_CALL
-  PREP_PEP
-  PRE_POST_NATAL_CARE
-  RELATIONSHIP_ISSUES
-  REPRODUCTIVE_DISORDERS
-  PAC
-  STIS
-  SEXUAL_HARASSMENT
-  TB
-  TEST_CALL
-  OTHER
+enum CallPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum CallStatus {
   OPEN
   IN_PROGRESS
-  PENDING
+  RESOLVED
   CLOSED
-  OVERDUE
+  ESCALATED
 }
 
-enum PlanStatus {
-  DRAFT
-  SUBMITTED
+enum DocumentCategory {
+  PROJECT
+  HR
+  FINANCE
+  LEGAL
+  TRAINING
+  POLICY
+  REPORT
+  OTHER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+  CONSULTANT
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+  ON_LEAVE
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  MATERNITY
+  PATERNITY
+  EMERGENCY
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
   APPROVED
   REJECTED
+  CANCELLED
 }
 
 enum AppraisalStatus {
-  PENDING
-  IN_REVIEW
+  DRAFT
+  SUBMITTED
+  REVIEWED
   COMPLETED
-  OVERDUE
 }
 
-enum Rating {
-  EXCELLENT
-  SATISFACTORY
-  NEEDS_IMPROVEMENT
-  UNSATISFACTORY
+enum TrainingCategory {
+  TECHNICAL
+  SOFT_SKILLS
+  COMPLIANCE
+  LEADERSHIP
+  SAFETY
+  OTHER
+}
+
+enum TrainingStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  DROPPED
+  FAILED
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  HOLIDAY
+  LEAVE
+}
+
+enum AssetCategory {
+  COMPUTER
+  FURNITURE
+  VEHICLE
+  EQUIPMENT
+  SOFTWARE
+  OTHER
 }
 
 enum AssetCondition {
@@ -1058,8 +780,9 @@ enum AssetCondition {
 enum AssetStatus {
   ACTIVE
   INACTIVE
+  MAINTENANCE
   DISPOSED
-  UNDER_MAINTENANCE
+  LOST
 }
 
 enum MaintenanceType {
@@ -1076,165 +799,16 @@ enum MaintenanceStatus {
   CANCELLED
 }
 
-enum DocumentCategory {
-  FLAGSHIP_EVENTS
-  DONOR_REPORTS
-  ANNUAL_REPORTS
-  POLICIES
-  NEWSLETTERS
-  RESEARCH_BOOKS
-  RESEARCH_PAPERS
-  PROJECT_PROPOSALS
-  FINANCIAL_REPORTS
-  AUDIT_REPORTS
-  OTHER
-}
-
-enum FeedbackSource {
-  SURVEY
-  SOCIAL_MEDIA
-  WHATSAPP
-  SUGGESTION_BOX
-  GRIEVANCE
-  OTHER
-}
-
-enum SentimentType {
-  POSITIVE
-  NEGATIVE
-  NEUTRAL
-}
-
-enum FeedbackStatus {
-  PENDING
-  REVIEWED
-  RESPONDED
-  RESOLVED
-  ARCHIVED
-}
-
-// =============================================
-// PAYROLL ENUMS
-// =============================================
-
-enum EmployeeLevel {
-  INTERN
-  JUNIOR
-  SENIOR
-  LEAD
-  MANAGER
-  DIRECTOR
-  EXECUTIVE
-}
-
-enum EmployeeStatus {
-  ACTIVE
-  INACTIVE
-  TERMINATED
-  SUSPENDED
-  ON_LEAVE
-}
-
-enum PayFrequency {
-  WEEKLY
-  BIWEEKLY
-  MONTHLY
-  QUARTERLY
-  ANNUALLY
-}
-
-enum PayrollType {
-  SALARY
-  HOURLY
-  CONTRACT
-  COMMISSION
-}
-
-enum MaritalStatus {
-  SINGLE
-  MARRIED
-  DIVORCED
-  WIDOWED
-  SEPARATED
-}
-
-enum PayrollStatus {
-  DRAFT
-  CALCULATED
-  APPROVED
-  PAID
-  CANCELLED
-}
-
-enum PayrollRecordStatus {
-  DRAFT
-  CALCULATED
-  APPROVED
-  PAID
-  CANCELLED
-}
-
-enum AllowanceCalculation {
-  FIXED
-  PERCENTAGE_OF_BASIC
-  PERCENTAGE_OF_GROSS
-  HOURS_BASED
-}
-
-enum DeductionCalculation {
-  FIXED
-  PERCENTAGE_OF_BASIC
-  PERCENTAGE_OF_GROSS
-  PERCENTAGE_OF_TAXABLE
-}
-
-enum TimeRecordStatus {
-  PRESENT
-  ABSENT
-  LATE
-  HALF_DAY
-  OVERTIME
-  HOLIDAY
-  SICK_LEAVE
-  PERSONAL_LEAVE
-}
-
-enum LeaveStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
-}
-
-enum AuditType {
-  FULL_INVENTORY
-  PARTIAL_INVENTORY
-  COMPLIANCE_AUDIT
-  FINANCIAL_AUDIT
-  SECURITY_AUDIT
-  QUALITY_AUDIT
-}
-
 enum AuditStatus {
   PENDING
   IN_PROGRESS
   COMPLETED
-  CANCELLED
 }
 
-// =============================================
-// SYSTEM SETTINGS
-// =============================================
-
-model SystemSetting {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  value       String
-  description String
-  category    String
-  valueType   String   @default("string") // string, number, boolean, json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("system_settings")
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  REMINDER
 }
