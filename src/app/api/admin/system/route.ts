@@ -202,8 +202,7 @@ export async function PUT(request: NextRequest) {
           data: {
             value: setting.value,
             description: setting.description,
-            category: setting.category,
-            valueType: setting.type || 'string'
+            category: setting.category
           }
         })
       } else {
@@ -212,8 +211,7 @@ export async function PUT(request: NextRequest) {
             key: setting.key,
             value: setting.value,
             description: setting.description,
-            category: setting.category,
-            valueType: setting.type || 'string'
+            category: setting.category
           }
         })
       }
