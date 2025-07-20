@@ -145,8 +145,7 @@ export async function GET(request: NextRequest) {
           key: setting.key,
           value: setting.value,
           description: setting.description,
-          category: setting.category,
-          valueType: setting.type
+          category: setting.category
         }))
       })
 
@@ -280,7 +279,6 @@ export async function POST(request: NextRequest) {
         action: 'CREATE_SYSTEM_SETTING',
         resource: 'SystemSetting',
         resourceId: setting.id,
-        newValues: { key, value, description, category, type },
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
