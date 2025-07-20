@@ -144,17 +144,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update user permissions by deleting existing and creating new ones
-    await prisma.userPermission.deleteMany({
-      where: { userId: userId }
-    })
-
+    // Update user role instead of permissions (RBAC system)
     if (permissions.length > 0) {
-      await prisma.userPermission.createMany({
-        data: permissions.map((permission: string) => ({
-          userId: userId,
-          permission: permission
-        }))
+      const newRole = permissions[0] as any // Use first permission as role
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: newRole }
       })
     }
 
