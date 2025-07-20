@@ -14,7 +14,10 @@
     "db:seed": "tsx prisma/seed.ts",
     "render:build": "npm ci --legacy-peer-deps && npx prisma generate && npm run build",
     "render:start": "next start",
-    "render:deploy": "npm ci --legacy-peer-deps --registry https://registry.npmjs.org/ && npx prisma generate && npm run build"
+    "render:deploy": "npm ci --legacy-peer-deps --registry https://registry.npmjs.org/ && npx prisma generate && npm run build",
+    "vercel:build": "npx prisma generate && next build",
+    "vercel:db-setup": "npx prisma migrate deploy && npx prisma db seed",
+    "vercel:configure": "powershell -ExecutionPolicy Bypass -File scripts/configure-vercel-db.ps1"
   },
   "dependencies": {
     "@azure/msal-node": "^3.6.3",
@@ -97,5 +100,8 @@
     "eslint-config-next": "15.4.1",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

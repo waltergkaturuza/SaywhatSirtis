@@ -1,0 +1,814 @@
+// SIRTIS Database Schema - PostgreSQL Production Version
+// SAYWHAT Integrated Real-Time Information System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================
+// USER MANAGEMENT & AUTHENTICATION
+// =============================================
+
+model User {
+  id                String              @id @default(cuid())
+  email             String              @unique
+  username          String?             @unique
+  password          String?
+  name              String?
+  image             String?
+  role              UserRole            @default(USER)
+  department        String?
+  position          String?
+  isActive          Boolean             @default(true)
+  lastLogin         DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  emailVerified     DateTime?
+  
+  // Relations
+  accounts          Account[]
+  sessions          Session[]
+  auditLogs         AuditLog[]
+  callCentreRecords CallCentreRecord[]
+  projects          Project[]
+  documents         Document[]
+  notifications     Notification[]
+  
+  // HR Relations
+  employeeProfile   Employee?
+  leaveRequests     LeaveRequest[]
+  appraisals        Appraisal[]
+  trainings         TrainingEnrollment[]
+  
+  // Inventory Relations
+  assetAssignments  AssetAssignment[]
+  inventoryAudits   InventoryAudit[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+// =============================================
+// AUDIT & SYSTEM LOGS
+// =============================================
+
+model AuditLog {
+  id          String            @id @default(cuid())
+  userId      String?
+  action      String
+  resource    String
+  resourceId  String?
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime          @default(now())
+  severity    AuditLogSeverity  @default(INFO)
+  
+  user        User?             @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// =============================================
+// PROGRAMS & PROJECTS MANAGEMENT
+// =============================================
+
+model Project {
+  id           String    @id @default(cuid())
+  name         String
+  description  String?   @db.Text
+  objectives   String?   @db.Text // JSON string
+  timeframe    String?
+  startDate    DateTime?
+  endDate      DateTime?
+  country      String?
+  province     String?
+  budget       Float?
+  actualSpent  Float?    @default(0)
+  status       ProjectStatus @default(PLANNING)
+  priority     ProjectPriority @default(MEDIUM)
+  progress     Float?    @default(0)
+  
+  // Relations
+  managerId    String?
+  manager      User?     @relation(fields: [managerId], references: [id])
+  documents    Document[]
+  activities   ProjectActivity[]
+  reports      ProjectReport[]
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("projects")
+}
+
+model ProjectActivity {
+  id          String    @id @default(cuid())
+  projectId   String
+  title       String
+  description String?   @db.Text
+  startDate   DateTime?
+  endDate     DateTime?
+  status      ActivityStatus @default(PENDING)
+  progress    Float?    @default(0)
+  
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("project_activities")
+}
+
+model ProjectReport {
+  id          String    @id @default(cuid())
+  projectId   String
+  title       String
+  content     String    @db.Text
+  reportType  ReportType
+  period      String?
+  
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("project_reports")
+}
+
+// =============================================
+// CALL CENTRE MANAGEMENT
+// =============================================
+
+model CallCentreRecord {
+  id              String            @id @default(cuid())
+  callerName      String?
+  callerPhone     String?
+  callerEmail     String?
+  callType        CallType
+  priority        CallPriority      @default(MEDIUM)
+  subject         String
+  description     String            @db.Text
+  status          CallStatus        @default(OPEN)
+  assignedTo      String?
+  resolution      String?           @db.Text
+  satisfactionRating Int?
+  
+  // Relations
+  assignedUser    User?             @relation(fields: [assignedTo], references: [id])
+  followUps       CallFollowUp[]
+  attachments     CallAttachment[]
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  resolvedAt      DateTime?
+
+  @@map("call_centre_records")
+}
+
+model CallFollowUp {
+  id        String            @id @default(cuid())
+  callId    String
+  notes     String            @db.Text
+  actionTaken String?
+  
+  call      CallCentreRecord  @relation(fields: [callId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime          @default(now())
+
+  @@map("call_follow_ups")
+}
+
+model CallAttachment {
+  id        String            @id @default(cuid())
+  callId    String
+  fileName  String
+  filePath  String
+  fileSize  Int?
+  mimeType  String?
+  
+  call      CallCentreRecord  @relation(fields: [callId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime          @default(now())
+
+  @@map("call_attachments")
+}
+
+// =============================================
+// DOCUMENT MANAGEMENT
+// =============================================
+
+model Document {
+  id          String       @id @default(cuid())
+  title       String
+  fileName    String
+  filePath    String
+  fileSize    Int?
+  mimeType    String?
+  category    DocumentCategory
+  tags        String?      // JSON array of tags
+  description String?      @db.Text
+  version     String?      @default("1.0")
+  isPublic    Boolean      @default(false)
+  
+  // Relations
+  uploadedBy  String?
+  uploader    User?        @relation(fields: [uploadedBy], references: [id])
+  projectId   String?
+  project     Project?     @relation(fields: [projectId], references: [id])
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("documents")
+}
+
+// =============================================
+// HR MANAGEMENT
+// =============================================
+
+model Employee {
+  id              String          @id @default(cuid())
+  userId          String          @unique
+  employeeId      String          @unique
+  firstName       String
+  lastName        String
+  middleName      String?
+  dateOfBirth     DateTime?
+  gender          Gender?
+  nationality     String?
+  nationalId      String?         @unique
+  passportNumber  String?
+  
+  // Contact Information
+  email           String          @unique
+  phone           String?
+  alternativePhone String?
+  address         String?         @db.Text
+  emergencyContact String?
+  emergencyPhone  String?
+  
+  // Employment Details
+  department      String?
+  position        String
+  employmentType  EmploymentType  @default(FULL_TIME)
+  startDate       DateTime
+  endDate         DateTime?
+  salary          Float?
+  currency        String?         @default("USD")
+  status          EmployeeStatus  @default(ACTIVE)
+  
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveRequests   LeaveRequest[]
+  appraisals      Appraisal[]
+  trainings       TrainingEnrollment[]
+  payrollRecords  PayrollRecord[]
+  attendanceRecords AttendanceRecord[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("employees")
+}
+
+model Department {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?   @db.Text
+  managerId   String?
+  budget      Float?
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("departments")
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  employeeId  String
+  userId      String
+  leaveType   LeaveType
+  startDate   DateTime
+  endDate     DateTime
+  days        Int
+  reason      String?     @db.Text
+  status      LeaveStatus @default(PENDING)
+  approvedBy  String?
+  approvedAt  DateTime?
+  comments    String?     @db.Text
+  
+  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("leave_requests")
+}
+
+model Appraisal {
+  id              String          @id @default(cuid())
+  employeeId      String
+  userId          String
+  reviewPeriod    String
+  overallRating   Float?
+  goals           String?         @db.Text
+  achievements    String?         @db.Text
+  areasImprovement String?        @db.Text
+  nextPeriodGoals String?         @db.Text
+  status          AppraisalStatus @default(DRAFT)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  
+  employee        Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id])
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("appraisals")
+}
+
+model Training {
+  id              String              @id @default(cuid())
+  title           String
+  description     String?             @db.Text
+  category        TrainingCategory
+  duration        Int?                // Duration in hours
+  maxParticipants Int?
+  startDate       DateTime?
+  endDate         DateTime?
+  instructor      String?
+  location        String?
+  isOnline        Boolean             @default(false)
+  status          TrainingStatus      @default(PLANNED)
+  
+  enrollments     TrainingEnrollment[]
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@map("trainings")
+}
+
+model TrainingEnrollment {
+  id              String              @id @default(cuid())
+  trainingId      String
+  employeeId      String
+  userId          String
+  enrollmentDate  DateTime            @default(now())
+  completionDate  DateTime?
+  status          EnrollmentStatus    @default(ENROLLED)
+  score           Float?
+  certificateIssued Boolean           @default(false)
+  
+  training        Training            @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  employee        Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  user            User                @relation(fields: [userId], references: [id])
+  
+  @@unique([trainingId, employeeId])
+  @@map("training_enrollments")
+}
+
+model PayrollRecord {
+  id              String      @id @default(cuid())
+  employeeId      String
+  payPeriod       String      // e.g., "2024-01"
+  basicSalary     Float
+  allowances      Float?      @default(0)
+  deductions      Float?      @default(0)
+  overtime        Float?      @default(0)
+  bonus           Float?      @default(0)
+  grossPay        Float
+  tax             Float?      @default(0)
+  netPay          Float
+  currency        String      @default("USD")
+  status          PayrollStatus @default(DRAFT)
+  paidAt          DateTime?
+  
+  employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([employeeId, payPeriod])
+  @@map("payroll_records")
+}
+
+model AttendanceRecord {
+  id          String          @id @default(cuid())
+  employeeId  String
+  date        DateTime        @db.Date
+  checkIn     DateTime?
+  checkOut    DateTime?
+  breakStart  DateTime?
+  breakEnd    DateTime?
+  hoursWorked Float?
+  status      AttendanceStatus @default(PRESENT)
+  notes       String?
+  
+  employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([employeeId, date])
+  @@map("attendance_records")
+}
+
+// =============================================
+// INVENTORY & ASSET MANAGEMENT
+// =============================================
+
+model Asset {
+  id              String            @id @default(cuid())
+  assetTag        String            @unique
+  name            String
+  description     String?           @db.Text
+  category        AssetCategory
+  brand           String?
+  model           String?
+  serialNumber    String?           @unique
+  purchaseDate    DateTime?
+  purchasePrice   Float?
+  currentValue    Float?
+  location        String?
+  condition       AssetCondition    @default(GOOD)
+  status          AssetStatus       @default(ACTIVE)
+  warrantyExpiry  DateTime?
+  
+  // Relations
+  assignments     AssetAssignment[]
+  maintenanceRecords MaintenanceRecord[]
+  auditRecords    InventoryAudit[]
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("assets")
+}
+
+model AssetAssignment {
+  id          String          @id @default(cuid())
+  assetId     String
+  userId      String
+  assignedAt  DateTime        @default(now())
+  returnedAt  DateTime?
+  condition   AssetCondition?
+  notes       String?         @db.Text
+  
+  asset       Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("asset_assignments")
+}
+
+model MaintenanceRecord {
+  id              String            @id @default(cuid())
+  assetId         String
+  maintenanceType MaintenanceType
+  description     String            @db.Text
+  cost            Float?
+  scheduledDate   DateTime?
+  completedDate   DateTime?
+  technician      String?
+  status          MaintenanceStatus @default(SCHEDULED)
+  notes           String?           @db.Text
+  
+  asset           Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("maintenance_records")
+}
+
+model InventoryAudit {
+  id          String        @id @default(cuid())
+  auditDate   DateTime      @default(now())
+  auditedBy   String
+  assetId     String?
+  findings    String?       @db.Text
+  status      AuditStatus   @default(PENDING)
+  
+  auditor     User          @relation(fields: [auditedBy], references: [id])
+  asset       Asset?        @relation(fields: [assetId], references: [id])
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("inventory_audits")
+}
+
+// =============================================
+// NOTIFICATIONS & COMMUNICATION
+// =============================================
+
+model Notification {
+  id          String             @id @default(cuid())
+  userId      String
+  title       String
+  message     String             @db.Text
+  type        NotificationType   @default(INFO)
+  isRead      Boolean            @default(false)
+  actionUrl   String?
+  
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("notifications")
+}
+
+// =============================================
+// SYSTEM SETTINGS
+// =============================================
+
+model SystemSetting {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  value       String    @db.Text
+  description String?   @db.Text
+  category    String?
+  isPublic    Boolean   @default(false)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("system_settings")
+}
+
+// =============================================
+// ENUMS
+// =============================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  HR_MANAGER
+  PROJECT_MANAGER
+  CALL_CENTRE_AGENT
+  EMPLOYEE
+  USER
+}
+
+enum AuditLogSeverity {
+  LOW
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ActivityStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  CUSTOM
+}
+
+enum CallType {
+  INQUIRY
+  COMPLAINT
+  REQUEST
+  EMERGENCY
+  FEEDBACK
+  OTHER
+}
+
+enum CallPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CallStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+enum DocumentCategory {
+  PROJECT
+  HR
+  FINANCE
+  LEGAL
+  TRAINING
+  POLICY
+  REPORT
+  OTHER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+  CONSULTANT
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+  ON_LEAVE
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  MATERNITY
+  PATERNITY
+  EMERGENCY
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AppraisalStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  COMPLETED
+}
+
+enum TrainingCategory {
+  TECHNICAL
+  SOFT_SKILLS
+  COMPLIANCE
+  LEADERSHIP
+  SAFETY
+  OTHER
+}
+
+enum TrainingStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  DROPPED
+  FAILED
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  HOLIDAY
+  LEAVE
+}
+
+enum AssetCategory {
+  COMPUTER
+  FURNITURE
+  VEHICLE
+  EQUIPMENT
+  SOFTWARE
+  OTHER
+}
+
+enum AssetCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  DISPOSED
+  LOST
+}
+
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+  EMERGENCY
+  UPGRADE
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AuditStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  REMINDER
+}
