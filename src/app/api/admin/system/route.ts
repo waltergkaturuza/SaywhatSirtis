@@ -269,8 +269,7 @@ export async function POST(request: NextRequest) {
         key,
         value,
         description,
-        category,
-        valueType: type || 'string'
+        category
       }
     })
 
