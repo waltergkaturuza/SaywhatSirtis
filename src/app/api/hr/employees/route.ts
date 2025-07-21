@@ -29,21 +29,20 @@ export async function GET() {
 
     // Get all users (employees) with active status
     const employees = await prisma.user.findMany({
-      where: { isActive: true },
+      where: { 
+        isActive: true
+      },
       select: {
         id: true,
         email: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
+        username: true,
         department: true,
         position: true,
-        employeeId: true,
         createdAt: true,
         updatedAt: true,
         lastLogin: true
       },
-      orderBy: { lastName: 'asc' }
+      orderBy: { email: 'asc' }
     })
 
     const response = createSuccessResponse(employees, {
@@ -81,7 +80,7 @@ export async function POST(request: Request) {
 
     // Validate required fields
     const validationError = validateRequiredFields(formData, [
-      'firstName', 'lastName', 'email', 'position', 'department'
+      'email', 'position', 'department'
     ])
     
     if (validationError) {
@@ -120,25 +119,22 @@ export async function POST(request: Request) {
     // Sanitize input data
     const sanitizedData = {
       email: formData.email.toLowerCase().trim(),
-      firstName: sanitizeInput(formData.firstName),
-      lastName: sanitizeInput(formData.lastName),
-      phone: formData.phone ? sanitizeInput(formData.phone) : null,
+      username: formData.username ? sanitizeInput(formData.username) : null,
       department: sanitizeInput(formData.department),
       position: sanitizeInput(formData.position),
-      employeeId: formData.employeeId ? sanitizeInput(formData.employeeId) : null,
     }
 
     // Create new employee
     const newEmployee = await prisma.user.create({
       data: {
         ...sanitizedData,
-        hashedPassword: '$2a$10$rZvGJ5xI7gMEwAi8IWW8KO7/Eo3QKsVxQhVJ2X7w9m0N1QmRZJQzK', // Default password
+        password: '$2a$10$rZvGJ5xI7gMEwAi8IWW8KO7/Eo3QKsVxQhVJ2X7w9m0N1QmRZJQzK', // Default password
         isActive: true
       }
     })
 
     const response = createSuccessResponse(newEmployee, {
-      message: `Employee ${newEmployee.firstName} ${newEmployee.lastName} created successfully`
+      message: `Employee ${newEmployee.email} created successfully`
     })
 
     return NextResponse.json(response, { status: HttpStatus.CREATED })

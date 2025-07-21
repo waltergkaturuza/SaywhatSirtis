@@ -57,33 +57,16 @@ export async function GET(request: NextRequest) {
       const employee = await prisma.employee.findUnique({
         where: { id: employeeId },
         include: {
-          department: true,
           user: {
             select: {
               id: true,
               email: true,
-              firstName: true,
-              lastName: true
-            }
-          },
-          allowances: {
-            where: { isActive: true },
-            include: {
-              allowanceType: true
-            }
-          },
-          deductions: {
-            where: { isActive: true },
-            include: {
-              deductionType: true
+              username: true
             }
           },
           _count: {
             select: {
-              payrollRecords: true,
-              payslips: true,
-              timeRecords: true,
-              leaveRecords: true
+              payrollRecords: true
             }
           }
         }
@@ -103,29 +86,21 @@ export async function GET(request: NextRequest) {
     const employees = await prisma.employee.findMany({
       where: whereClause,
       include: {
-        department: {
-          select: {
-            name: true
-          }
-        },
         user: {
           select: {
             id: true,
             email: true,
-            firstName: true,
-            lastName: true
+            username: true
           }
         },
         _count: {
           select: {
-            payrollRecords: true,
-            payslips: true
+            payrollRecords: true
           }
         }
       },
       orderBy: [
-        { lastName: 'asc' },
-        { firstName: 'asc' }
+        { email: 'asc' }
       ],
       skip,
       take: limit
@@ -182,20 +157,10 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Email already exists' }, { status: 400 })
         }
 
-        const newEmployee = await prisma.employee.create({
-          data: {
-            ...validatedData,
-            status: 'ACTIVE'
-          },
-          include: {
-            department: true
-          }
-        })
-
+        // TODO: Fix Employee creation with proper User relation and field mapping
         return NextResponse.json({
-          message: 'Employee created successfully',
-          employee: newEmployee
-        })
+          error: 'Employee creation not implemented yet - schema mismatch needs fixing'
+        }, { status: 501 })
 
       case 'update':
         const { employeeId, ...updateData } = body
@@ -206,10 +171,7 @@ export async function POST(request: NextRequest) {
 
         const updatedEmployee = await prisma.employee.update({
           where: { id: employeeId },
-          data: updateData,
-          include: {
-            department: true
-          }
+          data: updateData
         })
 
         return NextResponse.json({
@@ -228,7 +190,7 @@ export async function POST(request: NextRequest) {
           where: { id: deactivateId },
           data: { 
             status: 'INACTIVE',
-            terminationDate: new Date()
+            endDate: new Date()
           }
         })
 
