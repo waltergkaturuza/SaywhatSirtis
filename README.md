@@ -237,7 +237,7 @@ AWS_SECRET_ACCESS_KEY=  # AWS S3 secret
 ## 📞 Support
 
 For technical support and questions:
-- Email: saywhatorganization@gmail.com
+- Email: saywhatorganisation@gmail.com
 - Project Documentation: Available in `/docs` directory
 - Training Materials: Provided during handover process
 
