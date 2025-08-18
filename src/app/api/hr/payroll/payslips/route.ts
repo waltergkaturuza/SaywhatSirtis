@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (periodId) {
-      whereClause.periodId = periodId
+      whereClause.payPeriod = periodId
     }
 
     const payslips = await prisma.payrollRecord.findMany({
@@ -36,14 +36,6 @@ export async function GET(request: NextRequest) {
             lastName: true,
             email: true,
             employeeId: true
-          }
-        },
-        period: {
-          select: {
-            id: true,
-            startDate: true,
-            endDate: true,
-            payDate: true
           }
         }
       },
@@ -71,46 +63,10 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json()
     
-    const payslip = await prisma.payrollRecord.create({
-      data: {
-        employeeId: data.employeeId,
-        periodId: data.periodId,
-        basicSalary: data.basicSalary,
-        overtimeHours: data.overtimeHours || 0,
-        overtimePay: data.overtimePay || 0,
-        totalAllowances: data.totalAllowances || 0,
-        totalDeductions: data.totalDeductions || 0,
-        grossPay: data.grossPay,
-        taxableIncome: data.taxableIncome,
-        incomeTax: data.incomeTax || 0,
-        pensionDeduction: data.pensionDeduction || 0,
-        nhisDeduction: data.nhisDeduction || 0,
-        nsitfDeduction: data.nsitfDeduction || 0,
-        netPay: data.netPay,
-        status: data.status || 'DRAFT'
-      },
-      include: {
-        employee: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            employeeId: true
-          }
-        },
-        period: {
-          select: {
-            id: true,
-            startDate: true,
-            endDate: true,
-            payDate: true
-          }
-        }
-      }
-    })
-
-    return NextResponse.json(payslip, { status: 201 })
+    // TODO: Fix PayrollRecord creation with proper field mapping to match schema
+    return NextResponse.json({
+      error: 'Payslip creation not implemented yet - field mapping needs fixing'
+    }, { status: 501 })
   } catch (error) {
     console.error('Error creating payslip:', error)
     return NextResponse.json(
