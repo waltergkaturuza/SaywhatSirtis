@@ -135,16 +135,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 onClick={onClose}
                                 className={cn(
                                   pathname === item.href
-                                    ? "bg-gray-50 text-indigo-600"
-                                    : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
-                                  "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold"
+                                    ? "bg-saywhat-orange/10 text-black border-l-4 border-saywhat-orange"
+                                    : "text-black hover:bg-saywhat-orange/5 hover:text-black",
+                                  "group flex gap-x-3 rounded-md p-3 text-sm leading-6 font-bold"
                                 )}
                               >
                                 <item.icon
                                   className={cn(
                                     pathname === item.href
-                                      ? "text-indigo-600"
-                                      : "text-gray-400 group-hover:text-indigo-600",
+                                      ? "text-saywhat-orange"
+                                      : "text-green-600 group-hover:text-saywhat-orange",
                                     "h-6 w-6 shrink-0"
                                   )}
                                   aria-hidden="true"
@@ -239,16 +239,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         href={item.href}
                         className={cn(
                           pathname === item.href
-                            ? "bg-gray-50 text-indigo-600"
-                            : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
-                          "group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold"
+                            ? "bg-saywhat-orange/10 text-black border-l-4 border-saywhat-orange"
+                            : "text-black hover:bg-saywhat-orange/5 hover:text-black",
+                          "group flex gap-x-3 rounded-md p-3 text-sm leading-6 font-bold"
                         )}
                       >
                         <item.icon
                           className={cn(
                             pathname === item.href
-                              ? "text-indigo-600"
-                              : "text-gray-400 group-hover:text-indigo-600",
+                              ? "text-saywhat-orange"
+                              : "text-green-600 group-hover:text-saywhat-orange",
                             "h-6 w-6 shrink-0"
                           )}
                           aria-hidden="true"

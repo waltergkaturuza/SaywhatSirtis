@@ -68,33 +68,33 @@ export default function CollapsibleMainSidebar({
       {/* Sidebar */}
       <div 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 flex flex-col bg-saywhat-orange border-r border-orange-400 transition-all duration-300 ease-in-out",
           isCollapsed ? "w-16" : "w-64"
         )}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-orange-400">
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">S</span>
+              <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center">
+                <span className="text-saywhat-orange font-bold text-sm">S</span>
               </div>
-              <span className="font-semibold text-gray-900">SIRTIS</span>
+              <span className="font-semibold text-white">SIRTIS</span>
             </div>
           )}
           
           <button
             onClick={handleToggle}
             className={cn(
-              "h-8 w-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center hover:bg-gray-50 transition-colors",
+              "h-8 w-8 rounded-lg border border-orange-300 bg-orange-600 flex items-center justify-center hover:bg-orange-700 transition-colors",
               isCollapsed && "mx-auto"
             )}
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {isCollapsed ? (
-              <ChevronRight className="h-4 w-4 text-gray-600" />
+              <ChevronRight className="h-4 w-4 text-white" />
             ) : (
-              <ChevronLeft className="h-4 w-4 text-gray-600" />
+              <ChevronLeft className="h-4 w-4 text-white" />
             )}
           </button>
         </div>
@@ -111,8 +111,8 @@ export default function CollapsibleMainSidebar({
                 className={cn(
                   "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors group",
                   isActive 
-                    ? "bg-blue-50 text-blue-700" 
-                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                    ? "bg-orange-700 text-white shadow-sm" 
+                    : "text-orange-100 hover:bg-orange-600 hover:text-white",
                   isCollapsed && "justify-center px-2"
                 )}
                 title={isCollapsed ? item.name : undefined}
@@ -120,7 +120,7 @@ export default function CollapsibleMainSidebar({
                 <item.icon
                   className={cn(
                     "h-5 w-5 flex-shrink-0",
-                    isActive ? "text-blue-700" : "text-gray-500 group-hover:text-gray-700",
+                    isActive ? "text-white" : "text-orange-200 group-hover:text-white",
                     !isCollapsed && "mr-3"
                   )}
                 />
@@ -134,22 +134,22 @@ export default function CollapsibleMainSidebar({
 
         {/* User Section */}
         {session?.user && (
-          <div className="border-t border-gray-200 p-3">
+          <div className="border-t border-orange-400 p-3">
             <div className={cn(
               "flex items-center",
               isCollapsed ? "justify-center" : "space-x-3"
             )}>
-              <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-700">
+              <div className="h-8 w-8 rounded-full bg-orange-200 flex items-center justify-center">
+                <span className="text-sm font-medium text-saywhat-orange">
                   {session.user.name?.[0] || session.user.email?.[0] || 'U'}
                 </span>
               </div>
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-white truncate">
                     {session.user.name || session.user.email}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-orange-200 truncate">
                     {session.user.position || session.user.roles?.[0] || 'User'}
                   </p>
                 </div>
@@ -160,7 +160,7 @@ export default function CollapsibleMainSidebar({
             {!isCollapsed && (
               <button
                 onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-                className="mt-3 w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors"
+                className="mt-3 w-full flex items-center px-3 py-2 text-sm font-medium text-orange-100 hover:bg-orange-600 hover:text-white rounded-lg transition-colors"
               >
                 <LogOut className="h-4 w-4 mr-3" />
                 Sign out
@@ -171,7 +171,7 @@ export default function CollapsibleMainSidebar({
             {isCollapsed && (
               <button
                 onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-                className="mt-2 w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors"
+                className="mt-2 w-full flex items-center justify-center p-2 text-orange-100 hover:bg-orange-600 hover:text-white rounded-lg transition-colors"
                 title="Sign out"
               >
                 <LogOut className="h-4 w-4" />

@@ -19,18 +19,14 @@ import {
 } from 'lucide-react'
 
 interface DashboardMetrics {
-  totalMembers: number
-  activeMembers: number
-  newMembersThisMonth: number
-  totalCalls: number
+  memberCount: number
   callsToday: number
   callsThisMonth: number
-  avgSatisfactionRating: number
-  callSuccessRate: number
-  totalPrograms: number
-  activePrograms: number
-  completedPrograms: number
-  programSuccessRate: number
+  programsActive: number
+  programsCompleted: number
+  avgCallDuration: number
+  memberGrowth: number
+  callGrowth: number
 }
 
 export default function DashboardPage() {
@@ -96,11 +92,11 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-saywhat-dark">
-                {isLoading ? '...' : metrics?.totalMembers?.toLocaleString() || '0'}
+                {isLoading ? '...' : metrics?.memberCount?.toLocaleString() || '0'}
               </div>
               <p className="text-xs text-saywhat-grey">
                 <TrendingUp className="inline h-3 w-3 mr-1" />
-                {isLoading ? '...' : `+${metrics?.newMembersThisMonth || 0}`} new this month
+                {isLoading ? '...' : `+${metrics?.memberGrowth || 0}%`} from last month
               </p>
             </CardContent>
           </Card>
@@ -116,7 +112,7 @@ export default function DashboardPage() {
               </div>
               <p className="text-xs text-saywhat-grey">
                 <TrendingUp className="inline h-3 w-3 mr-1" />
-                {isLoading ? '...' : `${metrics?.callsThisMonth || 0}`} this month
+                {isLoading ? '...' : `+${metrics?.callGrowth || 0}%`} from yesterday
               </p>
             </CardContent>
           </Card>
@@ -128,25 +124,25 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-saywhat-dark">
-                {isLoading ? '...' : metrics?.activePrograms || '0'}
+                {isLoading ? '...' : metrics?.programsActive || '0'}
               </div>
               <p className="text-xs text-saywhat-grey">
-                {isLoading ? '...' : metrics?.completedPrograms || '0'} completed this year
+                {isLoading ? '...' : metrics?.programsCompleted || '0'} completed this month
               </p>
             </CardContent>
           </Card>
 
           <Card className="border-l-4 border-l-saywhat-dark">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-saywhat-grey">Satisfaction Rating</CardTitle>
+              <CardTitle className="text-sm font-medium text-saywhat-grey">Avg Call Duration</CardTitle>
               <Activity className="h-4 w-4 text-saywhat-dark" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-saywhat-dark">
-                {isLoading ? '...' : `${metrics?.avgSatisfactionRating?.toFixed(1) || '0'}/5`}
+                {isLoading ? '...' : `${metrics?.avgCallDuration || 0}m`}
               </div>
               <p className="text-xs text-saywhat-grey">
-                Average customer satisfaction
+                Optimal performance range
               </p>
             </CardContent>
           </Card>
@@ -169,16 +165,12 @@ export default function DashboardPage() {
                 <div className="text-sm text-saywhat-grey">Calls This Month</div>
               </div>
               <div className="text-center p-4 bg-saywhat-light-grey rounded-lg">
-                <div className="text-2xl font-bold text-saywhat-dark">
-                  {isLoading ? '...' : `${metrics?.callSuccessRate?.toFixed(1) || '0'}%`}
-                </div>
+                <div className="text-2xl font-bold text-saywhat-dark">98.5%</div>
                 <div className="text-sm text-saywhat-grey">Resolution Rate</div>
               </div>
               <div className="text-center p-4 bg-saywhat-light-grey rounded-lg">
-                <div className="text-2xl font-bold text-saywhat-dark">
-                  {isLoading ? '...' : `${metrics?.totalPrograms || '0'}`}
-                </div>
-                <div className="text-sm text-saywhat-grey">Total Programs</div>
+                <div className="text-2xl font-bold text-saywhat-dark">4.7/5</div>
+                <div className="text-sm text-saywhat-grey">Satisfaction Score</div>
               </div>
             </div>
           </CardContent>

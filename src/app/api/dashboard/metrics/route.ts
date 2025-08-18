@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
       totalCalls: callsThisYear,
       callsToday,
       callsThisMonth,
-      avgCallDuration: 8.5, // Mock value since we don't have duration field
+      avgSatisfactionRating,
       callSuccessRate,
       totalPrograms,
       activePrograms,

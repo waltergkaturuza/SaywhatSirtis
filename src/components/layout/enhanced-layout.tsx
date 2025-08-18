@@ -62,7 +62,7 @@ export function EnhancedLayout({ children }: EnhancedLayoutProps) {
         
         {/* Page content */}
         <main className="py-6 pb-20">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl px-10 sm:px-10 lg:px-10" style={{ marginLeft: '10mm', marginRight: '10mm' }}>
             {children}
           </div>
         </main>

@@ -3,7 +3,9 @@
 import { useState, useEffect, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { useSearchParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { ModulePage } from "@/components/layout/enhanced-layout"
+import { EnhancedNewProjectForm } from "@/components/programs/enhanced-new-project-form"
 import {
   Squares2X2Icon,
   ChartBarIcon,
@@ -29,16 +31,9 @@ import {
   CheckCircleIcon
 } from "@heroicons/react/24/solid"
 
-// Import enhanced components
+// Import essential components
 import { ProjectDashboard } from "../../components/programs/project-dashboard"
-import { ProjectGantt } from "../../components/programs/project-gantt"
-import { WorkBreakdownStructure } from "../../components/programs/work-breakdown-structure"
-import { MilestoneTracker } from "../../components/programs/milestone-tracker"
-import { ResourceManagement } from "../../components/programs/resource-management"
-import { RiskManagement } from "../../components/programs/risk-management-enhanced"
 import { ReportsAnalytics } from "../../components/programs/reports-analytics-enhanced"
-import { ProjectSettings } from "../../components/programs/project-settings"
-import { ProjectTable } from "../../components/programs/project-table-enhanced"
 import { ProjectManagement } from "../../components/programs/project-management"
 
 interface ProgramPermissions {
@@ -62,8 +57,8 @@ function EnhancedProgramsContent() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("dashboard")
   const [selectedProject, setSelectedProject] = useState<number | null>(null)
-  const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'timeline'>('list')
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [showNewProject, setShowNewProject] = useState(false)
   const [permissions, setPermissions] = useState<ProgramPermissions>({
     canView: false,
     canCreate: false,
@@ -138,10 +133,10 @@ function EnhancedProgramsContent() {
   }
 
   const metadata = {
-    title: "Programs & Projects Management",
-    description: "Advanced project management with Gantt charts, WBS, milestones, resource planning, and comprehensive reporting",
+    title: "Programs Management", // Removed "& Projects" as requested
+    description: "Program management with results framework, budget integration, and comprehensive reporting",
     breadcrumbs: [
-      { name: "Programs & Projects" }
+      { name: "Programs Management" }
     ]
   }
 
@@ -150,106 +145,55 @@ function EnhancedProgramsContent() {
       id: "dashboard",
       name: "Dashboard",
       icon: Squares2X2Icon,
-      description: "Project overview and key metrics"
+      description: "Program overview, key metrics, budget performance, and project analytics"
     },
     {
       id: "projects",
       name: "Projects",
       icon: ClipboardDocumentListIcon,
-      description: "Enhanced project management with multiple views"
+      description: "Donor-funded projects with results framework and progress tracking"
     },
     {
-      id: "project-table",
-      name: "Project Table",
-      icon: DocumentTextIcon,
-      description: "Traditional project list and management"
-    },
-    {
-      id: "gantt",
-      name: "Gantt Chart",
-      icon: ChartBarIcon,
-      description: "Timeline visualization and scheduling"
-    },
-    {
-      id: "wbs",
-      name: "WBS",
-      icon: CubeTransparentIcon,
-      description: "Work breakdown structure"
-    },
-    {
-      id: "milestones",
-      name: "Milestones",
-      icon: FlagIcon,
-      description: "Key milestones and deliverables"
-    },
-    {
-      id: "resources",
-      name: "Resources",
-      icon: UsersIcon,
-      description: "Resource allocation and management"
-    },
-    {
-      id: "risks",
-      name: "Risk Management",
-      icon: ExclamationTriangleIcon,
-      description: "Risk identification and mitigation"
+      id: "flagship-events",
+      name: "SAYWHAT Flagship Events",
+      icon: TrophyIcon,
+      description: "Annual flagship events planning and management with Gantt scheduling"
     },
     {
       id: "reports",
       name: "Reports & Analytics",
       icon: DocumentTextIcon,
-      description: "Comprehensive reporting and insights"
-    },
-    {
-      id: "settings",
-      name: "Settings",
-      icon: CogIcon,
-      description: "Project configuration and preferences"
+      description: "Project performance analytics, budget integration, and detailed reporting"
     }
   ]
 
   const actions = (
     <div className="flex items-center space-x-4">
-      {(activeTab === "projects" || activeTab === "project-table") && (
+      {activeTab === "projects" && (
         <div className="flex items-center space-x-2">
-          <select
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value as 'list' | 'kanban' | 'timeline')}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="list">List View</option>
-            <option value="kanban">Kanban Board</option>
-            <option value="timeline">Timeline View</option>
-          </select>
-          
-          <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+          <button className="flex items-center px-3 py-2 border border-saywhat-orange rounded-md text-sm text-saywhat-orange hover:bg-orange-50">
             <FunnelIcon className="h-4 w-4 mr-2" />
-            Filter
+            Filter by Category
           </button>
         </div>
       )}
 
       {permissions.canGenerateReports && (
-        <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+        <button className="flex items-center px-4 py-2 border border-saywhat-grey rounded-md text-sm text-saywhat-grey hover:bg-gray-50">
           <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-          Export
+          Export Reports
         </button>
       )}
 
       {permissions.canCreate && (
         <button 
-          onClick={() => router.push('/programs/new')}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+          onClick={() => setShowNewProject(true)}
+          className="flex items-center px-4 py-2 bg-saywhat-orange text-white rounded-md text-sm hover:bg-orange-600"
         >
           <PlusIcon className="h-4 w-4 mr-2" />
           New Project
         </button>
       )}
-
-      <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-        <CogIcon className="h-4 w-4 mr-2" />
-        Settings
-      </button>
     </div>
   )
 
@@ -263,64 +207,209 @@ function EnhancedProgramsContent() {
             onProjectSelect={setSelectedProject}
           />
         )
-      case "project-table":
+      case "flagship-events":
         return (
-          <ProjectTable 
-            permissions={permissions as unknown as Record<string, boolean>} 
-            viewMode={viewMode}
-            onProjectSelect={setSelectedProject}
-            selectedProject={selectedProject}
-          />
-        )
-      case "gantt":
-        return (
-          <ProjectGantt 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-            onProjectSelect={setSelectedProject}
-          />
-        )
-      case "wbs":
-        return (
-          <WorkBreakdownStructure 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-            onProjectSelect={setSelectedProject}
-          />
-        )
-      case "milestones":
-        return (
-          <MilestoneTracker 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-          />
-        )
-      case "resources":
-        return (
-          <ResourceManagement 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-          />
-        )
-      case "risks":
-        return (
-          <RiskManagement 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-            onProjectSelect={setSelectedProject}
-          />
+          <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-medium text-saywhat-dark mb-2">SAYWHAT Flagship Events</h3>
+                <p className="text-saywhat-grey">
+                  Annual flagship events planning and management with Gantt chart scheduling and work breakdown structure
+                </p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <Link 
+                  href="/programs/flagship-events"
+                  className="text-sm text-saywhat-orange hover:text-orange-600 font-medium"
+                >
+                  View All Events →
+                </Link>
+                {permissions.canCreate && (
+                  <button className="flex items-center px-4 py-2 bg-saywhat-orange text-white rounded-md text-sm hover:bg-orange-600">
+                    <CalendarDaysIcon className="h-4 w-4 mr-2" />
+                    Schedule Event
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Flagship Events Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Agriculture Colleges Sports Gala */}
+              <div className="bg-white rounded-lg shadow border-l-4 border-l-saywhat-orange p-6">
+                <div className="flex items-center mb-4">
+                  <TrophyIcon className="h-6 w-6 text-saywhat-orange mr-3" />
+                  <h4 className="text-lg font-medium text-saywhat-dark">Agriculture Colleges Sports Gala</h4>
+                </div>
+                <p className="text-sm text-saywhat-grey mb-4">Annual sports competition for agriculture colleges across the region</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Status:</span>
+                    <span className="text-green-600 font-medium">Planning</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Next Event:</span>
+                    <span className="text-saywhat-dark">2025</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Lead:</span>
+                    <span className="text-saywhat-dark">Not assigned</span>
+                  </div>
+                </div>
+                <div className="mt-4 flex space-x-2">
+                  <Link 
+                    href="/programs/flagship-events/agriculture-sports-gala"
+                    className="flex-1 text-center text-xs px-3 py-2 bg-saywhat-orange text-white rounded hover:bg-orange-600"
+                  >
+                    View Timeline
+                  </Link>
+                  <button className="flex-1 text-xs px-3 py-2 border border-saywhat-orange text-saywhat-orange rounded hover:bg-orange-50">
+                    Documents
+                  </button>
+                </div>
+              </div>
+
+              {/* SAYWHAT Quiz and SASI Debate Challenge */}
+              <div className="bg-white rounded-lg shadow border-l-4 border-l-saywhat-red p-6">
+                <div className="flex items-center mb-4">
+                  <DocumentTextIcon className="h-6 w-6 text-saywhat-red mr-3" />
+                  <h4 className="text-lg font-medium text-saywhat-dark">SAYWHAT Quiz & SASI Debate Challenge</h4>
+                </div>
+                <p className="text-sm text-saywhat-grey mb-4">Intellectual competition fostering knowledge and debate skills</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Status:</span>
+                    <span className="text-yellow-600 font-medium">In Progress</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Next Event:</span>
+                    <span className="text-saywhat-dark">2025</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Lead:</span>
+                    <span className="text-saywhat-dark">Not assigned</span>
+                  </div>
+                </div>
+                <div className="mt-4 flex space-x-2">
+                  <button className="flex-1 text-xs px-3 py-2 bg-saywhat-red text-white rounded hover:bg-red-600">
+                    View Timeline
+                  </button>
+                  <button className="flex-1 text-xs px-3 py-2 border border-saywhat-red text-saywhat-red rounded hover:bg-red-50">
+                    Documents
+                  </button>
+                </div>
+              </div>
+
+              {/* The Chase and CRAFT */}
+              <div className="bg-white rounded-lg shadow border-l-4 border-l-saywhat-grey p-6">
+                <div className="flex items-center mb-4">
+                  <UsersIcon className="h-6 w-6 text-saywhat-grey mr-3" />
+                  <h4 className="text-lg font-medium text-saywhat-dark">The Chase and CRAFT</h4>
+                </div>
+                <p className="text-sm text-saywhat-grey mb-4">Creative arts and talent showcase events</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Status:</span>
+                    <span className="text-blue-600 font-medium">Scheduled</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Next Event:</span>
+                    <span className="text-saywhat-dark">2025</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Lead:</span>
+                    <span className="text-saywhat-dark">Not assigned</span>
+                  </div>
+                </div>
+                <div className="mt-4 flex space-x-2">
+                  <button className="flex-1 text-xs px-3 py-2 bg-saywhat-grey text-white rounded hover:bg-gray-600">
+                    View Timeline
+                  </button>
+                  <button className="flex-1 text-xs px-3 py-2 border border-saywhat-grey text-saywhat-grey rounded hover:bg-gray-50">
+                    Documents
+                  </button>
+                </div>
+              </div>
+
+              {/* National Students Conference */}
+              <div className="bg-white rounded-lg shadow border-l-4 border-l-green-500 p-6">
+                <div className="flex items-center mb-4">
+                  <UsersIcon className="h-6 w-6 text-green-500 mr-3" />
+                  <h4 className="text-lg font-medium text-saywhat-dark">National Students Conference</h4>
+                </div>
+                <p className="text-sm text-saywhat-grey mb-4">Annual national conference with multiple specialized events</p>
+                <div className="space-y-2">
+                  <div className="text-xs text-saywhat-grey">Includes:</div>
+                  <ul className="text-xs text-saywhat-dark space-y-1 ml-4">
+                    <li>• Orathon</li>
+                    <li>• Web for Life Symposium</li>
+                    <li>• Mugota/Ixhiba Young Men's Forum</li>
+                    <li>• Research Indaba</li>
+                    <li>• Forum of College Authorities on Students SRH</li>
+                    <li>• Awards Ceremony</li>
+                  </ul>
+                </div>
+                <div className="mt-4 flex space-x-2">
+                  <button className="flex-1 text-xs px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+                    View Timeline
+                  </button>
+                  <button className="flex-1 text-xs px-3 py-2 border border-green-500 text-green-500 rounded hover:bg-green-50">
+                    Documents
+                  </button>
+                </div>
+              </div>
+
+              {/* Southern African Regional Conference */}
+              <div className="bg-white rounded-lg shadow border-l-4 border-l-purple-500 p-6">
+                <div className="flex items-center mb-4">
+                  <MapIcon className="h-6 w-6 text-purple-500 mr-3" />
+                  <h4 className="text-lg font-medium text-saywhat-dark">Southern African Regional Students & Youth Conference</h4>
+                </div>
+                <p className="text-sm text-saywhat-grey mb-4">Regional conference bringing together students and youth from across Southern Africa</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Status:</span>
+                    <span className="text-purple-600 font-medium">Planning</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Next Event:</span>
+                    <span className="text-saywhat-dark">2025</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-saywhat-grey">Lead:</span>
+                    <span className="text-saywhat-dark">Not assigned</span>
+                  </div>
+                </div>
+                <div className="mt-4 flex space-x-2">
+                  <button className="flex-1 text-xs px-3 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">
+                    View Timeline
+                  </button>
+                  <button className="flex-1 text-xs px-3 py-2 border border-purple-500 text-purple-500 rounded hover:bg-purple-50">
+                    Documents
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Annual Gantt Chart View */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h4 className="text-lg font-medium text-saywhat-dark mb-4">Annual Events Timeline</h4>
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <p className="text-blue-800">
+                  <strong>Coming Soon:</strong> Interactive Gantt chart for annual event scheduling by months with work breakdown structure (WBS) for concept notes, budgets, and event reports.
+                </p>
+                <div className="mt-3">
+                  <p className="text-sm text-blue-700">
+                    <strong>Features:</strong> Monthly view, drag-and-drop scheduling, document uploads (concept notes, budgets, reports), progress tracking, and collaborative planning tools.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         )
       case "reports":
         return (
           <ReportsAnalytics 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-            onProjectSelect={setSelectedProject}
-          />
-        )
-      case "settings":
-        return (
-          <ProjectSettings 
             permissions={permissions as unknown as Record<string, boolean>}
             selectedProject={selectedProject}
             onProjectSelect={setSelectedProject}
@@ -475,6 +564,19 @@ function EnhancedProgramsContent() {
           {renderTabContent()}
         </div>
       </div>
+
+      {/* Enhanced New Project Form Modal */}
+      {showNewProject && (
+        <EnhancedNewProjectForm 
+          onCancel={() => setShowNewProject(false)}
+          onSuccess={() => {
+            setShowNewProject(false)
+            setShowSuccessMessage(true)
+            // Refresh projects data if needed
+            setTimeout(() => setShowSuccessMessage(false), 5000)
+          }}
+        />
+      )}
     </ModulePage>
   )
 }

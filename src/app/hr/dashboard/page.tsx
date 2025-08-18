@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import Link from "next/link"
 import {
@@ -20,28 +21,63 @@ import {
   ChartBarIcon
 } from "@heroicons/react/24/outline"
 
+interface HRStats {
+  totalEmployees: number
+  activeEmployees: number
+  newEmployeesThisMonth: number
+  departmentCount: number
+  pendingReviews: number
+  trainingPrograms: number
+  monthlyPayroll: number
+  presentToday: number
+  pendingLeaveApprovals: number
+  openPositions: number
+}
+
 export default function HRDashboard() {
+  const [stats, setStats] = useState<HRStats | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchHRStats()
+  }, [])
+
+  const fetchHRStats = async () => {
+    try {
+      const response = await fetch('/api/hr/stats')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setStats(result.data)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch HR stats:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
   const metadata = {
-    title: "HR Management Dashboard",
-    description: "Human resources management overview and navigation",
+    title: "Member Management Dashboard",
+    description: "SAYWHAT member management overview and navigation",
     breadcrumbs: [
       { name: "SIRTIS" },
-      { name: "HR Management" }
+      { name: "Member Management" }
     ]
   }
 
   const actions = (
     <>
       <Link href="/hr/reports">
-        <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+        <button className="inline-flex items-center px-4 py-2 border border-saywhat-orange rounded-md shadow-sm text-sm font-medium text-saywhat-orange bg-white hover:bg-orange-50">
           <DocumentTextIcon className="h-4 w-4 mr-2" />
           HR Reports
         </button>
       </Link>
       <Link href="/hr/employees/add">
-        <button className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700">
+        <button className="inline-flex items-center px-4 py-2 bg-saywhat-orange border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-orange-600">
           <UserPlusIcon className="h-4 w-4 mr-2" />
-          Add Employee
+          Add Member
         </button>
       </Link>
     </>
@@ -111,28 +147,28 @@ export default function HRDashboard() {
 
   const hrModules = [
     {
-      title: "Employee Directory",
-      description: "Manage employee profiles, contacts, and basic information",
+      title: "Member Directory",
+      description: "Manage member profiles, contacts, and basic information",
       icon: UserGroupIcon,
       href: "/hr/employees",
-      color: "blue",
-      stats: "1,248 employees"
+      color: "orange",
+      stats: loading ? "Loading..." : `${stats?.totalEmployees || 0} members`
     },
     {
       title: "Performance Management",
       description: "Track performance reviews, goals, and evaluations",
       icon: StarIcon,
       href: "/hr/performance",
-      color: "yellow",
-      stats: "15 reviews due"
+      color: "red",
+      stats: loading ? "Loading..." : `${stats?.pendingReviews || 0} reviews due`
     },
     {
       title: "Training & Development",
       description: "Manage training programs, certifications, and skill development",
       icon: AcademicCapIcon,
       href: "/hr/training",
-      color: "purple",
-      stats: "89 active programs"
+      color: "grey",
+      stats: loading ? "Loading..." : `${stats?.trainingPrograms || 0} active programs`
     },
     {
       title: "Payroll Management",
@@ -140,15 +176,15 @@ export default function HRDashboard() {
       icon: BanknotesIcon,
       href: "/hr/payroll",
       color: "green",
-      stats: "₦125M monthly"
+      stats: loading ? "Loading..." : stats?.monthlyPayroll ? `$${(stats.monthlyPayroll / 1000000).toFixed(1)}M monthly` : "Not configured"
     },
     {
       title: "Time & Attendance",
       description: "Track attendance, punch in/out, time tracking, and attendance roster",
       icon: ClockIcon,
       href: "/hr/attendance",
-      color: "indigo",
-      stats: "87 present today"
+      color: "blue",
+      stats: loading ? "Loading..." : `${stats?.presentToday || 0} present today`
     },
     {
       title: "Leave Management",
@@ -156,7 +192,7 @@ export default function HRDashboard() {
       icon: CalendarDaysIcon,
       href: "/hr/leave",
       color: "teal",
-      stats: "12 pending approvals"
+      stats: loading ? "Loading..." : `${stats?.pendingLeaveApprovals || 0} pending approvals`
     },
     {
       title: "Departments",
@@ -164,7 +200,7 @@ export default function HRDashboard() {
       icon: BuildingOfficeIcon,
       href: "/hr/departments",
       color: "red",
-      stats: "12 departments"
+      stats: loading ? "Loading..." : `${stats?.departmentCount || 0} departments`
     },
     {
       title: "Recruitment",
@@ -172,7 +208,7 @@ export default function HRDashboard() {
       icon: UserPlusIcon,
       href: "/hr/recruitment",
       color: "pink",
-      stats: "8 open positions"
+      stats: loading ? "Loading..." : `${stats?.openPositions || 0} open positions`
     },
     {
       title: "HR Analytics",
@@ -186,17 +222,15 @@ export default function HRDashboard() {
 
   const getColorClasses = (color: string) => {
     const colorMap = {
-      blue: "bg-blue-50 border-blue-200 text-blue-600",
-      yellow: "bg-yellow-50 border-yellow-200 text-yellow-600",
-      purple: "bg-purple-50 border-purple-200 text-purple-600",
+      orange: "bg-orange-50 border-orange-200 text-saywhat-orange",
+      red: "bg-red-50 border-red-200 text-saywhat-red",
+      grey: "bg-gray-50 border-gray-200 text-saywhat-grey",
       green: "bg-green-50 border-green-200 text-green-600",
-      indigo: "bg-indigo-50 border-indigo-200 text-indigo-600",
+      blue: "bg-blue-50 border-blue-200 text-blue-600",
       teal: "bg-teal-50 border-teal-200 text-teal-600",
-      red: "bg-red-50 border-red-200 text-red-600",
-      pink: "bg-pink-50 border-pink-200 text-pink-600",
-      orange: "bg-orange-50 border-orange-200 text-orange-600"
+      pink: "bg-pink-50 border-pink-200 text-pink-600"
     }
-    return colorMap[color as keyof typeof colorMap] || "bg-gray-50 border-gray-200 text-gray-600"
+    return colorMap[color as keyof typeof colorMap] || "bg-gray-50 border-gray-200 text-saywhat-grey"
   }
 
   return (
