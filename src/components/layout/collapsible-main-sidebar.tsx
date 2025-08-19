@@ -86,7 +86,7 @@ export default function CollapsibleMainSidebar({
                   className="rounded-lg object-contain"
                 />
               </div>
-              <span className="font-bold text-saywhat-orange text-xl">SAYWHAT</span>
+              <span className="font-bold text-saywhat-orange text-xl">SIRTIS</span>
             </div>
           )}
           
