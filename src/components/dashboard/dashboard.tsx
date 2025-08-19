@@ -74,7 +74,7 @@ export default function Dashboard() {
       <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-sm">
         <div className="px-6 py-8 sm:px-8">
           <h1 className="text-2xl font-bold text-white">
-            Welcome to SIRTIS Dashboard
+            Welcome to SIRTIS
           </h1>
           <p className="mt-2 text-indigo-100">
             Real-time overview of SAYWHAT's operational activities and performance metrics

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -11,83 +11,91 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get current date for calculations
-    const now = new Date()
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.view') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager')
 
-    // Get HR statistics from the Employee table (using User table as Employee table)
-    const [
-      totalEmployees,
-      activeEmployees,
-      newEmployeesThisMonth,
-      departmentCount
-    ] = await Promise.all([
-      // Total employees (non-admin users)
-      prisma.user.count({
-        where: {
-          role: {
-            not: 'ADMIN'
-          }
-        }
-      }),
-      // Active employees (logged in within last 30 days)
-      prisma.user.count({
-        where: {
-          role: {
-            not: 'ADMIN'
-          },
-          lastLogin: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          }
-        }
-      }),
-      // New employees this month
-      prisma.user.count({
-        where: {
-          role: {
-            not: 'ADMIN'
-          },
-          createdAt: {
-            gte: firstDayOfMonth
-          }
-        }
-      }),
-      // Department count (using distinct role values as department approximation)
-      prisma.user.groupBy({
-        by: ['role'],
-        where: {
-          role: {
-            not: 'ADMIN'
-          }
-        }
-      }).then(groups => groups.length)
-    ])
-
-    // Calculate additional metrics
-    const hrStats = {
-      totalEmployees,
-      activeEmployees,
-      newEmployeesThisMonth,
-      departmentCount,
-      // Mock values for features not yet implemented
-      pendingReviews: 0, // Would come from performance review table
-      trainingPrograms: 0, // Would come from training table
-      monthlyPayroll: 0, // Would come from payroll table
-      presentToday: activeEmployees, // Simplified - would need attendance table
-      pendingLeaveApprovals: 0, // Would come from leave table
-      openPositions: 0 // Would come from recruitment table
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    return NextResponse.json({
-      success: true,
-      data: hrStats
-    })
+    // Get HR statistics
+    const totalEmployees = await prisma.employee.count()
     
+    const activeEmployees = await prisma.employee.count({
+      where: {
+        status: 'ACTIVE'
+      }
+    })
+
+    const thisMonthStart = new Date()
+    thisMonthStart.setDate(1)
+    thisMonthStart.setHours(0, 0, 0, 0)
+    
+    const newEmployeesThisMonth = await prisma.employee.count({
+      where: {
+        createdAt: {
+          gte: thisMonthStart
+        }
+      }
+    })
+
+    // Count pending leave requests
+    const pendingLeaveRequests = await prisma.leaveRequest.count({
+      where: {
+        status: 'PENDING'
+      }
+    })
+
+    // Count departments
+    const departments = await prisma.employee.groupBy({
+      by: ['department'],
+      _count: {
+        id: true
+      },
+      where: {
+        department: {
+          not: null
+        }
+      }
+    })
+
+    // Training statistics
+    const totalTrainings = await prisma.training.count()
+    const activeTrainings = await prisma.training.count({
+      where: {
+        status: 'ACTIVE'
+      }
+    })
+
+    return NextResponse.json({
+      totalEmployees,
+      activeEmployees,
+      newEmployeesThisMonth,
+      pendingLeaveRequests,
+      departmentCount: departments.length,
+      departments: departments.map(d => ({
+        name: d.department,
+        count: d._count.id
+      })),
+      totalTrainings,
+      activeTrainings
+    })
+
   } catch (error) {
-    console.error('HR stats API error:', error)
-    return NextResponse.json({ 
-      success: false,
-      error: 'Internal server error' 
-    }, { status: 500 })
+    console.error('Error fetching HR stats:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
+}
+
+export async function POST(request: NextRequest) {
+  return NextResponse.json(
+    { error: 'Method not implemented' },
+    { status: 501 }
+  )
 }

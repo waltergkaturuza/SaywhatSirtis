@@ -448,11 +448,12 @@ export function GlobalSearchTrigger() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors text-sm text-gray-600 dark:text-gray-400"
+        className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-md transition-colors text-sm text-white placeholder:text-white/80 border border-white/30"
+        style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: '#ffffff', borderColor: 'rgba(255, 255, 255, 0.3)' }}
       >
-        <Search className="w-4 h-4" />
-        <span>Search...</span>
-        <kbd className="ml-auto text-xs bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded">
+        <Search className="w-4 h-4 text-white" />
+        <span className="text-white">Search...</span>
+        <kbd className="ml-auto text-xs bg-white/20 px-1 py-0.5 rounded text-white">
           Ctrl+K
         </kbd>
       </button>

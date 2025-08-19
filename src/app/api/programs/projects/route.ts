@@ -18,37 +18,9 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Check if request is FormData (from enhanced form) or JSON (legacy)
-    const contentType = request.headers.get('content-type')
-    let body: any
+    const body = await request.json()
     
-    if (contentType?.includes('multipart/form-data')) {
-      const formData = await request.formData()
-      
-      // Parse enhanced form data
-      body = {
-        projectCode: formData.get('projectCode') as string,
-        name: formData.get('name') as string,
-        description: formData.get('description') as string,
-        projectLead: formData.get('projectLead') as string,
-        categories: JSON.parse(formData.get('categories') as string || '[]'),
-        startDate: formData.get('startDate') as string,
-        endDate: formData.get('endDate') as string,
-        country: formData.get('country') as string,
-        province: formData.get('province') as string || '',
-        fundingSource: formData.get('fundingSource') as string,
-        grantsERequisiteIntegration: formData.get('grantsERequisiteIntegration') === 'true',
-        objectives: JSON.parse(formData.get('objectives') as string || '[]'),
-        implementingOrganizations: JSON.parse(formData.get('implementingOrganizations') as string || '[]'),
-        reportingFrequencies: JSON.parse(formData.get('reportingFrequencies') as string || '[]'),
-        methodologies: JSON.parse(formData.get('methodologies') as string || '[]'),
-        budgetBreakdownFile: formData.get('budgetBreakdownFile') as File | null
-      }
-    } else {
-      body = await request.json()
-    }
-    
-    // Enhanced validation for new form fields
+    // Basic validation
     if (!body.name || !body.description || !body.startDate || !body.endDate || !body.country) {
       return NextResponse.json({ 
         success: false,
@@ -56,32 +28,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Additional validation for enhanced form
-    if (body.projectCode && !body.projectLead) {
-      return NextResponse.json({ 
-        success: false,
-        error: "Project lead is required when project code is provided" 
-      }, { status: 400 })
-    }
-
-    if (body.categories && body.categories.length === 0) {
-      return NextResponse.json({ 
-        success: false,
-        error: "At least one project category must be selected" 
-      }, { status: 400 })
-    }
-
-    // Handle budget file info
-    let budgetFileInfo = null
-    if (body.budgetBreakdownFile) {
-      budgetFileInfo = {
-        name: body.budgetBreakdownFile.name,
-        size: body.budgetBreakdownFile.size,
-        type: body.budgetBreakdownFile.type
-      }
-    }
-
-    // Create the project in the database with available fields
+    // Create the project in the database
     const project = await prisma.project.create({
       data: {
         name: body.name,
@@ -91,22 +38,9 @@ export async function POST(request: NextRequest) {
         endDate: new Date(body.endDate),
         country: body.country,
         province: body.province || null,
-        objectives: JSON.stringify({
-          // Store enhanced objectives structure in the existing JSON field
-          projectCode: body.projectCode || null,
-          projectLead: body.projectLead || null,
-          categories: body.categories || [],
-          fundingSource: body.fundingSource || null,
-          grantsERequisiteIntegration: body.grantsERequisiteIntegration || false,
-          implementingOrganizations: body.implementingOrganizations || [],
-          reportingFrequencies: body.reportingFrequencies || [],
-          methodologies: body.methodologies || [],
-          budgetFileInfo: budgetFileInfo,
-          objectives: body.objectives || []
-        }),
+        objectives: JSON.stringify(body.objectives || []),
         budget: body.budget ? parseFloat(body.budget) : null,
-        actualSpent: 0,
-        status: 'PLANNING'
+        actualSpent: 0
       }
     })
 

@@ -17,38 +17,16 @@ export async function GET(request: NextRequest) {
     const firstDayOfYear = new Date(now.getFullYear(), 0, 1)
 
     // Get member count from User table (representing membership database)
-    const [totalMembers, activeMembers, newMembersThisMonth] = await Promise.all([
-      prisma.user.count({
-        where: {
-          role: {
-            not: 'ADMIN' // Exclude admin users from member count
-          }
+    const totalMembers = await prisma.user.count({
+      where: {
+        role: {
+          not: 'ADMIN' // Exclude admin users from member count
         }
-      }),
-      prisma.user.count({
-        where: {
-          role: {
-            not: 'ADMIN'
-          },
-          lastLogin: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Active in last 30 days
-          }
-        }
-      }),
-      prisma.user.count({
-        where: {
-          role: {
-            not: 'ADMIN'
-          },
-          createdAt: {
-            gte: firstDayOfMonth
-          }
-        }
-      })
-    ])
+      }
+    })
 
-    // Get call statistics and additional metrics
-    const [callsThisMonth, callsThisYear, callsToday, avgSatisfactionRating, callSuccessRate] = await Promise.all([
+    // Get call statistics
+    const [callsThisMonth, callsThisYear, callsToday] = await Promise.all([
       prisma.callCentreRecord.count({
         where: {
           createdAt: {
@@ -69,26 +47,11 @@ export async function GET(request: NextRequest) {
             gte: new Date(now.getFullYear(), now.getMonth(), now.getDate())
           }
         }
-      }),
-      // Calculate average satisfaction rating
-      prisma.callCentreRecord.aggregate({
-        _avg: {
-          satisfactionRating: true
-        }
-      }).then(result => result._avg?.satisfactionRating || 0),
-      // Calculate call success rate (resolved calls vs total calls)
-      prisma.callCentreRecord.count({
-        where: {
-          status: 'RESOLVED'
-        }
-      }).then(async (resolvedCalls) => {
-        const totalCalls = await prisma.callCentreRecord.count()
-        return totalCalls > 0 ? (resolvedCalls / totalCalls) * 100 : 0
       })
     ])
 
     // Get program performance metrics
-    const [activePrograms, totalPrograms, completedPrograms] = await Promise.all([
+    const [activePrograms, totalPrograms, programsOnTrack] = await Promise.all([
       prisma.project.count({
         where: {
           status: 'ACTIVE'
@@ -97,29 +60,33 @@ export async function GET(request: NextRequest) {
       prisma.project.count(),
       prisma.project.count({
         where: {
-          status: 'COMPLETED'
+          status: 'ACTIVE',
+          // Consider a program "on track" if it's active and not overdue
+          endDate: {
+            gte: now
+          }
         }
       })
     ])
 
-    // Calculate program success rate
-    const programSuccessRate = totalPrograms > 0 
-      ? (completedPrograms / totalPrograms) * 100 
+    // Calculate performance score based on programs
+    const performanceScore = totalPrograms > 0 
+      ? Math.round((programsOnTrack / activePrograms) * 100) 
       : 0
 
     return NextResponse.json({
       totalMembers,
-      activeMembers,
-      newMembersThisMonth,
-      totalCalls: callsThisYear,
-      callsToday,
-      callsThisMonth,
-      avgSatisfactionRating,
-      callSuccessRate,
-      totalPrograms,
-      activePrograms,
-      completedPrograms,
-      programSuccessRate
+      calls: {
+        today: callsToday,
+        thisMonth: callsThisMonth,
+        thisYear: callsThisYear
+      },
+      programs: {
+        active: activePrograms,
+        total: totalPrograms,
+        onTrack: programsOnTrack,
+        performanceScore
+      }
     })
     
   } catch (error) {

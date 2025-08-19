@@ -1,43 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { z } from 'zod'
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { PrismaClient } from "@prisma/client"
+import { z } from "zod"
 
+const prisma = new PrismaClient()
+
+// Validation schema for asset creation/update
 const assetSchema = z.object({
   name: z.string().min(1, "Asset name is required"),
-  assetTag: z.string().min(1, "Asset tag is required"),
-  category: z.string().min(1, "Asset category is required"), 
-  brand: z.string().optional(),
+  assetNumber: z.string().min(1, "Asset number is required"),
+  category: z.enum(["COMPUTER", "FURNITURE", "VEHICLE", "EQUIPMENT", "SOFTWARE", "OTHER"]).default("OTHER"),
   model: z.string().optional(),
-  serialNumber: z.string().optional(),
-  purchasePrice: z.number().positive("Purchase price must be positive").optional(),
-  currentValue: z.number().positive("Current value must be positive").optional(),
-  location: z.string().optional(),
+  procurementValue: z.number().positive("Procurement value must be positive"),
+  depreciationRate: z.number().min(0).max(100).default(0),
+  currentValue: z.number().positive("Current value must be positive"),
+  allocation: z.string().min(1, "Allocation is required"),
+  location: z.string().min(1, "Location is required"),
   condition: z.enum(["EXCELLENT", "GOOD", "FAIR", "POOR", "DAMAGED"]).default("GOOD"),
-  status: z.enum(["ACTIVE", "INACTIVE", "MAINTENANCE", "DISPOSED", "LOST"]).default("ACTIVE"),
-  purchaseDate: z.string().transform((str) => new Date(str)).optional(),
-  warrantyExpiry: z.string().transform((str) => new Date(str)).optional(),
-  description: z.string().optional()
+  status: z.enum(["ACTIVE", "INACTIVE", "DISPOSED", "MAINTENANCE"]).default("ACTIVE"),
+  procurementDate: z.string().transform((str) => new Date(str))
 })
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession()
     
+    // Basic authentication check
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
 
     const { searchParams } = new URL(request.url)
+    const search = searchParams.get('search')
+    const status = searchParams.get('status')
+    const location = searchParams.get('location')
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
-    const search = searchParams.get('search') || ''
-    const status = searchParams.get('status') || 'all'
-    const location = searchParams.get('location') || 'all'
-
+    const limit = parseInt(searchParams.get('limit') || '50')
     const skip = (page - 1) * limit
-    
+
     // Build where clause for filtering
     const where: any = {}
     
@@ -45,6 +48,7 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { assetTag: { contains: search, mode: 'insensitive' } },
+        { category: { contains: search, mode: 'insensitive' } },
         { location: { contains: search, mode: 'insensitive' } }
       ]
     }
@@ -78,8 +82,8 @@ export async function GET(request: NextRequest) {
     const transformedAssets = assets.map(asset => ({
       id: asset.id,
       name: asset.name,
-      assetNumber: asset.assetTag, // Use assetTag as assetNumber
-      category: asset.category,
+      assetNumber: asset.assetTag, // Use assetTag from schema
+      category: asset.category, // Use category directly from schema
       type: asset.category,
       brand: asset.brand,
       model: asset.model,
@@ -87,11 +91,11 @@ export async function GET(request: NextRequest) {
       status: asset.status.toLowerCase(),
       condition: asset.condition.toLowerCase(),
       location: asset.location,
-      department: asset.location, // Map location to department
-      assignedTo: null, // Would need to query assignments separately
-      procurementValue: asset.purchasePrice || 0,
-      currentValue: asset.currentValue || 0,
-      depreciationRate: 0, // Not in current schema
+      department: asset.location, // Use location as department
+      assignedTo: asset.location,
+      procurementValue: asset.purchasePrice ? parseFloat(asset.purchasePrice.toString()) : 0,
+      currentValue: asset.currentValue ? parseFloat(asset.currentValue.toString()) : 0,
+      depreciationRate: 0, // Not in schema, default to 0
       procurementDate: asset.purchaseDate?.toISOString().split('T')[0] || null,
       warrantyExpiry: asset.warrantyExpiry?.toISOString().split('T')[0] || null,
       lastAuditDate: null, // Not in current schema
@@ -104,50 +108,62 @@ export async function GET(request: NextRequest) {
     }))
 
     return NextResponse.json({
-      success: true,
-      data: transformedAssets,
+      assets: transformedAssets,
       pagination: {
-        page,
-        limit,
-        total: totalCount,
-        pages: Math.ceil(totalCount / limit)
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
+        totalAssets: totalCount,
+        hasNextPage: (page * limit) < totalCount,
+        hasPreviousPage: page > 1
       }
     })
 
   } catch (error) {
-    console.error('Assets GET error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error("Error fetching assets:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch assets" },
+      { status: 500 }
+    )
+  } finally {
+    await prisma.$disconnect()
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession()
     
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
 
     const body = await request.json()
+    
+    // Validate input data
     const validationResult = assetSchema.safeParse(body)
-
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validationResult.error.errors },
+        { 
+          error: "Validation failed", 
+          details: validationResult.error.format() 
+        },
         { status: 400 }
       )
     }
 
     const validatedData = validationResult.data
 
-    // Check if asset tag already exists
+    // Check if asset number already exists
     const existingAsset = await prisma.asset.findUnique({
-      where: { assetTag: validatedData.assetTag }
+      where: { assetTag: validatedData.assetNumber }
     })
 
     if (existingAsset) {
       return NextResponse.json(
-        { error: "Asset tag already exists" },
+        { error: "Asset number already exists" },
         { status: 409 }
       )
     }
@@ -156,19 +172,15 @@ export async function POST(request: NextRequest) {
     const newAsset = await prisma.asset.create({
       data: {
         name: validatedData.name,
-        assetTag: validatedData.assetTag,
-        category: validatedData.category as any, // Cast to AssetCategory enum
-        brand: validatedData.brand,
+        assetTag: validatedData.assetNumber,
+        category: validatedData.category,
         model: validatedData.model,
-        serialNumber: validatedData.serialNumber,
-        purchasePrice: validatedData.purchasePrice,
+        purchasePrice: validatedData.procurementValue,
         currentValue: validatedData.currentValue,
         location: validatedData.location,
-        condition: validatedData.condition as any, // Cast to AssetCondition enum
-        status: validatedData.status as any, // Cast to AssetStatus enum
-        purchaseDate: validatedData.purchaseDate,
-        warrantyExpiry: validatedData.warrantyExpiry,
-        description: validatedData.description
+        condition: validatedData.condition,
+        status: validatedData.status,
+        purchaseDate: validatedData.procurementDate
       }
     })
 
@@ -176,7 +188,7 @@ export async function POST(request: NextRequest) {
     const transformedAsset = {
       id: newAsset.id,
       name: newAsset.name,
-      assetNumber: newAsset.assetTag, // Map assetTag to assetNumber for frontend
+      assetNumber: newAsset.assetTag,
       category: newAsset.category,
       type: newAsset.category,
       brand: newAsset.brand,
@@ -185,10 +197,10 @@ export async function POST(request: NextRequest) {
       status: newAsset.status.toLowerCase(),
       condition: newAsset.condition.toLowerCase(),
       location: newAsset.location,
-      department: newAsset.location, // Map location to department
-      assignedTo: null, // Would need assignment lookup
-      procurementValue: newAsset.purchasePrice || 0,
-      currentValue: newAsset.currentValue || 0,
+      department: newAsset.location,
+      assignedTo: newAsset.location,
+      procurementValue: newAsset.purchasePrice ? parseFloat(newAsset.purchasePrice.toString()) : 0,
+      currentValue: newAsset.currentValue ? parseFloat(newAsset.currentValue.toString()) : 0,
       depreciationRate: 0, // Not in schema
       procurementDate: newAsset.purchaseDate?.toISOString().split('T')[0] || null,
       warrantyExpiry: newAsset.warrantyExpiry?.toISOString().split('T')[0] || null,
@@ -196,19 +208,207 @@ export async function POST(request: NextRequest) {
       nextMaintenanceDate: null,
       rfidTag: null,
       qrCode: null,
-      description: newAsset.description,
+      description: null,
       createdAt: newAsset.createdAt.toISOString(),
       updatedAt: newAsset.updatedAt.toISOString()
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Asset created successfully",
-      data: transformedAsset
-    }, { status: 201 })
+    return NextResponse.json(
+      { 
+        message: "Asset created successfully", 
+        asset: transformedAsset 
+      },
+      { status: 201 }
+    )
 
   } catch (error) {
-    console.error('Assets POST error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error("Error creating asset:", error)
+    return NextResponse.json(
+      { error: "Failed to create asset" },
+      { status: 500 }
+    )
+  } finally {
+    await prisma.$disconnect()
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getServerSession()
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: "Asset ID is required" },
+        { status: 400 }
+      )
+    }
+
+    const body = await request.json()
+    
+    // Validate input data (make fields optional for updates)
+    const updateSchema = assetSchema.partial()
+    const validationResult = updateSchema.safeParse(body)
+    
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { 
+          error: "Validation failed", 
+          details: validationResult.error.format() 
+        },
+        { status: 400 }
+      )
+    }
+
+    const validatedData = validationResult.data
+
+    // Check if asset exists
+    const existingAsset = await prisma.asset.findUnique({
+      where: { id }
+    })
+
+    if (!existingAsset) {
+      return NextResponse.json(
+        { error: "Asset not found" },
+        { status: 404 }
+      )
+    }
+
+    // Check if asset number is being changed and already exists (validatedData uses assetNumber)
+    if (validatedData.assetNumber && validatedData.assetNumber !== existingAsset.assetTag) {
+      const duplicateAsset = await prisma.asset.findUnique({
+        where: { assetTag: validatedData.assetNumber }
+      })
+
+      if (duplicateAsset) {
+        return NextResponse.json(
+          { error: "Asset tag already exists" },
+          { status: 409 }
+        )
+      }
+    }
+
+    // Transform frontend data to database schema
+    const updateData: any = {}
+    if (validatedData.name) updateData.name = validatedData.name
+    if (validatedData.assetNumber) updateData.assetTag = validatedData.assetNumber
+    if (validatedData.category) updateData.category = validatedData.category
+    if (validatedData.model) updateData.model = validatedData.model
+    if (validatedData.location) updateData.location = validatedData.location
+    if (validatedData.status) updateData.status = validatedData.status
+    if (validatedData.condition) updateData.condition = validatedData.condition
+    if (validatedData.procurementValue) updateData.purchasePrice = validatedData.procurementValue
+    if (validatedData.procurementDate) updateData.purchaseDate = validatedData.procurementDate
+
+    // Update asset in database
+    const updatedAsset = await prisma.asset.update({
+      where: { id },
+      data: updateData
+    })
+
+    // Transform response to match frontend expectations
+    const transformedAsset = {
+      id: updatedAsset.id,
+      name: updatedAsset.name,
+      assetNumber: updatedAsset.assetTag,
+      category: updatedAsset.category,
+      type: updatedAsset.category,
+      brand: updatedAsset.brand,
+      model: updatedAsset.model,
+      serialNumber: updatedAsset.serialNumber,
+      status: updatedAsset.status.toLowerCase(),
+      condition: updatedAsset.condition.toLowerCase(),
+      location: updatedAsset.location,
+      department: updatedAsset.location,
+      assignedTo: updatedAsset.location,
+      procurementValue: updatedAsset.purchasePrice ? parseFloat(updatedAsset.purchasePrice.toString()) : 0,
+      currentValue: updatedAsset.currentValue ? parseFloat(updatedAsset.currentValue.toString()) : 0,
+      depreciationRate: 0, // Not in schema
+      procurementDate: updatedAsset.purchaseDate?.toISOString().split('T')[0] || null,
+      warrantyExpiry: updatedAsset.warrantyExpiry?.toISOString().split('T')[0] || null,
+      lastAuditDate: null,
+      nextMaintenanceDate: null,
+      rfidTag: null,
+      qrCode: null,
+      description: null,
+      createdAt: updatedAsset.createdAt.toISOString(),
+      updatedAt: updatedAsset.updatedAt.toISOString()
+    }
+
+    return NextResponse.json({
+      message: "Asset updated successfully",
+      asset: transformedAsset
+    })
+
+  } catch (error) {
+    console.error("Error updating asset:", error)
+    return NextResponse.json(
+      { error: "Failed to update asset" },
+      { status: 500 }
+    )
+  } finally {
+    await prisma.$disconnect()
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession()
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: "Asset ID is required" },
+        { status: 400 }
+      )
+    }
+
+    // Check if asset exists
+    const existingAsset = await prisma.asset.findUnique({
+      where: { id }
+    })
+
+    if (!existingAsset) {
+      return NextResponse.json(
+        { error: "Asset not found" },
+        { status: 404 }
+      )
+    }
+
+    // Delete asset from database (this will cascade delete maintenance records)
+    await prisma.asset.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({
+      message: "Asset deleted successfully"
+    })
+
+  } catch (error) {
+    console.error("Error deleting asset:", error)
+    return NextResponse.json(
+      { error: "Failed to delete asset" },
+      { status: 500 }
+    )
+  } finally {
+    await prisma.$disconnect()
   }
 }

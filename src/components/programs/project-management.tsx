@@ -98,66 +98,103 @@ export interface SortConfig {
 
 export function ProjectManagement({ permissions, selectedProject, onProjectSelect }: ProjectManagementProps) {
   const [mounted, setMounted] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [showFilters, setShowFilters] = useState(false)
   const [selectedProjects, setSelectedProjects] = useState<string[]>([])
 
-  // Projects data - will be fetched from API
-  const [projects, setProjects] = useState<Project[]>([])
-
-  // Fetch projects from API
-  useEffect(() => {
-    const fetchProjects = async () => {
-      setIsLoading(true)
-      try {
-        const response = await fetch('/api/programs/projects')
-        if (response.ok) {
-          const data = await response.json()
-          // Transform API data to match our Project interface
-          const transformedProjects = (data.projects || []).map((project: any) => ({
-            id: project.id,
-            name: project.name,
-            description: project.description || '',
-            status: project.status?.toLowerCase() || 'planning',
-            priority: project.priority?.toLowerCase() || 'medium',
-            progress: project.progress || 0,
-            startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
-            endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
-            budget: project.budget || 0,
-            spent: project.actualSpent || 0,
-            manager: {
-              id: 'mgr-1',
-              name: project.projectLead || 'Unassigned',
-              avatar: '/avatars/default.jpg'
-            },
-            team: [],
-            health: project.progress > 80 ? 'healthy' : project.progress > 50 ? 'at-risk' : 'critical',
-            tags: project.categories || [],
-            lastActivity: project.updatedAt || project.createdAt,
-            milestones: { total: 0, completed: 0 },
-            tasks: { total: 0, completed: 0 },
-            client: 'SAYWHAT',
-            department: 'Programs',
-            location: project.country || 'Not specified'
-          }))
-          setProjects(transformedProjects)
-        } else {
-          console.error('Failed to fetch projects')
-          // Keep empty array if API fails
-          setProjects([])
-        }
-      } catch (error) {
-        console.error('Error fetching projects:', error)
-        // Keep empty array if API fails
-        setProjects([])
-      } finally {
-        setIsLoading(false)
-      }
+  // Projects data
+  const [projects, setProjects] = useState<Project[]>([
+    {
+      id: "proj-1",
+      name: "SAYWHAT Digital Platform",
+      description: "Comprehensive digital transformation initiative for SAYWHAT organization",
+      status: "active",
+      priority: "high",
+      progress: 68,
+      startDate: "2024-01-15",
+      endDate: "2024-12-31",
+      budget: 500000,
+      spent: 340000,
+      manager: {
+        id: "mgr-1",
+        name: "John Doe",
+        avatar: "/avatars/john.jpg"
+      },
+      team: [
+        { id: "tm-1", name: "Alice Smith", avatar: "/avatars/alice.jpg" },
+        { id: "tm-2", name: "Bob Johnson", avatar: "/avatars/bob.jpg" },
+        { id: "tm-3", name: "Carol Williams", avatar: "/avatars/carol.jpg" }
+      ],
+      health: "healthy",
+      tags: ["digital-transformation", "high-priority", "strategic"],
+      lastActivity: "2024-01-20T10:30:00Z",
+      milestones: { total: 8, completed: 5 },
+      tasks: { total: 45, completed: 31 },
+      client: "SAYWHAT Organization",
+      department: "IT",
+      location: "Lagos, Nigeria"
+    },
+    {
+      id: "proj-2",
+      name: "Community Outreach Program",
+      description: "Expanding community engagement and support programs across multiple regions",
+      status: "planning",
+      priority: "medium",
+      progress: 15,
+      startDate: "2024-02-01",
+      endDate: "2024-11-30",
+      budget: 250000,
+      spent: 37500,
+      manager: {
+        id: "mgr-2",
+        name: "Jane Wilson",
+        avatar: "/avatars/jane.jpg"
+      },
+      team: [
+        { id: "tm-4", name: "David Brown", avatar: "/avatars/david.jpg" },
+        { id: "tm-5", name: "Eva Davis", avatar: "/avatars/eva.jpg" }
+      ],
+      health: "at-risk",
+      tags: ["community", "outreach", "social-impact"],
+      lastActivity: "2024-01-19T14:15:00Z",
+      milestones: { total: 6, completed: 1 },
+      tasks: { total: 28, completed: 4 },
+      client: "Community Partners",
+      department: "Community Relations",
+      location: "Multi-location"
+    },
+    {
+      id: "proj-3",
+      name: "Infrastructure Modernization",
+      description: "Upgrading core infrastructure and technology systems",
+      status: "on-hold",
+      priority: "critical",
+      progress: 42,
+      startDate: "2023-10-01",
+      endDate: "2024-06-30",
+      budget: 750000,
+      spent: 315000,
+      manager: {
+        id: "mgr-3",
+        name: "Michael Chen",
+        avatar: "/avatars/michael.jpg"
+      },
+      team: [
+        { id: "tm-6", name: "Sarah Lee", avatar: "/avatars/sarah.jpg" },
+        { id: "tm-7", name: "Tom Anderson", avatar: "/avatars/tom.jpg" },
+        { id: "tm-8", name: "Lisa Garcia", avatar: "/avatars/lisa.jpg" }
+      ],
+      health: "critical",
+      tags: ["infrastructure", "modernization", "critical"],
+      lastActivity: "2024-01-18T09:45:00Z",
+      milestones: { total: 10, completed: 4 },
+      tasks: { total: 67, completed: 28 },
+      client: "Internal",
+      department: "Infrastructure",
+      location: "Abuja, Nigeria"
     }
-
-    fetchProjects()
-  }, [])
+  ])
 
   // Filters and sorting
   const [filters, setFilters] = useState<ProjectFilters>({

@@ -1,238 +1,279 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { ModulePage } from "@/components/layout/enhanced-layout"
+import React from 'react'
+import { useSession } from "next-auth/react"
+import DashboardLayout from "@/components/layout/dashboard-layout"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
-  ArrowLeftIcon,
-  CalendarDaysIcon,
-  TrophyIcon,
-  UsersIcon,
-  BanknotesIcon,
-  ChartBarIcon,
-  PlusIcon
-} from "@heroicons/react/24/outline"
+  Calendar,
+  MapPin,
+  Users,
+  Trophy,
+  Leaf,
+  ArrowLeft,
+  Star,
+  Heart,
+  Zap
+} from 'lucide-react'
+
+const SAYWHAT_COLORS = {
+  orange: '#ff6b35',
+  red: '#dc2626', 
+  grey: '#6b7280',
+  dark: '#1f2937',
+  lightGrey: '#f3f4f6'
+}
 
 const flagshipEvents = [
   {
-    id: "agriculture-sports-gala",
-    name: "Agriculture Colleges Sports Gala",
-    description: "Annual sports competition for agriculture colleges across the region",
+    id: 1,
+    title: "Agriculture & Sports Gala",
+    description: "Annual celebration combining agricultural innovation with community sports",
+    status: "Active",
+    category: "Community Development",
+    participants: "500+",
+    frequency: "Annual",
+    icon: Leaf,
+    color: SAYWHAT_COLORS.orange,
+    link: "/programs/flagship-events/agriculture-sports-gala"
+  },
+  {
+    id: 2,
+    title: "Youth Leadership Summit",
+    description: "Empowering young leaders through training and mentorship programs",
     status: "Planning",
-    nextEvent: "February 2025",
-    lead: "Sports Development Team",
-    href: "/programs/flagship-events/agriculture-sports-gala",
-    color: "orange"
+    category: "Youth Development",
+    participants: "200+",
+    frequency: "Bi-Annual",
+    icon: Star,
+    color: SAYWHAT_COLORS.red
   },
   {
-    id: "quiz-debate-challenge",
-    name: "SAYWHAT Quiz & SASI Debate Challenge",
-    description: "Intellectual competition fostering knowledge and debate skills",
-    status: "In Progress",
-    nextEvent: "April 2025",
-    lead: "Academic Affairs Team",
-    href: "/programs/flagship-events/quiz-debate-challenge",
-    color: "blue"
-  },
-  {
-    id: "chase-craft",
-    name: "The Chase and CRAFT",
-    description: "Creative arts and talent showcase events",
-    status: "Scheduled",
-    nextEvent: "June 2025",
-    lead: "Arts & Culture Team",
-    href: "/programs/flagship-events/chase-craft",
-    color: "purple"
-  },
-  {
-    id: "national-students-conference",
-    name: "National Students Conference",
-    description: "Annual national conference with multiple specialized events",
-    status: "Planning",
-    nextEvent: "August 2025",
-    lead: "Conference Committee",
-    href: "/programs/flagship-events/national-students-conference",
-    color: "green"
-  },
-  {
-    id: "regional-conference",
-    name: "Southern African Regional Students & Youth Conference",
-    description: "Regional conference bringing together students and youth from across Southern Africa",
-    status: "Planning",
-    nextEvent: "September 2025",
-    lead: "Regional Affairs Team",
-    href: "/programs/flagship-events/regional-conference",
-    color: "indigo"
+    id: 3,
+    title: "Community Health Fair",
+    description: "Comprehensive health screenings and wellness education for all",
+    status: "Upcoming",
+    category: "Health & Wellness",
+    participants: "1000+",
+    frequency: "Annual",
+    icon: Heart,
+    color: SAYWHAT_COLORS.grey
   }
 ]
 
 export default function FlagshipEventsPage() {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Planning": return "bg-orange-100 text-orange-800"
-      case "In Progress": return "bg-blue-100 text-blue-800"
-      case "Scheduled": return "bg-purple-100 text-purple-800"
-      case "Completed": return "bg-green-100 text-green-800"
-      default: return "bg-gray-100 text-gray-800"
-    }
+  const { data: session, status } = useSession()
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-saywhat-orange mx-auto"></div>
+          <p className="mt-4 text-saywhat-grey">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
-  const getColorClasses = (color: string) => {
-    switch (color) {
-      case "orange": return "border-l-saywhat-orange bg-orange-50"
-      case "blue": return "border-l-blue-500 bg-blue-50"
-      case "purple": return "border-l-purple-500 bg-purple-50"
-      case "green": return "border-l-green-500 bg-green-50"
-      case "indigo": return "border-l-indigo-500 bg-indigo-50"
-      default: return "border-l-gray-500 bg-gray-50"
-    }
+  if (status === "unauthenticated" || !session) {
+    window.location.href = "/auth/signin"
+    return null
   }
 
   return (
-    <ModulePage
-      metadata={{
-        title: "SAYWHAT Flagship Events",
-        description: "Annual flagship events planning and management",
-        breadcrumbs: [
-          { name: "Programs", href: "/programs" },
-          { name: "Flagship Events" }
-        ]
-      }}
-    >
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link
-              href="/programs"
-              className="flex items-center text-saywhat-grey hover:text-saywhat-dark"
+    <DashboardLayout>
+      <div className="px-6">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-4 mb-4">
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.href = '/programs'}
+              className="border-saywhat-grey hover:bg-saywhat-light-grey"
             >
-              <ArrowLeftIcon className="h-5 w-5 mr-2" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Programs
-            </Link>
-            <div className="border-l border-gray-300 h-6"></div>
+            </Button>
+          </div>
+          
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-saywhat-dark">SAYWHAT Flagship Events</h1>
-              <p className="text-saywhat-grey">Annual flagship events planning and management</p>
+              <h1 className="text-3xl font-bold text-saywhat-dark">Flagship Events</h1>
+              <p className="mt-2 text-saywhat-grey">Signature SAYWHAT programs making lasting community impact</p>
             </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button className="flex items-center px-4 py-2 bg-saywhat-orange text-white rounded-md hover:bg-orange-600">
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Schedule New Event
-            </button>
-          </div>
-        </div>
-
-        {/* Events Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-l-saywhat-orange">
-            <div className="flex items-center">
-              <CalendarDaysIcon className="h-8 w-8 text-saywhat-orange" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Events</p>
-                <p className="text-2xl font-semibold text-gray-900">{flagshipEvents.length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-l-blue-500">
-            <div className="flex items-center">
-              <TrophyIcon className="h-8 w-8 text-blue-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Active Events</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {flagshipEvents.filter(e => e.status === "In Progress").length}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-l-green-500">
-            <div className="flex items-center">
-              <UsersIcon className="h-8 w-8 text-green-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Planned Events</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {flagshipEvents.filter(e => e.status === "Planning" || e.status === "Scheduled").length}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-l-purple-500">
-            <div className="flex items-center">
-              <ChartBarIcon className="h-8 w-8 text-purple-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Completion Rate</p>
-                <p className="text-2xl font-semibold text-gray-900">85%</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Events Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {flagshipEvents.map((event) => (
-            <div
-              key={event.id}
-              className={`bg-white rounded-lg shadow border-l-4 p-6 hover:shadow-md transition-shadow ${getColorClasses(event.color)}`}
+            <Badge 
+              variant="secondary" 
+              className="text-white"
+              style={{ backgroundColor: SAYWHAT_COLORS.orange }}
             >
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-lg font-semibold text-saywhat-dark">{event.name}</h3>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-                  {event.status}
-                </span>
-              </div>
-              
-              <p className="text-sm text-saywhat-grey mb-4">{event.description}</p>
-              
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-saywhat-grey">Next Event:</span>
-                  <span className="text-saywhat-dark font-medium">{event.nextEvent}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-saywhat-grey">Lead:</span>
-                  <span className="text-saywhat-dark">{event.lead}</span>
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                <Link
-                  href={event.href}
-                  className="flex-1 text-center text-xs px-3 py-2 bg-saywhat-orange text-white rounded hover:bg-orange-600"
-                >
-                  View Details
-                </Link>
-                <button className="flex-1 text-xs px-3 py-2 border border-saywhat-orange text-saywhat-orange rounded hover:bg-orange-50">
-                  Documents
-                </button>
-              </div>
-            </div>
-          ))}
+              {flagshipEvents.length} Active Programs
+            </Badge>
+          </div>
         </div>
 
-        {/* Annual Timeline Section */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-saywhat-dark mb-4">Annual Events Timeline</h3>
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <div className="flex items-start space-x-3">
-              <CalendarDaysIcon className="h-6 w-6 text-blue-500 mt-1" />
+        <div className="space-y-6">
+          {/* Flagship Events Overview */}
+          <div 
+            className="rounded-lg p-8 text-white"
+            style={{
+              background: `linear-gradient(135deg, ${SAYWHAT_COLORS.orange} 0%, ${SAYWHAT_COLORS.red} 50%, ${SAYWHAT_COLORS.dark} 100%)`
+            }}
+          >
+            <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-medium text-blue-900 mb-2">
-                  Interactive Gantt Chart Coming Soon
-                </h4>
-                <p className="text-xs text-blue-700 mb-3">
-                  Advanced scheduling features for annual event planning with work breakdown structure (WBS).
+                <h2 className="text-2xl font-bold mb-2">SAYWHAT Flagship Events</h2>
+                <p className="text-orange-100 text-lg mb-4">
+                  Signature programs that define our commitment to community development and empowerment
                 </p>
-                <div className="text-xs text-blue-600 space-y-1">
-                  <p><strong>Features:</strong> Monthly view, drag-and-drop scheduling, document uploads</p>
-                  <p><strong>Documents:</strong> Concept notes, budgets, and event reports management</p>
-                  <p><strong>Collaboration:</strong> Progress tracking and collaborative planning tools</p>
+                <div className="flex space-x-6 text-sm">
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    <span>Year-Round Programming</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Users className="h-4 w-4 mr-2" />
+                    <span>Community Wide Impact</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Trophy className="h-4 w-4 mr-2" />
+                    <span>Award Winning</span>
+                  </div>
                 </div>
               </div>
+              <div className="hidden md:block">
+                <Zap className="h-16 w-16 text-orange-200" />
+              </div>
             </div>
+          </div>
+
+          {/* Events Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {flagshipEvents.map((event) => {
+              const IconComponent = event.icon
+              return (
+                <Card key={event.id} className="border-saywhat-grey hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="h-12 w-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${event.color}20` }}>
+                        <IconComponent className="h-6 w-6" style={{ color: event.color }} />
+                      </div>
+                      <Badge 
+                        variant={event.status === 'Active' ? 'default' : 'secondary'}
+                        style={{ 
+                          backgroundColor: event.status === 'Active' ? SAYWHAT_COLORS.orange : SAYWHAT_COLORS.grey,
+                          color: 'white'
+                        }}
+                      >
+                        {event.status}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-saywhat-dark">{event.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-saywhat-grey mb-4">{event.description}</p>
+                    
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-saywhat-grey">Category</span>
+                        <span className="text-sm font-medium text-saywhat-dark">{event.category}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-saywhat-grey">Participants</span>
+                        <span className="text-sm font-medium text-saywhat-dark">{event.participants}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-saywhat-grey">Frequency</span>
+                        <span className="text-sm font-medium text-saywhat-dark">{event.frequency}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex space-x-2">
+                      {event.link ? (
+                        <Button 
+                          size="sm"
+                          onClick={() => window.location.href = event.link}
+                          className="text-white flex-1"
+                          style={{ backgroundColor: event.color }}
+                        >
+                          View Details
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          style={{ borderColor: event.color, color: event.color }}
+                        >
+                          Coming Soon
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          {/* Program Impact Summary */}
+          <Card className="border-saywhat-grey">
+            <CardHeader>
+              <CardTitle className="text-saywhat-dark">Flagship Program Impact</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-2" style={{ color: SAYWHAT_COLORS.orange }}>
+                    1,700+
+                  </div>
+                  <p className="text-saywhat-grey">Total Participants</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-2" style={{ color: SAYWHAT_COLORS.red }}>
+                    3
+                  </div>
+                  <p className="text-saywhat-grey">Active Programs</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-2" style={{ color: SAYWHAT_COLORS.grey }}>
+                    12
+                  </div>
+                  <p className="text-saywhat-grey">Communities Served</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-2" style={{ color: SAYWHAT_COLORS.dark }}>
+                    95%
+                  </div>
+                  <p className="text-saywhat-grey">Satisfaction Rate</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Call to Action */}
+          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+            <Button 
+              className="text-white"
+              style={{ backgroundColor: SAYWHAT_COLORS.orange }}
+            >
+              Register for Events
+            </Button>
+            <Button 
+              variant="outline"
+              className="border-saywhat-red text-saywhat-red hover:bg-saywhat-red hover:text-white"
+            >
+              Become a Volunteer
+            </Button>
+            <Button 
+              variant="outline"
+              className="border-saywhat-grey text-saywhat-grey hover:bg-saywhat-grey hover:text-white"
+            >
+              Partner with Us
+            </Button>
           </div>
         </div>
       </div>
-    </ModulePage>
+    </DashboardLayout>
   )
 }

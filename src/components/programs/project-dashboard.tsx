@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { enhancedProjects, projectMetrics } from "@/data/enhanced-projects"
 import {
   ChartBarIcon,
   ClockIcon,
@@ -36,80 +37,48 @@ interface ProjectMetrics {
   deliverySuccess: number
 }
 
-interface Project {
+interface ProjectStatus {
   id: number
   name: string
-  status: string
-  startDate: string
-  endDate: string
-  budget: number | null
-  actualSpent: number | null
-  country: string
-  province: string | null
-  description: string
-  createdAt: string
-  updatedAt: string
+  status: 'on-track' | 'at-risk' | 'delayed' | 'completed'
+  progress: number
+  dueDate: string
+  manager: string
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  budget: number
+  spent: number
 }
 
 export function ProjectDashboard({ permissions, onProjectSelect, selectedProject }: ProjectDashboardProps) {
   const [mounted, setMounted] = useState(false)
   const [timeRange, setTimeRange] = useState('month')
   const [metrics, setMetrics] = useState<ProjectMetrics | null>(null)
-  const [recentProjects, setRecentProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
+  const [recentProjects, setRecentProjects] = useState<ProjectStatus[]>([])
 
   useEffect(() => {
     setMounted(true)
-    fetchProjectsData()
+    // Simulate loading metrics
+    setTimeout(() => {
+      setMetrics(projectMetrics)
+
+      // Convert enhanced projects to recent projects format
+      const recentProjectsData = enhancedProjects.slice(0, 4).map(project => ({
+        id: project.id,
+        name: project.name,
+        status: project.status as 'on-track' | 'at-risk' | 'delayed' | 'completed',
+        progress: project.progress,
+        dueDate: project.endDate,
+        manager: project.manager,
+        priority: project.priority as 'low' | 'medium' | 'high' | 'critical',
+        budget: project.budget,
+        spent: project.spent
+      }))
+      
+      setRecentProjects(recentProjectsData)
+    }, 500)
   }, [])
 
-  const fetchProjectsData = async () => {
-    try {
-      const response = await fetch('/api/programs/projects')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.data) {
-          const projects = data.data as Project[]
-          setRecentProjects(projects.slice(0, 6)) // Show first 6 projects
-          
-          // Calculate metrics from real data
-          const totalProjects = projects.length
-          const activeProjects = projects.filter(p => p.status === 'ACTIVE').length
-          const completedProjects = projects.filter(p => p.status === 'COMPLETED').length
-          const onHoldProjects = projects.filter(p => p.status === 'ON_HOLD').length
-          const totalBudget = projects.reduce((sum, p) => sum + (p.budget || 0), 0)
-          const totalSpent = projects.reduce((sum, p) => sum + (p.actualSpent || 0), 0)
-          
-          // Calculate overdue projects
-          const now = new Date()
-          const overdueProjects = projects.filter(p => 
-            new Date(p.endDate) < now && p.status !== 'COMPLETED'
-          ).length
-
-          setMetrics({
-            totalProjects,
-            activeProjects,
-            completedProjects,
-            onHoldProjects,
-            totalBudget,
-            totalSpent,
-            averageProgress: totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0,
-            overdueProjects,
-            upcomingMilestones: 0, // Would need milestone data
-            highRiskProjects: 0, // Would need risk assessment data
-            resourceUtilization: totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0,
-            deliverySuccess: totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0
-          })
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch projects:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!mounted || loading || !metrics) {
+  if (!mounted || !metrics) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-6">
@@ -134,11 +103,10 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE': return 'text-saywhat-orange bg-orange-100'
-      case 'COMPLETED': return 'text-green-600 bg-green-100'
-      case 'ON_HOLD': return 'text-yellow-600 bg-yellow-100'
-      case 'CANCELLED': return 'text-red-600 bg-red-100'
-      case 'PLANNING': return 'text-saywhat-grey bg-gray-100'
+      case 'on-track': return 'text-green-600 bg-green-100'
+      case 'at-risk': return 'text-yellow-600 bg-yellow-100'
+      case 'delayed': return 'text-red-600 bg-red-100'
+      case 'completed': return 'text-blue-600 bg-blue-100'
       default: return 'text-gray-600 bg-gray-100'
     }
   }
@@ -158,8 +126,8 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
       {/* Dashboard Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-saywhat-dark">Programs Dashboard</h1>
-          <p className="text-saywhat-grey mt-1">Real-time overview of all SAYWHAT programs and key metrics</p>
+          <h1 className="text-2xl font-bold text-gray-900">Project Dashboard</h1>
+          <p className="text-gray-600 mt-1">Real-time overview of all projects and key metrics</p>
         </div>
         <div className="flex items-center space-x-4">
           <select
@@ -178,18 +146,18 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Projects */}
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-l-saywhat-orange">
+        <div className="bg-white p-6 rounded-lg shadow border">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <ChartBarIcon className="h-8 w-8 text-saywhat-orange" />
+              <ChartBarIcon className="h-8 w-8 text-blue-600" />
             </div>
             <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-saywhat-grey">Total Programs</p>
+              <p className="text-sm font-medium text-gray-500">Total Projects</p>
               <div className="flex items-baseline">
-                <p className="text-2xl font-semibold text-saywhat-dark">{metrics.totalProjects}</p>
+                <p className="text-2xl font-semibold text-gray-900">{metrics.totalProjects}</p>
                 <span className="ml-2 text-sm text-green-600 flex items-center">
                   <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-                  Growing portfolio
+                  +3 this month
                 </span>
               </div>
             </div>
@@ -197,17 +165,17 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
         </div>
 
         {/* Active Projects */}
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-l-green-500">
+        <div className="bg-white p-6 rounded-lg shadow border">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <ClockIcon className="h-8 w-8 text-green-600" />
             </div>
             <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-saywhat-grey">Active Programs</p>
+              <p className="text-sm font-medium text-gray-500">Active Projects</p>
               <div className="flex items-baseline">
-                <p className="text-2xl font-semibold text-saywhat-dark">{metrics.activeProjects}</p>
-                <span className="ml-2 text-sm text-saywhat-grey">
-                  {metrics.totalProjects > 0 ? Math.round((metrics.activeProjects / metrics.totalProjects) * 100) : 0}% of total
+                <p className="text-2xl font-semibold text-gray-900">{metrics.activeProjects}</p>
+                <span className="ml-2 text-sm text-gray-500">
+                  {Math.round((metrics.activeProjects / metrics.totalProjects) * 100)}% of total
                 </span>
               </div>
             </div>
@@ -215,18 +183,18 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
         </div>
 
         {/* Budget Performance */}
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-l-saywhat-red">
+        <div className="bg-white p-6 rounded-lg shadow border">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <CurrencyDollarIcon className="h-8 w-8 text-saywhat-red" />
+              <CurrencyDollarIcon className="h-8 w-8 text-yellow-600" />
             </div>
             <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-saywhat-grey">Budget Utilization</p>
+              <p className="text-sm font-medium text-gray-500">Budget Utilization</p>
               <div className="flex items-baseline">
-                <p className="text-2xl font-semibold text-saywhat-dark">
-                  {metrics.totalBudget > 0 ? Math.round((metrics.totalSpent / metrics.totalBudget) * 100) : 0}%
+                <p className="text-2xl font-semibold text-gray-900">
+                  {Math.round((metrics.totalSpent / metrics.totalBudget) * 100)}%
                 </p>
-                <span className="ml-2 text-sm text-saywhat-grey">
+                <span className="ml-2 text-sm text-gray-500">
                   {formatCurrency(metrics.totalSpent)} / {formatCurrency(metrics.totalBudget)}
                 </span>
               </div>
@@ -371,62 +339,52 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
                   <tr 
                     key={project.id}
                     onClick={() => onProjectSelect(project.id)}
-                    className={`hover:bg-saywhat-light-grey cursor-pointer ${
-                      selectedProject === project.id ? 'bg-orange-50 border-l-4 border-saywhat-orange' : ''
+                    className={`hover:bg-gray-50 cursor-pointer ${
+                      selectedProject === project.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
                     }`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div>
-                          <div className="text-sm font-medium text-saywhat-dark">{project.name}</div>
-                          <div className="text-xs text-saywhat-grey mt-1">
-                            {project.country}{project.province ? `, ${project.province}` : ''}
+                          <div className="text-sm font-medium text-gray-900">{project.name}</div>
+                          <div className="flex items-center mt-1">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(project.priority)}`}>
+                              {project.priority}
+                            </span>
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
-                        {project.status.replace('_', ' ')}
+                        {project.status.replace('-', ' ')}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-1">
-                          <div className="text-sm text-saywhat-dark">
-                            {project.status === 'COMPLETED' ? '100' : 
-                             project.status === 'ACTIVE' ? '50' : 
-                             project.status === 'ON_HOLD' ? '25' : '0'}%
-                          </div>
+                          <div className="text-sm text-gray-900">{project.progress}%</div>
                           <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
                             <div 
-                              className="bg-saywhat-orange h-2 rounded-full" 
-                              style={{ 
-                                width: `${project.status === 'COMPLETED' ? 100 : 
-                                        project.status === 'ACTIVE' ? 50 : 
-                                        project.status === 'ON_HOLD' ? 25 : 0}%` 
-                              }}
+                              className="bg-blue-600 h-2 rounded-full" 
+                              style={{ width: `${project.progress}%` }}
                             ></div>
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-saywhat-dark">
-                        {project.actualSpent ? formatCurrency(project.actualSpent) : '$0'}
-                      </div>
-                      <div className="text-sm text-saywhat-grey">
-                        of {project.budget ? formatCurrency(project.budget) : 'No budget set'}
-                      </div>
+                      <div className="text-sm text-gray-900">{formatCurrency(project.spent)}</div>
+                      <div className="text-sm text-gray-500">of {formatCurrency(project.budget)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center text-sm text-saywhat-dark">
-                        <CalendarIcon className="h-4 w-4 mr-1 text-saywhat-grey" />
-                        {new Date(project.endDate).toLocaleDateString()}
+                      <div className="flex items-center text-sm text-gray-900">
+                        <CalendarIcon className="h-4 w-4 mr-1 text-gray-400" />
+                        {new Date(project.dueDate).toLocaleDateString()}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-saywhat-dark">
-                      Not assigned
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {project.manager}
                     </td>
                   </tr>
                 ))}
