@@ -24,8 +24,8 @@ import {
 
 interface ReportsAnalyticsProps {
   permissions: Record<string, boolean>
-  selectedProject: number | null
-  onProjectSelect: (projectId: number | null) => void
+  selectedProject: string | null
+  onProjectSelect: (projectId: string | null) => void
 }
 
 interface Report {

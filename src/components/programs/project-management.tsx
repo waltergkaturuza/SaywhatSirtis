@@ -20,8 +20,8 @@ import BulkActions from "./project-management/BulkActions"
 
 interface ProjectManagementProps {
   permissions: any
-  selectedProject: number | null
-  onProjectSelect: (projectId: number | null) => void
+  selectedProject: string | null
+  onProjectSelect: (projectId: string | null) => void
 }
 
 export type ViewMode = 'list' | 'kanban' | 'timeline'
@@ -343,7 +343,7 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
 
   // Handlers
   const handleProjectSelect = (projectId: string) => {
-    onProjectSelect(parseInt(projectId))
+    onProjectSelect(projectId)
   }
 
   const handleBulkSelect = (projectIds: string[]) => {

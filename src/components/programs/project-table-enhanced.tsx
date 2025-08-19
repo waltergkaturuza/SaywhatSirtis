@@ -22,32 +22,33 @@ import {
   XMarkIcon,
   PlayIcon,
   PauseIcon,
-  FlagIcon
+  FlagIcon,
+  ExclamationTriangleIcon
 } from "@heroicons/react/24/outline"
 
 interface ProjectTableProps {
   permissions: any
   viewMode: 'list' | 'kanban' | 'timeline'
-  onProjectSelect: (projectId: number | null) => void
-  selectedProject: number | null
+  onProjectSelect: (projectId: string | null) => void
+  selectedProject: string | null
 }
 
 interface Project {
   id: string
   name: string
   description: string
-  status: 'planning' | 'active' | 'on-hold' | 'completed'
-  priority: 'low' | 'medium' | 'high' | 'critical'
+  status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
   progress: number
   startDate: string
   endDate: string
   budget: number
-  spent: number
+  actualSpent: number
   manager: {
     id: string
     name: string
-    avatar: string
-  }
+    email?: string
+  } | null
   team: Array<{
     id: string
     name: string
@@ -87,6 +88,8 @@ interface Filters {
 export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedProject }: ProjectTableProps) {
   const [mounted, setMounted] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedProjects, setSelectedProjects] = useState<string[]>([])
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'name', direction: 'asc' })
   const [filters, setFilters] = useState<Filters>({
@@ -103,90 +106,109 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
   const [showFilters, setShowFilters] = useState(false)
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null)
 
-  // Mock project data
+  // Fetch projects from API
   useEffect(() => {
     setMounted(true)
-    setProjects([
-      {
-        id: "proj-1",
-        name: "SAYWHAT Digital Platform",
-        description: "Comprehensive digital transformation initiative",
-        status: "active",
-        priority: "high",
-        progress: 68,
-        startDate: "2024-01-15",
-        endDate: "2024-12-31",
-        budget: 500000,
-        spent: 340000,
-        manager: { id: "mgr-1", name: "John Doe", avatar: "/avatars/john.jpg" },
-        team: [
-          { id: "tm-1", name: "Alice Smith", avatar: "/avatars/alice.jpg" },
-          { id: "tm-2", name: "Bob Johnson", avatar: "/avatars/bob.jpg" }
-        ],
-        health: "healthy",
-        tags: ["digital-transformation", "strategic"],
-        client: "SAYWHAT Organization",
-        department: "IT",
-        location: "Lagos, Nigeria",
-        tasksTotal: 45,
-        tasksCompleted: 31,
-        milestonesTotal: 8,
-        milestonesCompleted: 5
-      },
-      {
-        id: "proj-2", 
-        name: "Community Outreach Program",
-        description: "Expanding community engagement programs",
-        status: "planning",
-        priority: "medium",
-        progress: 15,
-        startDate: "2024-02-01",
-        endDate: "2024-11-30",
-        budget: 250000,
-        spent: 37500,
-        manager: { id: "mgr-2", name: "Jane Smith", avatar: "/avatars/jane.jpg" },
-        team: [
-          { id: "tm-3", name: "Carol Williams", avatar: "/avatars/carol.jpg" },
-          { id: "tm-4", name: "David Brown", avatar: "/avatars/david.jpg" }
-        ],
-        health: "at-risk",
-        tags: ["community", "outreach"],
-        client: "External NGO",
-        department: "Programs",
-        location: "Multiple",
-        tasksTotal: 32,
-        tasksCompleted: 5,
-        milestonesTotal: 6,
-        milestonesCompleted: 1
-      },
-      {
-        id: "proj-3",
-        name: "Infrastructure Modernization",
-        description: "Upgrading core infrastructure systems",
-        status: "on-hold",
-        priority: "critical",
-        progress: 42,
-        startDate: "2024-01-01",
-        endDate: "2024-08-31",
-        budget: 750000,
-        spent: 315000,
-        manager: { id: "mgr-3", name: "Michael Chen", avatar: "/avatars/michael.jpg" },
-        team: [
-          { id: "tm-5", name: "Sarah Lee", avatar: "/avatars/sarah.jpg" },
-          { id: "tm-6", name: "Tom Anderson", avatar: "/avatars/tom.jpg" }
-        ],
-        health: "critical",
-        tags: ["infrastructure", "modernization"],
-        client: "Internal",
-        department: "Infrastructure",
-        location: "Abuja, Nigeria",
-        tasksTotal: 67,
-        tasksCompleted: 28,
-        milestonesTotal: 10,
-        milestonesCompleted: 4
-      }
-    ])
+    fetchProjects()
   }, [])
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await fetch('/api/programs/projects')
+      if (!response.ok) {
+        throw new Error('Failed to fetch projects')
+      }
+      
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        // Transform API data to match component interface
+        const transformedProjects: Project[] = result.data.map((project: any) => ({
+          id: project.id,
+          name: project.name,
+          description: project.description || '',
+          status: project.status || 'PLANNING',
+          priority: project.priority || 'MEDIUM',
+          progress: project.progress || 0,
+          startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
+          endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
+          budget: project.budget || 0,
+          actualSpent: project.actualSpent || 0,
+          manager: project.manager ? {
+            id: project.manager.id,
+            name: project.manager.name,
+            email: project.manager.email
+          } : null,
+          team: [], // Would need additional API endpoint for team data
+          health: calculateProjectHealth(project),
+          tags: [], // Would need additional field in database
+          client: 'SAYWHAT Organization',
+          department: project.manager?.department || '',
+          location: project.province || project.country || '',
+          tasksTotal: project._count?.activities || 0,
+          tasksCompleted: 0, // Would need additional calculation
+          milestonesTotal: 0, // Would need milestone data
+          milestonesCompleted: 0
+        }))
+        
+        setProjects(transformedProjects)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load projects')
+      console.error('Projects fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const calculateProjectHealth = (project: any): 'healthy' | 'at-risk' | 'critical' => {
+    const progress = project.progress || 0
+    const budget = project.budget || 0
+    const spent = project.actualSpent || 0
+    const budgetUtilization = budget > 0 ? (spent / budget) * 100 : 0
+    
+    if (progress < 25 && budgetUtilization > 75) return 'critical'
+    if (progress < 50 && budgetUtilization > 60) return 'at-risk'
+    return 'healthy'
+  }
+
+  // Loading and error states
+  if (!mounted || loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-10 bg-gray-200 rounded"></div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-2" />
+            <p className="text-red-700">Error loading projects: {error}</p>
+          </div>
+          <button 
+            onClick={fetchProjects}
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // Filter and sort projects
   const filteredAndSortedProjects = useMemo(() => {
@@ -196,7 +218,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
         const searchLower = filters.search.toLowerCase()
         if (!project.name.toLowerCase().includes(searchLower) &&
             !project.description.toLowerCase().includes(searchLower) &&
-            !project.manager.name.toLowerCase().includes(searchLower)) {
+            !(project.manager?.name?.toLowerCase().includes(searchLower))) {
           return false
         }
       }
@@ -217,7 +239,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
       }
 
       // Manager filter
-      if (filters.manager.length > 0 && !filters.manager.includes(project.manager.name)) {
+      if (filters.manager.length > 0 && project.manager?.name && !filters.manager.includes(project.manager.name)) {
         return false
       }
 
@@ -260,8 +282,8 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
 
       switch (sortConfig.field) {
         case 'budget_remaining':
-          aValue = a.budget - a.spent
-          bValue = b.budget - b.spent
+          aValue = a.budget - a.actualSpent
+          bValue = b.budget - b.actualSpent
           break
         case 'progress_score':
           aValue = a.progress
@@ -305,30 +327,31 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800'
-      case 'planning': return 'bg-blue-100 text-blue-800'
-      case 'on-hold': return 'bg-yellow-100 text-yellow-800'
-      case 'completed': return 'bg-gray-100 text-gray-800'
+      case 'ACTIVE': return 'bg-green-100 text-green-800'
+      case 'PLANNING': return 'bg-orange-100 text-orange-800'
+      case 'ON_HOLD': return 'bg-yellow-100 text-yellow-800'
+      case 'COMPLETED': return 'bg-green-100 text-green-800'
+      case 'CANCELLED': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'critical': return 'text-red-600'
-      case 'high': return 'text-orange-600'
-      case 'medium': return 'text-yellow-600'
-      case 'low': return 'text-green-600'
+      case 'CRITICAL': return 'text-red-600'
+      case 'HIGH': return 'text-orange-600'
+      case 'MEDIUM': return 'text-yellow-600'
+      case 'LOW': return 'text-green-600'
       default: return 'text-gray-600'
     }
   }
 
   const getHealthIcon = (health: string) => {
     switch (health) {
-      case 'healthy': return '🟢'
-      case 'at-risk': return '🟡'
-      case 'critical': return '🔴'
-      default: return '⚫'
+      case 'healthy': return <span className="text-green-600">●</span>
+      case 'at-risk': return <span className="text-yellow-600">●</span>
+      case 'critical': return <span className="text-red-600">●</span>
+      default: return <span className="text-gray-600">●</span>
     }
   }
 
@@ -516,17 +539,17 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
               </span>
               
               <div className="flex items-center space-x-2">
-                <button className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+                <button className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:border-green-400 transition-colors">
                   Change Status
                 </button>
-                <button className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+                <button className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:border-green-400 transition-colors">
                   Assign Manager
                 </button>
-                <button className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+                <button className="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:border-green-400 transition-colors">
                   Export
                 </button>
                 {permissions?.canDelete && (
-                  <button className="px-3 py-1 bg-white border border-red-300 rounded-md text-sm text-red-700 hover:bg-red-50">
+                  <button className="px-3 py-1 bg-white border border-red-300 rounded-md text-sm text-red-700 hover:bg-red-50 transition-colors">
                     Delete
                   </button>
                 )}
@@ -653,7 +676,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
                   </td>
                   
                   <td className="px-4 py-4 text-sm text-gray-900">
-                    {formatCurrency(project.budget - project.spent)}
+                    {formatCurrency(project.budget - project.actualSpent)}
                   </td>
                   
                   <td className="px-4 py-4">
@@ -667,23 +690,23 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
                     <div className="flex items-center space-x-2">
                       <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center">
                         <span className="text-xs font-medium text-gray-700">
-                          {project.manager.name.split(' ').map(n => n[0]).join('')}
+                          {project.manager?.name?.split(' ').map(n => n[0]).join('') || 'NA'}
                         </span>
                       </div>
-                      <span className="text-sm text-gray-900">{project.manager.name}</span>
+                      <span className="text-sm text-gray-900">{project.manager?.name || 'Unassigned'}</span>
                     </div>
                   </td>
                   
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => onProjectSelect(parseInt(project.id.split('-')[1]))}
-                        className="text-blue-600 hover:text-blue-800"
+                        onClick={() => onProjectSelect(project.id)}
+                        className="text-orange-600 hover:text-orange-800 transition-colors"
                       >
                         <EyeIcon className="h-4 w-4" />
                       </button>
                       {permissions?.canEdit && (
-                        <button className="text-gray-600 hover:text-gray-800">
+                        <button className="text-gray-600 hover:text-green-800 transition-colors">
                           <PencilIcon className="h-4 w-4" />
                         </button>
                       )}
@@ -698,20 +721,20 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
                         {actionMenuOpen === project.id && (
                           <div className="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5">
                             <div className="py-1">
-                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 w-full text-left transition-colors">
                                 <DocumentDuplicateIcon className="h-4 w-4 mr-2" />
                                 Duplicate Project
                               </button>
-                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 w-full text-left transition-colors">
                                 <ArchiveBoxIcon className="h-4 w-4 mr-2" />
                                 Archive Project
                               </button>
-                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 w-full text-left transition-colors">
                                 <ShareIcon className="h-4 w-4 mr-2" />
                                 Export Data
                               </button>
                               {permissions?.canDelete && (
-                                <button className="flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50 w-full text-left">
+                                <button className="flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50 w-full text-left transition-colors">
                                   <TrashIcon className="h-4 w-4 mr-2" />
                                   Delete Project
                                 </button>
@@ -760,7 +783,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Active Projects</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {projects.filter(p => p.status === 'active').length}
+                {projects.filter(p => p.status === 'ACTIVE').length}
               </p>
             </div>
           </div>
@@ -772,7 +795,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">On Hold</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {projects.filter(p => p.status === 'on-hold').length}
+                {projects.filter(p => p.status === 'ON_HOLD').length}
               </p>
             </div>
           </div>

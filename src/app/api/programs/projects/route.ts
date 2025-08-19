@@ -3,6 +3,57 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session) {
+      return NextResponse.json({ 
+        success: false,
+        error: "Authentication required", 
+        message: "Please log in to view projects. Visit /auth/signin to authenticate.",
+        code: "UNAUTHORIZED"
+      }, { status: 401 })
+    }
+
+    // Fetch projects from database with related data
+    const projects = await prisma.project.findMany({
+      include: {
+        manager: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        _count: {
+          select: {
+            activities: true,
+            reports: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    return NextResponse.json({ 
+      success: true,
+      data: projects,
+      count: projects.length
+    })
+
+  } catch (error) {
+    console.error('Projects fetch error:', error)
+    return NextResponse.json({ 
+      success: false,
+      error: "Failed to fetch projects",
+      message: error instanceof Error ? error.message : "Unknown error occurred"
+    }, { status: 500 })
+  }
+}
+
 
 
 export async function POST(request: NextRequest) {
@@ -55,32 +106,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: false,
       error: "Failed to create project",
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const projects = await prisma.project.findMany({
-      orderBy: { createdAt: 'desc' }
-    })
-
-    return NextResponse.json({
-      success: true,
-      data: projects
-    })
-  } catch (error) {
-    console.error('Error fetching projects:', error)
-    return NextResponse.json({ 
-      success: false,
-      error: 'Failed to fetch projects',
       message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }

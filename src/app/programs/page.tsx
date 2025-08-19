@@ -31,15 +31,10 @@ import {
 
 // Import enhanced components
 import { ProjectDashboard } from "../../components/programs/project-dashboard"
-import { ProjectGantt } from "../../components/programs/project-gantt"
-import { WorkBreakdownStructure } from "../../components/programs/work-breakdown-structure"
-import { MilestoneTracker } from "../../components/programs/milestone-tracker"
-import { ResourceManagement } from "../../components/programs/resource-management"
-import { RiskManagement } from "../../components/programs/risk-management-enhanced"
 import { ReportsAnalytics } from "../../components/programs/reports-analytics-enhanced"
-import { ProjectSettings } from "../../components/programs/project-settings"
 import { ProjectTable } from "../../components/programs/project-table-enhanced"
 import { ProjectManagement } from "../../components/programs/project-management"
+import { FlagshipEvents } from "../../components/programs/flagship-events"
 
 interface ProgramPermissions {
   canView: boolean
@@ -61,7 +56,7 @@ function EnhancedProgramsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("dashboard")
-  const [selectedProject, setSelectedProject] = useState<number | null>(null)
+  const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'timeline'>('list')
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [permissions, setPermissions] = useState<ProgramPermissions>({
@@ -138,10 +133,10 @@ function EnhancedProgramsContent() {
   }
 
   const metadata = {
-    title: "Programs & Projects Management",
-    description: "Advanced project management with Gantt charts, WBS, milestones, resource planning, and comprehensive reporting",
+    title: "Programs Management",
+    description: "Comprehensive programs management with enhanced project tracking, budget integration, and results framework",
     breadcrumbs: [
-      { name: "Programs & Projects" }
+      { name: "Programs Management" }
     ]
   }
 
@@ -150,61 +145,31 @@ function EnhancedProgramsContent() {
       id: "dashboard",
       name: "Dashboard",
       icon: Squares2X2Icon,
-      description: "Project overview and key metrics"
+      description: "Program overview and key metrics with budget integration"
     },
     {
       id: "projects",
       name: "Projects",
       icon: ClipboardDocumentListIcon,
-      description: "Enhanced project management with multiple views"
+      description: "Enhanced project management with results framework"
     },
     {
       id: "project-table",
       name: "Project Table",
       icon: DocumentTextIcon,
-      description: "Traditional project list and management"
+      description: "Project list and management interface"
     },
     {
-      id: "gantt",
-      name: "Gantt Chart",
-      icon: ChartBarIcon,
-      description: "Timeline visualization and scheduling"
-    },
-    {
-      id: "wbs",
-      name: "WBS",
-      icon: CubeTransparentIcon,
-      description: "Work breakdown structure"
-    },
-    {
-      id: "milestones",
-      name: "Milestones",
-      icon: FlagIcon,
-      description: "Key milestones and deliverables"
-    },
-    {
-      id: "resources",
-      name: "Resources",
-      icon: UsersIcon,
-      description: "Resource allocation and management"
-    },
-    {
-      id: "risks",
-      name: "Risk Management",
-      icon: ExclamationTriangleIcon,
-      description: "Risk identification and mitigation"
+      id: "flagship-events",
+      name: "SAYWHAT Flagship Events",
+      icon: TrophyIcon,
+      description: "Manage non-donor-funded SAYWHAT events with timeline planning"
     },
     {
       id: "reports",
       name: "Reports & Analytics",
       icon: DocumentTextIcon,
-      description: "Comprehensive reporting and insights"
-    },
-    {
-      id: "settings",
-      name: "Settings",
-      icon: CogIcon,
-      description: "Project configuration and preferences"
+      description: "Project health analytics and budget performance"
     }
   ]
 
@@ -215,23 +180,23 @@ function EnhancedProgramsContent() {
           <select
             value={viewMode}
             onChange={(e) => setViewMode(e.target.value as 'list' | 'kanban' | 'timeline')}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500 hover:bg-green-50 transition-colors"
           >
             <option value="list">List View</option>
             <option value="kanban">Kanban Board</option>
             <option value="timeline">Timeline View</option>
           </select>
           
-          <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-            <FunnelIcon className="h-4 w-4 mr-2" />
+          <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:border-green-400 transition-colors">
+            <FunnelIcon className="h-4 w-4 mr-2 text-gray-600" />
             Filter
           </button>
         </div>
       )}
 
       {permissions.canGenerateReports && (
-        <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-          <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+        <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:border-green-400 transition-colors">
+          <DocumentArrowDownIcon className="h-4 w-4 mr-2 text-gray-600" />
           Export
         </button>
       )}
@@ -239,15 +204,15 @@ function EnhancedProgramsContent() {
       {permissions.canCreate && (
         <button 
           onClick={() => router.push('/programs/new')}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+          className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md text-sm hover:bg-orange-700 transition-colors shadow-md hover:shadow-lg"
         >
           <PlusIcon className="h-4 w-4 mr-2" />
           New Project
         </button>
       )}
 
-      <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
-        <CogIcon className="h-4 w-4 mr-2" />
+      <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:border-green-400 transition-colors">
+        <CogIcon className="h-4 w-4 mr-2 text-gray-600" />
         Settings
       </button>
     </div>
@@ -272,55 +237,13 @@ function EnhancedProgramsContent() {
             selectedProject={selectedProject}
           />
         )
-      case "gantt":
+      case "flagship-events":
         return (
-          <ProjectGantt 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-            onProjectSelect={setSelectedProject}
-          />
-        )
-      case "wbs":
-        return (
-          <WorkBreakdownStructure 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-            onProjectSelect={setSelectedProject}
-          />
-        )
-      case "milestones":
-        return (
-          <MilestoneTracker 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-          />
-        )
-      case "resources":
-        return (
-          <ResourceManagement 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-          />
-        )
-      case "risks":
-        return (
-          <RiskManagement 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-            onProjectSelect={setSelectedProject}
-          />
+          <FlagshipEvents />
         )
       case "reports":
         return (
           <ReportsAnalytics 
-            permissions={permissions as unknown as Record<string, boolean>}
-            selectedProject={selectedProject}
-            onProjectSelect={setSelectedProject}
-          />
-        )
-      case "settings":
-        return (
-          <ProjectSettings 
             permissions={permissions as unknown as Record<string, boolean>}
             selectedProject={selectedProject}
             onProjectSelect={setSelectedProject}

@@ -17,7 +17,8 @@ import {
   InformationCircleIcon,
   Cog6ToothIcon,
   CogIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  ExclamationTriangleIcon
 } from "@heroicons/react/24/outline"
 
 interface CollapsibleMainSidebarProps {
@@ -28,13 +29,13 @@ interface CollapsibleMainSidebarProps {
 // Navigation items based on SIRTIS requirements
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, requiredPermissions: [] },
+  { name: "Risk Management", href: "/risk-management", icon: ExclamationTriangleIcon, requiredPermissions: ["risk.view"] },
   { name: "Programs", href: "/programs", icon: DocumentTextIcon, requiredPermissions: ["programs.view"] },
   { name: "Call Centre", href: "/call-centre", icon: PhoneIcon, requiredPermissions: ["callcentre.access"] },
   { name: "My HR", href: "/hr", icon: UserGroupIcon, requiredPermissions: ["hr.view"] },
   { name: "Inventory", href: "/inventory", icon: ArchiveBoxIcon, requiredPermissions: ["inventory.view"] },
   { name: "Documents", href: "/documents", icon: FolderIcon, requiredPermissions: ["documents.view"] },
   { name: "Analytics", href: "/analytics", icon: ChartBarIcon, requiredPermissions: ["analytics.view"] },
-  { name: "Settings", href: "/settings", icon: CogIcon, requiredPermissions: [] },
   { name: "Admin", href: "/admin", icon: Cog6ToothIcon, requiredPermissions: ["admin.access"] },
 ]
 
