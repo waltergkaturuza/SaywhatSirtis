@@ -33,10 +33,10 @@ export default function Header({ onMenuClick, currentModule }: HeaderProps) {
 
   return (
     <div className="sticky top-0 z-40 lg:mx-auto lg:max-w-7xl lg:px-8">
-      <div className="flex h-16 items-center gap-x-4 border-b border-orange-500 bg-orange-500 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-0 lg:shadow-none" style={{ backgroundColor: '#ff6b35', borderColor: '#ff6b35' }}>
+      <div className="flex h-16 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-0 lg:shadow-none">
         <button
           type="button"
-          className="-m-2.5 p-2.5 text-white lg:hidden hover:text-orange-100 transition-colors"
+          className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
           onClick={onMenuClick}
         >
           <span className="sr-only">Open sidebar</span>
@@ -44,13 +44,13 @@ export default function Header({ onMenuClick, currentModule }: HeaderProps) {
         </button>
 
         {/* Separator */}
-        <div className="h-6 w-px bg-orange-200 lg:hidden" aria-hidden="true" />
+        <div className="h-6 w-px bg-gray-200 lg:hidden" aria-hidden="true" />
 
         {/* Current Module Indicator - Left side */}
         {currentModule && (
-          <div className="flex items-center px-3 py-1.5 bg-white/20 text-white rounded-lg border border-white/30" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: '#ffffff' }}>
-            {currentModule.icon && <currentModule.icon className="h-4 w-4 mr-2 text-white" />}
-            <span className="text-sm font-medium text-white">{currentModule.name}</span>
+          <div className="flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
+            {currentModule.icon && <currentModule.icon className="h-4 w-4 mr-2" />}
+            <span className="text-sm font-medium">{currentModule.name}</span>
           </div>
         )}
 
@@ -68,24 +68,24 @@ export default function Header({ onMenuClick, currentModule }: HeaderProps) {
             {/* Theme Toggle */}
             <ThemeToggle />
             
-            <button type="button" className="-m-2.5 p-2.5 text-white hover:text-orange-100 transition-colors" style={{ color: '#ffffff' }}>
+            <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 transition-colors">
               <span className="sr-only">View notifications</span>
-              <BellIcon className="h-6 w-6 text-white" aria-hidden="true" />
+              <BellIcon className="h-6 w-6" aria-hidden="true" />
             </button>
 
             {/* Separator */}
-            <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-white/30" aria-hidden="true" />
+            <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200" aria-hidden="true" />
 
             {/* Profile dropdown */}
             <Menu as="div" className="relative">
               <Menu.Button className="-m-1.5 flex items-center p-1.5">
                 <span className="sr-only">Open user menu</span>
-                <UserCircleIcon className="h-8 w-8 text-white" style={{ color: '#ffffff' }} />
+                <UserCircleIcon className="h-8 w-8 text-gray-400" />
                 <span className="hidden lg:flex lg:items-center">
-                  <span className="ml-4 text-sm font-semibold leading-6 text-white" aria-hidden="true" style={{ color: '#ffffff' }}>
-                    {session?.user?.name || "System Administrator"}
+                  <span className="ml-4 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">
+                    {session?.user?.name || "User"}
                   </span>
-                  <ChevronDownIcon className="ml-2 h-5 w-5 text-white" aria-hidden="true" style={{ color: '#ffffff' }} />
+                  <ChevronDownIcon className="ml-2 h-5 w-5 text-gray-400" aria-hidden="true" />
                 </span>
               </Menu.Button>
               <Transition

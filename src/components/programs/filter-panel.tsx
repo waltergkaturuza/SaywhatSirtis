@@ -1,7 +1,17 @@
 import { useState } from 'react'
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { ProgramsFilters } from '@/types/programs'
-import { donorOptions, sectorOptions } from '@/data/projects'
+
+// Common options for filters - these can be made configurable later
+const donorOptions = [
+  'USAID', 'Bill & Melinda Gates Foundation', 'Ford Foundation', 
+  'Open Society Foundations', 'UN Women', 'DFID', 'EU', 'Other'
+]
+
+const sectorOptions = [
+  'Health', 'Education', 'Youth Development', 'Gender Equality',
+  'Economic Empowerment', 'Governance', 'WASH', 'Nutrition', 'Other'
+]
 
 interface FilterPanelProps {
   filters: ProgramsFilters

@@ -12,7 +12,6 @@ import {
   FlagIcon,
   CubeTransparentIcon,
   ExclamationTriangleIcon,
-  CogIcon,
   PlusIcon,
   FunnelIcon,
   DocumentArrowDownIcon,
@@ -31,10 +30,11 @@ import {
 
 // Import enhanced components
 import { ProjectDashboard } from "../../components/programs/project-dashboard"
-import { ReportsAnalytics } from "../../components/programs/reports-analytics-enhanced"
 import { ProjectTable } from "../../components/programs/project-table-enhanced"
 import { ProjectManagement } from "../../components/programs/project-management"
-import { FlagshipEvents } from "../../components/programs/flagship-events"
+import { SaywhatFlagshipEvents } from "../../components/programs/saywhat-flagship-events"
+import { ReportsAnalytics } from "../../components/programs/reports-analytics-enhanced"
+import { ProjectCalendar } from "../../components/programs/project-calendar"
 
 interface ProgramPermissions {
   canView: boolean
@@ -57,7 +57,7 @@ function EnhancedProgramsContent() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("dashboard")
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'timeline'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'kanban' | 'timeline' | 'calendar'>('list')
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [permissions, setPermissions] = useState<ProgramPermissions>({
     canView: false,
@@ -133,10 +133,10 @@ function EnhancedProgramsContent() {
   }
 
   const metadata = {
-    title: "Programs Management",
-    description: "Comprehensive programs management with enhanced project tracking, budget integration, and results framework",
+    title: "Programs & Projects Management",
+    description: "Advanced project management with Gantt charts, WBS, milestones, resource planning, and comprehensive reporting",
     breadcrumbs: [
-      { name: "Programs Management" }
+      { name: "Programs & Projects" }
     ]
   }
 
@@ -145,31 +145,37 @@ function EnhancedProgramsContent() {
       id: "dashboard",
       name: "Dashboard",
       icon: Squares2X2Icon,
-      description: "Program overview and key metrics with budget integration"
+      description: "Project overview and key metrics"
+    },
+    {
+      id: "calendar",
+      name: "Calendar",
+      icon: CalendarDaysIcon,
+      description: "Project and event calendar with monthly/yearly planning"
     },
     {
       id: "projects",
       name: "Projects",
       icon: ClipboardDocumentListIcon,
-      description: "Enhanced project management with results framework"
+      description: "Enhanced project management with multiple views"
     },
     {
       id: "project-table",
       name: "Project Table",
       icon: DocumentTextIcon,
-      description: "Project list and management interface"
+      description: "Traditional project list and management"
     },
     {
-      id: "flagship-events",
+      id: "saywhat-events",
       name: "SAYWHAT Flagship Events",
       icon: TrophyIcon,
-      description: "Manage non-donor-funded SAYWHAT events with timeline planning"
+      description: "Major organizational events and campaigns"
     },
     {
       id: "reports",
       name: "Reports & Analytics",
-      icon: DocumentTextIcon,
-      description: "Project health analytics and budget performance"
+      icon: ChartPieIcon,
+      description: "Comprehensive reporting and insights"
     }
   ]
 
@@ -179,24 +185,34 @@ function EnhancedProgramsContent() {
         <div className="flex items-center space-x-2">
           <select
             value={viewMode}
-            onChange={(e) => setViewMode(e.target.value as 'list' | 'kanban' | 'timeline')}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-green-500 focus:border-green-500 hover:bg-green-50 transition-colors"
+            onChange={(e) => setViewMode(e.target.value as 'list' | 'kanban' | 'timeline' | 'calendar')}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-orange-500 focus:border-orange-500"
           >
             <option value="list">List View</option>
             <option value="kanban">Kanban Board</option>
             <option value="timeline">Timeline View</option>
+            <option value="calendar">Calendar View</option>
           </select>
           
-          <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:border-green-400 transition-colors">
-            <FunnelIcon className="h-4 w-4 mr-2 text-gray-600" />
+          <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+            <FunnelIcon className="h-4 w-4 mr-2" />
+            Filter
+          </button>
+        </div>
+      )}
+
+      {activeTab === "calendar" && (
+        <div className="flex items-center space-x-2">
+          <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+            <FunnelIcon className="h-4 w-4 mr-2" />
             Filter
           </button>
         </div>
       )}
 
       {permissions.canGenerateReports && (
-        <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:border-green-400 transition-colors">
-          <DocumentArrowDownIcon className="h-4 w-4 mr-2 text-gray-600" />
+        <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+          <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
           Export
         </button>
       )}
@@ -204,22 +220,35 @@ function EnhancedProgramsContent() {
       {permissions.canCreate && (
         <button 
           onClick={() => router.push('/programs/new')}
-          className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md text-sm hover:bg-orange-700 transition-colors shadow-md hover:shadow-lg"
+          className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md text-sm hover:bg-orange-700 transition-colors"
         >
           <PlusIcon className="h-4 w-4 mr-2" />
-          New Project
+          {activeTab === "calendar" ? "New Event" : "New Project"}
         </button>
       )}
-
-      <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-green-50 hover:border-green-400 transition-colors">
-        <CogIcon className="h-4 w-4 mr-2 text-gray-600" />
-        Settings
-      </button>
     </div>
   )
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case "dashboard":
+        return (
+          <ProjectDashboard 
+            permissions={permissions as unknown as Record<string, boolean>}
+            onProjectSelect={setSelectedProject}
+            selectedProject={selectedProject}
+          />
+        )
+      case "calendar":
+        return (
+          <ProjectCalendar 
+            permissions={permissions as unknown as Record<string, boolean>}
+            onItemSelect={(id, type) => {
+              // Handle item selection - could navigate to detail view
+              console.log(`Selected ${type}: ${id}`)
+            }}
+          />
+        )
       case "projects":
         return (
           <ProjectManagement 
@@ -237,9 +266,11 @@ function EnhancedProgramsContent() {
             selectedProject={selectedProject}
           />
         )
-      case "flagship-events":
+      case "saywhat-events":
         return (
-          <FlagshipEvents />
+          <SaywhatFlagshipEvents 
+            permissions={permissions as unknown as Record<string, boolean>}
+          />
         )
       case "reports":
         return (
@@ -289,10 +320,10 @@ function EnhancedProgramsContent() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex flex-col items-center min-w-0 ${
+                className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex flex-col items-center min-w-0 transition-colors ${
                   activeTab === tab.id
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ? "border-orange-500 text-orange-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-green-300 hover:text-green-600"
                 }`}
                 title={tab.description}
               >
@@ -305,90 +336,25 @@ function EnhancedProgramsContent() {
 
         {/* Project Context Bar */}
         {selectedProject && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="h-10 w-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                  <div className="h-10 w-10 bg-orange-500 rounded-lg flex items-center justify-center">
                     <ClipboardDocumentListIcon className="h-6 w-6 text-white" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-blue-900">Project Selected: #{selectedProject}</h3>
-                  <p className="text-sm text-blue-600">Working on active project context</p>
+                  <h3 className="text-lg font-medium text-orange-900">Project Selected: #{selectedProject}</h3>
+                  <p className="text-sm text-orange-600">Working on active project context</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedProject(null)}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                className="text-orange-600 hover:text-orange-800 text-sm font-medium transition-colors"
               >
                 Clear Selection
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* Quick Metrics Bar */}
-        {activeTab === "dashboard" && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <div className="flex items-center">
-                <ClipboardDocumentListIcon className="h-8 w-8 text-blue-500" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">Active Projects</p>
-                  <p className="text-2xl font-semibold text-gray-900">24</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <div className="flex items-center">
-                <FlagIcon className="h-8 w-8 text-green-500" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">Milestones</p>
-                  <p className="text-2xl font-semibold text-gray-900">89</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <div className="flex items-center">
-                <BanknotesIcon className="h-8 w-8 text-yellow-500" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">Total Budget</p>
-                  <p className="text-2xl font-semibold text-gray-900">$2.4M</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <div className="flex items-center">
-                <UsersIcon className="h-8 w-8 text-purple-500" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">Team Members</p>
-                  <p className="text-2xl font-semibold text-gray-900">156</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <div className="flex items-center">
-                <ExclamationTriangleIcon className="h-8 w-8 text-red-500" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">High Risks</p>
-                  <p className="text-2xl font-semibold text-gray-900">7</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <div className="flex items-center">
-                <TrophyIcon className="h-8 w-8 text-indigo-500" />
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-500">Completion</p>
-                  <p className="text-2xl font-semibold text-gray-900">78%</p>
-                </div>
-              </div>
             </div>
           </div>
         )}

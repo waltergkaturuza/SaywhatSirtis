@@ -8,7 +8,6 @@ import {
   FunnelIcon,
   MagnifyingGlassIcon,
   ChevronDownIcon,
-  PlusIcon,
   ArrowsUpDownIcon,
   EllipsisHorizontalIcon
 } from "@heroicons/react/24/outline"
@@ -98,103 +97,112 @@ export interface SortConfig {
 
 export function ProjectManagement({ permissions, selectedProject, onProjectSelect }: ProjectManagementProps) {
   const [mounted, setMounted] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [showFilters, setShowFilters] = useState(false)
   const [selectedProjects, setSelectedProjects] = useState<string[]>([])
 
-  // Projects data
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: "proj-1",
-      name: "SAYWHAT Digital Platform",
-      description: "Comprehensive digital transformation initiative for SAYWHAT organization",
-      status: "active",
-      priority: "high",
-      progress: 68,
-      startDate: "2024-01-15",
-      endDate: "2024-12-31",
-      budget: 500000,
-      spent: 340000,
-      manager: {
-        id: "mgr-1",
-        name: "John Doe",
-        avatar: "/avatars/john.jpg"
-      },
-      team: [
-        { id: "tm-1", name: "Alice Smith", avatar: "/avatars/alice.jpg" },
-        { id: "tm-2", name: "Bob Johnson", avatar: "/avatars/bob.jpg" },
-        { id: "tm-3", name: "Carol Williams", avatar: "/avatars/carol.jpg" }
-      ],
-      health: "healthy",
-      tags: ["digital-transformation", "high-priority", "strategic"],
-      lastActivity: "2024-01-20T10:30:00Z",
-      milestones: { total: 8, completed: 5 },
-      tasks: { total: 45, completed: 31 },
-      client: "SAYWHAT Organization",
-      department: "IT",
-      location: "Lagos, Nigeria"
-    },
-    {
-      id: "proj-2",
-      name: "Community Outreach Program",
-      description: "Expanding community engagement and support programs across multiple regions",
-      status: "planning",
-      priority: "medium",
-      progress: 15,
-      startDate: "2024-02-01",
-      endDate: "2024-11-30",
-      budget: 250000,
-      spent: 37500,
-      manager: {
-        id: "mgr-2",
-        name: "Jane Wilson",
-        avatar: "/avatars/jane.jpg"
-      },
-      team: [
-        { id: "tm-4", name: "David Brown", avatar: "/avatars/david.jpg" },
-        { id: "tm-5", name: "Eva Davis", avatar: "/avatars/eva.jpg" }
-      ],
-      health: "at-risk",
-      tags: ["community", "outreach", "social-impact"],
-      lastActivity: "2024-01-19T14:15:00Z",
-      milestones: { total: 6, completed: 1 },
-      tasks: { total: 28, completed: 4 },
-      client: "Community Partners",
-      department: "Community Relations",
-      location: "Multi-location"
-    },
-    {
-      id: "proj-3",
-      name: "Infrastructure Modernization",
-      description: "Upgrading core infrastructure and technology systems",
-      status: "on-hold",
-      priority: "critical",
-      progress: 42,
-      startDate: "2023-10-01",
-      endDate: "2024-06-30",
-      budget: 750000,
-      spent: 315000,
-      manager: {
-        id: "mgr-3",
-        name: "Michael Chen",
-        avatar: "/avatars/michael.jpg"
-      },
-      team: [
-        { id: "tm-6", name: "Sarah Lee", avatar: "/avatars/sarah.jpg" },
-        { id: "tm-7", name: "Tom Anderson", avatar: "/avatars/tom.jpg" },
-        { id: "tm-8", name: "Lisa Garcia", avatar: "/avatars/lisa.jpg" }
-      ],
-      health: "critical",
-      tags: ["infrastructure", "modernization", "critical"],
-      lastActivity: "2024-01-18T09:45:00Z",
-      milestones: { total: 10, completed: 4 },
-      tasks: { total: 67, completed: 28 },
-      client: "Internal",
-      department: "Infrastructure",
-      location: "Abuja, Nigeria"
+  // Projects data - now fetched from backend
+  const [projects, setProjects] = useState<Project[]>([])
+
+  // Fetch projects from the backend
+  const fetchProjects = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      const response = await fetch('/api/programs/projects')
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to fetch projects')
+      }
+      
+      if (result.success) {
+        // Transform API data to match component interface
+        const transformedProjects = result.data.map((project: any) => ({
+          id: project.id.toString(),
+          name: project.name,
+          description: project.description || '',
+          status: mapStatus(project.status),
+          priority: 'medium', // Default priority, you may want to add this field to schema
+          progress: calculateProgress(project),
+          startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
+          endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
+          budget: project.budget || 0,
+          spent: project.actualSpent || 0,
+          manager: {
+            id: project.manager?.id || 'unassigned',
+            name: project.manager?.name || 'Unassigned',
+            avatar: undefined
+          },
+          team: [], // You may want to add team members to the schema
+          health: calculateHealth(project),
+          tags: [], // You may want to add tags to the schema
+          lastActivity: project.updatedAt ? new Date(project.updatedAt).toISOString() : new Date().toISOString(),
+          milestones: { total: project._count?.activities || 0, completed: 0 },
+          tasks: { total: project._count?.activities || 0, completed: 0 },
+          client: 'SAYWHAT', // Default client
+          department: 'Programs', // Default department
+          location: `${project.province || ''}, ${project.country || ''}`.trim().replace(/^,\s*/, '')
+        }))
+        
+        setProjects(transformedProjects)
+      } else {
+        throw new Error(result.error || 'Failed to load projects')
+      }
+    } catch (error) {
+      console.error('Projects fetch error:', error)
+      setError(error instanceof Error ? error.message : 'Failed to load projects')
+    } finally {
+      setIsLoading(false)
     }
-  ])
+  }
+
+  // Helper function to map database status to component status
+  const mapStatus = (dbStatus: string): ProjectStatus => {
+    switch (dbStatus?.toUpperCase()) {
+      case 'ACTIVE': return 'active'
+      case 'PLANNING': return 'planning'
+      case 'ON_HOLD': return 'on-hold'
+      case 'COMPLETED': return 'completed'
+      case 'CANCELLED': return 'cancelled'
+      default: return 'planning'
+    }
+  }
+
+  // Helper function to calculate progress based on time elapsed
+  const calculateProgress = (project: any) => {
+    if (!project.startDate || !project.endDate) return 0
+    
+    const start = new Date(project.startDate).getTime()
+    const end = new Date(project.endDate).getTime()
+    const now = new Date().getTime()
+    
+    if (now < start) return 0
+    if (now > end) return 100
+    
+    const elapsed = now - start
+    const total = end - start
+    
+    return Math.round((elapsed / total) * 100)
+  }
+
+  // Helper function to calculate project health
+  const calculateHealth = (project: any): 'healthy' | 'at-risk' | 'critical' => {
+    const progress = calculateProgress(project)
+    const budgetUtilization = project.budget > 0 ? (project.actualSpent / project.budget) * 100 : 0
+    
+    if (project.status === 'ON_HOLD' || budgetUtilization > 90) return 'critical'
+    if (progress < 50 && budgetUtilization > 70) return 'at-risk'
+    return 'healthy'
+  }
+
+  useEffect(() => {
+    setMounted(true)
+    fetchProjects()
+  }, [])
 
   // Filters and sorting
   const [filters, setFilters] = useState<ProjectFilters>({
@@ -223,25 +231,6 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
     { id: 'kanban', name: 'Kanban', icon: Squares2X2Icon },
     { id: 'timeline', name: 'Timeline', icon: CalendarIcon }
   ]
-
-  useEffect(() => {
-    setMounted(true)
-    loadProjects()
-  }, [])
-
-  const loadProjects = async () => {
-    setIsLoading(true)
-    try {
-      // API call to load projects
-      // const response = await fetch('/api/projects')
-      // const data = await response.json()
-      // setProjects(data)
-    } catch (error) {
-      console.error('Failed to load projects:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   // Filter and sort projects
   const filteredAndSortedProjects = projects
@@ -382,17 +371,29 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
     }))
   }
 
-  const handleCreateProject = () => {
-    // Navigate to create project page or open modal
-    console.log('Create new project')
-  }
-
   if (!mounted) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-1/4"></div>
           <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Projects</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={fetchProjects}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     )
@@ -408,15 +409,6 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
             Manage and track all your projects with advanced filtering and multiple view modes
           </p>
         </div>
-        {permissions?.canCreate && (
-          <button
-            onClick={handleCreateProject}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            <PlusIcon className="h-4 w-4" />
-            <span>New Project</span>
-          </button>
-        )}
       </div>
 
       {/* Controls Bar */}
@@ -431,16 +423,16 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
               placeholder="Search projects..."
               value={filters.search}
               onChange={(e) => setFilters((prev: ProjectFilters) => ({ ...prev, search: e.target.value }))}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 w-64"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 w-64"
             />
           </div>
 
           {/* Filter Toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center space-x-2 px-3 py-2 border rounded-md ${
+            className={`flex items-center space-x-2 px-3 py-2 border rounded-md transition-colors ${
               showFilters 
-                ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                ? 'border-orange-500 bg-orange-50 text-orange-700' 
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
@@ -452,7 +444,7 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
               typeof filter === 'object' && filter !== null ? 
                 Object.values(filter).some(v => v !== '' && v !== 0) : false
             ) && (
-              <span className="bg-blue-600 text-white text-xs rounded-full px-2 py-1">
+              <span className="bg-orange-600 text-white text-xs rounded-full px-2 py-1">
                 Active
               </span>
             )}

@@ -363,7 +363,8 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
   }
 
   return (
-    <Card className="w-full max-w-6xl mx-auto">
+    <div className="container mx-auto px-4 py-6">
+      <Card className="w-full max-w-full mx-auto">
       <CardHeader>
         <div className="flex items-center space-x-2">
           <FolderOpen className="h-5 w-5" />
@@ -1055,5 +1056,6 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
         </form>
       </CardContent>
     </Card>
+    </div>
   )
 }

@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -48,6 +48,9 @@ model User {
   // Inventory Relations
   assetAssignments  AssetAssignment[]
   inventoryAudits   InventoryAudit[]
+  
+  // Events Relations
+  organizedEvents   FlagshipEvent[]
 
   @@map("users")
 }
@@ -58,12 +61,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String? 
+  access_token      String? 
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String? 
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -119,8 +122,8 @@ model AuditLog {
 model Project {
   id           String    @id @default(cuid())
   name         String
-  description  String?   @db.Text
-  objectives   String?   @db.Text // JSON string
+  description  String?   
+  objectives   String?    // JSON string
   timeframe    String?
   startDate    DateTime?
   endDate      DateTime?
@@ -149,7 +152,7 @@ model ProjectActivity {
   id          String    @id @default(cuid())
   projectId   String
   title       String
-  description String?   @db.Text
+  description String?   
   startDate   DateTime?
   endDate     DateTime?
   status      ActivityStatus @default(PENDING)
@@ -167,7 +170,7 @@ model ProjectReport {
   id          String    @id @default(cuid())
   projectId   String
   title       String
-  content     String    @db.Text
+  content     String    
   reportType  ReportType
   period      String?
   
@@ -191,10 +194,10 @@ model CallCentreRecord {
   callType        CallType
   priority        CallPriority      @default(MEDIUM)
   subject         String
-  description     String            @db.Text
+  description     String            
   status          CallStatus        @default(OPEN)
   assignedTo      String?
-  resolution      String?           @db.Text
+  resolution      String?           
   satisfactionRating Int?
   
   // Relations
@@ -212,7 +215,7 @@ model CallCentreRecord {
 model CallFollowUp {
   id        String            @id @default(cuid())
   callId    String
-  notes     String            @db.Text
+  notes     String            
   actionTaken String?
   
   call      CallCentreRecord  @relation(fields: [callId], references: [id], onDelete: Cascade)
@@ -250,7 +253,7 @@ model Document {
   mimeType    String?
   category    DocumentCategory
   tags        String?      // JSON array of tags
-  description String?      @db.Text
+  description String?      
   version     String?      @default("1.0")
   isPublic    Boolean      @default(false)
   
@@ -287,7 +290,7 @@ model Employee {
   email           String          @unique
   phone           String?
   alternativePhone String?
-  address         String?         @db.Text
+  address         String?         
   emergencyContact String?
   emergencyPhone  String?
   
@@ -318,7 +321,7 @@ model Employee {
 model Department {
   id          String    @id @default(cuid())
   name        String    @unique
-  description String?   @db.Text
+  description String?   
   managerId   String?
   budget      Float?
   isActive    Boolean   @default(true)
@@ -337,11 +340,11 @@ model LeaveRequest {
   startDate   DateTime
   endDate     DateTime
   days        Int
-  reason      String?     @db.Text
+  reason      String?     
   status      LeaveStatus @default(PENDING)
   approvedBy  String?
   approvedAt  DateTime?
-  comments    String?     @db.Text
+  comments    String?     
   
   employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id])
@@ -358,10 +361,10 @@ model Appraisal {
   userId          String
   reviewPeriod    String
   overallRating   Float?
-  goals           String?         @db.Text
-  achievements    String?         @db.Text
-  areasImprovement String?        @db.Text
-  nextPeriodGoals String?         @db.Text
+  goals           String?         
+  achievements    String?         
+  areasImprovement String?        
+  nextPeriodGoals String?         
   status          AppraisalStatus @default(DRAFT)
   reviewedBy      String?
   reviewedAt      DateTime?
@@ -378,7 +381,7 @@ model Appraisal {
 model Training {
   id              String              @id @default(cuid())
   title           String
-  description     String?             @db.Text
+  description     String?             
   category        TrainingCategory
   duration        Int?                // Duration in hours
   maxParticipants Int?
@@ -444,7 +447,7 @@ model PayrollRecord {
 model AttendanceRecord {
   id          String          @id @default(cuid())
   employeeId  String
-  date        DateTime        @db.Date
+  date        DateTime        
   checkIn     DateTime?
   checkOut    DateTime?
   breakStart  DateTime?
@@ -470,7 +473,7 @@ model Asset {
   id              String            @id @default(cuid())
   assetTag        String            @unique
   name            String
-  description     String?           @db.Text
+  description     String?           
   category        AssetCategory
   brand           String?
   model           String?
@@ -501,7 +504,7 @@ model AssetAssignment {
   assignedAt  DateTime        @default(now())
   returnedAt  DateTime?
   condition   AssetCondition?
-  notes       String?         @db.Text
+  notes       String?         
   
   asset       Asset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
   user        User            @relation(fields: [userId], references: [id])
@@ -516,13 +519,13 @@ model MaintenanceRecord {
   id              String            @id @default(cuid())
   assetId         String
   maintenanceType MaintenanceType
-  description     String            @db.Text
+  description     String            
   cost            Float?
   scheduledDate   DateTime?
   completedDate   DateTime?
   technician      String?
   status          MaintenanceStatus @default(SCHEDULED)
-  notes           String?           @db.Text
+  notes           String?           
   
   asset           Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
   
@@ -537,7 +540,7 @@ model InventoryAudit {
   auditDate   DateTime      @default(now())
   auditedBy   String
   assetId     String?
-  findings    String?       @db.Text
+  findings    String?       
   status      AuditStatus   @default(PENDING)
   
   auditor     User          @relation(fields: [auditedBy], references: [id])
@@ -557,7 +560,7 @@ model Notification {
   id          String             @id @default(cuid())
   userId      String
   title       String
-  message     String             @db.Text
+  message     String             
   type        NotificationType   @default(INFO)
   isRead      Boolean            @default(false)
   actionUrl   String?
@@ -577,8 +580,8 @@ model Notification {
 model SystemSetting {
   id          String    @id @default(cuid())
   key         String    @unique
-  value       String    @db.Text
-  description String?   @db.Text
+  value       String    
+  description String?   
   category    String?
   isPublic    Boolean   @default(false)
   
@@ -586,6 +589,35 @@ model SystemSetting {
   updatedAt   DateTime  @updatedAt
 
   @@map("system_settings")
+}
+
+// =============================================
+// FLAGSHIP EVENTS
+// =============================================
+
+model FlagshipEvent {
+  id                String          @id @default(cuid())
+  name              String
+  description       String?
+  startDate         DateTime
+  startTime         String?
+  endDate           DateTime
+  endTime           String?
+  location          String
+  expectedAttendees Int             @default(0)
+  actualAttendees   Int?
+  status            EventStatus     @default(PLANNING)
+  category          EventCategory   @default(CONFERENCE)
+  budget            Float           @default(0)
+  actualCost        Float?
+  organizerUserId   String
+  
+  organizer         User            @relation(fields: [organizerUserId], references: [id])
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@map("flagship_events")
 }
 
 // =============================================
@@ -811,4 +843,19 @@ enum NotificationType {
   WARNING
   ERROR
   REMINDER
+}
+
+enum EventStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum EventCategory {
+  CONFERENCE
+  WORKSHOP
+  CAMPAIGN
+  OUTREACH
+  FUNDRAISING
 }

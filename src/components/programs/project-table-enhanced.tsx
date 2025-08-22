@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { ProjectCalendar } from "./project-calendar"
 import { 
   ClipboardDocumentListIcon, 
   FunnelIcon, 
@@ -28,7 +29,7 @@ import {
 
 interface ProjectTableProps {
   permissions: any
-  viewMode: 'list' | 'kanban' | 'timeline'
+  viewMode: 'list' | 'kanban' | 'timeline' | 'calendar'
   onProjectSelect: (projectId: string | null) => void
   selectedProject: string | null
 }
@@ -111,6 +112,104 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
     setMounted(true)
     fetchProjects()
   }, [])
+
+  // Filter and sort projects - ALWAYS call this hook
+  const filteredAndSortedProjects = useMemo(() => {
+    let filtered = projects.filter(project => {
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase()
+        if (!project.name.toLowerCase().includes(searchLower) &&
+            !project.description.toLowerCase().includes(searchLower) &&
+            !(project.manager?.name?.toLowerCase().includes(searchLower))) {
+          return false
+        }
+      }
+
+      // Status filter
+      if (filters.status.length > 0 && !filters.status.includes(project.status)) {
+        return false
+      }
+
+      // Priority filter
+      if (filters.priority.length > 0 && !filters.priority.includes(project.priority)) {
+        return false
+      }
+
+      // Health filter
+      if (filters.health.length > 0 && !filters.health.includes(project.health)) {
+        return false
+      }
+
+      // Manager filter
+      if (filters.manager.length > 0 && project.manager && !filters.manager.includes(project.manager.name)) {
+        return false
+      }
+
+      // Department filter
+      if (filters.department.length > 0 && project.department && !filters.department.includes(project.department)) {
+        return false
+      }
+
+      // Tags filter
+      if (filters.tags.length > 0 && !filters.tags.some(tag => project.tags.includes(tag))) {
+        return false
+      }
+
+      // Date filters
+      const now = new Date()
+      const projectEnd = new Date(project.endDate)
+      const projectStart = new Date(project.startDate)
+
+      if (filters.showOverdue && projectEnd >= now) {
+        return false
+      }
+
+      if (filters.showUpcoming && projectStart <= now) {
+        return false
+      }
+
+      return true
+    })
+
+    // Sort projects
+    if (sortConfig.field) {
+      filtered.sort((a, b) => {
+        let aValue: any = a[sortConfig.field as keyof Project]
+        let bValue: any = b[sortConfig.field as keyof Project]
+
+        // Handle nested properties
+        if (sortConfig.field === 'manager') {
+          aValue = a.manager?.name || ''
+          bValue = b.manager?.name || ''
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1
+        }
+        return 0
+      })
+    }
+
+    return filtered
+  }, [projects, filters, sortConfig])
+
+  // Early return for calendar view - AFTER all hooks are called
+  if (viewMode === 'calendar') {
+    return (
+      <ProjectCalendar 
+        permissions={permissions}
+        onItemSelect={(id, type) => {
+          if (type === 'project') {
+            onProjectSelect(id)
+          }
+        }}
+      />
+    )
+  }
 
   const fetchProjects = async () => {
     try {
@@ -209,98 +308,6 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
       </div>
     )
   }
-
-  // Filter and sort projects
-  const filteredAndSortedProjects = useMemo(() => {
-    let filtered = projects.filter(project => {
-      // Search filter
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase()
-        if (!project.name.toLowerCase().includes(searchLower) &&
-            !project.description.toLowerCase().includes(searchLower) &&
-            !(project.manager?.name?.toLowerCase().includes(searchLower))) {
-          return false
-        }
-      }
-
-      // Status filter
-      if (filters.status.length > 0 && !filters.status.includes(project.status)) {
-        return false
-      }
-
-      // Priority filter
-      if (filters.priority.length > 0 && !filters.priority.includes(project.priority)) {
-        return false
-      }
-
-      // Health filter
-      if (filters.health.length > 0 && !filters.health.includes(project.health)) {
-        return false
-      }
-
-      // Manager filter
-      if (filters.manager.length > 0 && project.manager?.name && !filters.manager.includes(project.manager.name)) {
-        return false
-      }
-
-      // Department filter
-      if (filters.department.length > 0 && project.department && !filters.department.includes(project.department)) {
-        return false
-      }
-
-      // Tags filter
-      if (filters.tags.length > 0 && !filters.tags.some(tag => project.tags.includes(tag))) {
-        return false
-      }
-
-      // Overdue filter
-      if (filters.showOverdue) {
-        const endDate = new Date(project.endDate)
-        const now = new Date()
-        if (endDate >= now) {
-          return false
-        }
-      }
-
-      // Upcoming deadlines filter
-      if (filters.showUpcoming) {
-        const endDate = new Date(project.endDate)
-        const now = new Date()
-        const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-        if (endDate < now || endDate > weekFromNow) {
-          return false
-        }
-      }
-
-      return true
-    })
-
-    // Sort projects
-    filtered.sort((a, b) => {
-      let aValue: any
-      let bValue: any
-
-      switch (sortConfig.field) {
-        case 'budget_remaining':
-          aValue = a.budget - a.actualSpent
-          bValue = b.budget - b.actualSpent
-          break
-        case 'progress_score':
-          aValue = a.progress
-          bValue = b.progress
-          break
-        default:
-          aValue = a[sortConfig.field as keyof Project]
-          bValue = b[sortConfig.field as keyof Project]
-      }
-
-      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1
-      return 0
-    })
-
-    return filtered
-  }, [projects, filters, sortConfig])
 
   const handleSort = (field: SortField) => {
     setSortConfig(prev => ({
@@ -688,12 +695,18 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
                   
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
-                      <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-700">
-                          {project.manager?.name?.split(' ').map(n => n[0]).join('') || 'NA'}
-                        </span>
-                      </div>
-                      <span className="text-sm text-gray-900">{project.manager?.name || 'Unassigned'}</span>
+                      {project.manager ? (
+                        <>
+                          <div className="h-6 w-6 rounded-full bg-gray-300 flex items-center justify-center">
+                            <span className="text-xs font-medium text-gray-700">
+                              {project.manager.name.split(' ').map(n => n[0]).join('')}
+                            </span>
+                          </div>
+                          <span className="text-sm text-gray-900">{project.manager.name}</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-500">No manager assigned</span>
+                      )}
                     </div>
                   </td>
                   
@@ -701,12 +714,12 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => onProjectSelect(project.id)}
-                        className="text-orange-600 hover:text-orange-800 transition-colors"
+                        className="text-blue-600 hover:text-blue-800"
                       >
                         <EyeIcon className="h-4 w-4" />
                       </button>
                       {permissions?.canEdit && (
-                        <button className="text-gray-600 hover:text-green-800 transition-colors">
+                        <button className="text-gray-600 hover:text-gray-800">
                           <PencilIcon className="h-4 w-4" />
                         </button>
                       )}

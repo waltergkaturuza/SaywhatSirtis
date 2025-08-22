@@ -15,7 +15,6 @@ import {
   XMarkIcon,
   PlusIcon
 } from "@heroicons/react/24/outline"
-import { realProjects } from "@/data/projects"
 
 export default function KoboIntegrationPage() {
   const { data: session } = useSession()
@@ -34,6 +33,31 @@ export default function KoboIntegrationPage() {
 
   const [isTesting, setIsTesting] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+
+  // Sample projects data for integration status
+  const realProjects = [
+    { 
+      id: '1', 
+      name: 'Youth Empowerment Program', 
+      status: 'active', 
+      description: 'Empowering young people through leadership development and skills training programs across Zimbabwe.',
+      donor: 'USAID'
+    },
+    { 
+      id: '2', 
+      name: 'Women Leadership Initiative', 
+      status: 'active', 
+      description: 'Building capacity for women leaders in various sectors to drive sustainable development in their communities.',
+      donor: 'EU'
+    },
+    { 
+      id: '3', 
+      name: 'Digital Skills Training', 
+      status: 'completed', 
+      description: 'Providing digital literacy and technology skills to underserved communities to enhance economic opportunities.',
+      donor: 'World Bank'
+    },
+  ]
 
   // Sample integration status for projects
   const integrationStatus = realProjects.map(project => ({

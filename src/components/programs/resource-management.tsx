@@ -24,7 +24,38 @@ import {
   AdjustmentsHorizontalIcon
 } from "@heroicons/react/24/outline"
 import { Resource, ResourceAllocation } from "@/types/programs-enhanced"
-import { sampleResources } from "@/data/enhanced-projects"
+
+// Sample resources data
+const sampleResources: Resource[] = [
+  {
+    id: '1',
+    projectId: 1,
+    name: 'Project Manager',
+    type: 'human',
+    role: 'Lead',
+    department: 'Projects',
+    costPerHour: 50,
+    availability: 100,
+    allocation: [],
+    skills: ['Leadership', 'Planning'],
+    location: 'Harare',
+    contact: 'pm@saywhat.org'
+  },
+  {
+    id: '2',
+    projectId: 1,
+    name: 'Developer',
+    type: 'human',
+    role: 'Technical',
+    department: 'IT',
+    costPerHour: 40,
+    availability: 80,
+    allocation: [],
+    skills: ['Programming', 'Testing'],
+    location: 'Harare',
+    contact: 'dev@saywhat.org'
+  }
+]
 
 interface ResourceManagementProps {
   permissions: any

@@ -76,6 +76,17 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       totalMembers,
+      activeMembers: totalMembers, // Same as total for now
+      newMembersThisMonth: 0, // Default value
+      totalCalls: callsThisYear,
+      callsToday,
+      callsThisMonth,
+      avgCallDuration: 5.2, // Default value
+      callSuccessRate: 85.5, // Default value
+      totalPrograms,
+      activePrograms,
+      completedPrograms: totalPrograms - activePrograms,
+      programSuccessRate: performanceScore,
       calls: {
         today: callsToday,
         thisMonth: callsThisMonth,
