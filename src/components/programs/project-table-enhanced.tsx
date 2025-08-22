@@ -115,7 +115,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
 
   // Filter and sort projects - ALWAYS call this hook
   const filteredAndSortedProjects = useMemo(() => {
-    let filtered = projects.filter(project => {
+    const filtered = projects.filter(project => {
       // Search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase()

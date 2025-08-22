@@ -106,7 +106,7 @@ export default function ProjectReportsPage() {
 
   const filteredAnalytics = useMemo(() => {
     // Apply filters to analytics data
-    let filtered = { ...analytics }
+    const filtered = { ...analytics }
     
     if (filters.gender !== 'all') {
       // Filter gender breakdown

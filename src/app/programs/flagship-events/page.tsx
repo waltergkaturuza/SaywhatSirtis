@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
@@ -42,6 +42,33 @@ export default function FlagshipEventsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeView, setActiveView] = useState<'events' | 'partners' | 'calendar'>('events')
 
+  // Filter function using useCallback to prevent unnecessary re-renders
+  const filterEvents = useCallback(() => {
+    let filtered = flagshipEvents2025
+    
+    if (selectedYear !== 2025) {
+      filtered = []
+    }
+    
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(event => event.status.toLowerCase() === selectedStatus.toLowerCase())
+    }
+    
+    if (searchQuery) {
+      filtered = filtered.filter(event => 
+        event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (event.venue && event.venue.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        event.location.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+    
+    setEvents(filtered)
+  }, [selectedYear, selectedStatus, searchQuery])
+
+  useEffect(() => {
+    filterEvents()
+  }, [filterEvents])
+
   // Check access control - Programs module access required
   if (!session?.user?.permissions?.includes('programs.access')) {
     return (
@@ -55,35 +82,6 @@ export default function FlagshipEventsPage() {
         </div>
       </div>
     )
-  }
-
-  useEffect(() => {
-    filterEvents()
-  }, [selectedYear, selectedStatus, searchQuery])
-
-  const filterEvents = () => {
-    let filtered = flagshipEvents2025
-
-    // Filter by year
-    if (selectedYear) {
-      filtered = filtered.filter(event => event.year === selectedYear)
-    }
-
-    // Filter by status
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(event => event.status === selectedStatus)
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(event => 
-        event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.location.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    }
-
-    setEvents(filtered)
   }
 
   const getStatusColor = (status: FlagshipEvent['status']) => {

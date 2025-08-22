@@ -20,16 +20,7 @@ export default function UploadProgressPage() {
   const router = useRouter()
   const projectId = params.id
 
-  // Check user permissions
-  const userPermissions = session?.user?.permissions || []
-  const canUploadProgress = userPermissions.includes('programs.upload') || userPermissions.includes('programs.progress')
-
-  // Redirect if no permission
-  if (!canUploadProgress) {
-    router.push('/programs')
-    return null
-  }
-
+  // Initialize all hooks first
   const [formData, setFormData] = useState({
     reportDate: new Date().toISOString().split('T')[0],
     summary: '',
@@ -48,6 +39,16 @@ export default function UploadProgressPage() {
 
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Check user permissions
+  const userPermissions = session?.user?.permissions || []
+  const canUploadProgress = userPermissions.includes('programs.upload') || userPermissions.includes('programs.progress')
+
+  // Redirect if no permission
+  if (!canUploadProgress) {
+    router.push('/programs')
+    return null
+  }
 
   // Sample project data
   const project = {

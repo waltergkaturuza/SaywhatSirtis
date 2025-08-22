@@ -72,6 +72,10 @@ export default function CallCentreDataSummaryPage() {
   const [officerPerformance, setOfficerPerformance] = useState<OfficerPerformance[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  
+  // State for chart data - will be populated from API
+  const [casesByPurpose, setCasesByPurpose] = useState<Array<{purpose: string, count: number, percentage: number}>>([])
+  const [callsByProvince, setCallsByProvince] = useState<Array<{province: string, calls: number, validCalls: number}>>([])
 
   useEffect(() => {
     fetchSummaryData()
@@ -228,10 +232,6 @@ export default function CallCentreDataSummaryPage() {
     )
   }
 
-  // State for chart data - will be populated from API
-  const [casesByPurpose, setCasesByPurpose] = useState<Array<{purpose: string, count: number, percentage: number}>>([])
-  const [callsByProvince, setCallsByProvince] = useState<Array<{province: string, calls: number, validCalls: number}>>([])
-  
   // Charts data will be fetched from the API
 
   const handleFilterChange = (key: string, value: string) => {

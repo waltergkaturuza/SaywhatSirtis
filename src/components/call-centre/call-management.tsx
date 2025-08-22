@@ -394,7 +394,7 @@ const CallManagement: React.FC = () => {
 
   // Filter and sort calls
   const filteredAndSortedCalls = useMemo(() => {
-    let filtered = calls.filter(call => {
+    const filtered = calls.filter(call => {
       // Search filter
       if (filters.search) {
         const searchLower = filters.search.toLowerCase()

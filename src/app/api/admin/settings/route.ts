@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
 // Mock settings data
-let settings = {
+  const settings = {
   system: {
     appName: 'SAYWHAT SIRTIS',
     appVersion: '1.0.0',
