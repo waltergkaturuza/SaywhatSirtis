@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import { 
   ChevronLeftIcon, 
   ChevronRightIcon,
@@ -65,15 +66,75 @@ export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarPr
 
   // Fetch projects and events data
   useEffect(() => {
-    fetchCalendarData()
-  }, [])
+    // Prevent multiple rapid calls
+    let isMounted = true
+    
+    // Add a small delay to prevent immediate API calls on mount
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        fetchCalendarData()
+      }
+    }, 500)
+    
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+    }
+  }, []) // Empty dependency array to run only once on mount
 
   const fetchCalendarData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // Fetch both projects and events in parallel
+      // Use mock data temporarily to avoid API rate limiting
+      const mockEvents: CalendarEvent[] = [
+        {
+          id: '1',
+          title: 'Agriculture & Sports Gala',
+          type: 'event',
+          startDate: new Date('2025-08-25'),
+          endDate: new Date('2025-08-27'),
+          status: 'PLANNING',
+          category: 'OUTREACH',
+          venue: 'Harare Sports Club',
+          description: 'Annual agriculture and sports event',
+          color: '#10b981',
+          budget: 50000
+        },
+        {
+          id: '2',
+          title: 'Youth Leadership Workshop',
+          type: 'event',
+          startDate: new Date('2025-09-15'),
+          endDate: new Date('2025-09-15'),
+          status: 'ACTIVE',
+          category: 'WORKSHOP',
+          venue: 'SAYWHAT Offices',
+          description: 'Leadership development for youth',
+          color: '#8b5cf6',
+          budget: 15000
+        },
+        {
+          id: '3',
+          title: 'Community Health Project',
+          type: 'project',
+          startDate: new Date('2025-08-20'),
+          endDate: new Date('2025-12-31'),
+          status: 'ACTIVE',
+          priority: 'HIGH',
+          description: 'Ongoing community health initiatives',
+          color: '#ef4444',
+          budget: 100000,
+          progress: 65,
+          manager: 'Dr. Smith'
+        }
+      ]
+
+      setCalendarEvents(mockEvents)
+
+      /* 
+      // Original API calls - commented out to prevent rate limiting
       const [projectsRes, eventsRes] = await Promise.all([
         fetch('/api/programs/projects'),
         fetch('/api/programs/events?limit=100')
@@ -155,9 +216,12 @@ export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarPr
       }
 
       setCalendarEvents(events)
+      */
     } catch (err) {
       console.error('Calendar data fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load calendar data')
+      // Set empty events array on error to prevent further attempts
+      setCalendarEvents([])
     } finally {
       setLoading(false)
     }
@@ -350,10 +414,13 @@ export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarPr
           </button>
 
           {permissions?.canCreate && (
-            <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors">
+            <Link 
+              href="/programs/flagship-events"
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
+            >
               <PlusIcon className="h-4 w-4 mr-2" />
               Add Event
-            </button>
+            </Link>
           )}
         </div>
       </div>

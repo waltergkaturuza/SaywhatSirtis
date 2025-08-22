@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
@@ -17,6 +17,23 @@ import {
   PencilIcon
 } from "@heroicons/react/24/outline"
 
+interface CaseData {
+  id: string
+  caseNumber: string
+  callNumber?: string
+  clientName?: string
+  phone?: string
+  purpose: string
+  officer?: string
+  status: string
+  priority: string
+  createdDate: string
+  dueDate?: string
+  lastUpdate: string
+  isOverdue: boolean
+  description: string
+}
+
 export default function CaseManagementPage() {
   const { data: session } = useSession()
   
@@ -24,12 +41,37 @@ export default function CaseManagementPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOfficer, setSelectedOfficer] = useState('all')
+  const [cases, setCases] = useState<CaseData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   
   // Check user permissions after all hooks
   const userPermissions = session?.user?.permissions || []
   const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
                              userPermissions.includes('programs.head') ||
                              userPermissions.includes('callcentre.officer')
+
+  useEffect(() => {
+    if (canAccessCallCentre) {
+      fetchCases()
+    }
+  }, [canAccessCallCentre])
+
+  const fetchCases = async () => {
+    try {
+      const response = await fetch('/api/call-centre/cases')
+      if (!response.ok) {
+        throw new Error('Failed to fetch cases')
+      }
+      const data = await response.json()
+      setCases(data.cases || [])
+    } catch (error) {
+      console.error('Error fetching cases:', error)
+      setError('Failed to load case data')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (!canAccessCallCentre) {
     return (
@@ -45,91 +87,8 @@ export default function CaseManagementPage() {
     )
   }
 
-  // Sample case data
-  const cases = [
-    {
-      id: 1,
-      caseNumber: "CASE-2025-0045",
-      callNumber: "CC-2025-0001",
-      clientName: "Sarah Moyo",
-      phone: "0771234567",
-      purpose: "HIV Information & Counselling",
-      officer: "Mary Chikuni",
-      status: "open",
-      priority: "medium",
-      createdDate: "2025-07-10",
-      dueDate: "2025-07-17",
-      lastUpdate: "2025-07-15",
-      isOverdue: false,
-      description: "Client requires ongoing HIV counselling and support for medication adherence"
-    },
-    {
-      id: 2,
-      caseNumber: "CASE-2025-0046",
-      callNumber: "CC-2025-0002",
-      clientName: "John Mukamuri",
-      phone: "0773456789",
-      purpose: "Mental Health Support",
-      officer: "David Nyathi",
-      status: "in-progress",
-      priority: "high",
-      createdDate: "2025-07-08",
-      dueDate: "2025-07-15",
-      lastUpdate: "2025-07-14",
-      isOverdue: true,
-      description: "Urgent mental health intervention required, client expressed suicidal thoughts"
-    },
-    {
-      id: 3,
-      caseNumber: "CASE-2025-0047",
-      callNumber: "CC-2025-0003",
-      clientName: "Grace Sibanda",
-      phone: "0772345678",
-      purpose: "GBV Support",
-      officer: "Alice Mandaza",
-      status: "closed",
-      priority: "high",
-      createdDate: "2025-07-05",
-      dueDate: "2025-07-12",
-      lastUpdate: "2025-07-12",
-      isOverdue: false,
-      description: "GBV case successfully referred to legal aid and counselling services, client safe"
-    },
-    {
-      id: 4,
-      caseNumber: "CASE-2025-0048",
-      callNumber: "CC-2025-0004",
-      clientName: "Peter Ndovu",
-      phone: "0774567890",
-      purpose: "Child Protection",
-      officer: "Mary Chikuni",
-      status: "open",
-      priority: "high",
-      createdDate: "2025-07-12",
-      dueDate: "2025-07-19",
-      lastUpdate: "2025-07-13",
-      isOverdue: false,
-      description: "Child abuse case requires immediate attention and coordination with child services"
-    },
-    {
-      id: 5,
-      caseNumber: "CASE-2025-0049",
-      callNumber: "CC-2025-0005",
-      clientName: "Maria Chavunduka",
-      phone: "0775678901",
-      purpose: "Legal Assistance",
-      officer: "Peter Masvingo",
-      status: "pending",
-      priority: "medium",
-      createdDate: "2025-07-13",
-      dueDate: "2025-07-20",
-      lastUpdate: "2025-07-13",
-      isOverdue: false,
-      description: "Client needs legal advice regarding employment discrimination case"
-    }
-  ]
-
-  const officers = ["Mary Chikuni", "David Nyathi", "Alice Mandaza", "Peter Masvingo"]
+  // Extract unique officers from cases for filter dropdown
+  const officers = [...new Set(cases.map(c => c.officer).filter(Boolean))]
 
   // Filter cases based on active tab and search
   const filteredCases = cases.filter(caseItem => {
@@ -142,7 +101,7 @@ export default function CaseManagementPage() {
 
     const matchesSearch = searchTerm === '' ||
                          caseItem.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         caseItem.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         caseItem.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          caseItem.purpose.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesOfficer = selectedOfficer === 'all' || caseItem.officer === selectedOfficer
@@ -355,14 +314,33 @@ export default function CaseManagementPage() {
 
           {/* Cases List */}
           <div className="divide-y divide-gray-200">
-            {filteredCases.length === 0 ? (
+            {loading ? (
+              <div className="p-12 text-center">
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                  <span className="ml-3 text-gray-500">Loading cases...</span>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="p-12 text-center">
+                <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500 mb-4" />
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Error Loading Cases</h3>
+                <p className="text-sm text-gray-500 mb-4">{error}</p>
+                <button 
+                  onClick={fetchCases}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : filteredCases.length === 0 ? (
               <div className="p-12 text-center">
                 <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-4 text-sm font-medium text-gray-900">No cases found</h3>
                 <p className="mt-1 text-sm text-gray-500">
                   {searchTerm || selectedOfficer !== 'all' 
                     ? 'Try adjusting your search or filter criteria.'
-                    : 'No cases match the selected status.'
+                    : 'No cases have been created yet.'
                   }
                 </p>
               </div>
@@ -372,7 +350,7 @@ export default function CaseManagementPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-medium text-gray-900">{caseItem.clientName}</h3>
+                        <h3 className="text-lg font-medium text-gray-900">{caseItem.clientName || 'Unknown Client'}</h3>
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(caseItem.status)}`}>
                           {caseItem.status}
                         </span>

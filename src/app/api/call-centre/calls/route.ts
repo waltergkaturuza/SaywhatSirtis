@@ -1,0 +1,133 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient();
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check permissions
+    if (!session.user.permissions?.includes('callcentre.access')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Get all calls without pagination for now
+    const calls = await prisma.callCentreRecord.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        assignedUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    })
+
+    // Transform the data to match the frontend interface
+    const transformedCalls = calls.map(call => ({
+      id: call.id,
+      callNumber: call.id, // Use ID as call number for now
+      caseNumber: call.id,
+      callerName: call.callerName,
+      callerPhone: call.callerPhone,
+      callerProvince: null, // Not available in current schema
+      callerAge: null, // Not available in current schema
+      callerGender: null, // Not available in current schema
+      clientName: call.callerName, // Same as caller for now
+      clientAge: null, // Not available in current schema
+      clientSex: null, // Not available in current schema
+      communicationMode: call.callType || 'INBOUND',
+      purpose: call.subject || 'General Inquiry',
+      validity: 'Valid', // Default for now
+      officer: call.assignedUser?.name || 'Unassigned',
+      dateTime: call.createdAt.toISOString(),
+      duration: null, // Not available in current schema
+      status: call.status,
+      referredTo: call.resolution || null,
+      voucherIssued: 'NO', // Default for now
+      voucherValue: null, // Not available in current schema
+      notes: call.description
+    }));
+
+    return NextResponse.json({
+      success: true,
+      calls: transformedCalls,
+      total: transformedCalls.length
+    })
+  } catch (error) {
+    console.error('Error fetching calls:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('calls.create') ||
+                         session.user?.permissions?.includes('calls.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('manager')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const {
+      callerName,
+      callerPhone,
+      callerEmail,
+      callType,
+      priority,
+      subject,
+      description,
+      assignedTo
+    } = body
+
+    // Create new call record
+    const call = await prisma.callCentreRecord.create({
+      data: {
+        callerName,
+        callerPhone,
+        callerEmail,
+        callType,
+        priority,
+        subject,
+        description,
+        assignedTo,
+        status: 'OPEN'
+      },
+      include: {
+        assignedUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    })
+
+    return NextResponse.json(call, { status: 201 })
+  } catch (error) {
+    console.error('Error creating call:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

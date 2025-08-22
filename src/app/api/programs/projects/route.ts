@@ -72,10 +72,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // Basic validation
-    if (!body.name || !body.description || !body.startDate || !body.endDate || !body.country) {
+    const hasCountryData = body.country || (body.countries && body.countries.length > 0)
+    if (!body.name || !body.description || !body.startDate || !body.endDate || !hasCountryData) {
       return NextResponse.json({ 
         success: false,
-        error: "Missing required fields: name, description, startDate, endDate, and country are required" 
+        error: "Missing required fields: name, description, startDate, endDate, and country/countries are required" 
       }, { status: 400 })
     }
 
@@ -87,9 +88,25 @@ export async function POST(request: NextRequest) {
         timeframe: body.timeframe || `${body.startDate} to ${body.endDate}`,
         startDate: new Date(body.startDate),
         endDate: new Date(body.endDate),
-        country: body.country,
-        province: body.province || null,
-        objectives: JSON.stringify(body.objectives || []),
+        country: body.countries ? body.countries[0] : body.country || "Zimbabwe", // Use first country for backward compatibility
+        province: body.provinces && body.countries ? 
+          (body.provinces[body.countries[0]] || []).join(", ") : 
+          body.province || null,
+        objectives: JSON.stringify({
+          categories: body.categories || [],
+          projectLead: body.projectLead || null,
+          implementingOrganizations: body.implementingOrganizations || [],
+          evaluationFrequency: body.evaluationFrequency || [],
+          frequencyDates: body.frequencyDates || {},
+          methodologies: body.methodologies || [],
+          fundingSource: body.fundingSource || null,
+          resultsFramework: body.resultsFramework || { objectives: [], projectDuration: 3 },
+          // Enhanced location data
+          countries: body.countries || [],
+          provinces: body.provinces || {},
+          // Document management
+          uploadedDocuments: body.uploadedDocuments || []
+        }),
         budget: body.budget ? parseFloat(body.budget) : null,
         actualSpent: 0
       }

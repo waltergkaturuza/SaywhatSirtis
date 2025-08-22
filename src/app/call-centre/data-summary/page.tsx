@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
@@ -15,6 +15,29 @@ import {
   CheckCircleIcon,
   UserIcon
 } from "@heroicons/react/24/outline"
+
+interface SummaryStats {
+  totalCalls: number
+  validCalls: number
+  invalidCalls: number
+  totalCases: number
+  pendingCases: number
+  closedCases: number
+  overdueCases: number
+  averageCallDuration: string
+  caseConversionRate: string
+}
+
+interface OfficerPerformance {
+  name: string
+  totalCalls: number
+  validCalls: number
+  cases: number
+  pendingCases: number
+  closedCases: number
+  overdueCases: number
+  avgCallDuration: string
+}
 
 export default function CallCentreDataSummaryPage() {
   const { data: session } = useSession()
@@ -33,62 +56,45 @@ export default function CallCentreDataSummaryPage() {
     language: 'all',
     communicationMode: 'all'
   })
+  
+  const [summaryStats, setSummaryStats] = useState<SummaryStats>({
+    totalCalls: 0,
+    validCalls: 0,
+    invalidCalls: 0,
+    totalCases: 0,
+    pendingCases: 0,
+    closedCases: 0,
+    overdueCases: 0,
+    averageCallDuration: "0 min",
+    caseConversionRate: "0%"
+  })
+  
+  const [officerPerformance, setOfficerPerformance] = useState<OfficerPerformance[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  // Sample data for call centre analytics
-  const summaryStats = {
-    totalCalls: 2847,
-    validCalls: 2503,
-    invalidCalls: 344,
-    totalCases: 156,
-    pendingCases: 23,
-    closedCases: 133,
-    overdueCases: 8,
-    averageCallDuration: "4.2 min",
-    caseConversionRate: "5.5%"
-  }
+  useEffect(() => {
+    fetchSummaryData()
+  }, [])
 
-  const officerPerformance = [
-    {
-      name: "Mary Chikuni",
-      totalCalls: 342,
-      validCalls: 315,
-      cases: 18,
-      pendingCases: 8,
-      closedCases: 10,
-      overdueCases: 2,
-      avgCallDuration: "5.1 min"
-    },
-    {
-      name: "David Nyathi",
-      totalCalls: 298,
-      validCalls: 278,
-      cases: 15,
-      pendingCases: 6,
-      closedCases: 9,
-      overdueCases: 1,
-      avgCallDuration: "4.8 min"
-    },
-    {
-      name: "Alice Mandaza",
-      totalCalls: 267,
-      validCalls: 245,
-      cases: 12,
-      pendingCases: 5,
-      closedCases: 7,
-      overdueCases: 3,
-      avgCallDuration: "3.9 min"
-    },
-    {
-      name: "Peter Masvingo",
-      totalCalls: 189,
-      validCalls: 175,
-      cases: 9,
-      pendingCases: 4,
-      closedCases: 5,
-      overdueCases: 2,
-      avgCallDuration: "4.1 min"
+  const fetchSummaryData = async () => {
+    try {
+      const response = await fetch('/api/call-centre/summary')
+      if (!response.ok) {
+        throw new Error('Failed to fetch summary data')
+      }
+      const data = await response.json()
+      setSummaryStats(data.stats || summaryStats)
+      setOfficerPerformance(data.officers || [])
+      setCasesByPurpose(data.casesByPurpose || [])
+      setCallsByProvince(data.callsByProvince || [])
+    } catch (error) {
+      console.error('Error fetching summary data:', error)
+      setError('Failed to load summary data')
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
 
   // Export functions
   const exportToCSV = () => {
@@ -222,27 +228,11 @@ export default function CallCentreDataSummaryPage() {
     )
   }
 
-  const casesByPurpose = [
-    { purpose: "HIV Information & Counselling", count: 45, percentage: 28.8 },
-    { purpose: "Mental Health Support", count: 38, percentage: 24.4 },
-    { purpose: "GBV Support", count: 25, percentage: 16.0 },
-    { purpose: "Sexual & Reproductive Health", count: 22, percentage: 14.1 },
-    { purpose: "Child Protection", count: 15, percentage: 9.6 },
-    { purpose: "Legal Assistance", count: 11, percentage: 7.1 }
-  ]
-
-  const callsByProvince = [
-    { province: "Harare", calls: 687, validCalls: 621 },
-    { province: "Bulawayo", calls: 456, validCalls: 412 },
-    { province: "Manicaland", calls: 398, validCalls: 359 },
-    { province: "Mashonaland Central", calls: 289, validCalls: 267 },
-    { province: "Mashonaland East", calls: 267, validCalls: 245 },
-    { province: "Mashonaland West", calls: 234, validCalls: 215 },
-    { province: "Matabeleland North", calls: 189, validCalls: 172 },
-    { province: "Matabeleland South", calls: 156, validCalls: 142 },
-    { province: "Midlands", calls: 134, validCalls: 123 },
-    { province: "Masvingo", calls: 112, validCalls: 103 }
-  ]
+  // State for chart data - will be populated from API
+  const [casesByPurpose, setCasesByPurpose] = useState<Array<{purpose: string, count: number, percentage: number}>>([])
+  const [callsByProvince, setCallsByProvince] = useState<Array<{province: string, calls: number, validCalls: number}>>([])
+  
+  // Charts data will be fetched from the API
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }))
@@ -562,50 +552,81 @@ export default function CallCentreDataSummaryPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {officerPerformance.map((officer, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
-                        <div className="text-sm font-medium text-gray-900">{officer.name}</div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center">
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                        <span className="ml-3 text-gray-500">Loading performance data...</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {officer.totalCalls}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className="text-green-600">{officer.validCalls}</span>
-                      <span className="text-gray-400 ml-1">
-                        ({((officer.validCalls / officer.totalCalls) * 100).toFixed(1)}%)
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {officer.cases}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                        {officer.pendingCases}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                        {officer.closedCases}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {officer.overdueCases > 0 ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
-                          {officer.overdueCases}
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">0</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {officer.avgCallDuration}
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center">
+                      <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500 mb-4" />
+                      <h3 className="text-sm font-medium text-gray-900 mb-2">Error Loading Data</h3>
+                      <p className="text-sm text-gray-500 mb-4">{error}</p>
+                      <button 
+                        onClick={fetchSummaryData}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700"
+                      >
+                        Try Again
+                      </button>
                     </td>
                   </tr>
-                ))}
+                ) : officerPerformance.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                      No officer performance data available
+                    </td>
+                  </tr>
+                ) : (
+                  officerPerformance.map((officer, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
+                          <div className="text-sm font-medium text-gray-900">{officer.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {officer.totalCalls}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className="text-green-600">{officer.validCalls}</span>
+                        <span className="text-gray-400 ml-1">
+                          ({((officer.validCalls / officer.totalCalls) * 100).toFixed(1)}%)
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {officer.cases}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                          {officer.pendingCases}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                          {officer.closedCases}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {officer.overdueCases > 0 ? (
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                            {officer.overdueCases}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">0</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {officer.avgCallDuration}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -617,22 +638,30 @@ export default function CallCentreDataSummaryPage() {
           <div className="bg-white rounded-lg border p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Cases by Purpose</h3>
             <div className="space-y-3">
-              {casesByPurpose.map((item, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-gray-900">{item.purpose}</div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full" 
-                        style={{ width: `${item.percentage}%` }}
-                      ></div>
+              {casesByPurpose.length > 0 ? (
+                casesByPurpose.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900">{item.purpose}</div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full" 
+                          style={{ width: `${item.percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div className="ml-4 text-sm text-gray-500">
+                      {item.count} ({item.percentage}%)
                     </div>
                   </div>
-                  <div className="ml-4 text-sm text-gray-500">
-                    {item.count} ({item.percentage}%)
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">No Case Data</h3>
+                  <p className="text-sm text-gray-500">Case purpose data will appear here when available.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -640,14 +669,22 @@ export default function CallCentreDataSummaryPage() {
           <div className="bg-white rounded-lg border p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Calls by Province</h3>
             <div className="space-y-2">
-              {callsByProvince.slice(0, 6).map((item, index) => (
-                <div key={index} className="flex items-center justify-between py-2">
-                  <div className="text-sm font-medium text-gray-900">{item.province}</div>
-                  <div className="text-sm text-gray-500">
-                    <span className="text-green-600">{item.validCalls}</span> / {item.calls}
+              {callsByProvince.length > 0 ? (
+                callsByProvince.slice(0, 6).map((item, index) => (
+                  <div key={index} className="flex items-center justify-between py-2">
+                    <div className="text-sm font-medium text-gray-900">{item.province}</div>
+                    <div className="text-sm text-gray-500">
+                      <span className="text-green-600">{item.validCalls}</span> / {item.calls}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">No Province Data</h3>
+                  <p className="text-sm text-gray-500">Call distribution by province will appear here when available.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

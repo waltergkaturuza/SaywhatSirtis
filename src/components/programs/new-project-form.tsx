@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { ResultsFramework, ResultsFrameworkData } from "./results-framework"
 import { 
   DocumentTextIcon,
   PlusIcon,
@@ -14,7 +15,8 @@ import {
   DocumentArrowUpIcon,
   BanknotesIcon,
   ChartBarIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  TrashIcon
 } from "@heroicons/react/24/outline"
 
 interface NewProjectFormProps {
@@ -38,6 +40,64 @@ const categories = [
 const evaluationFrequencies = ["Midterm", "Endterm", "Annual", "Other"]
 const methodologies = ["Narrative", "Financial", "Log frame", "Visibility", "Other"]
 
+// African Countries and their Provinces/States
+const africanCountriesData: Record<string, string[]> = {
+  "Algeria": ["Adrar", "Chlef", "Laghouat", "Oum El Bouaghi", "Batna", "Béjaïa", "Biskra", "Béchar", "Blida", "Bouira"],
+  "Angola": ["Bengo", "Benguela", "Bié", "Cabinda", "Cuando Cubango", "Cuanza Norte", "Cuanza Sul", "Cunene", "Huambo", "Huíla"],
+  "Benin": ["Alibori", "Atakora", "Atlantique", "Borgou", "Collines", "Donga", "Kouffo", "Littoral", "Mono", "Ouémé"],
+  "Botswana": ["Central", "Ghanzi", "Kgalagadi", "Kgatleng", "Kweneng", "North East", "North West", "South East", "Southern"],
+  "Burkina Faso": ["Bam", "Banwa", "Bazèga", "Bougouriba", "Boulgou", "Boulkiemdé", "Comoé", "Ganzourgou", "Gnagna", "Gourma"],
+  "Burundi": ["Bubanza", "Bujumbura Mairie", "Bujumbura Rural", "Bururi", "Cankuzo", "Cibitoke", "Gitega", "Karuzi", "Kayanza", "Kirundo"],
+  "Cameroon": ["Adamawa", "Centre", "East", "Far North", "Littoral", "North", "Northwest", "South", "Southwest", "West"],
+  "Cape Verde": ["Barlavento", "Sotavento"],
+  "Central African Republic": ["Bamingui-Bangoran", "Bangui", "Basse-Kotto", "Haute-Kotto", "Haut-Mbomou", "Kémo", "Lobaye", "Mambéré-Kadéï", "Mbomou", "Nana-Grébizi"],
+  "Chad": ["Batha", "Borkou", "Chari-Baguirmi", "Ennedi Est", "Ennedi Ouest", "Guéra", "Hadjer-Lamis", "Kanem", "Lac", "Logone Occidental"],
+  "Comoros": ["Anjouan", "Grande Comore", "Mohéli"],
+  "Democratic Republic of the Congo": ["Kinshasa", "Kongo Central", "Kwango", "Kwilu", "Kasaï", "Kasaï Central", "Kasaï Oriental", "Sankuru", "Maniema", "South Kivu"],
+  "Republic of the Congo": ["Bouenza", "Cuvette", "Cuvette-Ouest", "Kouilou", "Lékoumou", "Likouala", "Niari", "Plateaux", "Pool", "Sangha"],
+  "Djibouti": ["Ali Sabieh", "Arta", "Dikhil", "Djibouti", "Obock", "Tadjourah"],
+  "Egypt": ["Alexandria", "Aswan", "Asyut", "Beheira", "Beni Suef", "Cairo", "Dakahlia", "Damietta", "Faiyum", "Gharbia"],
+  "Equatorial Guinea": ["Annobón", "Bioko Norte", "Bioko Sur", "Centro Sur", "Kié-Ntem", "Litoral", "Wele-Nzas"],
+  "Eritrea": ["Anseba", "Debub", "Debubawi Keyih Bahri", "Gash-Barka", "Maekel", "Semenawi Keyih Bahri"],
+  "Eswatini": ["Hhohho", "Lubombo", "Manzini", "Shiselweni"],
+  "Ethiopia": ["Addis Ababa", "Afar", "Amhara", "Benishangul-Gumuz", "Dire Dawa", "Gambela", "Harari", "Oromia", "Sidama", "Somali"],
+  "Gabon": ["Estuaire", "Haut-Ogooué", "Moyen-Ogooué", "Ngounié", "Nyanga", "Ogooué-Ivindo", "Ogooué-Lolo", "Ogooué-Maritime", "Woleu-Ntem"],
+  "Gambia": ["Banjul", "Central River", "Lower River", "North Bank", "Upper River", "West Coast"],
+  "Ghana": ["Ashanti", "Brong-Ahafo", "Central", "Eastern", "Greater Accra", "Northern", "Upper East", "Upper West", "Volta", "Western"],
+  "Guinea": ["Boké", "Conakry", "Faranah", "Kankan", "Kindia", "Labé", "Mamou", "Nzérékoré"],
+  "Guinea-Bissau": ["Bafatá", "Biombo", "Bissau", "Bolama", "Cacheu", "Gabú", "Oio", "Quinara", "Tombali"],
+  "Ivory Coast": ["Agnéby-Tiassa", "Bafing", "Bagoué", "Béré", "Bounkani", "Cavally", "Folon", "Gbêkê", "Gbôklé", "Gôh"],
+  "Kenya": ["Baringo", "Bomet", "Bungoma", "Busia", "Elgeyo-Marakwet", "Embu", "Garissa", "Homa Bay", "Isiolo", "Kajiado"],
+  "Lesotho": ["Berea", "Butha-Buthe", "Leribe", "Mafeteng", "Maseru", "Mohale's Hoek", "Mokhotlong", "Qacha's Nek", "Quthing", "Thaba-Tseka"],
+  "Liberia": ["Bomi", "Bong", "Gbarpolu", "Grand Bassa", "Grand Cape Mount", "Grand Gedeh", "Grand Kru", "Lofa", "Margibi", "Maryland"],
+  "Libya": ["Al Wahat", "Benghazi", "Derna", "Ghat", "Jabal al Akhdar", "Jabal al Gharbi", "Jafara", "Jufra", "Kufra", "Marj"],
+  "Madagascar": ["Antananarivo", "Antsiranana", "Fianarantsoa", "Mahajanga", "Toamasina", "Toliara"],
+  "Malawi": ["Central", "Northern", "Southern"],
+  "Mali": ["Bamako", "Gao", "Kayes", "Kidal", "Koulikoro", "Mopti", "Ségou", "Sikasso", "Tombouctou"],
+  "Mauritania": ["Adrar", "Assaba", "Brakna", "Dakhlet Nouadhibou", "Gorgol", "Guidimaka", "Hodh Ech Chargui", "Hodh El Gharbi", "Inchiri", "Nouakchott"],
+  "Mauritius": ["Black River", "Flacq", "Grand Port", "Moka", "Pamplemousses", "Plaines Wilhems", "Port Louis", "Rivière du Rempart", "Savanne"],
+  "Morocco": ["Béni Mellal-Khénifra", "Casablanca-Settat", "Drâa-Tafilalet", "Fès-Meknès", "Guelmim-Oued Noun", "Laâyoune-Sakia El Hamra", "Marrakech-Safi", "Oriental", "Rabat-Salé-Kénitra"],
+  "Mozambique": ["Cabo Delgado", "Gaza", "Inhambane", "Manica", "Maputo", "Maputo City", "Nampula", "Niassa", "Sofala", "Tete"],
+  "Namibia": ["Erongo", "Hardap", "Karas", "Kavango East", "Kavango West", "Khomas", "Kunene", "Ohangwena", "Omaheke", "Omusati"],
+  "Niger": ["Agadez", "Diffa", "Dosso", "Maradi", "Niamey", "Tahoua", "Tillabéri", "Zinder"],
+  "Nigeria": ["Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River", "Delta"],
+  "Rwanda": ["Eastern", "Kigali", "Northern", "Southern", "Western"],
+  "São Tomé and Príncipe": ["Príncipe", "São Tomé"],
+  "Senegal": ["Dakar", "Diourbel", "Fatick", "Kaffrine", "Kaolack", "Kédougou", "Kolda", "Louga", "Matam", "Saint-Louis"],
+  "Seychelles": ["Inner Islands", "Outer Islands"],
+  "Sierra Leone": ["Eastern", "Northern", "Southern", "Western Area"],
+  "Somalia": ["Awdal", "Bakool", "Banaadir", "Bari", "Bay", "Galguduud", "Gedo", "Hiiraan", "Lower Juba", "Lower Shabelle"],
+  "South Africa": ["Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", "Limpopo", "Mpumalanga", "Northern Cape", "North West", "Western Cape"],
+  "South Sudan": ["Central Equatoria", "Eastern Equatoria", "Jonglei", "Lakes", "Northern Bahr el Ghazal", "Unity", "Upper Nile", "Warrap", "Western Bahr el Ghazal", "Western Equatoria"],
+  "Sudan": ["Al Jazirah", "Blue Nile", "Central Darfur", "East Darfur", "Gedaref", "Kassala", "Khartoum", "North Darfur", "North Kordofan", "Northern"],
+  "Tanzania": ["Arusha", "Dar es Salaam", "Dodoma", "Geita", "Iringa", "Kagera", "Katavi", "Kigoma", "Kilimanjaro", "Lindi"],
+  "Togo": ["Centrale", "Kara", "Maritime", "Plateaux", "Savanes"],
+  "Tunisia": ["Ariana", "Béja", "Ben Arous", "Bizerte", "Gabès", "Gafsa", "Jendouba", "Kairouan", "Kasserine", "Kébili"],
+  "Uganda": ["Abim", "Adjumani", "Agago", "Alebtong", "Amolatar", "Amudat", "Amuria", "Amuru", "Apac", "Arua"],
+  "Zambia": ["Central", "Copperbelt", "Eastern", "Luapula", "Lusaka", "Muchinga", "Northern", "North-Western", "Southern", "Western"],
+  "Zimbabwe": ["Bulawayo", "Harare", "Manicaland", "Mashonaland Central", "Mashonaland East", "Mashonaland West", "Masvingo", "Matabeleland North", "Matabeleland South", "Midlands"]
+}
+
 export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   const { data: session } = useSession()
   const [currentStep, setCurrentStep] = useState(1)
@@ -52,6 +112,9 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [selectedCountries, setSelectedCountries] = useState<string[]>(["Zimbabwe"]) // Default for SAYWHAT
+  const [selectedProvinces, setSelectedProvinces] = useState<Record<string, string[]>>({ "Zimbabwe": [] })
+  const [uploadedDocuments, setUploadedDocuments] = useState<Array<{id: string, name: string, size: number, type: string, uploadedAt: Date}>>([])
   const [implementingOrganizations, setImplementingOrganizations] = useState<string[]>([""])
   const [selectedFrequencies, setSelectedFrequencies] = useState<string[]>([])
   const [frequencyDates, setFrequencyDates] = useState<Record<string, string>>({})
@@ -60,6 +123,12 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   // Financial Details State
   const [totalBudget, setTotalBudget] = useState("")
   const [fundingSource, setFundingSource] = useState("")
+
+  // Results Framework State
+  const [resultsFramework, setResultsFramework] = useState<ResultsFrameworkData>({
+    objectives: [],
+    projectDuration: 3
+  })
 
   const steps = [
     { number: 1, title: "Project Information", icon: DocumentTextIcon },
@@ -79,6 +148,92 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
         ? prev.filter(c => c !== category)
         : [...prev, category]
     )
+  }
+
+  // Helper function to handle country selection
+  const handleCountryChange = (country: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedCountries(prev => [...prev, country])
+      setSelectedProvinces(prev => ({ ...prev, [country]: [] }))
+    } else {
+      setSelectedCountries(prev => prev.filter(c => c !== country))
+      setSelectedProvinces(prev => {
+        const newProvinces = { ...prev }
+        delete newProvinces[country]
+        return newProvinces
+      })
+    }
+  }
+
+  // Helper function to handle province selection
+  const handleProvinceChange = (country: string, province: string, isSelected: boolean) => {
+    setSelectedProvinces(prev => ({
+      ...prev,
+      [country]: isSelected 
+        ? [...(prev[country] || []), province]
+        : (prev[country] || []).filter(p => p !== province)
+    }))
+  }
+
+  // Helper function to handle document upload
+  const handleDocumentUpload = async (files: FileList) => {
+    const newDocuments: Array<{id: string, name: string, size: number, type: string, uploadedAt: Date}> = []
+    
+    try {
+      // For now, we'll store the documents locally and send them with the project data
+      // In a real implementation, you would upload to the document API
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        
+        // Validate file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+          setError(`File ${file.name} is too large. Maximum size is 10MB.`)
+          return
+        }
+
+        // Validate file type
+        const allowedTypes = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-powerpoint',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'image/jpeg',
+          'image/png',
+          'image/jpg',
+          'text/plain'
+        ]
+
+        if (!allowedTypes.includes(file.type)) {
+          setError(`File type ${file.type} is not allowed.`)
+          return
+        }
+        
+        const documentData = {
+          id: Date.now().toString() + i,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          uploadedAt: new Date()
+        }
+        
+        newDocuments.push(documentData)
+      }
+      
+      setUploadedDocuments(prev => [...prev, ...newDocuments])
+      setError(null)
+      
+      // Show success message could be implemented here
+    } catch (error) {
+      setError('Failed to process documents. Please try again.')
+    }
+  }
+
+  // Helper function to remove uploaded document
+  const removeDocument = (documentId: string) => {
+    setUploadedDocuments(prev => prev.filter(doc => doc.id !== documentId))
   }
 
   const handleFrequencyToggle = (frequency: string) => {
@@ -116,8 +271,9 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
         projectCode,
         startDate,
         endDate,
-        country: "Zimbabwe", // Default for SAYWHAT
-        province: "", // Can be expanded later
+        countries: selectedCountries,
+        provinces: selectedProvinces,
+        uploadedDocuments: uploadedDocuments,
         budget: totalBudget ? parseFloat(totalBudget) : 0,
         fundingSource,
         categories: selectedCategories,
@@ -125,7 +281,8 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
         implementingOrganizations: implementingOrganizations.filter(org => org.trim() !== ''),
         evaluationFrequency: selectedFrequencies,
         frequencyDates,
-        methodologies: selectedMethodologies
+        methodologies: selectedMethodologies,
+        resultsFramework: resultsFramework
       }
 
       const response = await fetch('/api/programs/projects', {
@@ -153,7 +310,7 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
 
   const renderProjectInformation = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div>
           <Label htmlFor="projectCode">Project Code *</Label>
           <Input
@@ -172,6 +329,17 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
             value={projectTitle}
             onChange={(e) => setProjectTitle(e.target.value)}
             placeholder="Enter project title"
+            disabled={!canEdit}
+            className="focus:ring-green-500 focus:border-green-500"
+          />
+        </div>
+        <div>
+          <Label htmlFor="projectLead">Project Lead</Label>
+          <Input
+            id="projectLead"
+            value={projectLead}
+            onChange={(e) => setProjectLead(e.target.value)}
+            placeholder="Enter project lead name"
             disabled={!canEdit}
             className="focus:ring-green-500 focus:border-green-500"
           />
@@ -246,7 +414,7 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <div>
           <Label htmlFor="startDate">Start Date *</Label>
           <Input
@@ -268,6 +436,121 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
             disabled={!canEdit}
             className="focus:ring-green-500 focus:border-green-500"
           />
+        </div>
+        <div className="col-span-2">
+          <Label>Countries * (Select one or more African countries)</Label>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 mt-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+            {Object.keys(africanCountriesData).map((country) => (
+              <label key={country} className="flex items-center space-x-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedCountries.includes(country)}
+                  onChange={(e) => handleCountryChange(country, e.target.checked)}
+                  disabled={!canEdit}
+                  className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                />
+                <span className="truncate">{country}</span>
+              </label>
+            ))}
+          </div>
+          <div className="mt-2 text-sm text-gray-600">
+            Selected: {selectedCountries.join(', ') || 'None'}
+          </div>
+        </div>
+      </div>
+
+      {/* Province Selection for each selected country */}
+      {selectedCountries.length > 0 && (
+        <div className="space-y-4">
+          <Label>Provinces/States by Country</Label>
+          {selectedCountries.map((country) => (
+            <div key={country} className="border rounded-lg p-4">
+              <h4 className="font-medium text-gray-900 mb-3">{country}</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 max-h-32 overflow-y-auto">
+                {africanCountriesData[country].map((province) => (
+                  <label key={province} className="flex items-center space-x-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={(selectedProvinces[country] || []).includes(province)}
+                      onChange={(e) => handleProvinceChange(country, province, e.target.checked)}
+                      disabled={!canEdit}
+                      className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                    />
+                    <span className="truncate">{province}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="mt-2 text-sm text-gray-600">
+                Selected: {(selectedProvinces[country] || []).join(', ') || 'None'}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Document Upload Section */}
+      <div>
+        <Label>Project Documents</Label>
+        <div className="mt-2 space-y-4">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-400 transition-colors">
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.txt"
+              onChange={(e) => e.target.files && handleDocumentUpload(e.target.files)}
+              disabled={!canEdit}
+              className="hidden"
+              id="document-upload"
+            />
+            <label htmlFor="document-upload" className="cursor-pointer">
+              <DocumentArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-2 text-sm text-gray-600">
+                <span className="font-medium text-orange-600 hover:text-orange-500">
+                  Click to upload documents
+                </span>
+                {' '}or drag and drop
+              </p>
+              <p className="text-xs text-gray-500">
+                PDF, DOC, XLS, PPT, Images up to 10MB each
+              </p>
+            </label>
+          </div>
+
+          {/* Display uploaded documents */}
+          {uploadedDocuments.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-gray-900">Uploaded Documents ({uploadedDocuments.length})</h4>
+              {uploadedDocuments.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0">
+                      <DocumentTextIcon className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{doc.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {(doc.size / 1024 / 1024).toFixed(2)} MB • Uploaded {doc.uploadedAt.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      ✓ Uploaded Successfully
+                    </span>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => removeDocument(doc.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -375,7 +658,7 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
 
   const renderFinancialDetails = () => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div>
           <Label htmlFor="totalBudget">Total Budget *</Label>
           <Input
@@ -435,19 +718,16 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
 
   const renderResultsFramework = () => (
     <div className="space-y-6">
-      <div className="text-center text-gray-500 p-8 border-2 border-dashed border-gray-300 rounded-lg">
-        <ChartBarIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Results Framework</h3>
-        <p className="text-gray-600">
-          The comprehensive Results Framework with nested Objectives, Outcomes, and Outputs will be implemented here.
-          This will include up to 10 objectives per project, with detailed monitoring indicators and data collection methods.
-        </p>
-      </div>
+      <ResultsFramework
+        data={resultsFramework}
+        onChange={setResultsFramework}
+        readonly={!canEdit}
+      />
     </div>
   )
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-full mx-auto p-6 w-full px-4 lg:px-8 xl:px-12">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-black">Create New Project</h1>
         <p className="text-gray-600 mt-2">Set up a new program with comprehensive project information, financial details, and results framework.</p>

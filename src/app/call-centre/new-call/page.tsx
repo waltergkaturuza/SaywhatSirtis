@@ -21,17 +21,22 @@ export default function NewCallEntryPage() {
   const [caseGenerated, setCaseGenerated] = useState(false)
   const [generatedCaseNumber, setGeneratedCaseNumber] = useState('')
 
-  // Auto-generated fields
+  // Auto-generated fields with new numbering format
   const currentDateTime = new Date()
+  const currentYear = currentDateTime.getFullYear()
   const officerName = session?.user?.name || "Current Officer"
-  const callNumber = `CC-${currentDateTime.getFullYear()}-${String(currentDateTime.getMonth() + 1).padStart(2, '0')}${String(currentDateTime.getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 9999)).padStart(4, '0')}`
-
+  
+  // Generate call number in format 00001/2025 (up to 99999/year)
+  const [callCounter, setCallCounter] = useState(1) // In real app, this would come from database
+  const callNumber = `${String(callCounter).padStart(5, '0')}/${currentYear}`
+  
   const [formData, setFormData] = useState({
     // Auto-generated fields
     officerName: officerName,
     date: currentDateTime.toISOString().split('T')[0],
     time: currentDateTime.toTimeString().split(' ')[0].slice(0, 5),
     callNumber: callNumber,
+    caseNumber: callNumber, // Case number same as call number
     // Form fields
     callerPhoneNumber: '',
     modeOfCommunication: 'inbound',
@@ -39,21 +44,28 @@ export default function NewCallEntryPage() {
     callValidity: 'valid',
     newOrRepeatCall: 'new',
     language: 'English',
+    // Caller's Details (renamed from Communication Details)
     callerFullName: '',
     callerAge: '-14',
-    keyPopulation: 'N/A',
-    gender: 'N/A',
-    province: 'N/A',
-    address: '',
+    callerKeyPopulation: 'N/A',
+    callerGender: 'N/A',
+    callerProvince: 'N/A',
+    callerAddress: '',
     callDescription: '',
-    purpose: 'HIV Information & Counselling',
+    purpose: 'HIV/AIDS',
     isCase: 'NO',
     perpetrator: '',
     servicesRecommended: '',
     referral: '',
+    // Client's Details (the person who needs help)
     clientName: '',
     clientAge: '',
     clientSex: 'N/A',
+    clientAddress: '',
+    clientProvince: 'N/A',
+    // Voucher Information (replaces Additional Information)
+    voucherIssued: 'NO',
+    voucherValue: '',
     comment: ''
   })
   
@@ -176,20 +188,59 @@ export default function NewCallEntryPage() {
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Emergency Contacts</h3>
-        <div className="space-y-2 text-sm">
-          <div className="p-2 bg-red-50 rounded">
-            <div className="font-medium text-red-900">Police Emergency</div>
-            <div className="text-red-700">999</div>
+        <h3 className="text-lg font-semibold text-saywhat-dark mb-4">Service Providers Directory</h3>
+        <div className="space-y-2 text-sm max-h-96 overflow-y-auto">
+          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
+            <div className="font-medium text-saywhat-dark">Zimbabwe AIDS Council (ZAC)</div>
+            <div className="text-saywhat-grey">+263 4 252 505</div>
+            <div className="text-xs text-gray-500">HIV/AIDS Support & Testing</div>
           </div>
-          <div className="p-2 bg-blue-50 rounded">
-            <div className="font-medium text-blue-900">Medical Emergency</div>
-            <div className="text-blue-700">994</div>
+          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
+            <div className="font-medium text-saywhat-dark">Musasa Project</div>
+            <div className="text-saywhat-grey">+263 4 720 738</div>
+            <div className="text-xs text-gray-500">GBV Support & Legal Aid</div>
           </div>
-          <div className="p-2 bg-purple-50 rounded">
-            <div className="font-medium text-purple-900">GBV Hotline</div>
-            <div className="text-purple-700">080-8644</div>
+          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
+            <div className="font-medium text-saywhat-dark">Zimbabwe Women Lawyers Association</div>
+            <div className="text-saywhat-grey">+263 4 792 632</div>
+            <div className="text-xs text-gray-500">Legal Assistance</div>
           </div>
+          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
+            <div className="font-medium text-saywhat-dark">Family AIDS Caring Trust (FACT)</div>
+            <div className="text-saywhat-grey">+263 4 741 288</div>
+            <div className="text-xs text-gray-500">HIV Counselling & Support</div>
+          </div>
+          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
+            <div className="font-medium text-saywhat-dark">Friendship Bench</div>
+            <div className="text-saywhat-grey">+263 4 708 835</div>
+            <div className="text-xs text-gray-500">Mental Health Support</div>
+          </div>
+          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
+            <div className="font-medium text-saywhat-dark">Childline Zimbabwe</div>
+            <div className="text-saywhat-grey">116 (Toll Free)</div>
+            <div className="text-xs text-gray-500">Child Protection Services</div>
+          </div>
+          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
+            <div className="font-medium text-saywhat-dark">Adult Rape Clinic</div>
+            <div className="text-saywhat-grey">+263 4 791 378</div>
+            <div className="text-xs text-gray-500">Sexual Assault Support</div>
+          </div>
+          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
+            <div className="font-medium text-saywhat-dark">Population Services International (PSI)</div>
+            <div className="text-saywhat-grey">+263 4 369 660</div>
+            <div className="text-xs text-gray-500">Reproductive Health Services</div>
+          </div>
+          <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+            <div className="font-medium text-red-900">Emergency Services</div>
+            <div className="text-red-700">Police: 999 | Medical: 994</div>
+            <div className="text-xs text-red-600">24/7 Emergency Response</div>
+          </div>
+        </div>
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+          <p className="text-xs text-blue-700">
+            <strong>Note:</strong> This directory contains over 50 service providers. 
+            Contact your supervisor to add or update provider information.
+          </p>
         </div>
       </div>
     </div>
@@ -258,9 +309,9 @@ export default function NewCallEntryPage() {
             </div>
           </div>
 
-          {/* Communication Details */}
-          <div className="bg-white rounded-lg border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Communication Details</h2>
+          {/* Caller's Details */}
+          <div className="bg-white rounded-lg shadow-lg border border-saywhat-light-grey p-6">
+            <h2 className="text-xl font-semibold text-saywhat-dark mb-6">Caller's Details</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
@@ -398,7 +449,7 @@ export default function NewCallEntryPage() {
                   Key Population <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.keyPopulation}
+                  value={formData.callerKeyPopulation}
                   onChange={(e) => handleInputChange('keyPopulation', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
@@ -415,7 +466,7 @@ export default function NewCallEntryPage() {
                   Gender <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.gender}
+                  value={formData.callerGender}
                   onChange={(e) => handleInputChange('gender', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
@@ -431,7 +482,7 @@ export default function NewCallEntryPage() {
                   Province <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.province}
+                  value={formData.callerProvince}
                   onChange={(e) => handleInputChange('province', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
@@ -456,7 +507,7 @@ export default function NewCallEntryPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.address}
+                  value={formData.callerAddress}
                   onChange={(e) => handleInputChange('address', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter address"
@@ -491,17 +542,18 @@ export default function NewCallEntryPage() {
                 <select
                   value={formData.purpose}
                   onChange={(e) => handleInputChange('purpose', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                   required
                 >
-                  <option value="ARV Therapy">ARV Therapy</option>
+                  <option value="HIV/AIDS">HIV/AIDS</option>
+                  <option value="Information and Counselling">Information and Counselling</option>
+                  <option value="In-house Case">In-house Case</option>
                   <option value="Cancer Screening">Cancer Screening</option>
                   <option value="Child Protection">Child Protection</option>
                   <option value="Contraception">Contraception</option>
                   <option value="DSA">DSA</option>
                   <option value="Dropped Call">Dropped Call</option>
                   <option value="GBV">GBV</option>
-                  <option value="HIV Information & Counselling">HIV Information & Counselling</option>
                   <option value="Legal Assistance">Legal Assistance</option>
                   <option value="Medical Assistance">Medical Assistance</option>
                   <option value="MHM">MHM</option>
@@ -605,7 +657,7 @@ export default function NewCallEntryPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client Information (Name/Age/Sex)
+                  Client's Details (Name/Age/Sex)
                 </label>
                 <input
                   type="text"
@@ -616,10 +668,42 @@ export default function NewCallEntryPage() {
                     handleInputChange('clientAge', parts[1] || '')
                     handleInputChange('clientSex', parts[2] || 'N/A')
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                   placeholder="Client Name / Age / Sex or N/A"
                 />
               </div>
+
+              {/* Voucher Information Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Voucher Issued
+                </label>
+                <select
+                  value={formData.voucherIssued}
+                  onChange={(e) => handleInputChange('voucherIssued', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                >
+                  <option value="NO">No</option>
+                  <option value="YES">Yes</option>
+                </select>
+              </div>
+
+              {formData.voucherIssued === 'YES' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Voucher Value (USD)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.voucherValue}
+                    onChange={(e) => handleInputChange('voucherValue', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                    placeholder="Enter voucher value"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="mt-6">

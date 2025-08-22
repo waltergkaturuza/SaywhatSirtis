@@ -13,6 +13,7 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
+  BuildingOfficeIcon,
   XCircleIcon,
   EyeIcon,
   CogIcon,
@@ -169,7 +170,7 @@ export default function CallCentrePage() {
             {/* Quick Actions */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link
                   href="/call-centre/new-call"
                   className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -189,6 +190,17 @@ export default function CallCentrePage() {
                   <div>
                     <h4 className="font-medium text-gray-900">Case Management</h4>
                     <p className="text-sm text-gray-500">Track and manage cases</p>
+                  </div>
+                </Link>
+                
+                <Link
+                  href="/call-centre/referral-directory"
+                  className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <BuildingOfficeIcon className="h-8 w-8 text-orange-600 mr-3" />
+                  <div>
+                    <h4 className="font-medium text-gray-900">Referral Directory</h4>
+                    <p className="text-sm text-gray-500">Partner organizations</p>
                   </div>
                 </Link>
                 

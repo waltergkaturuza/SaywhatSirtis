@@ -694,6 +694,7 @@ enum CallStatus {
   RESOLVED
   CLOSED
   ESCALATED
+  SPAM
 }
 
 enum DocumentCategory {

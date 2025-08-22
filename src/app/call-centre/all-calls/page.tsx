@@ -19,99 +19,30 @@ import {
   UserIcon
 } from "@heroicons/react/24/outline";
 
-// Sample call data
-const callData = [
-  {
-    id: "CALL-001",
-    caseNumber: "CASE-2024-001",
-    callerName: "Maria Santos",
-    callerPhone: "+1-555-0123",
-    callerProvince: "Western Province",
-    callerAge: "25-30",
-    callerGender: "Female",
-    communicationMode: "Inbound Call",
-    purpose: "ARV Therapy Inquiry",
-    validity: "Valid",
-    officer: "John Doe",
-    dateTime: "2024-01-15 09:30:00",
-    duration: "12:45",
-    status: "Completed",
-    referredTo: "Health Clinic",
-    notes: "Provided information about ARV therapy schedule and nearest clinic location."
-  },
-  {
-    id: "CALL-002", 
-    caseNumber: "CASE-2024-002",
-    callerName: "David Mwale",
-    callerPhone: "+1-555-0124",
-    callerProvince: "Central Province",
-    callerAge: "40-45",
-    callerGender: "Male",
-    communicationMode: "Outbound Call",
-    purpose: "Follow-up Visit",
-    validity: "Valid",
-    officer: "Jane Smith",
-    dateTime: "2024-01-15 10:15:00",
-    duration: "8:20",
-    status: "Completed",
-    referredTo: "N/A",
-    notes: "Follow-up on previous TB screening appointment. Patient confirmed attendance."
-  },
-  {
-    id: "CALL-003",
-    caseNumber: "CASE-2024-003", 
-    callerName: "Sarah Banda",
-    callerPhone: "+1-555-0125",
-    callerProvince: "Eastern Province",
-    callerAge: "30-35",
-    callerGender: "Female",
-    communicationMode: "WhatsApp",
-    purpose: "Child Protection Report",
-    validity: "Valid",
-    officer: "Mike Johnson",
-    dateTime: "2024-01-15 11:00:00",
-    duration: "15:30",
-    status: "In Progress",
-    referredTo: "Social Services",
-    notes: "Report of suspected child abuse. Case escalated to authorities."
-  },
-  {
-    id: "CALL-004",
-    caseNumber: "CASE-2024-004",
-    callerName: "Peter Phiri",
-    callerPhone: "+1-555-0126", 
-    callerProvince: "Northern Province",
-    callerAge: "50-55",
-    callerGender: "Male",
-    communicationMode: "Walk-in",
-    purpose: "Nutrition Support",
-    validity: "Valid",
-    officer: "Lisa Brown",
-    dateTime: "2024-01-15 14:30:00",
-    duration: "20:15",
-    status: "Completed",
-    referredTo: "Nutrition Center",
-    notes: "Provided nutritional guidance and referred to local nutrition support program."
-  },
-  {
-    id: "CALL-005",
-    caseNumber: "CASE-2024-005",
-    callerName: "Grace Tembo",
-    callerPhone: "+1-555-0127",
-    callerProvince: "Southern Province", 
-    callerAge: "18-25",
-    callerGender: "Female",
-    communicationMode: "Text Message",
-    purpose: "Cancer Screening",
-    validity: "Invalid",
-    officer: "Tom Wilson",
-    dateTime: "2024-01-15 16:45:00",
-    duration: "3:10",
-    status: "Cancelled",
-    referredTo: "N/A",
-    notes: "Caller disconnected before completing inquiry. Unable to reach back."
-  }
-];
+interface CallRecord {
+  id: string
+  callNumber: string
+  caseNumber: string
+  callerName?: string
+  callerPhone?: string
+  callerProvince?: string
+  callerAge?: string
+  callerGender?: string
+  clientName?: string
+  clientAge?: string
+  clientSex?: string
+  communicationMode: string
+  purpose: string
+  validity: string
+  officer: string
+  dateTime: string
+  duration?: string
+  status: string
+  referredTo?: string
+  voucherIssued: string
+  voucherValue?: string
+  notes?: string
+}
 
 const statuses = {
   "Completed": { color: "text-green-600 bg-green-100", icon: CheckBadgeIcon },
@@ -129,9 +60,42 @@ const communicationModes = {
 
 export default function AllCallsPage() {
   const { data: session } = useSession();
-  const [calls, setCalls] = useState(callData);
-  const [filteredCalls, setFilteredCalls] = useState(callData);
+  const [calls, setCalls] = useState<CallRecord[]>([]);
+  const [filteredCalls, setFilteredCalls] = useState<CallRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
+  const [showCallDetail, setShowCallDetail] = useState(false);
+
+  useEffect(() => {
+    fetchCalls();
+  }, []);
+
+  const fetchCalls = async () => {
+    try {
+      const response = await fetch('/api/call-centre/calls');
+      if (!response.ok) {
+        throw new Error('Failed to fetch calls');
+      }
+      const data = await response.json();
+      setCalls(data.calls || []);
+      setFilteredCalls(data.calls || []);
+    } catch (error) {
+      console.error('Error fetching calls:', error);
+      setError('Failed to load call records');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Status color mapping
+  const statusesMap = {
+    'OPEN': { color: 'bg-blue-100 text-blue-800', icon: ExclamationTriangleIcon },
+    'IN_PROGRESS': { color: 'bg-yellow-100 text-yellow-800', icon: ClockIcon },
+    'RESOLVED': { color: 'bg-green-100 text-green-800', icon: CheckBadgeIcon },
+    'CLOSED': { color: 'bg-gray-100 text-gray-800', icon: CheckBadgeIcon },
+  };
   const [filters, setFilters] = useState({
     officer: "",
     province: "", 
@@ -153,10 +117,10 @@ export default function AllCallsPage() {
     // Apply search
     if (searchTerm) {
       filtered = filtered.filter(call =>
-        call.callerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        call.callerPhone.includes(searchTerm) ||
-        call.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        call.purpose.toLowerCase().includes(searchTerm.toLowerCase())
+        call.callerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        call.callerPhone?.includes(searchTerm) ||
+        call.callNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        call.purpose?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -177,14 +141,28 @@ export default function AllCallsPage() {
       filtered = filtered.filter(call => call.communicationMode === filters.communicationMode);
     }
     if (filters.dateFrom) {
-      filtered = filtered.filter(call => call.dateTime >= filters.dateFrom);
+      filtered = filtered.filter(call => call.dateTime && call.dateTime >= filters.dateFrom);
     }
     if (filters.dateTo) {
-      filtered = filtered.filter(call => call.dateTime <= filters.dateTo + " 23:59:59");
+      filtered = filtered.filter(call => call.dateTime && call.dateTime <= filters.dateTo + " 23:59:59");
     }
 
     setFilteredCalls(filtered);
   }, [searchTerm, filters, calls]);
+
+  const getStatusInfo = (status: string) => {
+    return statusesMap[status as keyof typeof statusesMap] || { 
+      color: 'bg-gray-100 text-gray-800', 
+      icon: ExclamationTriangleIcon 
+    };
+  };
+
+  const getCommunicationIcon = (mode: string) => {
+    return communicationModes[mode as keyof typeof communicationModes] || {
+      icon: PhoneIcon,
+      color: "text-gray-600"
+    };
+  };
 
   if (!hasAccess) {
     return (
@@ -426,81 +404,120 @@ export default function AllCallsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredCalls.map((call) => {
-                  const StatusIcon = statuses[call.status as keyof typeof statuses]?.icon || ClockIcon;
-                  const CommunicationIcon = communicationModes[call.communicationMode as keyof typeof communicationModes]?.icon || PhoneIcon;
-                  
-                  return (
-                    <tr key={call.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">
-                          <div className="font-medium text-gray-900">{call.caseNumber}</div>
-                          <div className="text-gray-500">{call.id}</div>
-                          <div className="text-gray-500">{new Date(call.dateTime).toLocaleString()}</div>
-                          <div className="text-gray-500">Duration: {call.duration}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">
-                          <div className="font-medium text-gray-900">{call.callerName}</div>
-                          <div className="text-gray-500">{call.callerPhone}</div>
-                          <div className="text-gray-500">{call.callerProvince}</div>
-                          <div className="text-gray-500">{call.callerGender}, {call.callerAge}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm">
-                          <CommunicationIcon className={`mr-2 h-5 w-5 ${communicationModes[call.communicationMode as keyof typeof communicationModes]?.color}`} />
-                          <div>
-                            <div className="font-medium text-gray-900">{call.communicationMode}</div>
-                            <div className="text-gray-500">{call.purpose}</div>
-                            <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              call.validity === 'Valid' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100'
-                            }`}>
-                              {call.validity}
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                        <span className="ml-3 text-gray-500">Loading call records...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="text-red-500">
+                        <ExclamationTriangleIcon className="mx-auto h-12 w-12 mb-4" />
+                        <p>{error}</p>
+                        <button 
+                          onClick={fetchCalls}
+                          className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredCalls.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                      No call records found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCalls.map((call) => {
+                    const statusInfo = getStatusInfo(call.status);
+                    const commIcon = getCommunicationIcon(call.communicationMode);
+                    
+                    return (
+                      <tr key={call.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">{call.callNumber}</div>
+                            <div className="text-gray-500">{call.id}</div>
+                            <div className="text-gray-500">{call.dateTime ? new Date(call.dateTime).toLocaleString() : 'N/A'}</div>
+                            <div className="text-gray-500">Duration: {call.duration || 'N/A'}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">{call.callerName || 'Unknown'}</div>
+                            <div className="text-gray-500">{call.callerPhone || 'N/A'}</div>
+                            <div className="text-gray-500">{call.callerProvince || 'N/A'}</div>
+                            <div className="text-gray-500">{call.callerGender || 'N/A'}, {call.callerAge || 'N/A'}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-sm">
+                            <commIcon.icon className={`mr-2 h-5 w-5 ${commIcon.color}`} />
+                            <div>
+                              <div className="font-medium text-gray-900">{call.communicationMode}</div>
+                              <div className="text-gray-500">{call.purpose}</div>
+                              <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                call.validity === 'Valid' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100'
+                              }`}>
+                                {call.validity || 'N/A'}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <StatusIcon className={`mr-2 h-5 w-5 ${statuses[call.status as keyof typeof statuses]?.color.split(' ')[0]}`} />
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statuses[call.status as keyof typeof statuses]?.color}`}>
-                            {call.status}
-                          </span>
-                        </div>
-                        {call.referredTo !== "N/A" && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            Referred to: {call.referredTo}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <statusInfo.icon className={`mr-2 h-5 w-5`} />
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusInfo.color}`}>
+                              {call.status}
+                            </span>
                           </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {call.officer}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button className="text-blue-600 hover:text-blue-900">
-                            <EyeIcon className="h-5 w-5" />
-                          </button>
-                          {canEdit && (
-                            <>
-                              <button className="text-indigo-600 hover:text-indigo-900">
-                                <PencilIcon className="h-5 w-5" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteCall(call.id)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                <TrashIcon className="h-5 w-5" />
-                              </button>
-                            </>
+                          {call.referredTo && call.referredTo !== "N/A" && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Referred to: {call.referredTo}
+                            </div>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {call.officer}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button 
+                              onClick={() => {
+                                setSelectedCall(call);
+                                setShowCallDetail(true);
+                              }}
+                              className="text-orange-600 hover:text-orange-700"
+                              title="View Call Details"
+                            >
+                              <EyeIcon className="h-5 w-5" />
+                            </button>
+                            {canEdit && (
+                              <>
+                                <button className="text-indigo-600 hover:text-indigo-900">
+                                  <PencilIcon className="h-5 w-5" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteCall(call.id)}
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  <TrashIcon className="h-5 w-5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -519,6 +536,165 @@ export default function AllCallsPage() {
           )}
         </div>
       </div>
+
+      {/* Call Detail Modal */}
+      {showCallDetail && selectedCall && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={() => setShowCallDetail(false)}>
+          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-saywhat-dark">Call Details - {selectedCall.callNumber}</h3>
+              <button
+                onClick={() => setShowCallDetail(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Call Information */}
+              <div className="bg-saywhat-light-grey rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-saywhat-dark mb-4">Call Information</h4>
+                <div className="space-y-3">
+                  <div>
+                    <span className="font-medium text-gray-600">Call Number:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.callNumber}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Case Number:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.caseNumber}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Date & Time:</span>
+                    <span className="ml-2 text-saywhat-dark">{new Date(selectedCall.dateTime).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Duration:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.duration}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Officer:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.officer}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Communication Mode:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.communicationMode}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Purpose:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.purpose}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Validity:</span>
+                    <span className={`ml-2 px-2 py-1 rounded text-sm ${
+                      selectedCall.validity === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedCall.validity}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Status:</span>
+                    <span className={`ml-2 px-2 py-1 rounded text-sm ${statuses[selectedCall.status as keyof typeof statuses]?.color || 'bg-gray-100 text-gray-800'}`}>
+                      {selectedCall.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Caller Details */}
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-saywhat-dark mb-4">Caller's Details</h4>
+                <div className="space-y-3">
+                  <div>
+                    <span className="font-medium text-gray-600">Name:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.callerName}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Phone:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.callerPhone}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Province:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.callerProvince}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Age Group:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.callerAge}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Gender:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.callerGender}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Client Details */}
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-saywhat-dark mb-4">Client's Details</h4>
+                <div className="space-y-3">
+                  <div>
+                    <span className="font-medium text-gray-600">Name:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.clientName}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Age:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.clientAge}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Sex:</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.clientSex}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Voucher Information */}
+              <div className="bg-yellow-50 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-saywhat-dark mb-4">Voucher Information</h4>
+                <div className="space-y-3">
+                  <div>
+                    <span className="font-medium text-gray-600">Voucher Issued:</span>
+                    <span className={`ml-2 px-2 py-1 rounded text-sm ${
+                      selectedCall.voucherIssued === 'YES' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {selectedCall.voucherIssued}
+                    </span>
+                  </div>
+                  {selectedCall.voucherIssued === 'YES' && (
+                    <div>
+                      <span className="font-medium text-gray-600">Value (USD):</span>
+                      <span className="ml-2 text-saywhat-dark font-semibold">${selectedCall.voucherValue}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Referral and Notes */}
+            <div className="mt-6 space-y-4">
+              <div className="bg-purple-50 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-saywhat-dark mb-2">Referral</h4>
+                <p className="text-saywhat-dark">{selectedCall.referredTo || 'No referral made'}</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-saywhat-dark mb-2">Notes</h4>
+                <p className="text-saywhat-dark">{selectedCall.notes}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowCallDetail(false)}
+                className="px-4 py-2 bg-saywhat-orange text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-saywhat-orange"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ModulePage>
   );
 }

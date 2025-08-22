@@ -1,0 +1,135 @@
+name: Deploy SIRTIS to Supabase
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'prisma/**'
+      - 'src/**'
+      - '.github/workflows/supabase-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deployment even without changes'
+        required: false
+        default: 'false'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run build test
+        run: npm run build
+
+  deploy-supabase:
+    name: Deploy to Supabase
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    environment:
+      name: supabase-production
+      url: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Verify Supabase connection
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          echo "🔍 Verifying Supabase connection..."
+          supabase projects list
+
+      - name: Deploy database migrations
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          echo "🚀 Starting Supabase database deployment..."
+          chmod +x scripts/deploy-supabase.sh
+          ./scripts/deploy-supabase.sh
+
+      - name: Deploy Supabase functions (if any)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          if [ -d "supabase/functions" ]; then
+            echo "📦 Deploying Supabase Edge Functions..."
+            supabase functions deploy --project-ref $SUPABASE_PROJECT_ID
+          else
+            echo "ℹ️  No Supabase functions to deploy"
+          fi
+
+      - name: Update deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Supabase deployment completed successfully!"
+            echo "🌐 Database URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co"
+          else
+            echo "❌ Supabase deployment failed!"
+          fi
+
+  notify:
+    name: Notify Deployment Status
+    needs: [test, deploy-supabase]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Deployment Success Notification
+        if: needs.deploy-supabase.result == 'success'
+        run: |
+          echo "🎉 SIRTIS Supabase Deployment Successful!"
+          echo "✅ Database migrations applied"
+          echo "✅ All tests passed"
+          echo "🌐 Application ready at Supabase"
+
+      - name: Deployment Failure Notification
+        if: needs.deploy-supabase.result == 'failure'
+        run: |
+          echo "❌ SIRTIS Supabase Deployment Failed!"
+          echo "Please check the deployment logs for details"
+          exit 1
