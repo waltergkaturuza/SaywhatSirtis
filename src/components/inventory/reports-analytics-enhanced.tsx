@@ -89,20 +89,31 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
     }
   })
 
-  const valueTreeData = [
-    { month: 'Jan', value: 52000, depreciation: 48000 },
-    { month: 'Feb', value: 55000, depreciation: 50000 },
-    { month: 'Mar', value: 58000, depreciation: 52000 },
-    { month: 'Apr', value: 61000, depreciation: 54000 },
-    { month: 'May', value: 64000, depreciation: 56000 },
-    { month: 'Jun', value: 67000, depreciation: 58000 },
-    { month: 'Jul', value: 70000, depreciation: 60000 },
-    { month: 'Aug', value: 73000, depreciation: 62000 },
-    { month: 'Sep', value: 76000, depreciation: 64000 },
-    { month: 'Oct', value: 79000, depreciation: 66000 },
-    { month: 'Nov', value: 82000, depreciation: 68000 },
-    { month: 'Dec', value: 85000, depreciation: 70000 }
-  ]
+  // Generate monthly value data based on asset acquisition dates
+  const generateMonthlyValueData = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const currentYear = new Date().getFullYear()
+    
+    return months.map((month, index) => {
+      // Calculate cumulative value by filtering assets acquired by this month
+      const monthDate = new Date(currentYear, index, 1)
+      const assetsAcquiredByMonth = assets.filter(asset => {
+        const procurementDate = new Date(asset.procurementDate)
+        return procurementDate <= monthDate
+      })
+      
+      const totalValue = assetsAcquiredByMonth.reduce((sum, asset) => sum + (asset.procurementValue || 0), 0)
+      const totalCurrentValue = assetsAcquiredByMonth.reduce((sum, asset) => sum + calculateCurrentValue(asset), 0)
+      
+      return {
+        month,
+        value: totalValue,
+        depreciation: totalCurrentValue
+      }
+    })
+  }
+
+  const valueTreeData = generateMonthlyValueData()
 
   const conditionData = [
     { name: 'Excellent', value: assets.filter(a => a.condition === 'excellent').length, fill: '#10B981' },

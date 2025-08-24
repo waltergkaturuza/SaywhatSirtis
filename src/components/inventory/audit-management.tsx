@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   ShieldCheckIcon,
   CalendarDaysIcon,
@@ -26,98 +26,46 @@ interface AuditManagementProps {
   permissions: InventoryPermissions
 }
 
-// Sample audit data - in real app this would come from API
-const sampleAudits: InventoryAudit[] = [
-  {
-    id: '1',
-    title: 'Q3 2024 Physical Asset Audit',
-    auditDate: '2024-07-15',
-    auditor: 'John Smith',
-    type: 'physical',
-    status: 'completed',
-    location: 'Head Office',
-    scope: ['IT Equipment', 'Office Equipment'],
-    findings: [
-      {
-        id: '1',
-        assetId: '1',
-        type: 'missing',
-        severity: 'high',
-        description: 'Laptop Dell-001 not found at assigned location',
-        recommendedAction: 'Locate asset or mark as missing, investigate with assigned user',
-        status: 'open',
-        assignedTo: 'IT Manager',
-        dueDate: '2024-08-15'
-      },
-      {
-        id: '2',
-        assetId: '2',
-        type: 'damaged',
-        severity: 'medium',
-        description: 'Printer showing signs of wear, toner leaking',
-        recommendedAction: 'Schedule maintenance or replacement',
-        status: 'in-progress',
-        assignedTo: 'Facilities Team'
-      }
-    ],
-    recommendations: [
-      'Implement monthly location verification for high-value assets',
-      'Update asset condition assessments quarterly',
-      'Enhance user training on asset care and reporting'
-    ],
-    completedAt: '2024-07-20'
-  },
-  {
-    id: '2',
-    title: 'Financial Valuation Audit',
-    auditDate: '2024-06-01',
-    auditor: 'Finance Team',
-    type: 'financial',
-    status: 'completed',
-    scope: ['All Categories'],
-    findings: [
-      {
-        id: '3',
-        assetId: '3',
-        type: 'discrepancy',
-        severity: 'low',
-        description: 'Asset valuation differs from depreciation schedule',
-        recommendedAction: 'Update depreciation calculations',
-        status: 'resolved'
-      }
-    ],
-    recommendations: [
-      'Review depreciation methods for IT equipment',
-      'Implement automated valuation updates'
-    ],
-    completedAt: '2024-06-10'
-  },
-  {
-    id: '3',
-    title: 'Compliance Review - Q4 2024',
-    auditDate: '2024-10-01',
-    auditor: 'Compliance Officer',
-    type: 'compliance',
-    status: 'planned',
-    scope: ['Security Equipment', 'Medical Equipment'],
-    findings: [],
-    recommendations: []
-  }
-]
-
 export const AuditManagement: React.FC<AuditManagementProps> = ({
   assets,
   permissions
 }) => {
   const [activeView, setActiveView] = useState<'overview' | 'schedule' | 'audits' | 'findings' | 'compliance'>('overview')
-  const [audits, setAudits] = useState<InventoryAudit[]>(sampleAudits)
+  const [audits, setAudits] = useState<InventoryAudit[]>([])
+  const [loading, setLoading] = useState(true)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [selectedAudit, setSelectedAudit] = useState<InventoryAudit | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Load audits from API
+  useEffect(() => {
+    const loadAudits = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/inventory/audits')
+        if (response.ok) {
+          const data = await response.json()
+          setAudits(data.audits || [])
+        } else {
+          console.log('Audits API not available')
+          setAudits([])
+        }
+      } catch (error) {
+        console.log('Failed to load audits:', error)
+        setAudits([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAudits()
+  }, [])
+
   const filteredAudits = audits.filter(audit => {
+    if (!audit || !audit.title || !audit.auditor) return false
+    
     const matchesSearch = audit.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          audit.auditor.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === 'all' || audit.status === statusFilter
@@ -493,7 +441,23 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredAudits.map((audit) => (
+            {filteredAudits.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center">
+                  <div className="text-gray-500">
+                    <ShieldCheckIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Audits Found</h3>
+                    <p className="text-gray-500">
+                      {audits.length === 0 
+                        ? "No audits have been created yet. Create your first audit to get started."
+                        : "No audits match your current filters. Try adjusting your search criteria."
+                      }
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredAudits.map((audit) => (
               <tr key={audit.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
@@ -541,7 +505,8 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>

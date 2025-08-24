@@ -66,97 +66,6 @@ export function MaintenanceManagement({ assets, permissions }: MaintenanceManage
   const [newRecord, setNewRecord] = useState<Partial<MaintenanceRecord>>({})
   const [newSchedule, setNewSchedule] = useState<Partial<MaintenanceSchedule>>({})
 
-  // Initialize sample data
-  useEffect(() => {
-    const sampleRecords: MaintenanceRecord[] = [
-      {
-        id: '1',
-        assetId: '1',
-        type: 'preventive',
-        status: 'completed',
-        title: 'Quarterly System Maintenance',
-        description: 'Regular cleaning and software updates',
-        scheduledDate: '2024-07-15',
-        completedDate: '2024-07-15',
-        estimatedCost: 50,
-        actualCost: 45,
-        technician: 'John Tech',
-        notes: 'All systems running optimally',
-        createdAt: '2024-07-10T10:00:00Z',
-        updatedAt: '2024-07-15T15:30:00Z'
-      },
-      {
-        id: '2',
-        assetId: '3',
-        type: 'inspection',
-        status: 'overdue',
-        title: 'Vehicle Safety Inspection',
-        description: 'Annual safety and emissions inspection',
-        scheduledDate: '2024-07-01',
-        estimatedCost: 100,
-        technician: 'Service Center',
-        vendor: 'AutoCare Services',
-        createdAt: '2024-06-20T10:00:00Z',
-        updatedAt: '2024-07-01T10:00:00Z'
-      },
-      {
-        id: '3',
-        assetId: '2',
-        type: 'corrective',
-        status: 'scheduled',
-        title: 'Printer Repair',
-        description: 'Fix paper jam mechanism',
-        scheduledDate: '2024-07-25',
-        estimatedCost: 80,
-        technician: 'HP Support',
-        vendor: 'HP Service Center',
-        createdAt: '2024-07-18T14:00:00Z',
-        updatedAt: '2024-07-18T14:00:00Z'
-      }
-    ]
-
-    const sampleSchedules: MaintenanceSchedule[] = [
-      {
-        id: '1',
-        assetId: '1',
-        name: 'Quarterly Maintenance',
-        type: 'preventive',
-        frequency: 90,
-        lastPerformed: '2024-07-15',
-        nextDue: '2024-10-15',
-        estimatedCost: 50,
-        instructions: 'Clean vents, update software, check hardware',
-        isActive: true
-      },
-      {
-        id: '2',
-        assetId: '3',
-        name: 'Annual Vehicle Inspection',
-        type: 'inspection',
-        frequency: 365,
-        nextDue: '2025-07-01',
-        estimatedCost: 100,
-        instructions: 'Complete safety and emissions inspection',
-        isActive: true
-      },
-      {
-        id: '3',
-        assetId: '2',
-        name: 'Monthly Printer Check',
-        type: 'preventive',
-        frequency: 30,
-        lastPerformed: '2024-06-20',
-        nextDue: '2024-07-20',
-        estimatedCost: 25,
-        instructions: 'Clean print heads, check paper feed, test functionality',
-        isActive: true
-      }
-    ]
-
-    setMaintenanceRecords(sampleRecords)
-    setMaintenanceSchedules(sampleSchedules)
-  }, [])
-
   // Load data from backend
   useEffect(() => {
     const loadMaintenanceData = async () => {
@@ -168,16 +77,24 @@ export function MaintenanceManagement({ assets, permissions }: MaintenanceManage
         ])
 
         if (recordsResponse.ok) {
-          const records = await recordsResponse.json()
-          setMaintenanceRecords(records)
+          const recordsData = await recordsResponse.json()
+          setMaintenanceRecords(recordsData.records || [])
+        } else {
+          console.log('Maintenance records API not available')
+          setMaintenanceRecords([])
         }
 
         if (schedulesResponse.ok) {
-          const schedules = await schedulesResponse.json()
-          setMaintenanceSchedules(schedules)
+          const schedulesData = await schedulesResponse.json()
+          setMaintenanceSchedules(schedulesData.schedules || [])
+        } else {
+          console.log('Maintenance schedules API not available')
+          setMaintenanceSchedules([])
         }
       } catch (error) {
-        console.log('Backend not available, using sample data')
+        console.log('Backend not available, showing empty state:', error)
+        setMaintenanceRecords([])
+        setMaintenanceSchedules([])
       } finally {
         setLoading(false)
       }

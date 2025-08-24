@@ -10,7 +10,8 @@ import {
   DocumentTextIcon,
   ShieldCheckIcon,
   WrenchScrewdriverIcon,
-  MapPinIcon as LocationIcon
+  MapPinIcon as LocationIcon,
+  ExclamationTriangleIcon
 } from "@heroicons/react/24/outline"
 import { Button } from "@/components/ui/button"
 import { ExportButton } from "@/components/ui/export-button"
@@ -29,33 +30,89 @@ import { DatabaseStatusIndicator } from "@/components/inventory/database-status"
 // Types
 import { Asset, AssetAlert, InventoryPermissions } from '@/types/inventory'
 
+// Database status component
+const DatabaseStatus = ({ isConnected, isLoading, error }: { 
+  isConnected: boolean, 
+  isLoading: boolean, 
+  error?: string 
+}) => (
+  <div className="mb-6 p-4 rounded-lg border-2 border-dashed">
+    {isLoading ? (
+      <div className="flex items-center space-x-3 text-blue-600">
+        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+        <span>Connecting to database...</span>
+      </div>
+    ) : isConnected ? (
+      <div className="flex items-center space-x-3 text-green-600">
+        <ShieldCheckIcon className="h-5 w-5" />
+        <span className="font-medium">✅ Connected to Live Database</span>
+        <span className="text-sm text-gray-500">Real-time inventory data</span>
+      </div>
+    ) : (
+      <div className="flex items-center space-x-3 text-red-600">
+        <ExclamationTriangleIcon className="h-5 w-5" />
+        <span className="font-medium">❌ Database Connection Failed</span>
+        {error && <span className="text-sm text-gray-500">Error: {error}</span>}
+      </div>
+    )}
+  </div>
+)
+
 // Dashboard wrapper component to manage dashboard state
-const DashboardWrapper = ({ assets, permissions }: { assets?: Asset[], permissions: InventoryPermissions }) => {
+const DashboardWrapper = ({ assets, permissions, isLoading }: { 
+  assets?: Asset[], 
+  permissions: InventoryPermissions,
+  isLoading: boolean 
+}) => {
   const [showAlerts, setShowAlerts] = useState(false)
   const [chartView, setChartView] = useState('overview')
   const [depreciationView, setDepreciationView] = useState('annual')
   
-  // Sample alerts data (this would come from the API in a real app)
-  const [alerts, setAlerts] = useState<AssetAlert[]>([
-    {
-      id: 1,
-      assetId: 1,
-      type: "maintenance_due",
-      severity: "medium",
-      message: "Scheduled maintenance due for Dell Latitude 7420",
-      createdAt: "2024-07-15T10:30:00Z",
-      acknowledged: false
-    },
-    {
-      id: 2,
-      assetId: 3,
-      type: "warranty_expiry",
-      severity: "high",
-      message: "Warranty expiring soon for HP LaserJet Pro",
-      createdAt: "2024-07-14T14:20:00Z",
-      acknowledged: false
+  // Real alerts would come from the API - for now we'll calculate from assets
+  const [alerts, setAlerts] = useState<AssetAlert[]>([])
+
+  // Generate alerts from real asset data
+  useEffect(() => {
+    if (assets && assets.length > 0) {
+      const generatedAlerts: AssetAlert[] = []
+      
+      assets.forEach((asset, index) => {
+        // Check for maintenance due (if warranty is expiring soon)
+        if (asset.warrantyExpiry) {
+          const warrantDate = new Date(asset.warrantyExpiry)
+          const now = new Date()
+          const daysUntilExpiry = Math.ceil((warrantDate.getTime() - now.getTime()) / (1000 * 3600 * 24))
+          
+          if (daysUntilExpiry <= 30 && daysUntilExpiry > 0) {
+            generatedAlerts.push({
+              id: generatedAlerts.length + 1,
+              assetId: parseInt(asset.id),
+              type: "warranty_expiry",
+              severity: daysUntilExpiry <= 7 ? "high" : "medium",
+              message: `Warranty expiring in ${daysUntilExpiry} days for ${asset.name}`,
+              createdAt: new Date().toISOString(),
+              acknowledged: false
+            })
+          }
+        }
+        
+        // Check for assets in poor condition
+        if (asset.condition === 'poor' || asset.condition === 'damaged') {
+          generatedAlerts.push({
+            id: generatedAlerts.length + 1,
+            assetId: parseInt(asset.id),
+            type: "maintenance_due",
+            severity: "high",
+            message: `Asset in ${asset.condition} condition: ${asset.name}`,
+            createdAt: new Date().toISOString(),
+            acknowledged: false
+          })
+        }
+      })
+      
+      setAlerts(generatedAlerts)
     }
-  ])
+  }, [assets])
 
   const acknowledgeAlert = (alertId: number) => {
     setAlerts(alerts.map(alert => 
@@ -107,6 +164,53 @@ const DashboardWrapper = ({ assets, permissions }: { assets?: Asset[], permissio
 export default function InventoryManagementPage() {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState("dashboard")
+  
+  // API data states
+  const [assets, setAssets] = useState<Asset[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isConnected, setIsConnected] = useState(false)
+  const [error, setError] = useState<string>("")
+  
+  // Fetch assets from API
+  useEffect(() => {
+    const fetchAssets = async () => {
+      try {
+        setIsLoading(true)
+        setError("")
+        
+        console.log('Fetching assets from API...')
+        const response = await fetch('/api/inventory/assets')
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        
+        const data = await response.json()
+        console.log('Assets API response:', data)
+        
+        if (data.assets && Array.isArray(data.assets)) {
+          setAssets(data.assets)
+          setIsConnected(true)
+          console.log(`Loaded ${data.assets.length} assets from database`)
+        } else {
+          console.warn('No assets found in API response')
+          setAssets([])
+          setIsConnected(true)
+        }
+      } catch (err) {
+        console.error('Failed to fetch assets:', err)
+        setError(err instanceof Error ? err.message : 'Unknown error')
+        setIsConnected(false)
+        setAssets([]) // Clear any existing mock data
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (session) {
+      fetchAssets()
+    }
+  }, [session])
   
   // States for asset registration
   const [createFormData, setCreateFormData] = useState<Partial<Asset>>({})
@@ -170,409 +274,47 @@ export default function InventoryManagementPage() {
     restrictedToDepartments: undefined,
   })
 
-  // Enhanced sample asset data for rich visualizations
-  const [assets, setAssets] = useState<Asset[]>([
-    {
-      id: "1",
-      name: "Dell Latitude 7420 Laptop",
-      assetNumber: "IT-2024-0001",
-      assetTag: "DL7420-TAG-001",
-      barcodeId: "123456789012",
-      category: {
-        id: "1",
-        name: "Information Technology (IT) Equipment",
-        code: "IT",
-        description: "Computer and technology equipment"
-      },
-      type: {
-        id: "1",
-        name: "Laptops",
-        code: "LAP",
-        description: "Portable computers",
-        depreciationRate: 20,
-        usefulLife: 4,
-        category: {
-          id: "1",
-          name: "Information Technology (IT) Equipment",
-          code: "IT",
-          description: "Computer and technology equipment"
+  // Get refresh function to reload data
+  const refreshAssets = () => {
+    if (session) {
+      setIsLoading(true)
+      // Re-trigger the useEffect by changing a dependency
+      const fetchAssets = async () => {
+        try {
+          setError("")
+          
+          console.log('Refreshing assets from API...')
+          const response = await fetch('/api/inventory/assets')
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+          
+          const data = await response.json()
+          console.log('Assets API response:', data)
+          
+          if (data.assets && Array.isArray(data.assets)) {
+            setAssets(data.assets)
+            setIsConnected(true)
+            console.log(`Refreshed ${data.assets.length} assets from database`)
+          } else {
+            console.warn('No assets found in API response')
+            setAssets([])
+            setIsConnected(true)
+          }
+        } catch (err) {
+          console.error('Failed to refresh assets:', err)
+          setError(err instanceof Error ? err.message : 'Unknown error')
+          setIsConnected(false)
+          setAssets([])
+        } finally {
+          setIsLoading(false)
         }
-      },
-      brand: "Dell",
-      model: "Latitude 7420",
-      serialNumber: "DL7420-2024-001",
-      status: "active",
-      condition: "excellent",
-      location: {
-        id: "1",
-        name: "Head Office",
-        code: "HO",
-        type: "building",
-        address: "123 Main Street, Harare"
-      },
-      department: "IT",
-      assignedTo: "John Doe",
-      procurementValue: 1500,
-      currentValue: 1200,
-      depreciationRate: 20,
-      depreciationMethod: "straight-line",
-      procurementDate: "2024-01-15",
-      warrantyExpiry: "2027-01-15",
-      lastAuditDate: "2024-06-15",
-      nextMaintenanceDate: "2024-09-15",
-      assignedProgram: "Digital Transformation",
-      assignedProject: "Office Modernization",
-      rfidTag: "RF001234",
-      qrCode: "QR001234",
-      description: "High-performance business laptop for development work",
-      images: ["/api/assets/images/laptop-1.jpg"],
-      documents: [],
-      createdAt: "2024-01-15T10:00:00Z",
-      updatedAt: "2024-07-19T10:00:00Z",
-      createdBy: "Finance Officer",
-      lastModifiedBy: "IT Administrator",
-      coordinates: {
-        lat: -17.8216,
-        lng: 31.0492,
-        lastUpdated: "2024-07-19T10:00:00Z",
-        accuracy: 5
-      },
-      expectedLifespan: 4
-    },
-    {
-      id: "2",
-      name: "HP LaserJet Pro Printer",
-      assetNumber: "OF-2024-0002",
-      assetTag: "HP404-TAG-002",
-      barcodeId: "123456789013",
-      category: {
-        id: "2",
-        name: "Office Equipment",
-        code: "OF",
-        description: "General office equipment and supplies"
-      },
-      type: {
-        id: "2",
-        name: "Printers & Scanners",
-        code: "PRT",
-        description: "Printing and scanning devices",
-        depreciationRate: 15,
-        usefulLife: 5,
-        category: {
-          id: "2",
-          name: "Office Equipment",
-          code: "OF",
-          description: "General office equipment and supplies"
-        }
-      },
-      brand: "HP",
-      model: "LaserJet Pro M404n",
-      serialNumber: "HP404-2024-002",
-      status: "active",
-      condition: "good",
-      location: {
-        id: "2",
-        name: "Branch Office A",
-        code: "BOA",
-        type: "building",
-        address: "456 Branch Street, Harare"
-      },
-      department: "Administration",
-      assignedTo: "Jane Smith",
-      procurementValue: 300,
-      currentValue: 240,
-      depreciationRate: 15,
-      depreciationMethod: "straight-line",
-      procurementDate: "2024-02-10",
-      warrantyExpiry: "2026-02-10",
-      lastAuditDate: "2024-06-20",
-      nextMaintenanceDate: "2024-10-10",
-      assignedProgram: "Office Operations",
-      rfidTag: "RF001235",
-      qrCode: "QR001235",
-      description: "Network laser printer for office documentation",
-      images: [],
-      documents: [],
-      createdAt: "2024-02-10T14:00:00Z",
-      updatedAt: "2024-07-19T10:00:00Z",
-      createdBy: "Admin Officer",
-      lastModifiedBy: "IT Administrator",
-      coordinates: {
-        lat: -17.8350,
-        lng: 31.0650,
-        lastUpdated: "2024-07-19T09:30:00Z",
-        accuracy: 8
-      },
-      expectedLifespan: 5
-    },
-    {
-      id: "3",
-      name: "Toyota Corolla Company Vehicle",
-      assetNumber: "VH-2024-0003",
-      assetTag: "TC2024-TAG-003",
-      barcodeId: "123456789014",
-      category: {
-        id: "3",
-        name: "Vehicles & Transport",
-        code: "VH",
-        description: "Transportation vehicles and equipment"
-      },
-      type: {
-        id: "3",
-        name: "Cars",
-        code: "CAR",
-        description: "Passenger vehicles",
-        depreciationRate: 12,
-        usefulLife: 8,
-        category: {
-          id: "3",
-          name: "Vehicles & Transport",
-          code: "VH",
-          description: "Transportation vehicles and equipment"
-        }
-      },
-      brand: "Toyota",
-      model: "Corolla 2024",
-      serialNumber: "TC2024-001",
-      status: "active",
-      condition: "excellent",
-      location: {
-        id: "1",
-        name: "Head Office",
-        code: "HO",
-        type: "building",
-        address: "123 Main Street, Harare"
-      },
-      department: "Operations",
-      assignedTo: "Mike Johnson",
-      procurementValue: 25000,
-      currentValue: 22000,
-      depreciationRate: 12,
-      depreciationMethod: "straight-line",
-      procurementDate: "2024-01-05",
-      warrantyExpiry: "2027-01-05",
-      lastAuditDate: "2024-07-01",
-      nextMaintenanceDate: "2024-08-05",
-      assignedProgram: "Transportation",
-      assignedProject: "Field Operations",
-      rfidTag: "RF001236",
-      qrCode: "QR001236",
-      description: "Company vehicle for business operations and client visits",
-      images: [],
-      documents: [],
-      createdAt: "2024-01-05T09:00:00Z",
-      updatedAt: "2024-07-19T10:00:00Z",
-      createdBy: "Fleet Manager",
-      lastModifiedBy: "Operations Manager",
-      coordinates: {
-        lat: -17.8100,
-        lng: 31.0450,
-        lastUpdated: "2024-07-19T08:45:00Z",
-        accuracy: 3
-      },
-      expectedLifespan: 8
-    },
-    {
-      id: "4",
-      name: "Industrial Generator",
-      assetNumber: "MC-2024-0004",
-      assetTag: "GEN-TAG-004",
-      barcodeId: "123456789015",
-      category: {
-        id: "4",
-        name: "Machinery",
-        code: "MC",
-        description: "Industrial machinery and equipment"
-      },
-      type: {
-        id: "4",
-        name: "Power Equipment",
-        code: "PWR",
-        description: "Power generation equipment",
-        depreciationRate: 10,
-        usefulLife: 15,
-        category: {
-          id: "4",
-          name: "Machinery",
-          code: "MC",
-          description: "Industrial machinery and equipment"
-        }
-      },
-      brand: "Caterpillar",
-      model: "C9 Generator",
-      serialNumber: "CAT-GEN-2024-001",
-      status: "under-maintenance",
-      condition: "good",
-      location: {
-        id: "3",
-        name: "Warehouse",
-        code: "WH",
-        type: "building",
-        address: "789 Industrial Road, Harare"
-      },
-      department: "Operations",
-      assignedTo: "Technical Team",
-      procurementValue: 45000,
-      currentValue: 42000,
-      depreciationRate: 10,
-      depreciationMethod: "straight-line",
-      procurementDate: "2023-08-15",
-      warrantyExpiry: "2025-08-15",
-      lastAuditDate: "2024-05-30",
-      nextMaintenanceDate: "2024-08-15",
-      assignedProgram: "Infrastructure",
-      assignedProject: "Power Backup Systems",
-      rfidTag: "RF001237",
-      qrCode: "QR001237",
-      description: "Backup power generator for critical operations",
-      images: [],
-      documents: [],
-      createdAt: "2023-08-15T11:00:00Z",
-      updatedAt: "2024-07-19T10:00:00Z",
-      createdBy: "Technical Manager",
-      lastModifiedBy: "Maintenance Team",
-      coordinates: {
-        lat: -17.8280,
-        lng: 31.0580,
-        lastUpdated: "2024-07-19T07:15:00Z",
-        accuracy: 10
-      },
-      expectedLifespan: 15
-    },
-    {
-      id: "5",
-      name: "Conference Room Projector",
-      assetNumber: "OF-2024-0005",
-      assetTag: "PROJ-TAG-005",
-      barcodeId: "123456789016",
-      category: {
-        id: "2",
-        name: "Office Equipment",
-        code: "OF",
-        description: "General office equipment and supplies"
-      },
-      type: {
-        id: "5",
-        name: "Audio Visual",
-        code: "AV",
-        description: "Audio visual equipment",
-        depreciationRate: 18,
-        usefulLife: 6,
-        category: {
-          id: "2",
-          name: "Office Equipment",
-          code: "OF",
-          description: "General office equipment and supplies"
-        }
-      },
-      brand: "Epson",
-      model: "PowerLite 1795F",
-      serialNumber: "EPSON-PROJ-2024-001",
-      status: "active",
-      condition: "excellent",
-      location: {
-        id: "1",
-        name: "Head Office",
-        code: "HO",
-        type: "building",
-        address: "123 Main Street, Harare"
-      },
-      department: "Administration",
-      assignedTo: "Conference Room A",
-      procurementValue: 800,
-      currentValue: 650,
-      depreciationRate: 18,
-      depreciationMethod: "straight-line",
-      procurementDate: "2023-11-20",
-      warrantyExpiry: "2025-11-20",
-      lastAuditDate: "2024-06-15",
-      nextMaintenanceDate: "2024-11-20",
-      assignedProgram: "Office Operations",
-      rfidTag: "RF001238",
-      qrCode: "QR001238",
-      description: "High-definition projector for presentations and meetings",
-      images: [],
-      documents: [],
-      createdAt: "2023-11-20T16:00:00Z",
-      updatedAt: "2024-07-19T10:00:00Z",
-      createdBy: "Admin Officer",
-      lastModifiedBy: "IT Administrator",
-      coordinates: {
-        lat: -17.8216,
-        lng: 31.0492,
-        lastUpdated: "2024-07-19T10:00:00Z",
-        accuracy: 2
-      },
-      expectedLifespan: 6
-    },
-    {
-      id: "6",
-      name: "Server Rack Equipment",
-      assetNumber: "IT-2024-0006",
-      assetTag: "SRV-TAG-006",
-      barcodeId: "123456789017",
-      category: {
-        id: "1",
-        name: "Information Technology (IT) Equipment",
-        code: "IT",
-        description: "Computer and technology equipment"
-      },
-      type: {
-        id: "6",
-        name: "Servers",
-        code: "SRV",
-        description: "Server hardware",
-        depreciationRate: 25,
-        usefulLife: 5,
-        category: {
-          id: "1",
-          name: "Information Technology (IT) Equipment",
-          code: "IT",
-          description: "Computer and technology equipment"
-        }
-      },
-      brand: "HPE",
-      model: "ProLiant DL380 Gen10",
-      serialNumber: "HPE-SRV-2024-001",
-      status: "active",
-      condition: "good",
-      location: {
-        id: "4",
-        name: "Data Center",
-        code: "DC",
-        type: "building",
-        address: "Server Room, Head Office"
-      },
-      department: "IT",
-      assignedTo: "Server Administrator",
-      procurementValue: 8500,
-      currentValue: 6000,
-      depreciationRate: 25,
-      depreciationMethod: "straight-line",
-      procurementDate: "2023-05-10",
-      warrantyExpiry: "2026-05-10",
-      lastAuditDate: "2024-07-15",
-      nextMaintenanceDate: "2024-09-10",
-      assignedProgram: "IT Infrastructure",
-      assignedProject: "Server Modernization",
-      rfidTag: "RF001239",
-      qrCode: "QR001239",
-      description: "Enterprise server for business applications",
-      images: [],
-      documents: [],
-      createdAt: "2023-05-10T12:00:00Z",
-      updatedAt: "2024-07-19T10:00:00Z",
-      createdBy: "IT Manager",
-      lastModifiedBy: "System Administrator",
-      coordinates: {
-        lat: -17.8216,
-        lng: 31.0492,
-        lastUpdated: "2024-07-19T10:00:00Z",
-        accuracy: 1
-      },
-      expectedLifespan: 5
+      }
+      
+      fetchAssets()
     }
-  ])
+  }
 
   const metadata = {
     title: "Enterprise Inventory Management",
@@ -590,12 +332,12 @@ export default function InventoryManagementPage() {
       icon: Squares2X2Icon,
     },
     {
-      id: "assets",
+      id: "assets", 
       name: "Assets Management",
       icon: ClipboardDocumentListIcon,
     },
     {
-      id: "registration", 
+      id: "registration",
       name: "Asset Registration",
       icon: PlusIcon,
     },
@@ -671,7 +413,7 @@ export default function InventoryManagementPage() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <DashboardWrapper assets={assets} permissions={permissions} />
+        return <DashboardWrapper assets={assets} permissions={permissions} isLoading={isLoading} />
       case "assets":
         return <AssetsManagement assets={assets} permissions={permissions} onAssetUpdate={setAssets} />
       case "registration":
@@ -707,7 +449,7 @@ export default function InventoryManagementPage() {
       case "tracking":
         return <LocationTracking assets={assets} permissions={permissions} />
       default:
-        return <DashboardWrapper assets={assets} permissions={permissions} />
+        return <DashboardWrapper assets={assets} permissions={permissions} isLoading={isLoading} />
     }
   }
 
