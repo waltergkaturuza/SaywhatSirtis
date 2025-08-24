@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ModulePage } from "@/components/layout/enhanced-layout";
 import { 
   DocumentIcon,
+  DocumentTextIcon,
   FolderIcon,
   CloudArrowUpIcon,
   MagnifyingGlassIcon,
@@ -33,94 +34,32 @@ import {
   ChatBubbleLeftRightIcon
 } from "@heroicons/react/24/outline";
 
-// Security classifications
+// Security classifications - Updated for internal/confidential focus
 const securityClassifications = {
   "PUBLIC": { 
     count: 156, 
     color: "text-green-600 bg-green-100", 
     icon: ShareIcon,
-    description: "Publicly accessible documents" 
-  },
-  "INTERNAL": { 
-    count: 89, 
-    color: "text-blue-600 bg-blue-100", 
-    icon: UsersIcon,
-    description: "Internal organizational use only" 
+    description: "Accessible to all employees within the organization" 
   },
   "CONFIDENTIAL": { 
-    count: 34, 
-    color: "text-yellow-600 bg-yellow-100", 
+    count: 89, 
+    color: "text-saywhat-orange bg-orange-100", 
     icon: LockClosedIcon,
-    description: "Sensitive information requiring authorization" 
+    description: "Sensitive information requiring authorized access" 
   },
-  "RESTRICTED": { 
-    count: 12, 
-    color: "text-red-600 bg-red-100", 
+  "SECRET": { 
+    count: 34, 
+    color: "text-saywhat-red bg-red-100", 
     icon: ShieldCheckIcon,
-    description: "Highly sensitive with limited access" 
+    description: "Highly sensitive information - secret level" 
+  },
+  "TOP_SECRET": { 
+    count: 12, 
+    color: "text-red-800 bg-red-200", 
+    icon: ShieldCheckIcon,
+    description: "Highly sensitive information - top secret level" 
   }
-};
-
-// Mock recent activities
-const recentActivities = [
-  {
-    id: 1,
-    type: "upload",
-    user: "Sarah Johnson",
-    document: "Annual Report 2024",
-    action: "uploaded",
-    timestamp: "2 hours ago",
-    classification: "PUBLIC"
-  },
-  {
-    id: 2,
-    type: "download",
-    user: "Michael Chen",
-    document: "Data Protection Policy",
-    action: "downloaded",
-    timestamp: "4 hours ago",
-    classification: "INTERNAL"
-  },
-  {
-    id: 3,
-    type: "share",
-    user: "Emily Rodriguez",
-    document: "Q4 Financial Statement",
-    action: "shared with Finance Team",
-    timestamp: "6 hours ago",
-    classification: "CONFIDENTIAL"
-  },
-  {
-    id: 4,
-    type: "edit",
-    user: "David Wilson",
-    document: "Board Meeting Minutes",
-    action: "updated",
-    timestamp: "1 day ago",
-    classification: "RESTRICTED"
-  },
-  {
-    id: 5,
-    type: "view",
-    user: "Lisa Thompson",
-    document: "Training Manual",
-    action: "viewed",
-    timestamp: "1 day ago",
-    classification: "INTERNAL"
-  }
-];
-
-// Mock document statistics
-const documentStats = {
-  totalDocuments: 291,
-  totalSize: "45.2 GB",
-  uploadsThisMonth: 23,
-  downloadsThisMonth: 1247,
-  viewsThisMonth: 3891,
-  sharesThisMonth: 156,
-  avgSentiment: 0.78,
-  avgReadability: 0.82,
-  storageUsed: 0.73
 };
 
 export default function DocumentsPage() {
@@ -175,7 +114,7 @@ export default function DocumentsPage() {
         breadcrumbs: [{ name: "Document Repository" }]
       }}
     >
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-full mx-auto px-4 space-y-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -190,7 +129,7 @@ export default function DocumentsPage() {
                       Total Documents
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {documentStats.totalDocuments.toLocaleString()}
+                                            0
                     </dd>
                   </dl>
                 </div>
@@ -198,7 +137,7 @@ export default function DocumentsPage() {
             </div>
             <div className="bg-gray-50 px-5 py-3">
               <div className="text-sm">
-                <span className="text-green-600 font-medium">+{documentStats.uploadsThisMonth}</span>
+                <span className="text-green-600 font-medium">+                      0</span>
                 <span className="text-gray-500"> this month</span>
               </div>
             </div>
@@ -216,7 +155,7 @@ export default function DocumentsPage() {
                       Storage Used
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {documentStats.totalSize}
+                      0 GB
                     </dd>
                   </dl>
                 </div>
@@ -227,10 +166,10 @@ export default function DocumentsPage() {
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-blue-600 h-2 rounded-full" 
-                    style={{ width: `${documentStats.storageUsed * 100}%` }}
+                    style={{ width: '0%' }}
                   ></div>
                 </div>
-                <span className="text-gray-500">{(documentStats.storageUsed * 100).toFixed(0)}% of quota</span>
+                <span className="text-gray-500">0% of quota</span>
               </div>
             </div>
           </div>
@@ -247,7 +186,7 @@ export default function DocumentsPage() {
                       Views This Month
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {documentStats.viewsThisMonth.toLocaleString()}
+                      0
                     </dd>
                   </dl>
                 </div>
@@ -255,7 +194,7 @@ export default function DocumentsPage() {
             </div>
             <div className="bg-gray-50 px-5 py-3">
               <div className="text-sm">
-                <span className="text-blue-600 font-medium">{documentStats.downloadsThisMonth.toLocaleString()}</span>
+                <span className="text-blue-600 font-medium">0</span>
                 <span className="text-gray-500"> downloads</span>
               </div>
             </div>
@@ -273,7 +212,7 @@ export default function DocumentsPage() {
                       AI Quality Score
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {(documentStats.avgSentiment * 100).toFixed(0)}%
+                      0%
                     </dd>
                   </dl>
                 </div>
@@ -281,7 +220,7 @@ export default function DocumentsPage() {
             </div>
             <div className="bg-gray-50 px-5 py-3">
               <div className="text-sm">
-                <span className="text-purple-600 font-medium">{(documentStats.avgReadability * 100).toFixed(0)}%</span>
+                <span className="text-purple-600 font-medium">0%</span>
                 <span className="text-gray-500"> readability</span>
               </div>
             </div>
@@ -337,34 +276,13 @@ export default function DocumentsPage() {
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                {recentActivities.map((activity) => {
-                  const ActivityIcon = getActivityIcon(activity.type);
-                  const classificationConfig = getClassificationConfig(activity.classification);
-                  const ClassificationIcon = classificationConfig.icon;
-                  
-                  return (
-                    <div key={activity.id} className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                          <ActivityIcon className="h-4 w-4 text-gray-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900">
-                          <span className="font-medium">{activity.user}</span> {activity.action}{" "}
-                          <span className="font-medium">{activity.document}</span>
-                        </p>
-                        <div className="flex items-center mt-1 space-x-2">
-                          <span className="text-xs text-gray-500">{activity.timestamp}</span>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${classificationConfig.color}`}>
-                            <ClassificationIcon className="h-3 w-3 mr-1" />
-                            {activity.classification}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                <div className="text-center py-8">
+                  <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No activity yet</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Upload some documents to see activity here.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -382,12 +300,12 @@ export default function DocumentsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Document Sentiment</span>
-                    <span className="text-sm text-gray-900">{(documentStats.avgSentiment * 100).toFixed(0)}%</span>
+                    <span className="text-sm text-gray-900">0%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-green-500 h-2 rounded-full" 
-                      style={{ width: `${documentStats.avgSentiment * 100}%` }}
+                      style={{ width: '0%' }}
                     ></div>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Overall positive sentiment in documents</p>
@@ -396,12 +314,12 @@ export default function DocumentsPage() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Readability Score</span>
-                    <span className="text-sm text-gray-900">{(documentStats.avgReadability * 100).toFixed(0)}%</span>
+                    <span className="text-sm text-gray-900">0%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-blue-500 h-2 rounded-full" 
-                      style={{ width: `${documentStats.avgReadability * 100}%` }}
+                      style={{ width: '0%' }}
                     ></div>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Average readability across all documents</p>
@@ -441,10 +359,10 @@ export default function DocumentsPage() {
             <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
           </div>
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <button
                 onClick={() => window.location.href = '/documents/upload'}
-                className="flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                className="flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-saywhat-orange hover:bg-orange-600 transition-colors"
               >
                 <CloudArrowUpIcon className="h-5 w-5 mr-2" />
                 Upload Document
@@ -456,6 +374,14 @@ export default function DocumentsPage() {
               >
                 <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
                 AI Search
+              </button>
+              
+              <button
+                onClick={() => window.location.href = '/documents/ai-assistant'}
+                className="flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+              >
+                <SparklesIcon className="h-5 w-5 mr-2" />
+                AI Assistant
               </button>
               
               <button
@@ -581,7 +507,7 @@ export default function DocumentsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="text-3xl font-bold text-blue-600 mb-2">
-                  {documentStats.viewsThisMonth.toLocaleString()}
+                  0
                 </div>
                 <div className="text-sm font-medium text-gray-700 mb-1">Document Views</div>
                 <div className="flex items-center justify-center text-sm text-gray-500">
@@ -592,7 +518,7 @@ export default function DocumentsPage() {
               
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-600 mb-2">
-                  {documentStats.downloadsThisMonth.toLocaleString()}
+                  0
                 </div>
                 <div className="text-sm font-medium text-gray-700 mb-1">Downloads</div>
                 <div className="flex items-center justify-center text-sm text-gray-500">
@@ -603,7 +529,7 @@ export default function DocumentsPage() {
               
               <div className="text-center">
                 <div className="text-3xl font-bold text-purple-600 mb-2">
-                  {documentStats.sharesThisMonth.toLocaleString()}
+                  0
                 </div>
                 <div className="text-sm font-medium text-gray-700 mb-1">Shares</div>
                 <div className="flex items-center justify-center text-sm text-gray-500">

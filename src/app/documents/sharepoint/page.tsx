@@ -31,6 +31,7 @@ export default function SharePointPage() {
   const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [sites, setSites] = useState<any[]>([])
+  const [files, setFiles] = useState<any[]>([])
   const [selectedSite, setSelectedSite] = useState<string | null>(null)
   const [currentPath, setCurrentPath] = useState('/')
   const [searchQuery, setSearchQuery] = useState('')
@@ -46,86 +47,6 @@ export default function SharePointPage() {
   const [shareWith, setShareWith] = useState('')
   const [showShareModal, setShowShareModal] = useState(false)
   const [selectedItemForShare, setSelectedItemForShare] = useState<any>(null)
-
-  // Mock SharePoint data
-  const mockSites = [
-    {
-      id: 'site1',
-      name: 'SAYWHAT Main Site',
-      description: 'Main organizational site',
-      url: 'https://saywhat.sharepoint.com/sites/main',
-      icon: '🏢',
-      members: 156,
-      lastModified: new Date('2024-01-15'),
-      storage: { used: 2.4, total: 25 }, // GB
-      permissions: 'admin'
-    },
-    {
-      id: 'site2', 
-      name: 'HR Team Site',
-      description: 'Human Resources team collaboration',
-      url: 'https://saywhat.sharepoint.com/sites/hr',
-      icon: '👥',
-      members: 12,
-      lastModified: new Date('2024-01-18'),
-      storage: { used: 1.2, total: 10 },
-      permissions: 'edit'
-    },
-    {
-      id: 'site3',
-      name: 'IT Department',
-      description: 'IT infrastructure and support',
-      url: 'https://saywhat.sharepoint.com/sites/it',
-      icon: '💻',
-      members: 8,
-      lastModified: new Date('2024-01-17'),
-      storage: { used: 5.1, total: 15 },
-      permissions: 'view'
-    }
-  ]
-
-  const mockFiles = [
-    {
-      id: 'file1',
-      name: 'Project Charter 2024.docx',
-      type: 'document',
-      size: '2.4 MB',
-      modified: new Date('2024-01-18'),
-      modifiedBy: 'John Doe',
-      path: '/Documents/Projects/',
-      icon: '📄',
-      version: '1.2',
-      checkoutBy: null,
-      tags: ['project', 'charter', '2024'],
-      permissions: 'edit'
-    },
-    {
-      id: 'folder1',
-      name: 'Annual Reports',
-      type: 'folder',
-      size: '156 MB',
-      modified: new Date('2024-01-17'),
-      modifiedBy: 'Jane Smith',
-      path: '/Documents/',
-      icon: '📁',
-      itemCount: 24,
-      permissions: 'admin'
-    },
-    {
-      id: 'file2',
-      name: 'Budget Analysis Q1.xlsx',
-      type: 'spreadsheet',
-      size: '1.8 MB',
-      modified: new Date('2024-01-16'),
-      modifiedBy: 'Mike Johnson',
-      path: '/Finance/',
-      icon: '📊',
-      version: '2.1',
-      checkoutBy: 'Sarah Wilson',
-      tags: ['budget', 'q1', 'analysis'],
-      permissions: 'view'
-    }
-  ]
 
   const handleSiteSelect = (siteId: string) => {
     setSelectedSite(siteId)
@@ -215,7 +136,7 @@ export default function SharePointPage() {
 
         {/* Sites Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockSites.map((site) => (
+          {sites.map((site) => (
             <div
               key={site.id}
               className={`bg-white rounded-lg shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
@@ -259,7 +180,7 @@ export default function SharePointPage() {
             <div className="p-6 border-b">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium text-gray-900">
-                  {mockSites.find(s => s.id === selectedSite)?.name} - Documents
+                  {sites.find(s => s.id === selectedSite)?.name || 'SharePoint'} - Documents
                 </h2>
                 <div className="flex items-center space-x-2">
                   <input
@@ -302,7 +223,7 @@ export default function SharePointPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {mockFiles.map((file) => (
+                  {files.map((file) => (
                     <tr key={file.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input type="checkbox" className="rounded border-gray-300" />
@@ -313,7 +234,7 @@ export default function SharePointPage() {
                           <div className="ml-3">
                             <div className="text-sm font-medium text-gray-900">{file.name}</div>
                             <div className="text-sm text-gray-500">
-                              {file.tags && file.tags.map(tag => (
+                              {file.tags && file.tags.map((tag: string) => (
                                 <span key={tag} className="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full mr-1">
                                   {tag}
                                 </span>

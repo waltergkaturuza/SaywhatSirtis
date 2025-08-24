@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // =============================================
@@ -245,26 +246,27 @@ model CallAttachment {
 // =============================================
 
 model Document {
-  id          String       @id @default(cuid())
-  title       String
-  fileName    String
-  filePath    String
-  fileSize    Int?
-  mimeType    String?
-  category    DocumentCategory
-  tags        String?      // JSON array of tags
-  description String?      
-  version     String?      @default("1.0")
-  isPublic    Boolean      @default(false)
+  id              String              @id @default(cuid())
+  title           String
+  fileName        String
+  filePath        String
+  fileSize        Int?
+  mimeType        String?
+  category        DocumentCategory
+  classification  SecurityClassification @default(PUBLIC)
+  tags            String?             // JSON array of tags
+  description     String?      
+  version         String?             @default("1.0")
+  isPublic        Boolean             @default(false)
   
   // Relations
-  uploadedBy  String?
-  uploader    User?        @relation(fields: [uploadedBy], references: [id])
-  projectId   String?
-  project     Project?     @relation(fields: [projectId], references: [id])
+  uploadedBy      String?
+  uploader        User?               @relation(fields: [uploadedBy], references: [id])
+  projectId       String?
+  project         Project?            @relation(fields: [projectId], references: [id])
   
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   @@map("documents")
 }
@@ -698,14 +700,31 @@ enum CallStatus {
 }
 
 enum DocumentCategory {
-  PROJECT
-  HR
-  FINANCE
-  LEGAL
-  TRAINING
-  POLICY
-  REPORT
-  OTHER
+  ACTIVITY_REPORTS
+  BASELINE_REPORTS
+  DONOR_REPORTS
+  FINANCIAL_REPORTS
+  GOVERNANCE_DOCUMENTS
+  GRANT_APPLICATIONS
+  HEALTH_RECORDS
+  IMPACT_ASSESSMENTS
+  LEGAL_DOCUMENTS
+  MONITORING_REPORTS
+  OPERATIONAL_GUIDELINES
+  PARTNERSHIP_AGREEMENTS
+  POLICY_DOCUMENTS
+  PROGRAM_PROPOSALS
+  RESEARCH_STUDIES
+  STRATEGIC_PLANS
+  TECHNICAL_DOCUMENTATION
+  TRAINING_MATERIALS
+}
+
+enum SecurityClassification {
+  PUBLIC
+  CONFIDENTIAL
+  SECRET
+  TOP_SECRET
 }
 
 enum Gender {

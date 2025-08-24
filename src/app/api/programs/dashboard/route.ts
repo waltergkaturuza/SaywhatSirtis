@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+﻿import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
@@ -11,8 +11,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ 
         success: false,
         error: "Authentication required", 
-        message: "Please log in to view dashboard metrics.",
-        code: "UNAUTHORIZED"
+        message: "Please log in to view dashboard metrics. Go to /auth/signin to sign in.",
+        code: "UNAUTHORIZED",
+        redirectUrl: "/auth/signin"
       }, { status: 401 })
     }
 

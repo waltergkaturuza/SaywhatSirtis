@@ -218,6 +218,10 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
 
       const response = await fetch('/api/programs/projects')
       if (!response.ok) {
+        // Handle authentication errors specifically
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please sign in at /auth/signin with credentials: admin@saywhat.org / admin123')
+        }
         throw new Error('Failed to fetch projects')
       }
       
@@ -256,8 +260,15 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
         setProjects(transformedProjects)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load projects')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load projects'
+      setError(errorMessage)
       console.error('Projects fetch error:', err)
+      
+      // If authentication error, provide helpful guidance
+      if (errorMessage.includes('Authentication required')) {
+        console.log('🔐 AUTHENTICATION NEEDED: Please sign in at http://localhost:3000/auth/signin')
+        console.log('📧 Use credentials: admin@saywhat.org / admin123')
+      }
     } finally {
       setLoading(false)
     }

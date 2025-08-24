@@ -22,67 +22,16 @@ import {
   DocumentTextIcon
 } from "@heroicons/react/24/outline";
 
-// Mock Dropbox data
-const dropboxFiles = [
-  {
-    id: "1",
-    name: "Annual Report 2024.pdf",
-    type: "pdf",
-    size: "5.2 MB",
-    modified: "2024-01-15",
-    shared: true,
-    synced: true,
-    url: "https://dropbox.com/s/abc123/Annual_Report_2024.pdf"
-  },
-  {
-    id: "2",
-    name: "Marketing Assets",
-    type: "folder",
-    size: "23 files",
-    modified: "2024-01-14",
-    shared: false,
-    synced: true,
-    url: "https://dropbox.com/sh/def456/Marketing_Assets"
-  },
-  {
-    id: "3",
-    name: "Training Video.mp4",
-    type: "video",
-    size: "124.5 MB",
-    modified: "2024-01-13",
-    shared: true,
-    synced: false,
-    url: "https://dropbox.com/s/ghi789/Training_Video.mp4"
-  },
-  {
-    id: "4",
-    name: "Team Photo Gallery",
-    type: "folder",
-    size: "67 photos",
-    modified: "2024-01-12",
-    shared: true,
-    synced: true,
-    url: "https://dropbox.com/sh/jkl012/Team_Photos"
-  },
-  {
-    id: "5",
-    name: "Contract Template.docx",
-    type: "document",
-    size: "892 KB",
-    modified: "2024-01-11",
-    shared: false,
-    synced: true,
-    url: "https://dropbox.com/s/mno345/Contract_Template.docx"
-  }
-];
+// Initialize with empty data - will be populated from API
+const dropboxFiles: any[] = [];
 
 const syncStatus = {
-  connected: true,
-  lastSync: "2024-01-15 15:45",
-  totalFiles: 234,
-  syncedFiles: 229,
-  pendingFiles: 5,
-  storageUsed: "8.7 GB",
+  connected: false,
+  lastSync: "Never",
+  totalFiles: 0,
+  syncedFiles: 0,
+  pendingFiles: 0,
+  storageUsed: "0 GB",
   storageLimit: "16 GB",
   syncInProgress: false
 };

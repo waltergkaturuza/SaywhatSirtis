@@ -1,865 +1,551 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { ModulePage } from "@/components/layout/enhanced-layout";
-import { 
+import {
   MagnifyingGlassIcon,
-  FunnelIcon,
-  DocumentIcon,
-  TagIcon,
-  CalendarIcon,
-  UserIcon,
-  FolderIcon,
-  EyeIcon,
-  ArrowDownTrayIcon,
-  ShareIcon,
   SparklesIcon,
+  DocumentTextIcon,
+  CalendarIcon,
+  TagIcon,
+  FunnelIcon,
+  ViewColumnsIcon,
+  ListBulletIcon,
   AdjustmentsHorizontalIcon,
-  ExclamationTriangleIcon,
-  LockClosedIcon,
-  ShieldCheckIcon,
   ClockIcon,
   ChartBarIcon,
-  HeartIcon,
+  LightBulbIcon,
+  BookmarkIcon,
+  ArrowDownTrayIcon,
+  ShareIcon,
+  EyeIcon,
   StarIcon,
-  BookmarkIcon
+  UserGroupIcon,
+  ArrowTrendingUpIcon,
+  DocumentIcon,
+  BoltIcon,
+  CpuChipIcon,
+  BeakerIcon
 } from "@heroicons/react/24/outline";
 
-// Search filters
-const documentTypes = [
-  "All Types",
-  "PDF Documents", 
-  "Word Documents",
-  "Excel Spreadsheets",
-  "PowerPoint Presentations",
-  "Images",
-  "Other"
-];
+interface SearchResult {
+  id: string;
+  title: string;
+  snippet: string;
+  category: string;
+  classification: "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
+  uploadDate: string;
+  fileType: string;
+  size: string;
+  relevanceScore: number;
+  semanticMatches: string[];
+  aiInsights?: string[];
+  relatedDocuments?: string[];
+}
 
-const dateRanges = [
-  { value: "all", label: "All Time" },
-  { value: "today", label: "Today" },
-  { value: "week", label: "This Week" },
-  { value: "month", label: "This Month" },
-  { value: "quarter", label: "This Quarter" },
-  { value: "year", label: "This Year" },
-  { value: "custom", label: "Custom Range" }
-];
-
-const sortOptions = [
-  { value: "relevance", label: "Relevance" },
-  { value: "date_desc", label: "Date (Newest)" },
-  { value: "date_asc", label: "Date (Oldest)" },
-  { value: "name_asc", label: "Name (A-Z)" },
-  { value: "name_desc", label: "Name (Z-A)" },
-  { value: "size_desc", label: "Size (Largest)" },
-  { value: "size_asc", label: "Size (Smallest)" }
-];
-
-const securityClassifications = {
-  "PUBLIC": { color: "text-green-600 bg-green-100", icon: ShareIcon },
-  "INTERNAL": { color: "text-blue-600 bg-blue-100", icon: UserIcon },
-  "CONFIDENTIAL": { color: "text-yellow-600 bg-yellow-100", icon: LockClosedIcon },
-  "RESTRICTED": { color: "text-red-600 bg-red-100", icon: ShieldCheckIcon }
-};
-
-// Mock search results
-const mockResults = [
-  {
-    id: "1",
-    title: "Annual Report 2024",
-    description: "Comprehensive annual report covering organizational performance, financial statements, and strategic initiatives for the fiscal year 2024.",
-    classification: "PUBLIC",
-    category: "Annual Reports",
-    type: "PDF",
-    size: "2.4 MB",
-    uploadedBy: "Sarah Johnson",
-    uploadDate: "2024-01-15",
-    version: "1.0",
-    tags: ["annual-report", "financial", "2024", "performance"],
-    relevanceScore: 0.95,
-    aiSummary: "This document provides a comprehensive overview of organizational achievements and financial performance.",
-    sentiment: 0.8,
-    readability: 0.75,
-    downloadCount: 156,
-    viewCount: 423,
-    folder: "/Reports/Annual"
-  },
-  {
-    id: "2",
-    title: "Data Protection Policy",
-    description: "Updated data protection and privacy policy aligned with international standards and regulatory requirements.",
-    classification: "INTERNAL",
-    category: "Policies & Procedures",
-    type: "Word",
-    size: "856 KB",
-    uploadedBy: "Michael Chen",
-    uploadDate: "2024-01-10",
-    version: "2.1",
-    tags: ["policy", "data-protection", "privacy", "compliance"],
-    relevanceScore: 0.87,
-    aiSummary: "Policy document outlining data protection procedures and compliance requirements.",
-    sentiment: 0.6,
-    readability: 0.65,
-    downloadCount: 89,
-    viewCount: 234,
-    folder: "/Policies/Data"
-  },
-  {
-    id: "3",
-    title: "Q4 Financial Statement",
-    description: "Quarterly financial statement with detailed analysis of revenue, expenses, and budget allocations.",
-    classification: "CONFIDENTIAL",
-    category: "Financial Documents",
-    type: "Excel",
-    size: "1.2 MB",
-    uploadedBy: "Emily Rodriguez",
-    uploadDate: "2024-01-08",
-    version: "1.0",
-    tags: ["financial", "q4", "budget", "analysis"],
-    relevanceScore: 0.92,
-    aiSummary: "Detailed financial analysis showing strong quarterly performance with budget variance analysis.",
-    sentiment: 0.7,
-    readability: 0.8,
-    downloadCount: 67,
-    viewCount: 145,
-    folder: "/Finance/Quarterly"
-  },
-  {
-    id: "4",
-    title: "Board Meeting Minutes - January 2024",
-    description: "Official minutes from the January 2024 board meeting including strategic decisions and action items.",
-    classification: "RESTRICTED",
-    category: "Governance",
-    type: "PDF",
-    size: "492 KB",
-    uploadedBy: "David Wilson",
-    uploadDate: "2024-01-05",
-    version: "1.0",
-    tags: ["board", "meeting", "minutes", "governance"],
-    relevanceScore: 0.78,
-    aiSummary: "Board meeting documentation covering strategic planning and organizational governance matters.",
-    sentiment: 0.65,
-    readability: 0.7,
-    downloadCount: 12,
-    viewCount: 34,
-    folder: "/Governance/Board"
-  },
-  {
-    id: "5",
-    title: "Training Manual - Customer Service",
-    description: "Comprehensive training manual for customer service representatives covering best practices and procedures.",
-    classification: "INTERNAL",
-    category: "Training Materials",
-    type: "PDF",
-    size: "3.1 MB",
-    uploadedBy: "Lisa Thompson",
-    uploadDate: "2024-01-03",
-    version: "1.5",
-    tags: ["training", "customer-service", "manual", "procedures"],
-    relevanceScore: 0.83,
-    aiSummary: "Training resource providing comprehensive guidelines for customer service excellence.",
-    sentiment: 0.85,
-    readability: 0.9,
-    downloadCount: 234,
-    viewCount: 567,
-    folder: "/Training/Customer"
-  }
-];
-
-export default function DocumentSearchPage() {
-  const { data: session } = useSession();
-  
-  // All hooks must be called first, before any conditional logic
+export default function AISearchPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchMode, setSearchMode] = useState<"simple" | "advanced" | "semantic">("simple");
   const [isSearching, setIsSearching] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [searchResults, setSearchResults] = useState<typeof mockResults>([]);
-  const [totalResults, setTotalResults] = useState(0);
-  const [searchTime, setSearchTime] = useState(0);
-  
-  // Filters
+  const [searchMode, setSearchMode] = useState<"basic" | "semantic" | "advanced">("semantic");
   const [filters, setFilters] = useState({
-    documentType: "All Types",
-    classification: "all",
-    category: "all",
     dateRange: "all",
-    customDateFrom: "",
-    customDateTo: "",
-    uploadedBy: "",
-    tags: "",
-    minSize: "",
-    maxSize: "",
-    sortBy: "relevance"
+    category: "all",
+    classification: "all",
+    fileType: "all"
   });
-
-  // Advanced search
-  const [advancedSearch, setAdvancedSearch] = useState({
-    exactPhrase: "",
-    anyWords: "",
-    excludeWords: "",
-    fileNameContains: "",
-    contentLanguage: "all"
-  });
-
-  // Semantic search
-  const [semanticQuery, setSemanticQuery] = useState("");
-  const [semanticFilters, setSemanticFilters] = useState({
-    conceptSimilarity: 0.7,
-    includeRelated: true,
-    semanticBoost: true
-  });
-
-  // Check permissions after all hooks are declared
-  const hasAccess = session?.user?.permissions?.includes("documents.search") ||
-                   session?.user?.permissions?.includes("documents.full_access");
-
-  if (!hasAccess) {
-    return (
-      <ModulePage
-        metadata={{
-          title: "Document Search",
-          description: "Access Denied",
-          breadcrumbs: [
-            { name: "Document Repository", href: "/documents" },
-            { name: "Search" }
-          ]
-        }}
-      >
-        <div className="text-center py-12">
-          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Access Denied</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            You don't have permission to search documents.
-          </p>
-        </div>
-      </ModulePage>
-    );
-  }
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchHistory, setSearchHistory] = useState<string[]>([
+    "financial performance Q4",
+    "employee training materials",
+    "data protection compliance",
+    "marketing strategies 2024"
+  ]);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
 
   const handleSearch = async () => {
-    if (!searchQuery.trim() && searchMode !== "semantic") return;
+    if (!searchQuery.trim()) return;
     
     setIsSearching(true);
-    const startTime = Date.now();
     
-    // Simulate search
-    setTimeout(() => {
-      const filteredResults = mockResults.filter(doc => {
-        const query = searchQuery.toLowerCase();
-        const matchesQuery = !query || 
-          doc.title.toLowerCase().includes(query) ||
-          doc.description.toLowerCase().includes(query) ||
-          doc.tags.some(tag => tag.toLowerCase().includes(query)) ||
-          doc.category.toLowerCase().includes(query);
-        
-        const matchesType = filters.documentType === "All Types" || 
-          doc.type === filters.documentType.split(" ")[0];
-        
-        const matchesClassification = filters.classification === "all" || 
-          doc.classification === filters.classification;
-        
-        return matchesQuery && matchesType && matchesClassification;
-      });
-      
-      setSearchResults(filteredResults);
-      setTotalResults(filteredResults.length);
-      setSearchTime(Date.now() - startTime);
-      setIsSearching(false);
-    }, 1000);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+    // Add to search history
+    if (!searchHistory.includes(searchQuery)) {
+      setSearchHistory(prev => [searchQuery, ...prev.slice(0, 9)]);
     }
-  };
-
-  const getDocumentIcon = (type: string) => {
-    return DocumentIcon;
-  };
-
-  const formatFileSize = (size: string) => {
-    return size;
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    
+    // Simulate AI-powered search
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Generate mock results with AI insights
+    const mockResults: SearchResult[] = [
+      {
+        id: "1",
+        title: "Q4 2024 Financial Report - Executive Summary",
+        snippet: "Revenue increased by 15% in Q4 2024, with strong performance across all business units. Operating margin improved to 18.5%, exceeding targets...",
+        category: "Financial",
+        classification: "CONFIDENTIAL",
+        uploadDate: "2024-12-01",
+        fileType: "PDF",
+        size: "2.4 MB",
+        relevanceScore: 0.95,
+        semanticMatches: ["revenue growth", "quarterly performance", "financial analysis", "executive summary"],
+        aiInsights: [
+          "Document contains key financial metrics for Q4",
+          "Strong correlation with budget planning documents",
+          "References upcoming strategic initiatives"
+        ],
+        relatedDocuments: ["Q3 2024 Financial Report", "2024 Budget Plan", "Strategic Roadmap 2025"]
+      },
+      {
+        id: "2",
+        title: "Employee Training Manual v3.2 - Complete Guide",
+        snippet: "Updated procedures for onboarding new employees, including safety protocols, company policies, and digital transformation initiatives...",
+        category: "HR",
+        classification: "INTERNAL",
+        uploadDate: "2024-11-15",
+        fileType: "PDF",
+        size: "1.8 MB",
+        relevanceScore: 0.87,
+        semanticMatches: ["training procedures", "employee onboarding", "safety protocols", "digital transformation"],
+        aiInsights: [
+          "Recently updated with new digital processes",
+          "High engagement from HR department",
+          "Contains compliance requirements for 2024"
+        ],
+        relatedDocuments: ["HR Policy Handbook", "Safety Guidelines", "Digital Training Modules"]
+      },
+      {
+        id: "3",
+        title: "Data Protection Policy 2024 - GDPR Compliance",
+        snippet: "Comprehensive guidelines for handling customer data in compliance with international regulations including GDPR, CCPA, and local privacy laws...",
+        category: "Legal",
+        classification: "PUBLIC",
+        uploadDate: "2024-10-30",
+        fileType: "PDF",
+        size: "956 KB",
+        relevanceScore: 0.82,
+        semanticMatches: ["data protection", "privacy compliance", "customer data", "GDPR"],
+        aiInsights: [
+          "Updated for 2024 regulatory changes",
+          "Cross-references with technical documentation",
+          "Frequently accessed by development team"
+        ],
+        relatedDocuments: ["Security Guidelines", "Privacy Impact Assessments", "Technical Data Handling"]
+      },
+      {
+        id: "4",
+        title: "Marketing Strategy 2025 - Digital Transformation",
+        snippet: "Strategic roadmap for digital marketing initiatives, customer acquisition strategies, and brand positioning for the upcoming year...",
+        category: "Marketing",
+        classification: "INTERNAL",
+        uploadDate: "2024-11-20",
+        fileType: "PowerPoint",
+        size: "3.2 MB",
+        relevanceScore: 0.79,
+        semanticMatches: ["marketing strategy", "digital transformation", "customer acquisition", "brand positioning"],
+        aiInsights: [
+          "Aligns with financial targets from Q4 report",
+          "References competitor analysis documents",
+          "Contains actionable KPIs and metrics"
+        ],
+        relatedDocuments: ["Competitor Analysis", "Brand Guidelines", "Customer Research Report"]
+      }
+    ];
+    
+    setSearchResults(mockResults);
+    
+    // Generate AI suggestions based on search
+    const suggestions = [
+      `Related: ${searchQuery} trends`,
+      `Similar: documents like "${searchQuery}"`,
+      `Analysis: extract insights from ${searchQuery}`,
+      `Timeline: ${searchQuery} over time`
+    ];
+    setAiSuggestions(suggestions);
+    
+    setIsSearching(false);
   };
 
   const getClassificationColor = (classification: string) => {
-    return securityClassifications[classification as keyof typeof securityClassifications]?.color || "text-gray-600 bg-gray-100";
-  };
-
-  const getClassificationIcon = (classification: string) => {
-    return securityClassifications[classification as keyof typeof securityClassifications]?.icon || LockClosedIcon;
-  };
-
-  useEffect(() => {
-    // Auto-search on filter changes when there's a search query
-    if (searchQuery.trim()) {
-      const timeoutId = setTimeout(handleSearch, 500);
-      return () => clearTimeout(timeoutId);
+    switch (classification) {
+      case 'PUBLIC': return 'bg-green-100 text-green-800';
+      case 'INTERNAL': return 'bg-blue-100 text-blue-800';
+      case 'CONFIDENTIAL': return 'bg-orange-100 text-orange-800';
+      case 'RESTRICTED': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-  }, [filters, searchQuery]);
+  };
+
+  const getRelevanceColor = (score: number) => {
+    if (score >= 0.9) return 'text-green-600';
+    if (score >= 0.8) return 'text-blue-600';
+    if (score >= 0.7) return 'text-orange-600';
+    return 'text-gray-600';
+  };
 
   return (
     <ModulePage
       metadata={{
-        title: "Document Search",
-        description: "AI-powered document search and discovery",
+        title: "AI-Powered Document Search",
+        description: "Advanced semantic search with AI-powered document discovery and insights",
         breadcrumbs: [
           { name: "Document Repository", href: "/documents" },
-          { name: "Search" }
+          { name: "AI Search" }
         ]
       }}
     >
-      <div className="max-w-7xl mx-auto">
-        {/* Search Header */}
-        <div className="bg-white shadow rounded-lg p-6 mb-6">
-          {/* Search Mode Tabs */}
-          <div className="flex border-b border-gray-200 mb-4">
-            <button
-              onClick={() => setSearchMode("simple")}
-              className={`py-2 px-4 text-sm font-medium border-b-2 ${
-                searchMode === "simple" 
-                  ? "border-blue-500 text-blue-600" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Simple Search
-            </button>
-            <button
-              onClick={() => setSearchMode("advanced")}
-              className={`py-2 px-4 text-sm font-medium border-b-2 ${
-                searchMode === "advanced" 
-                  ? "border-blue-500 text-blue-600" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Advanced Search
-            </button>
-            <button
-              onClick={() => setSearchMode("semantic")}
-              className={`py-2 px-4 text-sm font-medium border-b-2 ${
-                searchMode === "semantic" 
-                  ? "border-blue-500 text-blue-600" 
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <SparklesIcon className="h-4 w-4 inline mr-1" />
-              AI Semantic Search
-            </button>
-          </div>
-
-          {/* Simple Search */}
-          {searchMode === "simple" && (
-            <div className="flex space-x-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Search documents by title, content, tags, or keywords..."
-                  />
-                </div>
-              </div>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
-                  showFilters 
-                    ? "text-blue-700 bg-blue-50 border-blue-300" 
-                    : "text-gray-700 bg-white hover:bg-gray-50"
-                }`}
-              >
-                <FunnelIcon className="h-4 w-4 mr-2" />
-                Filters
-              </button>
-              <button
-                onClick={handleSearch}
-                disabled={isSearching}
-                className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isSearching ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Searching...
-                  </>
-                ) : (
-                  <>
-                    <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
-                    Search
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Advanced Search */}
-          {searchMode === "advanced" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Exact Phrase
-                  </label>
-                  <input
-                    type="text"
-                    value={advancedSearch.exactPhrase}
-                    onChange={(e) => setAdvancedSearch(prev => ({ ...prev, exactPhrase: e.target.value }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Find documents with this exact phrase"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Any of These Words
-                  </label>
-                  <input
-                    type="text"
-                    value={advancedSearch.anyWords}
-                    onChange={(e) => setAdvancedSearch(prev => ({ ...prev, anyWords: e.target.value }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="word1 word2 word3"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Exclude Words
-                  </label>
-                  <input
-                    type="text"
-                    value={advancedSearch.excludeWords}
-                    onChange={(e) => setAdvancedSearch(prev => ({ ...prev, excludeWords: e.target.value }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Exclude documents containing these words"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    File Name Contains
-                  </label>
-                  <input
-                    type="text"
-                    value={advancedSearch.fileNameContains}
-                    onChange={(e) => setAdvancedSearch(prev => ({ ...prev, fileNameContains: e.target.value }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Search by filename"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  onClick={handleSearch}
-                  disabled={isSearching}
-                  className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                >
-                  <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
-                  Advanced Search
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Semantic Search */}
-          {searchMode === "semantic" && (
-            <div className="space-y-4">
+      <div className="max-w-full mx-auto px-4 space-y-6">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <CpuChipIcon className="h-8 w-8 text-white mr-3" />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Describe what you're looking for
-                </label>
-                <textarea
-                  rows={3}
-                  value={semanticQuery}
-                  onChange={(e) => setSemanticQuery(e.target.value)}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="E.g., 'Documents about financial performance and budget analysis' or 'Policies related to employee safety and workplace procedures'"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Similarity Threshold
-                  </label>
-                  <select
-                    value={semanticFilters.conceptSimilarity}
-                    onChange={(e) => setSemanticFilters(prev => ({ ...prev, conceptSimilarity: parseFloat(e.target.value) }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value={0.5}>Low (50%) - Broad results</option>
-                    <option value={0.7}>Medium (70%) - Balanced</option>
-                    <option value={0.85}>High (85%) - Precise results</option>
-                  </select>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="includeRelated"
-                    checked={semanticFilters.includeRelated}
-                    onChange={(e) => setSemanticFilters(prev => ({ ...prev, includeRelated: e.target.checked }))}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="includeRelated" className="ml-2 text-sm text-gray-700">
-                    Include related concepts
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="semanticBoost"
-                    checked={semanticFilters.semanticBoost}
-                    onChange={(e) => setSemanticFilters(prev => ({ ...prev, semanticBoost: e.target.checked }))}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="semanticBoost" className="ml-2 text-sm text-gray-700">
-                    AI relevance boost
-                  </label>
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  onClick={handleSearch}
-                  disabled={isSearching || !semanticQuery.trim()}
-                  className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-                >
-                  <SparklesIcon className="h-4 w-4 mr-2" />
-                  AI Semantic Search
-                </button>
+                <h1 className="text-2xl font-bold text-white">AI-Powered Search</h1>
+                <p className="text-blue-100">Advanced semantic search with intelligent document discovery</p>
               </div>
             </div>
-          )}
+            <div className="hidden md:flex items-center space-x-4 text-white">
+              <div className="flex items-center">
+                <CpuChipIcon className="h-5 w-5 mr-2" />
+                <span className="text-sm">Neural Search</span>
+              </div>
+              <div className="flex items-center">
+                <BeakerIcon className="h-5 w-5 mr-2" />
+                <span className="text-sm">AI Insights</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Filters Panel */}
-        {showFilters && (
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Search Filters</h3>
-              <button
-                onClick={() => setFilters({
-                  documentType: "All Types",
-                  classification: "all",
-                  category: "all",
-                  dateRange: "all",
-                  customDateFrom: "",
-                  customDateTo: "",
-                  uploadedBy: "",
-                  tags: "",
-                  minSize: "",
-                  maxSize: "",
-                  sortBy: "relevance"
-                })}
-                className="text-sm text-blue-600 hover:text-blue-700"
-              >
-                Clear All
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Document Type
-                </label>
-                <select
-                  value={filters.documentType}
-                  onChange={(e) => setFilters(prev => ({ ...prev, documentType: e.target.value }))}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {documentTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Classification
-                </label>
-                <select
-                  value={filters.classification}
-                  onChange={(e) => setFilters(prev => ({ ...prev, classification: e.target.value }))}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Classifications</option>
-                  <option value="PUBLIC">Public</option>
-                  <option value="INTERNAL">Internal</option>
-                  <option value="CONFIDENTIAL">Confidential</option>
-                  <option value="RESTRICTED">Restricted</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date Range
-                </label>
-                <select
-                  value={filters.dateRange}
-                  onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {dateRanges.map(range => (
-                    <option key={range.value} value={range.value}>{range.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sort By
-                </label>
-                <select
-                  value={filters.sortBy}
-                  onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value }))}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {sortOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {filters.dateRange === "custom" && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      From Date
-                    </label>
-                    <input
-                      type="date"
-                      value={filters.customDateFrom}
-                      onChange={(e) => setFilters(prev => ({ ...prev, customDateFrom: e.target.value }))}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      To Date
-                    </label>
-                    <input
-                      type="date"
-                      value={filters.customDateTo}
-                      onChange={(e) => setFilters(prev => ({ ...prev, customDateTo: e.target.value }))}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Uploaded By
-                </label>
-                <input
-                  type="text"
-                  value={filters.uploadedBy}
-                  onChange={(e) => setFilters(prev => ({ ...prev, uploadedBy: e.target.value }))}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="User name..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tags
-                </label>
-                <input
-                  type="text"
-                  value={filters.tags}
-                  onChange={(e) => setFilters(prev => ({ ...prev, tags: e.target.value }))}
-                  className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="tag1, tag2..."
-                />
+        {/* Search Interface */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          {/* Search Modes */}
+          <div className="mb-6">
+            <div className="flex items-center space-x-4 mb-4">
+              <span className="text-sm font-medium text-gray-700">Search Mode:</span>
+              <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                {[
+                  { key: 'basic', label: 'Basic', icon: MagnifyingGlassIcon },
+                  { key: 'semantic', label: 'Semantic AI', icon: CpuChipIcon },
+                  { key: 'advanced', label: 'Advanced', icon: AdjustmentsHorizontalIcon }
+                ].map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => setSearchMode(key as any)}
+                    className={`px-4 py-2 text-sm font-medium flex items-center space-x-2 ${
+                      searchMode === key
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{label}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
-        )}
 
-        {/* Search Results */}
-        {(searchResults.length > 0 || isSearching) && (
-          <div className="bg-white shadow rounded-lg">
-            {/* Results Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  {isSearching ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
-                      <span className="text-sm text-gray-600">Searching documents...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-4">
-                      <span className="text-sm text-gray-600">
-                        {totalResults} result{totalResults !== 1 ? 's' : ''} found
-                      </span>
-                      <span className="text-sm text-gray-400">
-                        ({searchTime}ms)
-                      </span>
-                    </div>
-                  )}
+          {/* Search Input */}
+          <div className="relative mb-6">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              {searchMode === 'semantic' ? (
+                <SparklesIcon className="h-5 w-5 text-blue-400" />
+              ) : (
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              )}
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder={
+                searchMode === 'semantic' 
+                  ? "Ask a question or describe what you're looking for..."
+                  : "Enter keywords to search documents..."
+              }
+              className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+            />
+            <button
+              onClick={handleSearch}
+              disabled={!searchQuery.trim() || isSearching}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                {isSearching ? 'Searching...' : 'Search'}
+              </button>
+            </button>
+          </div>
+
+          {/* AI Suggestions */}
+          {searchMode === 'semantic' && aiSuggestions.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <LightBulbIcon className="h-4 w-4 mr-1" />
+                AI Suggestions
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {aiSuggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSearchQuery(suggestion)}
+                    className="inline-flex items-center px-3 py-1 border border-blue-200 text-sm rounded-full text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                  >
+                    <SparklesIcon className="h-3 w-3 mr-1" />
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Search History */}
+          {searchHistory.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <ClockIcon className="h-4 w-4 mr-1" />
+                Recent Searches
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {searchHistory.slice(0, 5).map((query, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSearchQuery(query)}
+                    className="inline-flex items-center px-3 py-1 border border-gray-200 text-sm rounded-full text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    {query}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-gray-700">Filters</h3>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-1 ${viewMode === 'list' ? 'text-blue-600' : 'text-gray-400'}`}
+                  >
+                    <ListBulletIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-1 ${viewMode === 'grid' ? 'text-blue-600' : 'text-gray-400'}`}
+                  >
+                    <ViewColumnsIcon className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
             </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <select
+                value={filters.category}
+                onChange={(e) => setFilters({...filters, category: e.target.value})}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="all">All Categories</option>
+                <option value="financial">Financial</option>
+                <option value="hr">HR</option>
+                <option value="legal">Legal</option>
+                <option value="marketing">Marketing</option>
+                <option value="technical">Technical</option>
+              </select>
+              
+              <select
+                value={filters.classification}
+                onChange={(e) => setFilters({...filters, classification: e.target.value})}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="all">All Classifications</option>
+                <option value="public">Public</option>
+                <option value="internal">Internal</option>
+                <option value="confidential">Confidential</option>
+                <option value="restricted">Restricted</option>
+              </select>
+              
+              <select
+                value={filters.fileType}
+                onChange={(e) => setFilters({...filters, fileType: e.target.value})}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="all">All File Types</option>
+                <option value="pdf">PDF</option>
+                <option value="word">Word</option>
+                <option value="excel">Excel</option>
+                <option value="powerpoint">PowerPoint</option>
+              </select>
+              
+              <select
+                value={filters.dateRange}
+                onChange={(e) => setFilters({...filters, dateRange: e.target.value})}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="quarter">This Quarter</option>
+                <option value="year">This Year</option>
+              </select>
+            </div>
+          </div>
+        </div>
 
-            {/* Results List */}
-            <div className="divide-y divide-gray-200">
-              {searchResults.map((doc) => {
-                const DocIcon = getDocumentIcon(doc.type);
-                const ClassificationIcon = getClassificationIcon(doc.classification);
-                
-                return (
-                  <div key={doc.id} className="p-6 hover:bg-gray-50">
+        {/* Search Results */}
+        {searchResults.length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-900">
+                  Search Results ({searchResults.length})
+                </h2>
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <span>AI-powered semantic matching</span>
+                  <SparklesIcon className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-6">
+                {searchResults.map((result) => (
+                  <div key={result.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-4 flex-1">
-                        <div className="flex-shrink-0">
-                          <DocIcon className="h-8 w-8 text-gray-400" />
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <DocumentIcon className="h-5 w-5 text-saywhat-orange" />
+                          <h3 className="text-lg font-medium text-gray-900 hover:text-blue-600 cursor-pointer">
+                            {result.title}
+                          </h3>
+                          <span className={`px-2 py-1 text-xs rounded-full ${getClassificationColor(result.classification)}`}>
+                            {result.classification}
+                          </span>
+                          <span className={`text-sm font-medium ${getRelevanceColor(result.relevanceScore)}`}>
+                            {Math.round(result.relevanceScore * 100)}% match
+                          </span>
                         </div>
                         
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="text-lg font-medium text-gray-900 truncate">
-                              {doc.title}
-                            </h3>
-                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getClassificationColor(doc.classification)}`}>
-                              <ClassificationIcon className="h-3 w-3 mr-1" />
-                              {doc.classification}
-                            </span>
-                            {searchMode === "simple" && (
-                              <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                <SparklesIcon className="h-3 w-3 mr-1" />
-                                {(doc.relevanceScore * 100).toFixed(0)}% match
-                              </span>
-                            )}
-                          </div>
-                          
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                            {doc.description}
-                          </p>
+                        <p className="text-gray-600 mb-3">{result.snippet}</p>
+                        
+                        <div className="flex items-center space-x-6 text-sm text-gray-500 mb-4">
+                          <span>{result.fileType} • {result.size}</span>
+                          <span>{new Date(result.uploadDate).toLocaleDateString()}</span>
+                          <span>{result.category}</span>
+                        </div>
 
-                          {doc.aiSummary && (
-                            <div className="mb-3 p-3 bg-blue-50 rounded-lg">
-                              <div className="flex items-center mb-1">
-                                <SparklesIcon className="h-4 w-4 text-blue-600 mr-1" />
-                                <span className="text-xs font-medium text-blue-700">AI Summary</span>
-                              </div>
-                              <p className="text-sm text-blue-700">{doc.aiSummary}</p>
-                            </div>
-                          )}
-                          
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-3">
-                            <span className="flex items-center">
-                              <FolderIcon className="h-4 w-4 mr-1" />
-                              {doc.category}
-                            </span>
-                            <span className="flex items-center">
-                              <UserIcon className="h-4 w-4 mr-1" />
-                              {doc.uploadedBy}
-                            </span>
-                            <span className="flex items-center">
-                              <CalendarIcon className="h-4 w-4 mr-1" />
-                              {formatDate(doc.uploadDate)}
-                            </span>
-                            <span>{formatFileSize(doc.size)}</span>
-                            <span>v{doc.version}</span>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2 mb-3">
-                            {doc.tags.map(tag => (
-                              <span key={tag} className="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
-                                <TagIcon className="h-3 w-3 mr-1" />
-                                {tag}
+                        {/* Semantic Matches */}
+                        <div className="mb-4">
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <CpuChipIcon className="h-4 w-4 mr-1" />
+                            Semantic Matches
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {result.semanticMatches.map((match, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                              >
+                                {match}
                               </span>
                             ))}
                           </div>
-
-                          {/* AI Analysis Metrics */}
-                          <div className="flex items-center space-x-6 text-xs text-gray-500">
-                            <span className="flex items-center">
-                              <HeartIcon className="h-3 w-3 mr-1" />
-                              {(doc.sentiment * 100).toFixed(0)}% positive
-                            </span>
-                            <span className="flex items-center">
-                              <ChartBarIcon className="h-3 w-3 mr-1" />
-                              {(doc.readability * 100).toFixed(0)}% readable
-                            </span>
-                            <span className="flex items-center">
-                              <EyeIcon className="h-3 w-3 mr-1" />
-                              {doc.viewCount} views
-                            </span>
-                            <span className="flex items-center">
-                              <ArrowDownTrayIcon className="h-3 w-3 mr-1" />
-                              {doc.downloadCount} downloads
-                            </span>
-                          </div>
                         </div>
+
+                        {/* AI Insights */}
+                        {result.aiInsights && result.aiInsights.length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                              <SparklesIcon className="h-4 w-4 mr-1" />
+                              AI Insights
+                            </h4>
+                            <ul className="space-y-1">
+                              {result.aiInsights.map((insight, index) => (
+                                <li key={index} className="text-sm text-gray-600 flex items-start">
+                                  <span className="w-1 h-1 bg-blue-400 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                                  {insight}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Related Documents */}
+                        {result.relatedDocuments && result.relatedDocuments.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-2">Related Documents</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {result.relatedDocuments.map((doc, index) => (
+                                <button
+                                  key={index}
+                                  className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition-colors"
+                                >
+                                  <DocumentTextIcon className="h-3 w-3 mr-1" />
+                                  {doc}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                       
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
-                          <BookmarkIcon className="h-4 w-4" />
+                      <div className="flex items-center space-x-2 ml-6">
+                        <button className="p-2 text-gray-400 hover:text-gray-600 rounded">
+                          <EyeIcon className="h-5 w-5" />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
-                          <ShareIcon className="h-4 w-4" />
+                        <button className="p-2 text-gray-400 hover:text-gray-600 rounded">
+                          <ArrowDownTrayIcon className="h-5 w-5" />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
-                          <EyeIcon className="h-4 w-4" />
+                        <button className="p-2 text-gray-400 hover:text-gray-600 rounded">
+                          <ShareIcon className="h-5 w-5" />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
-                          <ArrowDownTrayIcon className="h-4 w-4" />
+                        <button className="p-2 text-gray-400 hover:text-gray-600 rounded">
+                          <BookmarkIcon className="h-5 w-5" />
                         </button>
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* No Results */}
-            {!isSearching && searchResults.length === 0 && searchQuery && (
-              <div className="text-center py-12">
-                <MagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No documents found</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Try adjusting your search terms or filters.
-                </p>
+                ))}
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* Initial State */}
-        {!searchQuery && searchResults.length === 0 && !isSearching && (
-          <div className="bg-white shadow rounded-lg p-12 text-center">
-            <MagnifyingGlassIcon className="mx-auto h-16 w-16 text-gray-400" />
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Search Documents</h3>
-            <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-              Use the search bar above to find documents by title, content, tags, or use our AI-powered semantic search for concept-based discovery.
-            </p>
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <MagnifyingGlassIcon className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                <h4 className="text-sm font-medium text-blue-900">Simple Search</h4>
-                <p className="text-xs text-blue-700 mt-1">Quick keyword search</p>
+        {/* Loading State */}
+        {isSearching && (
+          <div className="bg-white rounded-lg shadow-lg p-12">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                <SparklesIcon className="h-8 w-8 text-blue-600 animate-pulse" />
               </div>
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <AdjustmentsHorizontalIcon className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                <h4 className="text-sm font-medium text-purple-900">Advanced Search</h4>
-                <p className="text-xs text-purple-700 mt-1">Detailed search criteria</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">AI is analyzing your query...</h3>
+              <p className="text-gray-600">Performing semantic search and generating insights</p>
+              <div className="mt-4 flex justify-center">
+                <div className="flex space-x-2">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
               </div>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <SparklesIcon className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                <h4 className="text-sm font-medium text-green-900">AI Semantic</h4>
-                <p className="text-xs text-green-700 mt-1">Concept-based discovery</p>
-              </div>
+            </div>
+          </div>
+        )}
+
+        {/* No Results */}
+        {!isSearching && searchResults.length === 0 && searchQuery && (
+          <div className="bg-white rounded-lg shadow-lg p-12">
+            <div className="text-center">
+              <MagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No documents found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Try adjusting your search terms or filters to find what you're looking for.
+              </p>
             </div>
           </div>
         )}

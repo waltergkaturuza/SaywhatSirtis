@@ -66,6 +66,10 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
       const result = await response.json()
       
       if (!response.ok) {
+        // Handle authentication errors specifically
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please sign in at /auth/signin with credentials: admin@saywhat.org / admin123')
+        }
         throw new Error(result.message || result.error || 'Failed to fetch dashboard data')
       }
       
@@ -77,7 +81,14 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
       }
     } catch (error) {
       console.error('Dashboard fetch error:', error)
-      setError(error instanceof Error ? error.message : 'Failed to load dashboard data')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load dashboard data'
+      setError(errorMessage)
+      
+      // If authentication error, provide helpful guidance
+      if (errorMessage.includes('Authentication required')) {
+        console.log('🔐 AUTHENTICATION NEEDED: Please sign in at http://localhost:3000/auth/signin')
+        console.log('📧 Use credentials: admin@saywhat.org / admin123')
+      }
     } finally {
       setLoading(false)
     }

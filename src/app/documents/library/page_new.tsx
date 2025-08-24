@@ -271,7 +271,7 @@ export default function DocumentLibraryPage() {
         ]
       }}
     >
-      <div className="max-w-full mx-auto px-4">
+      <div className="max-w-7xl mx-auto">
         {/* Toolbar */}
         <div className="bg-white shadow rounded-lg p-4 mb-6">
           <div className="flex items-center justify-between">

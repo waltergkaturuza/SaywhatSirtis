@@ -19,55 +19,14 @@ import {
   CalendarIcon
 } from "@heroicons/react/24/outline";
 
-// Mock Google Drive data
-const googleDriveFiles = [
-  {
-    id: "1",
-    name: "Project Documentation.docx",
-    type: "document",
-    size: "2.5 MB",
-    modified: "2024-01-15",
-    owner: "john.doe@saywhat.org",
-    shared: true,
-    url: "https://drive.google.com/file/d/1abc..."
-  },
-  {
-    id: "2",
-    name: "Budget Spreadsheet Q1.xlsx",
-    type: "spreadsheet",
-    size: "1.8 MB",
-    modified: "2024-01-14",
-    owner: "sarah.johnson@saywhat.org",
-    shared: false,
-    url: "https://drive.google.com/file/d/2def..."
-  },
-  {
-    id: "3",
-    name: "Team Photos",
-    type: "folder",
-    size: "45 files",
-    modified: "2024-01-13",
-    owner: "team@saywhat.org",
-    shared: true,
-    url: "https://drive.google.com/drive/folders/3ghi..."
-  },
-  {
-    id: "4",
-    name: "Presentation Template.pptx",
-    type: "presentation",
-    size: "12.3 MB",
-    modified: "2024-01-12",
-    owner: "admin@saywhat.org",
-    shared: true,
-    url: "https://drive.google.com/file/d/4jkl..."
-  }
-];
+// Initialize with empty data - will be populated from API
+const googleDriveFiles: any[] = [];
 
 const syncStatus = {
-  connected: true,
-  lastSync: "2024-01-15 14:30",
-  totalFiles: 156,
-  syncedFiles: 148,
+  connected: false,
+  lastSync: "Never",
+  totalFiles: 0,
+  syncedFiles: 0,
   pendingFiles: 8,
   storageUsed: "2.3 GB",
   storageLimit: "15 GB"

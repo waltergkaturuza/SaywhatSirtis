@@ -22,49 +22,61 @@ import {
   MagnifyingGlassIcon
 } from "@heroicons/react/24/outline";
 
-// Document categories
+// Document categories - Updated as per requirements (in alphabetical order)
 const documentCategories = [
-  "Annual Reports",
-  "Policies & Procedures", 
+  "Activity reports",
+  "Annual Reports", 
+  "Baseline and end line reports",
+  "Case Management reports",
+  "Departmental monthly reports",
+  "Disciplinary reports",
+  "Donor reports",
+  "Employee contracts",
   "Financial Documents",
-  "Research Papers",
-  "Governance",
-  "Medical Protocols",
-  "Program Reports",
-  "Training Materials",
+  "Flagship Events reports",
+  "Grant Proposals",
+  "Grants Agreements",
   "Legal Documents",
-  "Marketing Materials"
+  "Management accounts reports",
+  "Marketing Materials",
+  "MOUs",
+  "Observer Newsletters",
+  "Policies & Procedures",
+  "Pre-Award Assessments",
+  "Research BOOKS",
+  "Research Papers",
+  "Training Materials"
 ];
 
-// Security classifications
+// Security classifications - Updated for internal/confidential focus with SAYWHAT colors
 const securityClassifications = {
   "PUBLIC": {
     level: 0,
-    description: "Information that can be freely shared with the public",
+    description: "Information accessible to all employees within the organization",
     color: "text-green-600 bg-green-100",
     icon: ShareIcon,
-    examples: ["Annual reports", "Public statements", "Marketing materials"]
-  },
-  "INTERNAL": {
-    level: 1,
-    description: "Information for internal organizational use only",
-    color: "text-blue-600 bg-blue-100", 
-    icon: UserIcon,
-    examples: ["Internal policies", "Staff communications", "Program updates"]
+    examples: ["General policies", "Training materials", "Organization-wide announcements"]
   },
   "CONFIDENTIAL": {
     level: 2,
-    description: "Sensitive information requiring authorized access",
-    color: "text-yellow-600 bg-yellow-100",
+    description: "Sensitive information requiring authorized access - confidential level",
+    color: "text-saywhat-orange bg-orange-100",
     icon: LockClosedIcon,
-    examples: ["Financial reports", "Personnel files", "Audit documents"]
+    examples: ["Financial reports", "Personnel files", "Donor reports", "Management accounts"]
   },
-  "RESTRICTED": {
+  "SECRET": {
     level: 3,
-    description: "Highly sensitive information with limited access",
+    description: "Highly sensitive information - secret level classification",
+    color: "text-saywhat-red bg-red-100",
+    icon: ShieldCheckIcon,
+    examples: ["Strategic plans", "Board minutes", "Grant proposals", "Legal documents"]
+  },
+  "TOP_SECRET": {
+    level: 4,
+    description: "Highly sensitive information - top secret level classification",
     color: "text-red-600 bg-red-100",
     icon: ShieldCheckIcon,
-    examples: ["Board minutes", "Legal documents", "Strategic plans"]
+    examples: ["Executive decisions", "Sensitive investigations", "Critical strategic documents"]
   }
 };
 
@@ -93,24 +105,17 @@ export default function DocumentUploadPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   
-  // Form data
+  // Form data - Simplified as per requirements
   const [formData, setFormData] = useState({
     title: "",
-    description: "",
     category: "",
-    classification: "INTERNAL",
+    classification: "PUBLIC",
     accessLevel: "organization",
-    workflowType: "none",
-    tags: [] as string[],
     folder: "/",
-    version: "1.0",
-    retentionPeriod: "",
-    expiryDate: "",
     keywords: "",
     customMetadata: {} as Record<string, string>
   });
 
-  const [tagInput, setTagInput] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState<{
     summary?: string;
     suggestedTags?: string[];
@@ -164,21 +169,27 @@ export default function DocumentUploadPage() {
     // Simulate AI analysis
     if (files.length > 0) {
       setUploadState("processing");
-      setTimeout(() => {
-        const mockAnalysis = {
-          summary: "Document appears to contain organizational policy information with moderate complexity.",
-          suggestedTags: ["policy", "organizational", "guidelines", "procedures"],
-          suggestedClassification: "INTERNAL",
-          contentType: files[0].type.includes('pdf') ? "PDF Document" : "Office Document",
-          language: "English",
-          readabilityScore: 0.75,
-          sentimentScore: 0.6,
-          keyTopics: ["Policy Implementation", "Organizational Procedures", "Compliance Requirements"],
-          securityRisks: []
-        };
-        setAiAnalysis(mockAnalysis);
+      try {
+        // Here would be actual AI analysis API call
+        // For now, set minimal analysis
+        setTimeout(() => {
+          setAiAnalysis({
+            summary: "Document uploaded successfully.",
+            suggestedTags: [],
+            suggestedClassification: "PUBLIC",
+            contentType: files[0].type.includes('pdf') ? "PDF Document" : "Office Document",
+            language: "English",
+            readabilityScore: 0.5,
+            sentimentScore: 0.5,
+            keyTopics: [],
+            securityRisks: []
+          });
+          setUploadState("idle");
+        }, 1000);
+      } catch (error) {
+        console.error('Error analyzing document:', error);
         setUploadState("idle");
-      }, 2000);
+      }
     }
   };
 
@@ -195,32 +206,6 @@ export default function DocumentUploadPage() {
 
   const removeFile = (index: number) => {
     setSelectedFiles(files => files.filter((_, i) => i !== index));
-  };
-
-  const addTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tagInput.trim()]
-      }));
-      setTagInput("");
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(t => t !== tag)
-    }));
-  };
-
-  const applySuggestedTags = () => {
-    if (aiAnalysis?.suggestedTags) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...new Set([...prev.tags, ...aiAnalysis.suggestedTags!])]
-      }));
-    }
   };
 
   const applySuggestedClassification = () => {
@@ -240,24 +225,39 @@ export default function DocumentUploadPage() {
       return;
     }
 
+    if (!formData.title || !formData.category) {
+      alert("Please fill in the title and select a category.");
+      return;
+    }
+
     setUploadState("uploading");
     setUploadProgress(0);
 
-    // Simulate upload progress
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return prev;
-        }
-        return prev + Math.random() * 15;
-      });
-    }, 200);
+    try {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const uploadFormData = new FormData();
+        
+        uploadFormData.append('file', file);
+        uploadFormData.append('title', formData.title);
+        uploadFormData.append('category', formData.category);
+        uploadFormData.append('classification', formData.classification);
+        
+        const response = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: uploadFormData,
+        });
 
-    // Simulate upload process
-    setTimeout(() => {
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Upload failed');
+        }
+
+        // Update progress
+        setUploadProgress(((i + 1) / selectedFiles.length) * 100);
+      }
+
       setUploadState("success");
       
       // Reset form after success
@@ -266,23 +266,22 @@ export default function DocumentUploadPage() {
         setSelectedFiles([]);
         setFormData({
           title: "",
-          description: "",
           category: "",
-          classification: "INTERNAL",
+          classification: "PUBLIC",
           accessLevel: "organization",
-          workflowType: "none",
-          tags: [],
           folder: "/",
-          version: "1.0",
-          retentionPeriod: "",
-          expiryDate: "",
           keywords: "",
           customMetadata: {}
         });
         setAiAnalysis(null);
         setUploadProgress(0);
       }, 2000);
-    }, 3000);
+      
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadState("error");
+      alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const selectedClassification = securityClassifications[formData.classification as keyof typeof securityClassifications];
@@ -299,7 +298,18 @@ export default function DocumentUploadPage() {
         ]
       }}
     >
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-full mx-auto px-4">
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-saywhat-orange to-saywhat-red rounded-lg shadow-lg p-8 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white">Upload Documents</h1>
+              <p className="text-orange-100 mt-2">Add new documents to the SAYWHAT repository with AI-powered analysis</p>
+            </div>
+            <CloudArrowUpIcon className="h-16 w-16 text-white opacity-80" />
+          </div>
+        </div>
+
         {uploadState === "success" ? (
           <div className="bg-white shadow rounded-lg p-8 text-center">
             <CheckCircleIcon className="mx-auto h-16 w-16 text-green-500" />
@@ -309,7 +319,7 @@ export default function DocumentUploadPage() {
             </p>
             <button
               onClick={() => window.location.href = '/documents'}
-              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-saywhat-orange hover:bg-orange-600"
             >
               Go to Document Library
             </button>
@@ -330,7 +340,7 @@ export default function DocumentUploadPage() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-saywhat-orange hover:bg-orange-600"
                   >
                     Select Files
                   </button>
@@ -389,7 +399,7 @@ export default function DocumentUploadPage() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-saywhat-orange h-2 rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
                     ></div>
                   </div>
@@ -398,9 +408,9 @@ export default function DocumentUploadPage() {
 
               {/* AI Processing */}
               {uploadState === "processing" && (
-                <div className="mt-6 flex items-center justify-center p-4 bg-blue-50 rounded">
-                  <CpuChipIcon className="h-5 w-5 text-blue-600 mr-2 animate-pulse" />
-                  <span className="text-sm text-blue-700">AI is analyzing your document...</span>
+                <div className="mt-6 flex items-center justify-center p-4 bg-orange-50 rounded">
+                  <CpuChipIcon className="h-5 w-5 text-saywhat-orange mr-2 animate-pulse" />
+                  <span className="text-sm text-saywhat-orange">AI is analyzing your document...</span>
                 </div>
               )}
             </div>
@@ -428,26 +438,6 @@ export default function DocumentUploadPage() {
                       <div>Language: <span className="font-medium">{aiAnalysis.language}</span></div>
                       <div>Readability: <span className="font-medium">{(aiAnalysis.readabilityScore! * 100).toFixed(0)}%</span></div>
                       <div>Sentiment: <span className="font-medium">{(aiAnalysis.sentimentScore! * 100).toFixed(0)}% Positive</span></div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-gray-900">Suggested Tags</h4>
-                      <button
-                        type="button"
-                        onClick={applySuggestedTags}
-                        className="text-xs text-blue-600 hover:text-blue-700"
-                      >
-                        Apply All
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {aiAnalysis.suggestedTags?.map(tag => (
-                        <span key={tag} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {tag}
-                        </span>
-                      ))}
                     </div>
                   </div>
 
@@ -497,7 +487,7 @@ export default function DocumentUploadPage() {
                     required
                     value={formData.title}
                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-saywhat-orange focus:border-saywhat-orange"
                     placeholder="Enter document title..."
                   />
                 </div>
@@ -519,19 +509,6 @@ export default function DocumentUploadPage() {
                   </select>
                 </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Provide a detailed description..."
-                  />
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Folder Path
@@ -547,57 +524,6 @@ export default function DocumentUploadPage() {
                       className="flex-1 block w-full rounded-none rounded-r-md border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="/Documents/Reports/"
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Version
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.version}
-                    onChange={(e) => setFormData(prev => ({ ...prev, version: e.target.value }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="1.0"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tags
-                  </label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {formData.tags.map(tag => (
-                      <span key={tag} className="inline-flex items-center px-2 py-1 rounded text-sm bg-blue-100 text-blue-800">
-                        <TagIcon className="h-3 w-3 mr-1" />
-                        {tag}
-                        <button
-                          type="button"
-                          onClick={() => removeTag(tag)}
-                          className="ml-2 text-blue-600 hover:text-blue-800"
-                        >
-                          <XMarkIcon className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex">
-                    <input
-                      type="text"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                      className="flex-1 block w-full rounded-l-md border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Add tags..."
-                    />
-                    <button
-                      type="button"
-                      onClick={addTag}
-                      className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 text-gray-700 hover:bg-gray-100"
-                    >
-                      Add
-                    </button>
                   </div>
                 </div>
               </div>
@@ -659,35 +585,6 @@ export default function DocumentUploadPage() {
                     ))}
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Approval Workflow
-                  </label>
-                  <select
-                    value={formData.workflowType}
-                    onChange={(e) => setFormData(prev => ({ ...prev, workflowType: e.target.value }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {workflowTypes.map(workflow => (
-                      <option key={workflow.value} value={workflow.value}>
-                        {workflow.label} - {workflow.description}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Expiry Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.expiryDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, expiryDate: e.target.value }))}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
               </div>
             </div>
 
@@ -713,7 +610,7 @@ export default function DocumentUploadPage() {
                 <button
                   type="submit"
                   disabled={uploadState === "uploading" || selectedFiles.length === 0}
-                  className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                  className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-saywhat-orange hover:bg-orange-600 disabled:opacity-50"
                 >
                   {uploadState === "uploading" ? (
                     <>

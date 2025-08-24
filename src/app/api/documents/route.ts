@@ -1,40 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { PrismaClient } from '@prisma/client'
 
-// Document interface
-interface Document {
-  id: number;
-  title: string;
-  content: string;
-  author: string;
-  created: string;
-  modified: string;
-  tags: string[];
-  metadata: Record<string, unknown>;
-  version: number;
-  type: string;
-  size: string;
-}
-
-// Mock document repository - in production, use your actual document storage
-const documents: Document[] = [
-  {
-    id: 1,
-    title: "Annual Report 2024",
-    content: "This is the annual report for 2024...",
-    author: "admin@sirtis.com",
-    created: "2024-01-15T10:00:00Z",
-    modified: "2024-01-15T10:00:00Z",
-    tags: ["report", "annual", "financial"],
-    metadata: { department: "Finance", confidential: true },
-    version: 1,
-    type: "pdf",
-    size: "2.3MB"
-  }
-]
-
-let nextId = 2
+const prisma = new PrismaClient()
 
 export async function GET() {
   try {
@@ -44,22 +13,65 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Filter documents based on user permissions
-    const userDocuments = documents.map(doc => ({
+    // Fetch documents from database
+    const documents = await prisma.document.findMany({
+      include: {
+        uploader: {
+          select: {
+            name: true,
+            email: true
+          }
+        },
+        project: {
+          select: {
+            name: true
+          }
+        }
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
+    })
+
+    // Transform data for frontend
+    const transformedDocuments = documents.map(doc => ({
       id: doc.id,
       title: doc.title,
-      content: doc.content,
-      author: doc.author,
-      created: doc.created,
-      modified: doc.modified,
-      tags: doc.tags,
-      metadata: doc.metadata,
-      version: doc.version,
-      type: doc.type,
-      size: doc.size
+      fileName: doc.fileName,
+      description: doc.description,
+      classification: 'PUBLIC', // doc.classification,
+      category: doc.category,
+      type: doc.mimeType?.split('/')[1]?.toUpperCase() || 'FILE',
+      size: doc.fileSize ? `${(doc.fileSize / 1024 / 1024).toFixed(1)} MB` : 'Unknown',
+      uploadedBy: 'Unknown', // doc.uploader?.name || doc.uploader?.email || 'Unknown',
+      uploadDate: doc.createdAt.toISOString(),
+      lastModified: doc.updatedAt.toISOString(),
+      version: doc.version || '1.0',
+      tags: doc.tags ? JSON.parse(doc.tags) : [],
+      folder: `/${doc.category.toLowerCase().replace(/_/g, '-')}`,
+      downloadCount: 0, // TODO: Implement download tracking
+      viewCount: 0, // TODO: Implement view tracking
+      favoriteCount: 0, // TODO: Implement favorites
+      thumbnail: null,
+      aiScore: {
+        sentiment: 0.7,
+        readability: 0.75,
+        quality: 0.8
+      },
+      permissions: {
+        canView: true,
+        canDownload: true,
+        canEdit: doc.uploadedBy === session.user.id,
+        canDelete: doc.uploadedBy === session.user.id,
+        canShare: true // doc.classification !== 'TOP_SECRET'
+      }
     }))
 
-    return NextResponse.json(userDocuments)
+    return NextResponse.json({
+      success: true,
+      documents: transformedDocuments,
+      total: transformedDocuments.length
+    })
   } catch (error) {
     console.error('Failed to fetch documents:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -74,25 +86,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { title, content, tags, metadata } = await request.json()
+    const { title, fileName, filePath, fileSize, mimeType, category, classification, description } = await request.json()
     
-    const newDocument: Document = {
-      id: nextId++,
-      title,
-      content,
-      author: session.user.email,
-      created: new Date().toISOString(),
-      modified: new Date().toISOString(),
-      tags: tags || [],
-      metadata: metadata || {},
-      version: 1,
-      type: "document",
-      size: "1KB"
+    if (!title || !fileName || !filePath || !category) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    documents.push(newDocument)
+    const newDocument = await prisma.document.create({
+      data: {
+        title,
+        fileName,
+        filePath,
+        fileSize,
+        mimeType,
+        category,
+        // classification: classification || 'PUBLIC',
+        description,
+        uploadedBy: session.user.id
+      },
+      include: {
+        uploader: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      }
+    })
 
-    return NextResponse.json(newDocument, { status: 201 })
+    return NextResponse.json({
+      success: true,
+      document: newDocument
+    }, { status: 201 })
   } catch (error) {
     console.error('Failed to create document:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -107,29 +132,44 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id, title, content, tags, metadata } = await request.json()
+    const { id, title, description, category, classification } = await request.json()
     
-    const documentIndex = documents.findIndex(doc => doc.id === id)
-    
-    if (documentIndex === -1) {
+    // Check if document exists and user has permission
+    const existingDocument = await prisma.document.findUnique({
+      where: { id }
+    })
+
+    if (!existingDocument) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
-    const existingDocument = documents[documentIndex]
-    
-    const updatedDocument: Document = {
-      ...existingDocument,
-      title: title || existingDocument.title,
-      content: content || existingDocument.content,
-      tags: tags || existingDocument.tags,
-      metadata: { ...existingDocument.metadata, ...metadata },
-      modified: new Date().toISOString(),
-      version: existingDocument.version + 1,
+    if (existingDocument.uploadedBy !== session.user.id) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     }
 
-    documents[documentIndex] = updatedDocument
+    const updatedDocument = await prisma.document.update({
+      where: { id },
+      data: {
+        title: title || existingDocument.title,
+        description: description || existingDocument.description,
+        category: category || existingDocument.category,
+        // classification: classification || existingDocument.classification,
+        updatedAt: new Date()
+      },
+      include: {
+        uploader: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      }
+    })
 
-    return NextResponse.json(updatedDocument)
+    return NextResponse.json({
+      success: true,
+      document: updatedDocument
+    })
   } catch (error) {
     console.error('Failed to update document:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -151,15 +191,25 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Document ID is required' }, { status: 400 })
     }
 
-    const documentIndex = documents.findIndex(doc => doc.id === parseInt(id))
-    
-    if (documentIndex === -1) {
+    // Check if document exists and user has permission
+    const existingDocument = await prisma.document.findUnique({
+      where: { id }
+    })
+
+    if (!existingDocument) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
-    const deletedDocument = documents.splice(documentIndex, 1)[0]
+    if (existingDocument.uploadedBy !== session.user.id) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    }
+
+    const deletedDocument = await prisma.document.delete({
+      where: { id }
+    })
 
     return NextResponse.json({ 
+      success: true,
       message: 'Document deleted successfully',
       document: deletedDocument
     })
