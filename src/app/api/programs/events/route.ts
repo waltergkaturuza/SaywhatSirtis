@@ -5,8 +5,10 @@ import { authOptions } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('Events API: Starting request...')
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
+      console.log('Events API: Unauthorized - no session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -17,6 +19,20 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
 
+    console.log('Events API: Query params:', { status, category, page, limit })
+
+    // Check if database is connected
+    try {
+      await prisma.$connect()
+      console.log('Events API: Database connected successfully')
+    } catch (dbError) {
+      console.error('Events API: Database connection failed:', dbError)
+      return NextResponse.json({ 
+        error: 'Database connection failed',
+        details: process.env.NODE_ENV === 'development' ? dbError : undefined
+      }, { status: 500 })
+    }
+
     // Build where clause
     const where: any = {};
     if (status && status !== 'all') {
@@ -25,6 +41,8 @@ export async function GET(request: NextRequest) {
     if (category && category !== 'all') {
       where.category = category.toUpperCase();
     }
+
+    console.log('Events API: Where clause:', where)
 
     // Get events with pagination
     const [events, total] = await Promise.all([
@@ -48,6 +66,8 @@ export async function GET(request: NextRequest) {
       prisma.flagshipEvent.count({ where }),
     ]);
 
+    console.log(`Events API: Found ${events.length} events, total: ${total}`)
+
     return NextResponse.json({
       events,
       pagination: {
@@ -60,7 +80,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Events fetch error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch events' },
+      { 
+        error: 'Failed to fetch events',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+      },
       { status: 500 }
     );
   }

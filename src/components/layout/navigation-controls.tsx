@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
+import { useState } from "react"
 import { 
   HomeIcon, 
   ArrowLeftIcon, 
@@ -29,7 +30,7 @@ export function NavigationControls({
   showBack = true,
   showModuleHome = true,
   customButtons = [],
-  size = "md",
+  size = "lg", // Changed default to large
   showLabels = true,
   compact = false
 }: NavigationControlsProps) {
@@ -44,22 +45,35 @@ export function NavigationControls({
     pathSegments
   } = useNavigationState()
 
+  const [activeButton, setActiveButton] = useState<string | null>(null)
+
   const sizeClasses = {
-    sm: "px-2 py-1 text-xs",
-    md: "px-3 py-2 text-sm",
-    lg: "px-4 py-2 text-base"
+    sm: "px-3 py-2 text-sm",
+    md: "px-4 py-3 text-base",
+    lg: "px-6 py-3 text-lg" // Made larger
   }
 
   const iconSizes = {
-    sm: "h-3 w-3",
-    md: "h-4 w-4", 
-    lg: "h-5 w-5"
+    sm: "h-4 w-4",
+    md: "h-5 w-5", 
+    lg: "h-6 w-6" // Made larger
   }
 
-  const baseButtonClass = cn(
-    "inline-flex items-center border border-gray-300 shadow-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors",
-    sizeClasses[size]
+  const getButtonClass = (buttonKey: string) => cn(
+    "inline-flex items-center border-2 shadow-lg leading-4 font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95",
+    sizeClasses[size],
+    activeButton === buttonKey 
+      ? "bg-green-500 border-green-600 text-white shadow-green-200" // Green when clicked
+      : "bg-orange-500 border-orange-600 text-white hover:bg-orange-600 focus:bg-orange-600 shadow-orange-200", // Orange by default
+    "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400"
   )
+
+  const handleButtonClick = (buttonKey: string, action: () => void) => {
+    setActiveButton(buttonKey)
+    // Reset the active state after a short delay
+    setTimeout(() => setActiveButton(null), 300)
+    action()
+  }
 
   const buttons = []
 
@@ -68,8 +82,8 @@ export function NavigationControls({
     buttons.push(
       <button
         key="home"
-        onClick={goHome}
-        className={baseButtonClass}
+        onClick={() => handleButtonClick('home', goHome)}
+        className={getButtonClass('home')}
         title="Go to Dashboard"
       >
         <HomeIcon className={cn(iconSizes[size], showLabels ? "mr-2" : "")} />
@@ -83,8 +97,8 @@ export function NavigationControls({
     buttons.push(
       <button
         key="back"
-        onClick={goBack}
-        className={baseButtonClass}
+        onClick={() => handleButtonClick('back', goBack)}
+        className={getButtonClass('back')}
         title="Go back to previous page"
       >
         <ArrowLeftIcon className={cn(iconSizes[size], showLabels ? "mr-2" : "")} />
@@ -99,8 +113,8 @@ export function NavigationControls({
     buttons.push(
       <button
         key="module-home"
-        onClick={goToModuleHome}
-        className={baseButtonClass}
+        onClick={() => handleButtonClick('module-home', goToModuleHome)}
+        className={getButtonClass('module-home')}
         title={`Go to ${moduleName} home`}
       >
         <ArrowUturnLeftIcon className={cn(iconSizes[size], showLabels ? "mr-2" : "")} />
@@ -115,7 +129,7 @@ export function NavigationControls({
   if (buttons.length === 0) return null
 
   return (
-    <div className={cn("flex items-center space-x-2", className)}>
+    <div className={cn("flex items-center space-x-3", className)}>
       {buttons}
     </div>
   )

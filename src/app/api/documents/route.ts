@@ -1,16 +1,30 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
+    console.log('Documents API: Starting request...')
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
+      console.log('Documents API: Unauthorized - no session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    console.log('Documents API: Fetching documents from database...')
+    
+    // Check if database is connected
+    try {
+      await prisma.$connect()
+      console.log('Documents API: Database connected successfully')
+    } catch (dbError) {
+      console.error('Documents API: Database connection failed:', dbError)
+      return NextResponse.json({ 
+        error: 'Database connection failed',
+        details: process.env.NODE_ENV === 'development' ? dbError : undefined
+      }, { status: 500 })
     }
 
     // Fetch documents from database
