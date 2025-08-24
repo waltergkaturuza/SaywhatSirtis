@@ -120,7 +120,7 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
   }
 
   const allFindings = audits.flatMap(audit => 
-    audit.findings.map(finding => ({
+    (audit.findings && Array.isArray(audit.findings) ? audit.findings : []).map(finding => ({
       ...finding,
       auditTitle: audit.title,
       auditDate: audit.auditDate
@@ -216,15 +216,15 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                   <p className="text-sm text-gray-500">
                     {new Date(audit.auditDate).toLocaleDateString()} • {audit.auditor}
                   </p>
-                  <p className="text-xs text-gray-400">{audit.scope.join(', ')}</p>
+                  <p className="text-xs text-gray-400">{audit.scope && Array.isArray(audit.scope) ? audit.scope.join(', ') : 'No scope defined'}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(audit.status)}`}>
-                  {audit.status.replace('-', ' ')}
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(audit.status || 'unknown')}`}>
+                  {audit.status ? audit.status.replace('-', ' ') : 'Unknown'}
                 </span>
                 <span className="text-sm text-gray-500">
-                  {audit.findings.length} findings
+                  {audit.findings && Array.isArray(audit.findings) ? audit.findings.length : 0} findings
                 </span>
               </div>
             </div>
@@ -462,7 +462,7 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div>
                     <div className="text-sm font-medium text-gray-900">{audit.title}</div>
-                    <div className="text-sm text-gray-500">{audit.scope.join(', ')}</div>
+                    <div className="text-sm text-gray-500">{audit.scope && Array.isArray(audit.scope) ? audit.scope.join(', ') : 'No scope defined'}</div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -477,14 +477,14 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                   {audit.auditor}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(audit.status)}`}>
-                    {audit.status.replace('-', ' ')}
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(audit.status || 'unknown')}`}>
+                    {audit.status ? audit.status.replace('-', ' ') : 'Unknown'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{audit.findings.length} total</div>
+                  <div className="text-sm text-gray-900">{audit.findings && Array.isArray(audit.findings) ? audit.findings.length : 0} total</div>
                   <div className="text-sm text-red-600">
-                    {audit.findings.filter(f => f.status !== 'resolved' && f.status !== 'closed').length} open
+                    {audit.findings && Array.isArray(audit.findings) ? audit.findings.filter(f => f.status !== 'resolved' && f.status !== 'closed').length : 0} open
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
