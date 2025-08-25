@@ -150,15 +150,8 @@ export default function EmployeeArchivePage() {
   if (loading) {
     return (
       <ModulePage 
-        metadata={{
-          title: "Employee Archive",
-          description: "Manage archived employee records and data retention",
-          breadcrumbs: [
-            { name: "HR Management", href: "/hr" },
-            { name: "Employees", href: "/hr/employees" },
-            { name: "Archive" }
-          ]
-        }}
+        title="Employee Archive"
+        description="Manage archived employee records and data retention"
       >
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -170,15 +163,8 @@ export default function EmployeeArchivePage() {
   if (!archivedData) {
     return (
       <ModulePage 
-        metadata={{
-          title: "Employee Archive",
-          description: "Manage archived employee records and data retention",
-          breadcrumbs: [
-            { name: "HR Management", href: "/hr" },
-            { name: "Employees", href: "/hr/employees" },
-            { name: "Archive" }
-          ]
-        }}
+        title="Employee Archive"
+        description="Manage archived employee records and data retention"
       >
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <div className="flex">
@@ -199,15 +185,8 @@ export default function EmployeeArchivePage() {
 
   return (
     <ModulePage 
-      metadata={{
-        title: "Employee Archive",
-        description: "Manage archived employee records and data retention",
-        breadcrumbs: [
-          { name: "HR Management", href: "/hr" },
-          { name: "Employees", href: "/hr/employees" },
-          { name: "Archive" }
-        ]
-      }}
+      title="Employee Archive"
+      description="Manage archived employee records and data retention"
     >
       {/* Archive Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

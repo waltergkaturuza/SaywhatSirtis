@@ -15,7 +15,11 @@ import {
   PhoneIcon,
   EnvelopeIcon,
   CalendarIcon,
-  PhotoIcon
+  PhotoIcon,
+  CloudArrowUpIcon,
+  DocumentPlusIcon,
+  MagnifyingGlassIcon,
+  TrashIcon
 } from "@heroicons/react/24/outline"
 
 interface EmployeeFormData {
@@ -67,6 +71,14 @@ interface EmployeeFormData {
   medicalCheckCompleted: boolean
   trainingCompleted: boolean
   additionalNotes: string
+  uploadedDocuments: Array<{
+    id: string
+    name: string
+    type: string
+    size: number
+    uploadDate: string
+    category: string
+  }>
 }
 
 export default function AddEmployeePage() {
@@ -110,7 +122,8 @@ export default function AddEmployeePage() {
     backgroundCheckCompleted: false,
     medicalCheckCompleted: false,
     trainingCompleted: false,
-    additionalNotes: ""
+    additionalNotes: "",
+    uploadedDocuments: []
   })
 
   const totalSteps = 6
@@ -181,9 +194,9 @@ export default function AddEmployeePage() {
 
   return (
     <EnhancedLayout>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-none px-2 w-full min-h-screen">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Add New Employee</h1>
           <p className="text-gray-600">Complete all steps to onboard a new team member</p>
         </div>
@@ -235,7 +248,7 @@ export default function AddEmployeePage() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Personal Information</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       First Name *
@@ -275,7 +288,7 @@ export default function AddEmployeePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Date of Birth
@@ -306,7 +319,7 @@ export default function AddEmployeePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Phone Number *
@@ -348,7 +361,7 @@ export default function AddEmployeePage() {
 
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Contact Name *
@@ -403,7 +416,7 @@ export default function AddEmployeePage() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Employment Information</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Employee ID *
@@ -439,7 +452,7 @@ export default function AddEmployeePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Position/Job Title *
@@ -466,7 +479,7 @@ export default function AddEmployeePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Start Date *
@@ -524,7 +537,7 @@ export default function AddEmployeePage() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Compensation Information</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Base Salary *
@@ -834,7 +847,7 @@ export default function AddEmployeePage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     <div className="bg-gray-50 p-4 rounded-md">
                       <h3 className="text-sm font-medium text-gray-900 mb-2">HR Documents</h3>
                       <ul className="text-sm text-gray-800 space-y-1">
@@ -853,6 +866,134 @@ export default function AddEmployeePage() {
                         <li>• Email account creation</li>
                         <li>• Network access setup</li>
                       </ul>
+                    </div>
+                  </div>
+
+                  {/* Document Upload Section */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                        <DocumentPlusIcon className="h-5 w-5 mr-2 text-orange-500" />
+                        Document Upload & Repository
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        {formData.uploadedDocuments.length} documents uploaded
+                      </span>
+                    </div>
+
+                    {/* File Upload Area */}
+                    <div className="mb-6">
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-orange-500 transition-colors">
+                        <CloudArrowUpIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h4 className="text-lg font-medium text-gray-900 mb-2">Upload Employee Documents</h4>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Drag and drop files here, or click to select files
+                        </p>
+                        <input
+                          type="file"
+                          multiple
+                          accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || [])
+                            const newDocs = files.map(file => ({
+                              id: Date.now() + Math.random().toString(),
+                              name: file.name,
+                              type: file.type,
+                              size: file.size,
+                              uploadDate: new Date().toISOString(),
+                              category: 'general'
+                            }))
+                            handleInputChange('uploadedDocuments', [...formData.uploadedDocuments, ...newDocs])
+                          }}
+                          className="hidden"
+                          id="document-upload"
+                        />
+                        <label
+                          htmlFor="document-upload"
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 cursor-pointer"
+                        >
+                          <DocumentPlusIcon className="h-4 w-4 mr-2" />
+                          Choose Files
+                        </label>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Supported formats: PDF, DOC, DOCX, TXT, JPG, PNG (Max 10MB each)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Document Categories */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      {['Personal', 'Employment', 'Medical', 'Training'].map((category) => (
+                        <div key={category} className="bg-gray-50 p-3 rounded-md">
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">{category} Documents</h4>
+                          <div className="text-xs text-gray-600">
+                            {formData.uploadedDocuments.filter(doc => doc.category === category.toLowerCase()).length} files
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Document Search */}
+                    <div className="mb-4">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-3 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search documents..."
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Uploaded Documents List */}
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-900">Uploaded Documents</h4>
+                      {formData.uploadedDocuments.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-4">No documents uploaded yet</p>
+                      ) : (
+                        <div className="max-h-40 overflow-y-auto">
+                          {formData.uploadedDocuments.map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                              <div className="flex items-center space-x-3">
+                                <DocumentTextIcon className="h-5 w-5 text-gray-400" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">{doc.name}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {(doc.size / 1024 / 1024).toFixed(2)} MB • {new Date(doc.uploadDate).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <select
+                                  value={doc.category}
+                                  onChange={(e) => {
+                                    const updatedDocs = formData.uploadedDocuments.map(d => 
+                                      d.id === doc.id ? { ...d, category: e.target.value } : d
+                                    )
+                                    handleInputChange('uploadedDocuments', updatedDocs)
+                                  }}
+                                  className="text-xs border border-gray-300 rounded px-2 py-1"
+                                >
+                                  <option value="general">General</option>
+                                  <option value="personal">Personal</option>
+                                  <option value="employment">Employment</option>
+                                  <option value="medical">Medical</option>
+                                  <option value="training">Training</option>
+                                </select>
+                                <button
+                                  onClick={() => {
+                                    const updatedDocs = formData.uploadedDocuments.filter(d => d.id !== doc.id)
+                                    handleInputChange('uploadedDocuments', updatedDocs)
+                                  }}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 

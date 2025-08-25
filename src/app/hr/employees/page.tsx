@@ -55,7 +55,7 @@ export default function EmployeesPage() {
         }
         
         const data = await response.json()
-        setEmployees(data.employees || [])
+        setEmployees(data.data || [])
       } catch (err) {
         console.error('Failed to fetch employees:', err)
         setError(err instanceof Error ? err.message : 'Unknown error')

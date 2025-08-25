@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import Link from "next/link"
 import {
@@ -21,6 +22,11 @@ import {
 } from "@heroicons/react/24/outline"
 
 export default function HRDashboard() {
+  const [clickedIcons, setClickedIcons] = useState(new Set())
+
+  const handleIconClick = (moduleIndex: number) => {
+    setClickedIcons(prev => new Set(prev).add(moduleIndex))
+  }
   const metadata = {
     title: "HR Management Dashboard",
     description: "Human resources management overview and navigation",
@@ -136,11 +142,11 @@ export default function HRDashboard() {
     },
     {
       title: "Payroll Management",
-      description: "Handle payroll, benefits, and compensation management",
+      description: "Access integrated Belina payroll system for processing and reporting",
       icon: BanknotesIcon,
       href: "/hr/payroll",
       color: "green",
-      stats: "₦125M monthly"
+      stats: "Belina Integration"
     },
     {
       title: "Time & Attendance",
@@ -152,11 +158,11 @@ export default function HRDashboard() {
     },
     {
       title: "Leave Management",
-      description: "Handle leave applications, approvals, and leave calendar",
+      description: "Plan leave in SIRTIS, apply through integrated Belina system",
       icon: CalendarDaysIcon,
       href: "/hr/leave",
       color: "teal",
-      stats: "12 pending approvals"
+      stats: "Planning + Belina"
     },
     {
       title: "Departments",
@@ -293,9 +299,18 @@ export default function HRDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {hrModules.map((module, index) => (
               <Link key={index} href={module.href}>
-                <div className={`p-6 rounded-lg border-2 hover:shadow-lg transition-all duration-200 cursor-pointer ${getColorClasses(module.color)}`}>
+                <div 
+                  className={`p-6 rounded-lg border-2 hover:shadow-lg transition-all duration-200 cursor-pointer ${getColorClasses(module.color)}`}
+                  onClick={() => handleIconClick(index)}
+                >
                   <div className="flex items-center justify-between mb-4">
-                    <module.icon className="h-8 w-8" />
+                    <module.icon 
+                      className={`h-8 w-8 transition-colors duration-200 ${
+                        clickedIcons.has(index) 
+                          ? 'text-green-600' 
+                          : 'text-orange-600'
+                      }`} 
+                    />
                     <ChevronRightIcon className="h-5 w-5 opacity-50" />
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-2">{module.title}</h3>

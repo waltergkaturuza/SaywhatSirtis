@@ -38,6 +38,7 @@ export async function GET() {
         username: true,
         department: true,
         position: true,
+        phone: true,
         createdAt: true,
         updatedAt: true,
         lastLogin: true

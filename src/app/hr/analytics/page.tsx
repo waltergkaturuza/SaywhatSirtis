@@ -233,68 +233,46 @@ export default function HRAnalytics() {
         <MetricCard
           title="Total Employees"
           value={hrMetrics?.totalEmployees || 0}
-          subtitle={`+${hrMetrics?.newHires || 0} new hires`}
-          icon={<Users className="h-5 w-5" />}
-          loading={loading}
-          trend={{
-            value: 5.2,
-            isPositive: true,
-            period: 'vs last quarter'
-          }}
+          description={`+${hrMetrics?.newHires || 0} new hires`}
+          icon={Users}
+          change="5.2% vs last quarter"
+          changeType="increase"
         />
 
         <MetricCard
           title="Turnover Rate"
           value={`${hrMetrics?.turnoverRate || 0}%`}
-          subtitle="Industry avg: 15%"
-          icon={<TrendingUp className="h-5 w-5" />}
-          loading={loading}
-          variant={hrMetrics && hrMetrics.turnoverRate > 15 ? 'warning' : 'success'}
-          trend={{
-            value: -2.1,
-            isPositive: false,
-            period: 'vs last year'
-          }}
+          description="Industry avg: 15%"
+          icon={TrendingUp}
+          change="-2.1% vs last year"
+          changeType="decrease"
         />
 
         <MetricCard
           title="Avg Tenure"
           value={`${hrMetrics?.averageTenure || 0} years`}
-          subtitle="+0.3 vs last year"
-          icon={<Clock className="h-5 w-5" />}
-          loading={loading}
-          trend={{
-            value: 8.3,
-            isPositive: true,
-            period: 'vs last year'
-          }}
+          description="+0.3 vs last year"
+          icon={Clock}
+          change="8.3% vs last year"
+          changeType="increase"
         />
 
         <MetricCard
           title="Avg Salary"
           value={`$${hrMetrics?.averageSalary?.toLocaleString() || 0}`}
-          subtitle="+5.2% vs last year"
-          icon={<DollarSign className="h-5 w-5" />}
-          loading={loading}
-          trend={{
-            value: 5.2,
-            isPositive: true,
-            period: 'vs last year'
-          }}
+          description="+5.2% vs last year"
+          icon={DollarSign}
+          change="5.2%"
+          changeType="increase"
         />
 
         <MetricCard
           title="Performance"
           value={`${hrMetrics?.performanceScore || 0}/5`}
-          subtitle="+0.2 vs last quarter"
-          icon={<Award className="h-5 w-5" />}
-          loading={loading}
-          variant="success"
-          trend={{
-            value: 4.8,
-            isPositive: true,
-            period: 'vs last quarter'
-          }}
+          description="+0.2 vs last quarter"
+          icon={Award}
+          change="4.8% vs last quarter"
+          changeType="increase"
         />
       </div>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { EnhancedLayout } from "@/components/layout/enhanced-layout"
 import { 
@@ -12,8 +12,24 @@ import {
   CheckCircleIcon
 } from "@heroicons/react/24/outline"
 
+interface Employee {
+  id: string
+  name: string
+  department: string
+  position: string
+}
+
+interface Reviewer {
+  id: string
+  name: string
+  title: string
+}
+
 export default function ScheduleReviewPage() {
   const router = useRouter()
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [reviewers, setReviewers] = useState<Reviewer[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [formData, setFormData] = useState({
     employeeId: "",
     reviewType: "",
@@ -37,20 +53,29 @@ export default function ScheduleReviewPage() {
     { value: "exit", label: "Exit Interview" }
   ]
 
-  const employees = [
-    { id: "001", name: "Sarah Johnson", department: "IT", position: "Senior Developer" },
-    { id: "002", name: "Michael Chen", department: "Programs", position: "Project Manager" },
-    { id: "003", name: "Emily Davis", department: "HR", position: "HR Specialist" },
-    { id: "004", name: "David Wilson", department: "Finance", position: "Financial Analyst" },
-    { id: "005", name: "Lisa Anderson", department: "Operations", position: "Operations Lead" }
-  ]
+  // Simulate data loading - replace with real API calls
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        // TODO: Replace with actual API calls
+        // const employeesData = await fetchEmployees()
+        // const reviewersData = await fetchReviewers()
+        // setEmployees(employeesData)
+        // setReviewers(reviewersData)
+        
+        // For now, set empty arrays
+        setEmployees([])
+        setReviewers([])
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-  const reviewers = [
-    { id: "mgr001", name: "John Smith", title: "Department Manager" },
-    { id: "mgr002", name: "Jane Doe", title: "Senior Manager" },
-    { id: "mgr003", name: "Bob Johnson", title: "HR Director" },
-    { id: "hr001", name: "Alice Brown", title: "HR Manager" }
-  ]
+    loadData()
+  }, [])
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -70,6 +95,21 @@ export default function ScheduleReviewPage() {
 
   const selectedEmployee = employees.find(emp => emp.id === formData.employeeId)
   const selectedReviewer = reviewers.find(rev => rev.id === formData.reviewer)
+
+  if (isLoading) {
+    return (
+      <EnhancedLayout>
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-center min-h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+              <p className="mt-2 text-gray-600">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </EnhancedLayout>
+    )
+  }
 
   return (
     <EnhancedLayout>
@@ -102,11 +142,15 @@ export default function ScheduleReviewPage() {
                     required
                   >
                     <option value="">Choose an employee</option>
-                    {employees.map((employee) => (
-                      <option key={employee.id} value={employee.id}>
-                        {employee.name} - {employee.position} ({employee.department})
-                      </option>
-                    ))}
+                    {employees.length === 0 ? (
+                      <option value="" disabled>No employees available</option>
+                    ) : (
+                      employees.map((employee) => (
+                        <option key={employee.id} value={employee.id}>
+                          {employee.name} - {employee.position} ({employee.department})
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -210,11 +254,15 @@ export default function ScheduleReviewPage() {
                     required
                   >
                     <option value="">Select reviewer</option>
-                    {reviewers.map((reviewer) => (
-                      <option key={reviewer.id} value={reviewer.id}>
-                        {reviewer.name} - {reviewer.title}
-                      </option>
-                    ))}
+                    {reviewers.length === 0 ? (
+                      <option value="" disabled>No reviewers available</option>
+                    ) : (
+                      reviewers.map((reviewer) => (
+                        <option key={reviewer.id} value={reviewer.id}>
+                          {reviewer.name} - {reviewer.title}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
