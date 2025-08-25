@@ -54,19 +54,19 @@ export default function HRDashboard() {
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Total Employees</span>
-            <span className="font-semibold">1,248</span>
+            <span className="font-semibold">-</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Active</span>
-            <span className="font-semibold text-green-600">1,195</span>
+            <span className="font-semibold text-green-600">-</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">On Leave</span>
-            <span className="font-semibold text-yellow-600">42</span>
+            <span className="font-semibold text-orange-600">-</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">New Hires (Month)</span>
-            <span className="font-semibold text-blue-600">23</span>
+            <span className="font-semibold text-black">-</span>
           </div>
         </div>
       </div>
@@ -116,7 +116,7 @@ export default function HRDashboard() {
       icon: UserGroupIcon,
       href: "/hr/employees",
       color: "blue",
-      stats: "1,248 employees"
+      stats: "Loading..."
     },
     {
       title: "Performance Management",
@@ -220,14 +220,14 @@ export default function HRDashboard() {
                 <UserGroupIcon className="w-6 h-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">1,248</h3>
+                <h3 className="text-lg font-semibold text-gray-900">-</h3>
                 <p className="text-sm text-gray-500">Total Employees</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">vs last month</span>
-                <span className="text-green-600 font-medium">+2.5%</span>
+                <span className="text-green-600 font-medium">-</span>
               </div>
             </div>
           </div>
@@ -238,7 +238,7 @@ export default function HRDashboard() {
                 <AcademicCapIcon className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">89</h3>
+                <h3 className="text-lg font-semibold text-gray-900">-</h3>
                 <p className="text-sm text-gray-500">Training Sessions</p>
               </div>
             </div>

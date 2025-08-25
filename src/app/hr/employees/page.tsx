@@ -1,7 +1,8 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { ExportButton } from "@/components/ui/export-button"
 import { ImportButton } from "@/components/ui/import-button"
@@ -30,100 +31,44 @@ import {
 } from "@heroicons/react/24/outline"
 
 export default function EmployeesPage() {
+  const { data: session } = useSession()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-
-  // Employee data
-  const employees = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      email: "sarah.johnson@saywhat.org",
-      phone: "+234 803 123 4567",
-      department: "Operations",
-      position: "Operations Manager",
-      employeeId: "EMP001",
-      hireDate: "2022-03-15",
-      status: "active",
-      performance: 4.8,
-      avatar: null,
-      location: "Lagos, Nigeria"
-    },
-    {
-      id: 2,
-      name: "Michael Adebayo",
-      email: "michael.adebayo@saywhat.org",
-      phone: "+234 806 987 6543",
-      department: "Healthcare",
-      position: "Healthcare Coordinator",
-      employeeId: "EMP002",
-      hireDate: "2021-07-22",
-      status: "active",
-      performance: 4.6,
-      avatar: null,
-      location: "Abuja, Nigeria"
-    },
-    {
-      id: 3,
-      name: "Amina Hassan",
-      email: "amina.hassan@saywhat.org",
-      phone: "+234 809 456 7890",
-      department: "Education",
-      position: "Education Director",
-      employeeId: "EMP003",
-      hireDate: "2020-11-08",
-      status: "on-leave",
-      performance: 4.9,
-      avatar: null,
-      location: "Kano, Nigeria"
-    },
-    {
-      id: 4,
-      name: "David Okonkwo",
-      email: "david.okonkwo@saywhat.org",
-      phone: "+234 802 234 5678",
-      department: "Finance",
-      position: "Financial Analyst",
-      employeeId: "EMP004",
-      hireDate: "2023-01-10",
-      status: "active",
-      performance: 4.4,
-      avatar: null,
-      location: "Port Harcourt, Nigeria"
-    },
-    {
-      id: 5,
-      name: "Fatima Bello",
-      email: "fatima.bello@saywhat.org",
-      phone: "+234 807 345 6789",
-      department: "HR",
-      position: "HR Specialist",
-      employeeId: "EMP005",
-      hireDate: "2022-09-05",
-      status: "active",
-      performance: 4.7,
-      avatar: null,
-      location: "Lagos, Nigeria"
-    },
-    {
-      id: 6,
-      name: "James Okafor",
-      email: "james.okafor@saywhat.org",
-      phone: "+234 805 678 9012",
-      department: "IT",
-      position: "Software Developer",
-      employeeId: "EMP006",
-      hireDate: "2021-04-18",
-      status: "inactive",
-      performance: 4.2,
-      avatar: null,
-      location: "Enugu, Nigeria"
+  
+  // API state
+  const [employees, setEmployees] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>("")  // Fetch employees from API
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setLoading(true)
+        setError("")
+        
+        const response = await fetch('/api/hr/employees')
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        
+        const data = await response.json()
+        setEmployees(data.employees || [])
+      } catch (err) {
+        console.error('Failed to fetch employees:', err)
+        setError(err instanceof Error ? err.message : 'Unknown error')
+        setEmployees([]) // Empty state instead of mock data
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
+    
+    if (session) {
+      fetchEmployees()
+    }
+  }, [session])
 
   const metadata = {
     title: "Employee Directory",
@@ -184,19 +129,19 @@ export default function EmployeesPage() {
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Total Employees</span>
-            <span className="font-semibold">1,248</span>
+            <span className="font-semibold">-</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Active</span>
-            <span className="font-semibold text-green-600">1,195</span>
+            <span className="font-semibold text-green-600">-</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">On Leave</span>
-            <span className="font-semibold text-yellow-600">42</span>
+            <span className="font-semibold text-orange-600">-</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Inactive</span>
-            <span className="font-semibold text-red-600">11</span>
+            <span className="font-semibold text-gray-600">-</span>
           </div>
         </div>
       </div>
@@ -204,20 +149,9 @@ export default function EmployeesPage() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Departments</h3>
         <div className="space-y-2">
-          {[
-            { name: "Operations", count: 234 },
-            { name: "Healthcare", count: 187 },
-            { name: "Education", count: 156 },
-            { name: "Finance", count: 89 },
-            { name: "HR", count: 45 },
-            { name: "IT", count: 67 },
-            { name: "Admin", count: 34 }
-          ].map((dept, index) => (
-            <div key={index} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
-              <span className="text-sm text-gray-700">{dept.name}</span>
-              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">{dept.count}</span>
-            </div>
-          ))}
+          <div className="text-sm text-gray-500 text-center py-4">
+            Loading departments...
+          </div>
         </div>
       </div>
 
@@ -243,11 +177,11 @@ export default function EmployeesPage() {
       case "active":
         return "bg-green-100 text-green-800"
       case "on-leave":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-orange-100 text-orange-800"
       case "inactive":
-        return "bg-red-100 text-red-800"
-      default:
         return "bg-gray-100 text-gray-800"
+      default:
+        return "bg-white text-black"
     }
   }
 
@@ -428,7 +362,7 @@ export default function EmployeesPage() {
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
                           <span className="text-sm font-medium text-indigo-600">
-                            {employee.name.split(' ').map(n => n[0]).join('')}
+                            {employee.name.split(' ').map((n: string) => n[0]).join('')}
                           </span>
                         </div>
                         <div className="ml-4">

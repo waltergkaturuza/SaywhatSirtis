@@ -3,15 +3,18 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { EnhancedLayout } from "@/components/layout/enhanced-layout"
-import { 
+import {
   UserIcon,
+  BuildingOfficeIcon,
+  IdentificationIcon,
   DocumentTextIcon,
+  ShieldCheckIcon,
+  CheckCircleIcon,
+  BanknotesIcon,
+  AcademicCapIcon,
   PhoneIcon,
   EnvelopeIcon,
   CalendarIcon,
-  BanknotesIcon,
-  AcademicCapIcon,
-  ShieldCheckIcon,
   PhotoIcon
 } from "@heroicons/react/24/outline"
 
@@ -212,7 +215,7 @@ export default function AddEmployeePage() {
                   <div className="mt-2">
                     <span
                       className={`text-sm font-medium ${
-                        currentStep >= step.id ? "text-indigo-600" : "text-gray-500"
+                        currentStep >= step.id ? "text-orange-600" : "text-gray-500"
                       }`}
                     >
                       {step.name}
@@ -563,13 +566,16 @@ export default function AddEmployeePage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select Pay Grade</option>
-                      <option value="grade-1">Grade 1</option>
-                      <option value="grade-2">Grade 2</option>
-                      <option value="grade-3">Grade 3</option>
-                      <option value="grade-4">Grade 4</option>
-                      <option value="grade-5">Grade 5</option>
-                      <option value="senior">Senior Level</option>
-                      <option value="executive">Executive Level</option>
+                      <option value="PO6" className="text-orange-600 font-semibold">PO6 (Highest)</option>
+                      <option value="PO4" className="text-orange-500">PO4</option>
+                      <option value="PO3" className="text-green-600">PO3</option>
+                      <option value="PO2" className="text-green-500">PO2</option>
+                      <option value="PO1" className="text-black">PO1</option>
+                      <option value="SO2" className="text-gray-700">SO2</option>
+                      <option value="SO1" className="text-gray-600">SO1</option>
+                      <option value="Scale 5" className="text-gray-500">Scale 5</option>
+                      <option value="Scale 4" className="text-gray-400">Scale 4</option>
+                      <option value="M1/M2" className="text-gray-300">M1/M2 (Lowest)</option>
                     </select>
                   </div>
 
@@ -667,8 +673,8 @@ export default function AddEmployeePage() {
                     />
                   </div>
 
-                  <div className="bg-blue-50 p-4 rounded-md">
-                    <h3 className="text-sm font-medium text-blue-900 mb-2">Training Requirements</h3>
+                  <div className="bg-green-50 p-4 rounded-md">
+                    <h3 className="text-sm font-medium text-green-900 mb-2">Training Requirements</h3>
                     <div className="space-y-2">
                       {["Orientation Training", "Security Training", "Department-specific Training"].map((training) => (
                         <label key={training} className="flex items-center">
@@ -685,7 +691,7 @@ export default function AddEmployeePage() {
                             }}
                             className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                           />
-                          <span className="ml-2 text-sm text-blue-800">{training} Required</span>
+                          <span className="ml-2 text-sm text-green-800">{training} Required</span>
                         </label>
                       ))}
                     </div>
@@ -829,9 +835,9 @@ export default function AddEmployeePage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-blue-50 p-4 rounded-md">
-                      <h3 className="text-sm font-medium text-blue-900 mb-2">HR Documents</h3>
-                      <ul className="text-sm text-blue-800 space-y-1">
+                    <div className="bg-gray-50 p-4 rounded-md">
+                      <h3 className="text-sm font-medium text-gray-900 mb-2">HR Documents</h3>
+                      <ul className="text-sm text-gray-800 space-y-1">
                         <li>• Employee handbook acknowledgment</li>
                         <li>• Code of conduct agreement</li>
                         <li>• Emergency contact forms</li>
@@ -885,14 +891,14 @@ export default function AddEmployeePage() {
                 {currentStep === totalSteps ? (
                   <button
                     onClick={handleSubmit}
-                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700"
                   >
                     Create Employee
                   </button>
                 ) : (
                   <button
                     onClick={handleNext}
-                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md hover:bg-orange-700"
                   >
                     Next
                   </button>
