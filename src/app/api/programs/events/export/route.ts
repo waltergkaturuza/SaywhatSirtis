@@ -21,8 +21,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Get events
-    const events = await prisma.event.findMany({
+    const events = await prisma.flagshipEvent.findMany({
       where,
+      include: {
+        organizer: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
       orderBy: {
         startDate: 'asc',
       },
@@ -50,21 +58,21 @@ export async function GET(request: NextRequest) {
       ];
 
       const csvRows = events.map(event => [
-        event.title,
+        event.name,
         event.description || '',
         new Date(event.startDate).toLocaleDateString(),
-        '', // startTime doesn't exist in Event model
-        event.endDate ? new Date(event.endDate).toLocaleDateString() : '',
-        '', // endTime doesn't exist in Event model
-        event.location || '',
-        event.capacity?.toString() || '',
-        '', // actualAttendees doesn't exist in Event model
+        event.startTime || '',
+        new Date(event.endDate).toLocaleDateString(),
+        event.endTime || '',
+        event.location,
+        event.expectedAttendees.toString(),
+        event.actualAttendees?.toString() || '',
         event.status,
-        event.type,
-        event.budget?.toString() || '',
+        event.category,
+        event.budget.toString(),
         event.actualCost?.toString() || '',
-        '', // organizer not available
-        '', // organizer email not available
+        event.organizer?.name || '',
+        event.organizer?.email || '',
         new Date(event.createdAt).toLocaleDateString(),
       ]);
 
@@ -73,7 +81,7 @@ export async function GET(request: NextRequest) {
         .join('\n');
 
       const fileName = eventId 
-        ? `event-${events[0]?.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`
+        ? `event-${events[0]?.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`
         : `saywhat-events-${new Date().toISOString().split('T')[0]}.csv`;
 
       return new NextResponse(csvContent, {

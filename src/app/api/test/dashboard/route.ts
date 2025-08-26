@@ -68,10 +68,9 @@ export async function GET(request: NextRequest) {
           createdAt: 'desc'
         },
         include: {
-          creator: {
+          manager: {
             select: {
-              firstName: true,
-              lastName: true,
+              name: true,
               email: true
             }
           }
@@ -113,7 +112,7 @@ export async function GET(request: NextRequest) {
         priority: project.priority,
         progress: project.progress || 0,
         dueDate: project.endDate,
-        manager: project.creator ? `${project.creator.firstName || ''} ${project.creator.lastName || ''}`.trim() || 'Unassigned' : 'Unassigned',
+        manager: project.manager?.name || 'Unassigned',
         budget: project.budget || 0
       }))
     }

@@ -179,8 +179,8 @@ export default function CreatePerformancePlanPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.employee.name}
-                  onChange={(e) => handleNestedInputChange("employee", "name", e.target.value)}
+                  value={formData.employeeName}
+                  onChange={(e) => handleInputChange("employeeName", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter employee name"
                 />
@@ -205,8 +205,8 @@ export default function CreatePerformancePlanPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.employee.position}
-                  onChange={(e) => handleNestedInputChange("employee", "position", e.target.value)}
+                  value={formData.position}
+                  onChange={(e) => handleInputChange("position", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter position"
                 />
@@ -217,8 +217,8 @@ export default function CreatePerformancePlanPage() {
                   Department
                 </label>
                 <select
-                  value={formData.employee.department}
-                  onChange={(e) => handleNestedInputChange("employee", "department", e.target.value)}
+                  value={formData.department}
+                  onChange={(e) => handleInputChange("department", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Department</option>
@@ -1082,9 +1082,9 @@ export default function CreatePerformancePlanPage() {
               <div className="bg-white border rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 mb-3">Employee Information</h4>
                 <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Name:</span> {formData.employee.name}</div>
-                  <div><span className="font-medium">Position:</span> {formData.employee.position}</div>
-                  <div><span className="font-medium">Department:</span> {formData.employee.department}</div>
+                  <div><span className="font-medium">Name:</span> {formData.employeeName}</div>
+                  <div><span className="font-medium">Position:</span> {formData.position}</div>
+                  <div><span className="font-medium">Department:</span> {formData.department}</div>
                   <div><span className="font-medium">Supervisor:</span> {formData.supervisor}</div>
                 </div>
               </div>

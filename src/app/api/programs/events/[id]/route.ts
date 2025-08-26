@@ -15,8 +15,17 @@ export async function GET(
 
     const { id } = await params;
 
-    const event = await prisma.event.findUnique({
+    const event = await prisma.flagshipEvent.findUnique({
       where: { id },
+      include: {
+        organizer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
 
     if (!event) {
@@ -64,7 +73,7 @@ export async function PUT(
     } = body;
 
     // Check if event exists
-    const existingEvent = await prisma.event.findUnique({
+    const existingEvent = await prisma.flagshipEvent.findUnique({
       where: { id },
     });
 
@@ -73,33 +82,49 @@ export async function PUT(
     }
 
     // Find organizer user if provided
+    let organizerUserId = existingEvent.organizerUserId;
     if (organizer) {
       const organizerUser = await prisma.user.findFirst({
         where: {
           OR: [
             { email: organizer },
-            { firstName: organizer },
-            { lastName: organizer },
+            { name: organizer },
             { id: organizer },
           ],
         },
       });
+      if (organizerUser) {
+        organizerUserId = organizerUser.id;
+      }
     }
 
     // Update the event
-    const event = await prisma.event.update({
+    const event = await prisma.flagshipEvent.update({
       where: { id },
       data: {
-        title: name,
+        name,
         description,
-        type: category?.toLowerCase(),
-        status: status?.toLowerCase(),
         startDate: startDate ? new Date(startDate) : undefined,
+        startTime,
         endDate: endDate ? new Date(endDate) : undefined,
+        endTime,
         location,
-        capacity: expectedAttendees ? parseInt(expectedAttendees) : undefined,
+        expectedAttendees: expectedAttendees ? parseInt(expectedAttendees) : undefined,
+        actualAttendees: actualAttendees ? parseInt(actualAttendees) : undefined,
+        status: status?.toUpperCase(),
+        category: category?.toUpperCase(),
         budget: budget ? parseFloat(budget) : undefined,
         actualCost: actualCost ? parseFloat(actualCost) : undefined,
+        organizerUserId,
+      },
+      include: {
+        organizer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -126,7 +151,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if event exists
-    const existingEvent = await prisma.event.findUnique({
+    const existingEvent = await prisma.flagshipEvent.findUnique({
       where: { id },
     });
 
@@ -135,7 +160,7 @@ export async function DELETE(
     }
 
     // Delete the event
-    await prisma.event.delete({
+    await prisma.flagshipEvent.delete({
       where: { id },
     });
 

@@ -28,6 +28,10 @@ export async function GET(request: NextRequest) {
         csvData = generateTurnoverReport(period)
         filename = 'hr-turnover-analytics'
         break
+      case 'salary':
+        csvData = generateSalaryReport(department)
+        filename = 'hr-salary-analytics'
+        break
       case 'attendance':
         csvData = generateAttendanceReport(period, department)
         filename = 'hr-attendance-analytics'
@@ -63,6 +67,7 @@ function generateComprehensiveReport(period: string, department: string): string
     `Summary,New Hires,42,${period},${department},${date}`,
     `Summary,Turnover Rate,8.5%,${period},${department},${date}`,
     `Summary,Average Tenure,3.2 years,${period},${department},${date}`,
+    `Summary,Average Salary,$65000,${period},${department},${date}`,
     `Summary,Attendance Rate,92.5%,${period},${department},${date}`,
     `Summary,Performance Score,4.2/5,${period},${department},${date}`,
     `Department,Technology,45 employees,${period},${department},${date}`,
@@ -79,16 +84,16 @@ function generateComprehensiveReport(period: string, department: string): string
 }
 
 function generateDepartmentReport(): string {
-  const header = 'Department,Employees,Turnover Rate,Performance Score,Satisfaction Score\n'
+  const header = 'Department,Employees,Average Salary,Turnover Rate,Performance Score,Satisfaction Score\n'
   
   const data = [
-    'Technology,45,8.2%,4.3,4.1',
-    'Human Resources,28,12.5%,4.1,4.0',
-    'Programs,85,15.3%,4.0,3.9',
-    'Call Centre,52,22.1%,3.8,3.7',
-    'Analytics,35,9.8%,4.2,4.2',
-    'Finance,22,7.5%,4.1,4.0',
-    'Operations,38,18.7%,3.9,3.8'
+    'Technology,45,$78000,8.2%,4.3,4.1',
+    'Human Resources,28,$62000,12.5%,4.1,4.0',
+    'Programs,85,$55000,15.3%,4.0,3.9',
+    'Call Centre,52,$42000,22.1%,3.8,3.7',
+    'Analytics,35,$72000,9.8%,4.2,4.2',
+    'Finance,22,$68000,7.5%,4.1,4.0',
+    'Operations,38,$58000,18.7%,3.9,3.8'
   ]
   
   return header + data.join('\n')
@@ -123,6 +128,22 @@ function generateTurnoverReport(period: string): string {
     'Oct 2024,6,17,11,2.0%',
     'Nov 2024,10,9,-1,3.4%',
     'Dec 2024,3,22,19,1.0%'
+  ]
+  
+  return header + data.join('\n')
+}
+
+function generateSalaryReport(department: string): string {
+  const header = 'Salary Range,Count,Average Salary,Department\n'
+  
+  const data = [
+    `$30k-40k,42,$35000,${department}`,
+    `$40k-50k,68,$45000,${department}`,
+    `$50k-60k,85,$55000,${department}`,
+    `$60k-70k,52,$65000,${department}`,
+    `$70k-80k,38,$75000,${department}`,
+    `$80k-90k,25,$85000,${department}`,
+    `$90k+,15,$105000,${department}`
   ]
   
   return header + data.join('\n')

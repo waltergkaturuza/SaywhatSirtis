@@ -30,6 +30,8 @@ import {
   Line,
   AreaChart,
   Area,
+  ScatterChart,
+  Scatter,
   RadialBarChart,
   RadialBar
 } from 'recharts'
@@ -470,6 +472,32 @@ export default function HRAnalytics() {
                     <Tooltip />
                     <Bar dataKey="count" fill="#8884d8" />
                   </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Performance vs Salary Correlation */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance vs Salary Correlation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <ScatterChart data={[
+                    { performance: 2.1, salary: 45000, department: 'Operations' },
+                    { performance: 2.8, salary: 52000, department: 'HR' },
+                    { performance: 3.2, salary: 58000, department: 'Programs' },
+                    { performance: 3.7, salary: 65000, department: 'Technology' },
+                    { performance: 4.1, salary: 72000, department: 'Analytics' },
+                    { performance: 4.5, salary: 85000, department: 'Technology' },
+                    { performance: 4.8, salary: 95000, department: 'Technology' }
+                  ]}>
+                    <CartesianGrid />
+                    <XAxis type="number" dataKey="performance" name="Performance Score" domain={[1, 5]} />
+                    <YAxis type="number" dataKey="salary" name="Salary" domain={[40000, 100000]} />
+                    <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                    <Scatter name="Employees" dataKey="salary" fill="#8884d8" />
+                  </ScatterChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>

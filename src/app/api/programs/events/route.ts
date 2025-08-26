@@ -131,14 +131,14 @@ export async function POST(request: NextRequest) {
       data: {
         title: name,
         description,
-        type: category?.toLowerCase() || 'conference',
-        status: status?.toLowerCase() || 'planning',
         startDate: new Date(startDate),
-        endDate: endDate ? new Date(endDate) : null,
+        endDate: new Date(endDate),
         location,
-        capacity: parseInt(expectedAttendees) || null,
-        budget: parseFloat(budget) || null,
-      },
+        capacity: parseInt(expectedAttendees) || 0,
+        status: status?.toLowerCase() || 'planning',
+        type: category?.toLowerCase() || 'conference',
+        budget: parseFloat(budget) || 0,
+      }
     });
 
     return NextResponse.json(event, { status: 201 });
