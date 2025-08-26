@@ -48,14 +48,42 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [showFilters, setShowFilters] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
   const [editingAsset, setEditingAsset] = useState<Partial<Asset>>({})
+
+  // Fetch assets from backend API
+  const fetchAssets = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/inventory/assets')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      
+      if (data.assets && Array.isArray(data.assets)) {
+        setAssets(data.assets)
+        onAssetUpdate?.(data.assets)
+      }
+    } catch (error) {
+      console.error('Failed to fetch assets:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fetch assets on component mount
+  useEffect(() => {
+    fetchAssets()
+  }, [])
 
   // Filter and search effects
   useEffect(() => {
@@ -172,19 +200,6 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     setShowEditModal(true)
   }
 
-  const handleCreate = () => {
-    setEditingAsset({
-      name: "",
-      assetNumber: "",
-      status: "active",
-      condition: "good",
-      department: "",
-      procurementValue: 0,
-      currentValue: 0
-    })
-    setShowCreateModal(true)
-  }
-
   const handleDelete = (asset: Asset) => {
     setSelectedAsset(asset)
     setShowDeleteModal(true)
@@ -196,50 +211,64 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     }
   }
 
-  const confirmDelete = () => {
-    if (selectedAsset) {
-      // Delete single asset
-      const updatedAssets = assets.filter(asset => asset.id !== selectedAsset.id)
-      setAssets(updatedAssets)
-      onAssetUpdate?.(updatedAssets)
-    } else if (selectedAssets.length > 0) {
-      // Bulk delete
-      const updatedAssets = assets.filter(asset => !selectedAssets.includes(asset.id))
-      setAssets(updatedAssets)
-      setSelectedAssets([])
-      onAssetUpdate?.(updatedAssets)
+  const confirmDelete = async () => {
+    try {
+      setIsLoading(true)
+      
+      if (selectedAsset) {
+        // Delete single asset via API
+        const response = await fetch(`/api/inventory/assets?id=${selectedAsset.id}`, {
+          method: 'DELETE'
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete asset: ${response.statusText}`)
+        }
+      } else if (selectedAssets.length > 0) {
+        // Bulk delete - would need separate API endpoint
+        console.warn('Bulk delete not implemented yet')
+        setSelectedAssets([])
+      }
+      
+      // Refresh assets from backend
+      await fetchAssets()
+      setShowDeleteModal(false)
+      setSelectedAsset(null)
+    } catch (error) {
+      console.error('Error deleting asset:', error)
+      alert('Failed to delete asset. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
-    setShowDeleteModal(false)
-    setSelectedAsset(null)
   }
 
-  const handleSave = () => {
-    if (showCreateModal) {
-      // Create new asset
-      const newAsset: Asset = {
-        ...editingAsset,
-        id: Date.now().toString(),
-        assetNumber: editingAsset.assetNumber || `AST-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        createdBy: "Current User",
-        lastModifiedBy: "Current User"
-      } as Asset
-      
-      const updatedAssets = [...assets, newAsset]
-      setAssets(updatedAssets)
-      onAssetUpdate?.(updatedAssets)
-      setShowCreateModal(false)
-    } else if (showEditModal && selectedAsset) {
-      // Update existing asset
-      const updatedAssets = assets.map(asset => 
-        asset.id === selectedAsset.id 
-          ? { ...asset, ...editingAsset, updatedAt: new Date().toISOString(), lastModifiedBy: "Current User" }
-          : asset
-      )
-      setAssets(updatedAssets)
-      onAssetUpdate?.(updatedAssets)
-      setShowEditModal(false)
+  const handleSave = async () => {
+    if (showEditModal && selectedAsset) {
+      try {
+        setIsLoading(true)
+        
+        // Update asset via API
+        const response = await fetch(`/api/inventory/assets?id=${selectedAsset.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(editingAsset)
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Failed to update asset: ${response.statusText}`)
+        }
+        
+        // Refresh assets from backend
+        await fetchAssets()
+        setShowEditModal(false)
+      } catch (error) {
+        console.error('Error updating asset:', error)
+        alert('Failed to update asset. Please try again.')
+      } finally {
+        setIsLoading(false)
+      }
     }
     setEditingAsset({})
     setSelectedAsset(null)
@@ -302,14 +331,14 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Assets Management</h2>
-          <p className="text-gray-600">View, edit, delete and export all assets</p>
+          <p className="text-gray-600">View, edit, delete and export all assets. Use Asset Registration tab to add new assets.</p>
         </div>
         <div className="flex items-center gap-2">
-          {permissions.canCreate && (
-            <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Add Asset
-            </Button>
+          {isLoading && (
+            <div className="flex items-center text-blue-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+              <span className="text-sm">Loading...</span>
+            </div>
           )}
         </div>
       </div>
@@ -723,18 +752,17 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
         </DialogContent>
       </Dialog>
 
-      {/* Edit/Create Asset Modal */}
-      <Dialog open={showEditModal || showCreateModal} onOpenChange={(open) => {
+      {/* Edit Asset Modal */}
+      <Dialog open={showEditModal} onOpenChange={(open) => {
         if (!open) {
           setShowEditModal(false)
-          setShowCreateModal(false)
           setEditingAsset({})
           setSelectedAsset(null)
         }
       }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{showCreateModal ? 'Create New Asset' : 'Edit Asset'}</DialogTitle>
+            <DialogTitle>Edit Asset</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
@@ -928,14 +956,13 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setShowEditModal(false)
-              setShowCreateModal(false)
               setEditingAsset({})
               setSelectedAsset(null)
             }}>
               Cancel
             </Button>
             <Button onClick={handleSave}>
-              {showCreateModal ? 'Create Asset' : 'Save Changes'}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>

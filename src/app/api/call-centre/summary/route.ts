@@ -19,9 +19,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get call centre records with basic stats
-    const totalCalls = await prisma.callCentreRecord.count();
+    const totalCalls = await prisma.callRecord.count();
     
-    const validCalls = await prisma.callCentreRecord.count({
+    const validCalls = await prisma.callRecord.count({
       where: {
         // Most calls are considered valid unless specifically marked invalid
         status: {
@@ -30,39 +30,39 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    const totalCases = await prisma.callCentreRecord.count({
+    const totalCases = await prisma.callRecord.count({
       where: {
-        assignedTo: {
+        assignedOfficer: {
           not: null
         }
       }
     });
 
-    const pendingCases = await prisma.callCentreRecord.count({
+    const pendingCases = await prisma.callRecord.count({
       where: {
         status: {
           in: ['OPEN', 'IN_PROGRESS']
         },
-        assignedTo: {
+        assignedOfficer: {
           not: null
         }
       }
     });
 
-    const closedCases = await prisma.callCentreRecord.count({
+    const closedCases = await prisma.callRecord.count({
       where: {
         status: 'CLOSED',
-        assignedTo: {
+        assignedOfficer: {
           not: null
         }
       }
     });
 
     // Get officer performance data - simplified approach
-    const callsGroupedByOfficer = await prisma.callCentreRecord.groupBy({
-      by: ['assignedTo'],
+    const callsGroupedByOfficer = await prisma.callRecord.groupBy({
+      by: ['assignedOfficer'],
       where: {
-        assignedTo: {
+        assignedOfficer: {
           not: null
         }
       },
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get officer names for the grouped data
-    const officerIds = callsGroupedByOfficer.map(group => group.assignedTo).filter(Boolean);
+  const officerIds = callsGroupedByOfficer.map(group => group.assignedOfficer).filter(Boolean);
     const officers = await prisma.user.findMany({
       where: {
         id: {
@@ -81,14 +81,15 @@ export async function GET(request: NextRequest) {
       },
       select: {
         id: true,
-        name: true
+        firstName: true,
+        lastName: true
       }
     });
 
     const officerPerformance = callsGroupedByOfficer.map(group => {
-      const officer = officers.find(o => o.id === group.assignedTo);
+      const officer = officers.find(o => o.id === group.assignedOfficer);
       return {
-        name: officer?.name || 'Unknown Officer',
+        name: officer ? `${officer.firstName ?? ''} ${officer.lastName ?? ''}`.trim() || 'Unknown Officer' : 'Unknown Officer',
         totalCalls: group._count.id,
         validCalls: group._count.id, // Simplified - assume most are valid
         cases: group._count.id,
@@ -111,11 +112,40 @@ export async function GET(request: NextRequest) {
       caseConversionRate: totalCalls > 0 ? ((totalCases / totalCalls) * 100).toFixed(1) + "%" : "0%"
     };
 
-    // Get cases by purpose - since we don't have purpose field yet, return empty for now
-    const casesByPurpose: Array<{purpose: string, count: number, percentage: number}> = [];
+    // Fetch minimal fields and aggregate in JS to avoid client type mismatch during migration window
+    const minimalist = await prisma.callRecord.findMany({
+      select: {
+        status: true,
+        assignedOfficer: true,
+        createdAt: true
+      }
+    })
 
-    // Get calls by province - since we don't have province field yet, return empty for now  
-    const callsByProvince: Array<{province: string, calls: number, validCalls: number}> = [];
+    const enriched = (await prisma.callRecord.findMany()) as any[]
+    // Cases by purpose
+    const purposeCounts = new Map<string, number>()
+    for (const c of enriched) {
+      const p = (c.purpose as string) || 'Other'
+      const hasCase = !!c.assignedOfficer
+      if (hasCase) purposeCounts.set(p, (purposeCounts.get(p) || 0) + 1)
+    }
+    const totalPurposeCases = Array.from(purposeCounts.values()).reduce((a, b) => a + b, 0)
+    const casesByPurpose: Array<{ purpose: string; count: number; percentage: number }> = Array.from(purposeCounts.entries()).map(([p, count]) => ({
+      purpose: p,
+      count,
+      percentage: totalPurposeCases > 0 ? Math.round((count / totalPurposeCases) * 100) : 0
+    }))
+
+    // Calls by province
+    const provinceCounts = new Map<string, { calls: number; validCalls: number }>()
+    for (const c of enriched) {
+      const prov = (c.province as string) || 'Unknown'
+      const curr = provinceCounts.get(prov) || { calls: 0, validCalls: 0 }
+      curr.calls += 1
+      if (c.status !== 'SPAM') curr.validCalls += 1
+      provinceCounts.set(prov, curr)
+    }
+    const callsByProvince = Array.from(provinceCounts.entries()).map(([province, data]) => ({ province, ...data }))
 
     return NextResponse.json({
       success: true,

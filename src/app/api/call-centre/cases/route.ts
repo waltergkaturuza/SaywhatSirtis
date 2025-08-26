@@ -19,20 +19,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Get call centre records from database and transform them into cases
-    const calls = await prisma.callCentreRecord.findMany({
+    const calls = await prisma.callRecord.findMany({
       where: {
         // Only include calls that have been assigned to create cases
-        assignedTo: {
+        assignedOfficer: {
           not: null
-        }
-      },
-      include: {
-        assignedUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
         }
       },
       orderBy: {
@@ -49,19 +40,19 @@ export async function GET(request: NextRequest) {
       
       return {
         id: call.id,
-        caseNumber: `CASE-${call.id.substring(0, 8)}`,
-        callNumber: call.id,
+        caseNumber: call.caseNumber,
+        callNumber: call.caseNumber,
         clientName: call.callerName,
         phone: call.callerPhone,
-        purpose: call.subject || 'General Inquiry',
-        officer: call.assignedUser?.name,
+        purpose: call.summary || 'General Inquiry',
+        officer: call.assignedOfficer,
         status: call.status.toLowerCase().replace('_', '-'),
         priority: call.priority.toLowerCase(),
         createdDate: createdDate.toISOString().split('T')[0],
         dueDate: dueDate.toISOString().split('T')[0],
         lastUpdate: call.updatedAt.toISOString().split('T')[0],
         isOverdue: now > dueDate && call.status !== 'CLOSED',
-        description: call.description || 'No description available'
+        description: call.notes || 'No description available'
       };
     });
 

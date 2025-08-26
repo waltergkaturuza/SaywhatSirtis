@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const thisYearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
 
     // Get today's metrics
-    const todaysMetrics = await prisma.callCentreRecord.findMany({
+    const todaysMetrics = await prisma.callRecord.findMany({
       where: {
         createdAt: {
           gte: todayStart,
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get this month's metrics
-    const thisMonthMetrics = await prisma.callCentreRecord.findMany({
+    const thisMonthMetrics = await prisma.callRecord.findMany({
       where: {
         createdAt: {
           gte: thisMonthStart,
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get this year's metrics
-    const thisYearMetrics = await prisma.callCentreRecord.findMany({
+    const thisYearMetrics = await prisma.callRecord.findMany({
       where: {
         createdAt: {
           gte: thisYearStart,
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get all-time metrics
-    const allTimeMetrics = await prisma.callCentreRecord.findMany()
+    const allTimeMetrics = await prisma.callRecord.findMany()
 
     // Calculate statistics
     const todayStats = {
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get call distribution by type/purpose
-    const callsByPurpose = await prisma.callCentreRecord.groupBy({
+    const callsByPurpose = await prisma.callRecord.groupBy({
       by: ['callType'],
       _count: {
         callType: true
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get active cases count
-    const activeCases = await prisma.callCentreRecord.count({
+    const activeCases = await prisma.callRecord.count({
       where: {
         status: {
           in: ['OPEN', 'IN_PROGRESS']
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get overdue cases count
-    const overdueCases = await prisma.callCentreRecord.count({
+    const overdueCases = await prisma.callRecord.count({
       where: {
         status: {
           in: ['OPEN', 'IN_PROGRESS']

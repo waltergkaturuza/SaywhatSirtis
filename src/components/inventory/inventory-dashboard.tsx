@@ -207,7 +207,7 @@ export function InventoryDashboard({ permissions }: InventoryDashboardProps) {
             {stats.assetsByCategory.map((category, index) => (
               <div key={index}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">{category.name}</span>
+                  <span className="text-sm font-medium text-gray-700">{typeof category === 'string' ? category : category?.name || 'Unknown'}</span>
                   <div className="text-right">
                     <span className="text-sm font-medium text-gray-900">{formatNumber(category.count)}</span>
                     {permissions.canViewFinancials && (

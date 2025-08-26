@@ -15,23 +15,26 @@ export async function GET() {
     }
 
     // Get performance data for current user
-    const user = await prisma.user.findUnique({
+    const employee = await prisma.employee.findFirst({
       where: { email: session.user.email },
       select: {
         id: true,
+        employeeId: true,
+        firstName: true,
+        lastName: true,
         email: true,
         department: true,
         position: true,
-        appraisals: {
+        performanceReviews: {
           orderBy: { createdAt: 'desc' },
           take: 10
         }
       }
     })
 
-    if (!user) {
+    if (!employee) {
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'Employee record not found' },
         { status: 404 }
       )
     }
@@ -39,16 +42,19 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          department: user.department,
-          position: user.position
+        employee: {
+          id: employee.id,
+          employeeId: employee.employeeId,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          email: employee.email,
+          department: employee.department,
+          position: employee.position
         },
-        appraisals: user.appraisals,
+        performanceReviews: employee.performanceReviews,
         summary: {
-          totalAppraisals: user.appraisals.length,
-          latestAppraisal: user.appraisals[0] || null
+          totalReviews: employee.performanceReviews.length,
+          latestReview: employee.performanceReviews[0] || null
         }
       }
     })
@@ -73,26 +79,26 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { employeeId, reviewPeriod, overallRating, goals, achievements } = body
+    const { employeeId, reviewPeriod, reviewType, overallRating, goals, feedback } = body
 
-    // Create new performance appraisal
-    const appraisal = await prisma.appraisal.create({
+    // Create new performance review
+    const performanceReview = await prisma.performanceReview.create({
       data: {
         employeeId,
-        userId: session.user.id || '',
-        reviewPeriod: reviewPeriod || new Date().getFullYear().toString(),
+        reviewPeriod: reviewPeriod || `Annual ${new Date().getFullYear()}`,
+        reviewType: reviewType || 'annual',
         overallRating: overallRating || 0,
-        goals: goals || '',
-        achievements: achievements || '',
-        status: 'DRAFT',
-        reviewedBy: session.user.email
+        goals: goals || {},
+        feedback: feedback || '',
+        reviewDate: new Date(),
+        nextReviewDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
       }
     })
 
     return NextResponse.json({
       success: true,
-      data: appraisal,
-      message: 'Performance appraisal created successfully'
+      data: performanceReview,
+      message: 'Performance review created successfully'
     })
   } catch (error) {
     console.error('Create Performance Appraisal Error:', error)

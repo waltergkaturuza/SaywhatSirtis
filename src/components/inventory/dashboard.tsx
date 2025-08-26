@@ -203,11 +203,15 @@ export const InventoryDashboard: React.FC<DashboardProps> = ({
           
           <div className="space-y-4">
             {['Information Technology (IT) Equipment', 'Vehicles & Transport', 'Furniture & Fittings', 'Office Equipment'].map(category => {
-              const categoryAssets = assets.filter(a => a.category.name === category)
+              const categoryAssets = assets.filter(a => 
+                typeof a.category === 'string' ? a.category === category : a.category?.name === category
+              )
               const count = categoryAssets.length
               const value = categoryAssets.reduce((sum, asset) => sum + calculateCurrentValue(asset), 0)
               const maxValue = Math.max(...['Information Technology (IT) Equipment', 'Vehicles & Transport', 'Furniture & Fittings', 'Office Equipment'].map(cat =>
-                assets.filter(a => a.category.name === cat).reduce((sum, asset) => sum + calculateCurrentValue(asset), 0)
+                assets.filter(a => 
+                  typeof a.category === 'string' ? a.category === cat : a.category?.name === cat
+                ).reduce((sum, asset) => sum + calculateCurrentValue(asset), 0)
               ))
               const percentage = chartView === 'value' ? (value / (maxValue || 1)) * 100 : (count / (assets.length || 1)) * 100
               
@@ -265,7 +269,7 @@ export const InventoryDashboard: React.FC<DashboardProps> = ({
                 <div key={asset.id} className="border rounded-lg p-4 hover:bg-gray-50">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
-                      {getAssetIcon(asset.category.name)}
+                      {getAssetIcon(typeof asset.category === 'string' ? asset.category : asset.category?.name || '')}
                       <span className="font-medium text-gray-900">{asset.name}</span>
                     </div>
                     <span className="text-sm text-gray-500">{asset.assetNumber}</span>

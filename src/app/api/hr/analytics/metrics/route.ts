@@ -101,13 +101,16 @@ export async function GET(request: NextRequest) {
     // Get attendance rate (mock calculation - you'd implement based on your attendance system)
     const attendanceRate = 92.5 // This would be calculated from actual attendance data
 
-    // Get performance score from Appraisal model
-    const performanceData = await prisma.appraisal.aggregate({
+    // Get performance score from PerformanceReview model
+    const performanceData = await prisma.performanceReview.aggregate({
       where: {
         employee: department !== 'all' ? { department } : undefined,
         createdAt: {
           gte: startDate
         }
+      },
+      _avg: {
+        overallRating: true
       },
       _count: {
         overallRating: true

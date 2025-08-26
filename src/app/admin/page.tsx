@@ -161,14 +161,19 @@ export default function SystemAdminPage() {
 
   const fetchAdminData = async () => {
     try {
+      setLoading(true)
       const response = await fetch('/api/admin/dashboard')
       if (response.ok) {
         const data = await response.json()
-        setSystemStats(data.stats)
+        if (data.stats) {
+          setSystemStats(data.stats)
+        }
         // Update other data as needed
       }
     } catch (error) {
       console.error('Error fetching admin data:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -275,6 +280,11 @@ export default function SystemAdminPage() {
     { id: 'audit', name: 'Audit Logs', icon: DocumentTextIcon },
     { id: 'maintenance', name: 'Maintenance', icon: ExclamationTriangleIcon }
   ]
+
+  // Don't render until mounted to prevent hydration issues
+  if (!mounted) {
+    return null
+  }
 
   return (
     <EnhancedLayout>
@@ -529,7 +539,7 @@ export default function SystemAdminPage() {
                   <div>
                     <div className="flex justify-between mb-1">
                       <span className="text-sm text-gray-600">Response Time</span>
-                      <span className="text-sm font-medium">{systemStats.responseTime}ms</span>
+                      <span className="text-sm font-medium">{systemStats?.responseTime || 0}ms</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div className="bg-blue-600 h-2 rounded-full" style={{ width: '70%' }}></div>
@@ -538,7 +548,7 @@ export default function SystemAdminPage() {
                   <div>
                     <div className="flex justify-between mb-1">
                       <span className="text-sm text-gray-600">Error Rate</span>
-                      <span className="text-sm font-medium">{systemStats.errorRate}%</span>
+                      <span className="text-sm font-medium">{systemStats?.errorRate || 0}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div className="bg-green-600 h-2 rounded-full" style={{ width: '95%' }}></div>

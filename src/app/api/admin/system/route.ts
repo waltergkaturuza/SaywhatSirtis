@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all system settings
-    const settings = await prisma.systemSetting.findMany({
+    const settings = await prisma.systemConfig.findMany({
       orderBy: [
         { category: 'asc' },
         { key: 'asc' }
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
 
     // If no settings exist, create default ones
     if (settings.length === 0) {
-      await prisma.systemSetting.createMany({
+      await prisma.systemConfig.createMany({
         data: defaultSettings.map(setting => ({
           key: setting.key,
           value: setting.value,
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
         }))
       })
 
-      const newSettings = await prisma.systemSetting.findMany({
+      const newSettings = await prisma.systemConfig.findMany({
         orderBy: [
           { category: 'asc' },
           { key: 'asc' }
@@ -191,12 +191,12 @@ export async function PUT(request: NextRequest) {
 
     // Update each setting
     const updatePromises = settings.map(async (setting: any) => {
-      const existing = await prisma.systemSetting.findUnique({
+      const existing = await prisma.systemConfig.findUnique({
         where: { key: setting.key }
       })
 
       if (existing) {
-        return prisma.systemSetting.update({
+        return prisma.systemConfig.update({
           where: { key: setting.key },
           data: {
             value: setting.value,
@@ -205,7 +205,7 @@ export async function PUT(request: NextRequest) {
           }
         })
       } else {
-        return prisma.systemSetting.create({
+        return prisma.systemConfig.create({
           data: {
             key: setting.key,
             value: setting.value,
@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new setting
-    const setting = await prisma.systemSetting.create({
+    const setting = await prisma.systemConfig.create({
       data: {
         key,
         value,

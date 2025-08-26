@@ -449,7 +449,7 @@ export function AssetTable({ searchQuery, permissions }: AssetTableProps) {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">{asset.type.name}</div>
-                    <div className="text-xs text-gray-500">{asset.category.name}</div>
+                    <div className="text-xs text-gray-500">{typeof asset.category === 'string' ? asset.category : asset.category?.name || 'Unknown'}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center text-sm text-gray-900">

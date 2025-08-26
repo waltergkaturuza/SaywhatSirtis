@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       overdueCases
     ] = await Promise.all([
       // Total calls today
-      prisma.callCentreRecord.count({
+      prisma.callRecord.count({
         where: {
           createdAt: {
             gte: today,
@@ -43,16 +43,21 @@ export async function GET(request: NextRequest) {
           }
         }
       }),
-      // Active cases (calls that are still open)
-      prisma.callCentreRecord.count({
+      // Active cases (calls that are still open or in progress)
+      prisma.callRecord.count({
         where: {
-          status: 'OPEN'
+          status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] }
         }
       }),
-      // Pending follow-ups
-      prisma.callFollowUp.count(),
+      // Pending follow-ups (calls that require follow-up and are not closed/resolved)
+      prisma.callRecord.count({
+        where: {
+          followUpRequired: true,
+          status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] }
+        }
+      }),
       // Overdue cases (calls older than 7 days and still open)
-      prisma.callCentreRecord.count({
+      prisma.callRecord.count({
         where: {
           status: 'OPEN',
           createdAt: {
@@ -63,16 +68,18 @@ export async function GET(request: NextRequest) {
     ])
 
     // Calculate valid calls rate
-    const validCalls = await prisma.callCentreRecord.count({
+    const validCalls = await prisma.callRecord.count({
       where: {
         createdAt: {
           gte: today,
           lt: tomorrow
         },
-        // Assuming calls with empty or valid subjects are valid calls
-        subject: {
-          not: ''
-        }
+        // Treat calls as valid if they are not marked as SPAM and have a non-empty summary
+        status: { not: 'SPAM' },
+        AND: [
+          { summary: { not: null } },
+          { summary: { not: '' } }
+        ]
       }
     })
 

@@ -12,7 +12,8 @@ async function main() {
     create: {
       email: 'admin@saywhat.org',
       username: 'admin',
-      name: 'System Administrator',
+      firstName: 'System',
+      lastName: 'Administrator',
       role: 'ADMIN',
       department: 'IT',
       position: 'System Administrator',
@@ -40,7 +41,7 @@ async function main() {
       province: 'Harare',
       budget: 50000,
       actualSpent: 22500,
-      managerId: adminUser.id,
+      creatorId: adminUser.id,
       objectives: JSON.stringify({
         categories: ['Maternal Health', 'Child protection'],
         projectLead: 'Dr. Sarah Mukamuri',

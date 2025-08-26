@@ -19,45 +19,44 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all calls without pagination for now
-    const calls = await prisma.callCentreRecord.findMany({
+    const calls = await prisma.callRecord.findMany({
       orderBy: {
         createdAt: 'desc'
-      },
-      include: {
-        assignedUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
       }
     })
 
     // Transform the data to match the frontend interface
     const transformedCalls = calls.map(call => ({
       id: call.id,
-      callNumber: call.id, // Use ID as call number for now
-      caseNumber: call.id,
+      callNumber: call.caseNumber,
+      caseNumber: call.caseNumber,
       callerName: call.callerName,
       callerPhone: call.callerPhone,
-      callerProvince: null, // Not available in current schema
-      callerAge: null, // Not available in current schema
-      callerGender: null, // Not available in current schema
-      clientName: call.callerName, // Same as caller for now
-      clientAge: null, // Not available in current schema
-      clientSex: null, // Not available in current schema
-      communicationMode: call.callType || 'INBOUND',
-      purpose: call.subject || 'General Inquiry',
-      validity: 'Valid', // Default for now
-      officer: call.assignedUser?.name || 'Unassigned',
+      callerProvince: (call as any).province ?? (call as any).district ?? null,
+      callerAge: (call as any).callerAgeGroup ?? null,
+      callerGender: (call as any).callerGender ?? null,
+      clientName: (call as any).clientName ?? call.callerName,
+      clientAge: (call as any).clientAge ?? null,
+      clientSex: (call as any).clientSex ?? null,
+      communicationMode: (() => {
+        // Map enum/channel + direction into the UI's single field
+        const mode = (call as any).communicationMode
+        if (mode === 'WHATSAPP') return 'whatsapp'
+        if (mode === 'TEXT') return 'text'
+        if (mode === 'WALK_IN') return 'walk'
+        return call.callType === 'OUTBOUND' ? 'outbound' : 'inbound'
+      })(),
+      purpose: (call as any).purpose ?? call.summary ?? 'General Inquiry',
+      validity: (call as any).validity ? ((call as any).validity[0].toUpperCase() + (call as any).validity.slice(1)) : 'Valid',
+      officer: call.assignedOfficer || 'Unassigned',
       dateTime: call.createdAt.toISOString(),
-      duration: null, // Not available in current schema
+      duration: call.callEndTime && call.callStartTime ? 
+        Math.round((call.callEndTime.getTime() - call.callStartTime.getTime()) / 1000 / 60) : null,
       status: call.status,
       referredTo: call.resolution || null,
-      voucherIssued: 'NO', // Default for now
-      voucherValue: null, // Not available in current schema
-      notes: call.description
+      voucherIssued: (call as any).voucherIssued ? 'YES' : 'NO',
+      voucherValue: (call as any).voucherValue ?? null,
+      notes: call.notes || (call as any).description || (call as any).comment || null
     }));
 
     return NextResponse.json({
@@ -94,36 +93,110 @@ export async function POST(request: NextRequest) {
       callerName,
       callerPhone,
       callerEmail,
-      callType,
+      // UI mixed "mode" and direction
+      modeOfCommunication,
+      howDidYouHearAboutUs,
+      callValidity,
+      newOrRepeatCall,
+      language,
+      callerFullName,
+      callerAge,
+      callerKeyPopulation,
+      callerGender,
+      callerProvince,
+      callerAddress,
+      callDescription,
+      purpose,
+      isCase,
+      perpetrator,
+      servicesRecommended,
+      referral,
+      clientName: clientNameInput,
+      clientAge,
+      clientSex,
+      clientAddress,
+      clientProvince,
+      voucherIssued,
+      voucherValue,
+      comment,
       priority,
       subject,
       description,
       assignedTo
     } = body
 
-    // Create new call record
-    const call = await prisma.callCentreRecord.create({
-      data: {
-        callerName,
-        callerPhone,
-        callerEmail,
-        callType,
-        priority,
-        subject,
-        description,
-        assignedTo,
-        status: 'OPEN'
-      },
-      include: {
-        assignedUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
-    })
+    // Derive enums/fields
+    const derivedCallType = ((): 'INBOUND' | 'OUTBOUND' => {
+      if (modeOfCommunication === 'outbound') return 'OUTBOUND'
+      return 'INBOUND'
+    })()
+
+    const derivedCommMode = ((): 'PHONE' | 'WHATSAPP' | 'WALK_IN' | 'TEXT' => {
+      if (modeOfCommunication === 'whatsapp') return 'WHATSAPP'
+      if (modeOfCommunication === 'walk') return 'WALK_IN'
+      if (modeOfCommunication === 'text') return 'TEXT'
+      return 'PHONE'
+    })()
+
+    // Create new call record with graceful fallback if schema is not yet migrated
+    const fullData: any = {
+      caseNumber: `CASE-${Date.now()}`,
+      callerName: callerName || callerFullName,
+      callerPhone,
+      callerEmail,
+      callType: derivedCallType,
+      communicationMode: derivedCommMode,
+      category: 'INQUIRY',
+      priority: priority || 'MEDIUM',
+      summary: subject,
+      description: description || callDescription,
+      notes: comment,
+      purpose,
+      validity: callValidity,
+      newOrRepeatCall,
+      howDidYouHearAboutUs,
+      language,
+      province: callerProvince,
+      address: callerAddress,
+      callerAgeGroup: callerAge,
+      callerGender,
+      callerKeyPopulation,
+      clientName: clientNameInput,
+      clientAge,
+      clientSex,
+      clientAddress,
+      clientProvince,
+      voucherIssued: voucherIssued === 'YES',
+      voucherValue: voucherValue ? parseFloat(voucherValue) : undefined,
+      isCase: isCase === 'YES',
+      assignedOfficer: assignedTo,
+      assignedOfficerName: session.user?.name ?? undefined,
+      status: 'OPEN',
+      callStartTime: new Date()
+    }
+
+    const baseData = {
+      caseNumber: fullData.caseNumber,
+      callerName: fullData.callerName,
+      callerPhone: fullData.callerPhone,
+      callerEmail: fullData.callerEmail,
+      callType: fullData.callType,
+      category: 'INQUIRY',
+      priority: priority || 'MEDIUM',
+      summary: subject,
+      notes: description || callDescription || comment,
+      assignedOfficer: assignedTo,
+      status: 'OPEN',
+      callStartTime: new Date()
+    } as const
+
+    let call
+    try {
+      call = await prisma.callRecord.create({ data: fullData as any })
+    } catch (e) {
+      // Fallback if Prisma client hasn't been regenerated yet or DB not migrated
+      call = await prisma.callRecord.create({ data: baseData as any })
+    }
 
     return NextResponse.json(call, { status: 201 })
   } catch (error) {

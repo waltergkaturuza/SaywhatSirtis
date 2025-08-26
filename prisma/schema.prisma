@@ -21,6 +21,7 @@ model User {
   username          String?             @unique
   firstName         String?
   lastName          String?
+  name              String?             // Computed field: firstName + lastName
   role              UserRole            @default(USER)
   roles             String[]            @default([])
   department        String?
@@ -35,6 +36,17 @@ model User {
   profileImage      String?
   bio               String?
   location          String?
+  
+  // Employee Related
+  employeeId        String?
+  staffId           String?
+  secretariat       String?
+  supervisor        String?
+  accessLevel       String?
+  permissions       String[]            @default([])
+  status            String?             @default("active")
+  joinDate          String?
+  performanceRating Float?
   
   // Security
   emailVerified     DateTime?
@@ -181,17 +193,28 @@ model CallRecord {
   callerName      String
   callerPhone     String
   callerEmail     String?
-  callType        CallDirection   // "inbound", "outbound"
+  callType        CallDirection   // Direction: INBOUND or OUTBOUND
+  // Channel/mode used for the interaction (WhatsApp, Walk-in, etc.)
+  communicationMode CommunicationMode @default(PHONE)
   category        CallType   // "inquiry", "complaint", "emergency", etc.
   priority        CallPriority @default(MEDIUM)
   status          CallStatus @default(OPEN)
   assignedOfficer String?
+  // Officer display name captured at time of call (optional)
+  assignedOfficerName String?
   
   // Call Details
   summary         String?   @db.Text
-  notes           String?   @db.Text
+  description     String?   @db.Text // Detailed call description from form
+  notes           String?   @db.Text // Additional comments/notes
   resolution      String?   @db.Text
   satisfactionRating Int?
+  purpose         String?   // e.g., HIV/AIDS, GBV, Legal Assistance, etc.
+  isCase          Boolean   @default(false)
+  howDidYouHearAboutUs String?
+  language        String?
+  validity        String?   // "valid" | "invalid"
+  newOrRepeatCall String?   // "new" | "repeat"
   
   // Timestamps
   callStartTime   DateTime
@@ -201,12 +224,36 @@ model CallRecord {
   resolvedAt      DateTime?
   
   // Location
+  province        String?
   district        String?
   ward            String?
+  address         String?
   
   // Follow-up
   followUpRequired Boolean  @default(false)
   followUpDate    DateTime?
+
+  // Caller demographics
+  callerAgeGroup  String?   // "-14", "15-19", "20-24", "25+"
+  callerGender    String?   // "Male", "Female", "N/A"
+  callerKeyPopulation String? // "Child", "Young Person", "Adult", "N/A"
+
+  // Client details (person needing help)
+  clientName      String?
+  clientAge       String?
+  clientSex       String?
+  clientAddress   String?
+  clientProvince  String?
+
+  // Voucher info
+  voucherIssued   Boolean   @default(false)
+  voucherValue    Float?
+  comment         String?   @db.Text
+
+  // Additional information
+  perpetrator     String?
+  servicesRecommended String?
+  referral        String?
   
   @@index([caseNumber])
   @@index([status])
@@ -226,7 +273,9 @@ model Employee {
   employeeId      String    @unique
   firstName       String
   lastName        String
+  middleName      String?
   email           String    @unique
+  personalEmail   String?
   phoneNumber     String?
   position        String
   department      String
@@ -236,14 +285,46 @@ model Employee {
   
   // Personal Information
   dateOfBirth     DateTime?
+  gender          String?
+  maritalStatus   String?
   nationalId      String?   @unique
   address         String?
   emergencyContact String?
+  emergencyContactPhone String?
+  emergencyContactRelationship String?
   
   // Employment Details
   contractType    String?   // "permanent", "contract", "intern"
+  employmentType  String?   // "full-time", "part-time", "contract", "intern", "consultant"
   reportingTo     String?
+  reportingManager String?
   workLocation    String?
+  
+  // Compensation
+  baseSalary      Float?
+  currency        String?   @default("USD")
+  payGrade        String?
+  payFrequency    String?   @default("monthly")
+  benefits        String[]  @default([])
+  
+  // Education & Skills
+  education       String?
+  skills          String[]  @default([])
+  certifications  String[]  @default([])
+  
+  // Access & Security
+  accessLevel     String?
+  systemAccess    String[]  @default([])
+  securityClearance String?
+  
+  // Document Management
+  contractSigned Boolean   @default(false)
+  backgroundCheckCompleted Boolean @default(false)
+  medicalCheckCompleted Boolean @default(false)
+  trainingCompleted Boolean @default(false)
+  
+  // Additional Information
+  additionalNotes String?
   
   // HR Records
   performanceReviews PerformanceReview[]
@@ -310,10 +391,20 @@ model PayrollRecord {
   payPeriod       String    // "2024-01", "2024-02", etc.
   basicSalary     Float
   allowances      Float     @default(0)
+  totalAllowances Float     @default(0)
   overtime        Float     @default(0)
+  overtimePay     Float     @default(0)
+  grossPay        Float
   deductions      Float     @default(0)
+  totalDeductions Float     @default(0)
   netPay          Float
-  payDate         DateTime
+  payDate         DateTime?
+  status          String    @default("pending") // pending, approved, processed, paid, error
+  
+  // Payslip Information
+  payslipNumber   String?
+  payslipGenerated Boolean  @default(false)
+  emailSent       Boolean   @default(false)
   
   employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   
@@ -323,6 +414,7 @@ model PayrollRecord {
   @@unique([employeeId, payPeriod])
   @@index([employeeId])
   @@index([payPeriod])
+  @@index([status])
   @@map("payroll_records")
 }
 
@@ -602,6 +694,14 @@ enum CallType {
 enum CallDirection {
   INBOUND
   OUTBOUND
+}
+
+// Mode or channel for the call/interaction
+enum CommunicationMode {
+  PHONE
+  WHATSAPP
+  WALK_IN
+  TEXT
 }
 
 enum CallPriority {

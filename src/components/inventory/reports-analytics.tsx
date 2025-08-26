@@ -120,7 +120,7 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
       // Top categories by count and value
       const categoryMap = new Map<string, { count: number; value: number }>()
       assets.forEach(asset => {
-        const categoryName = asset.category.name
+        const categoryName = typeof asset.category === 'string' ? asset.category : asset.category?.name || 'Unknown'
         const existing = categoryMap.get(categoryName) || { count: 0, value: 0 }
         categoryMap.set(categoryName, {
           count: existing.count + 1,
@@ -239,10 +239,10 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
           assets: assets.map(asset => ({
             assetNumber: asset.assetNumber,
             name: asset.name,
-            category: asset.category.name,
-            type: asset.type.name,
+            category: typeof asset.category === 'string' ? asset.category : asset.category?.name || 'Unknown',
+            type: typeof asset.type === 'string' ? asset.type : asset.type?.name || 'Unknown',
             status: asset.status,
-            location: asset.location.name,
+            location: typeof asset.location === 'string' ? asset.location : asset.location?.name || 'Unknown',
             assignedTo: asset.assignedTo,
             procurementValue: asset.procurementValue,
             currentValue: asset.currentValue,
@@ -299,8 +299,9 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
             assetCount: category.count,
             totalValue: category.value,
             averageValue: category.value / category.count,
-            assets: assets.filter(a => a.category.name === category.name)
-              .map(a => ({ assetNumber: a.assetNumber, name: a.name, value: a.currentValue }))
+            assets: assets.filter(a => 
+              typeof a.category === 'string' ? a.category === category.name : a.category?.name === category.name
+            ).map(a => ({ assetNumber: a.assetNumber, name: a.name, value: a.currentValue }))
           }))
         }
         break

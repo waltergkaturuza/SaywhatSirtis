@@ -21,35 +21,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Get follow-ups as tasks
-    const tasks = await prisma.callFollowUp.findMany({
-      include: {
-        call: {
-          select: {
-            id: true,
-            callerName: true,
-            subject: true,
-            assignedUser: {
-              select: {
-                name: true
-              }
-            }
-          }
-        }
+    // Get follow-ups as tasks from CallRecord (no separate follow-up table)
+    const callsNeedingFollowUp = await prisma.callRecord.findMany({
+      where: {
+        followUpRequired: true,
+        status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] }
       },
-      orderBy: {
-        createdAt: 'desc'
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        caseNumber: true,
+        callerName: true,
+        summary: true,
+        notes: true,
+        assignedOfficer: true,
+        priority: true,
+        followUpDate: true,
+        updatedAt: true
       }
     })
 
     // Transform to match frontend interface
-    const formattedTasks = tasks.map(task => ({
-      id: task.id,
-      caseNumber: task.call.id.slice(-8), // Use last 8 chars of call ID
-      title: task.notes,
-      assignedOfficer: task.call.assignedUser?.name || 'Unassigned',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
-      priority: 'medium' as const,
+    const formattedTasks = callsNeedingFollowUp.map(call => ({
+      id: call.id,
+      caseNumber: call.caseNumber.slice(-8),
+      title: call.summary || call.notes || 'Follow-up',
+      assignedOfficer: call.assignedOfficer || 'Unassigned',
+      dueDate: (call.followUpDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
+        .toISOString().split('T')[0],
+      priority: (call.priority?.toLowerCase() as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
       type: 'follow-up' as const,
       status: 'pending' as const
     }))
@@ -80,52 +80,46 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { caseNumber, title, assignedOfficer } = body
+  const { caseNumber, title, assignedOfficer, dueDate } = body
 
-    // Find the call record by case number (partial match)
-    const call = await prisma.callCentreRecord.findFirst({
-      where: {
-        id: {
-          endsWith: caseNumber
-        }
-      }
+    // Find the call record by exact case number
+    const call = await prisma.callRecord.findUnique({
+      where: { caseNumber }
     })
 
     if (!call) {
       return NextResponse.json({ error: 'Call record not found' }, { status: 404 })
     }
 
-    // Create follow-up task
-    const task = await prisma.callFollowUp.create({
+    // Update call to mark follow-up required and set details
+    const updated = await prisma.callRecord.update({
+      where: { id: call.id },
       data: {
-        callId: call.id,
-        notes: title,
-        actionTaken: null
+        followUpRequired: true,
+        followUpDate: dueDate ? new Date(dueDate) : (call.followUpDate ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+        notes: [call.notes, title].filter(Boolean).join('\n'),
+        assignedOfficer: assignedOfficer || call.assignedOfficer
       },
-      include: {
-        call: {
-          select: {
-            id: true,
-            callerName: true,
-            subject: true,
-            assignedUser: {
-              select: {
-                name: true
-              }
-            }
-          }
-        }
+      select: {
+        id: true,
+        caseNumber: true,
+        summary: true,
+        notes: true,
+        assignedOfficer: true,
+        priority: true,
+        followUpDate: true
       }
     })
 
     // Format response
     const formattedTask = {
-      id: task.id,
-      caseNumber: task.call.id.slice(-8),
-      title: task.notes,
-      assignedOfficer: task.call.assignedUser?.name || assignedOfficer,
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      priority: 'medium' as const,
+      id: updated.id,
+      caseNumber: updated.caseNumber.slice(-8),
+      title: updated.summary || title,
+      assignedOfficer: updated.assignedOfficer || 'Unassigned',
+      dueDate: (updated.followUpDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
+      // Map priority enum to lowercase label
+      priority: (updated.priority?.toLowerCase() as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
       type: 'follow-up' as const,
       status: 'pending' as const
     }

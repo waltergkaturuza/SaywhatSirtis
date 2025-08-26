@@ -384,11 +384,15 @@ export default function InventoryManagementPage() {
     }
 
     if (categoryFilter !== "all") {
-      filtered = filtered.filter(asset => asset.category.name === categoryFilter)
+      filtered = filtered.filter(asset => 
+        typeof asset.category === 'string' ? asset.category === categoryFilter : asset.category?.name === categoryFilter
+      )
     }
 
     if (locationFilter !== "all") {
-      filtered = filtered.filter(asset => asset.location.name === locationFilter)
+      filtered = filtered.filter(asset => 
+        typeof asset.location === 'string' ? asset.location === locationFilter : asset.location?.name === locationFilter
+      )
     }
 
     setFilteredAssets(filtered)

@@ -333,12 +333,12 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
           </ResponsiveContainer>
           <div className="grid grid-cols-2 gap-3 mt-4">
             {categoryData.map((category, index) => (
-              <div key={category.name} className="flex items-center">
+              <div key={typeof category === 'string' ? category : category?.name || 'unknown'} className="flex items-center">
                 <div 
                   className="w-3 h-3 rounded-full mr-2" 
                   style={{ backgroundColor: COLORS[index % COLORS.length] }}
                 ></div>
-                <span className="text-sm text-gray-600">{category.name}</span>
+                <span className="text-sm text-gray-600">{typeof category === 'string' ? category : category?.name || 'Unknown'}</span>
                 <span className="ml-auto text-sm font-medium">{category.count}</span>
               </div>
             ))}

@@ -1,4 +1,4 @@
-import { PrismaClient, EventStatus } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -15,7 +15,8 @@ async function seedEvents() {
     organizer = await prisma.user.create({
       data: {
         email: 'admin@saywhat.org',
-        name: 'SAYWHAT Admin',
+        firstName: 'SAYWHAT',
+        lastName: 'Admin',
         role: 'ADMIN',
         isActive: true,
       }
@@ -25,67 +26,66 @@ async function seedEvents() {
   // Create some sample events
   const sampleEvents = [
     {
-      name: 'Youth Leadership Conference 2025',
+      title: 'Youth Leadership Conference 2025',
       description: 'Annual conference bringing together young leaders from across Zimbabwe to discuss empowerment and development opportunities.',
+      type: 'flagship',
+      status: 'planning',
       startDate: new Date('2025-09-15'),
-      startTime: '09:00',
       endDate: new Date('2025-09-17'),
-      endTime: '17:00',
       location: 'Harare',
-      expectedAttendees: 150,
-      status: 'PLANNING' as EventStatus,
-      category: 'CONFERENCE' as any,
+      venue: 'Harare International Conference Centre',
+      capacity: 150,
       budget: 25000,
-      organizerUserId: organizer.id,
+      requiresRegistration: true,
+      registrationDeadline: new Date('2025-09-10'),
     },
     {
-      name: 'Women in Tech Workshop',
+      title: 'Women in Tech Workshop',
       description: 'Hands-on workshop focusing on digital skills and technology for women entrepreneurs.',
+      type: 'training',
+      status: 'approved',
       startDate: new Date('2025-08-30'),
-      startTime: '08:30',
       endDate: new Date('2025-08-30'),
-      endTime: '16:30',
       location: 'Bulawayo',
-      expectedAttendees: 50,
-      status: 'ACTIVE' as EventStatus,
-      category: 'WORKSHOP' as any,
+      venue: 'Bulawayo Polytechnic',
+      capacity: 50,
       budget: 8000,
-      organizerUserId: organizer.id,
+      requiresRegistration: true,
+      registrationDeadline: new Date('2025-08-25'),
     },
     {
-      name: 'Community Outreach - Masvingo',
+      title: 'Community Outreach - Masvingo',
       description: 'Community engagement program to raise awareness about youth development initiatives.',
+      type: 'outreach',
+      status: 'completed',
       startDate: new Date('2025-07-20'),
-      startTime: '10:00',
       endDate: new Date('2025-07-20'),
-      endTime: '15:00',
       location: 'Masvingo',
-      expectedAttendees: 200,
-      actualAttendees: 180,
-      status: 'COMPLETED' as EventStatus,
-      category: 'OUTREACH' as any,
+      venue: 'Masvingo Civic Centre',
+      capacity: 200,
       budget: 5000,
       actualCost: 4500,
-      organizerUserId: organizer.id,
+      requiresRegistration: false,
     },
     {
-      name: 'Fundraising Gala 2025',
+      title: 'Fundraising Gala 2025',
       description: 'Annual fundraising event to support SAYWHAT programs and initiatives.',
-      startDate: new Date('2025-12-10'),
+      type: 'fundraising',
       startTime: '18:00',
+      status: 'planning',
+      startDate: new Date('2025-12-10'),
       endDate: new Date('2025-12-10'),
-      endTime: '23:00',
       location: 'Harare',
-      expectedAttendees: 300,
-      status: 'PLANNING' as EventStatus,
-      category: 'FUNDRAISING' as any,
+      venue: 'Harare International Convention Centre',
+      capacity: 300,
       budget: 50000,
-      organizerUserId: organizer.id,
+      requiresRegistration: true,
+      registrationDeadline: new Date('2025-12-05'),
     },
   ]
 
   for (const eventData of sampleEvents) {
-    await prisma.flagshipEvent.create({
+    await prisma.event.create({
       data: eventData,
     })
   }
