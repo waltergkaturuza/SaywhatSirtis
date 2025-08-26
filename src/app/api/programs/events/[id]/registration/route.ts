@@ -19,7 +19,7 @@ export async function POST(
     const { registrationFields, registrationDeadline, requiresRegistration } = body;
 
     // Check if event exists
-    const event = await prisma.event.findUnique({
+    const event = await prisma.flagshipEvent.findUnique({
       where: { id },
     });
 
@@ -40,7 +40,7 @@ export async function POST(
 
     const registrationConfig = {
       eventId: id,
-      eventName: event.title,
+      eventName: event.name,
       eventDate: event.startDate,
       eventLocation: event.location,
       deadline: registrationDeadline,
@@ -79,8 +79,17 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const event = await prisma.event.findUnique({
+    const event = await prisma.flagshipEvent.findUnique({
       where: { id },
+      include: {
+        organizer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
 
     if (!event) {
@@ -91,14 +100,16 @@ export async function GET(
     return NextResponse.json({
       event: {
         id: event.id,
-        title: event.title,
+        name: event.name,
         description: event.description,
         startDate: event.startDate,
         endDate: event.endDate,
+        startTime: event.startTime,
+        endTime: event.endTime,
         location: event.location,
-        type: event.type,
-        status: event.status,
-        capacity: event.capacity
+        organizer: event.organizer,
+        category: event.category,
+        expectedAttendees: event.expectedAttendees
       }
     });
 

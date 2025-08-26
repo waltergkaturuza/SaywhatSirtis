@@ -148,15 +148,8 @@ export default function JobDescriptionsPage() {
   if (loading) {
     return (
       <ModulePage 
-        metadata={{
-          title: "Job Descriptions",
-          description: "Manage position descriptions and requirements",
-          breadcrumbs: [
-            { name: "SIRTIS" },
-            { name: "HR Management", href: "/hr" },
-            { name: "Job Descriptions" }
-          ]
-        }}
+        title="Job Descriptions"
+        description="Manage position descriptions and requirements"
       >
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -167,15 +160,8 @@ export default function JobDescriptionsPage() {
 
   return (
     <ModulePage 
-      metadata={{
-        title: "Job Descriptions",
-        description: "Manage position descriptions and requirements",
-        breadcrumbs: [
-          { name: "SIRTIS" },
-          { name: "HR Management", href: "/hr" },
-          { name: "Job Descriptions" }
-        ]
-      }}
+      title="Job Descriptions"
+      description="Manage position descriptions and requirements"
     >
       {/* Header Actions */}
       <div className="mb-6 flex justify-between items-center">

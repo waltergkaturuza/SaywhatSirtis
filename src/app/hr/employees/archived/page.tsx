@@ -110,12 +110,9 @@ export default function EmployeeArchivePage() {
     return matchesSearch && matchesDepartment && matchesReason && matchesClearance
   }) || []
 
-  const getUniqueValues = (field: keyof ArchivedEmployee): string[] => {
+  const getUniqueValues = (field: keyof ArchivedEmployee) => {
     if (!archivedData?.employees) return []
-    return [...new Set(archivedData.employees
-      .map(emp => emp[field])
-      .filter((value): value is string => typeof value === 'string' && Boolean(value))
-    )]
+    return [...new Set(archivedData.employees.map(emp => emp[field]).filter(Boolean))]
   }
 
   const getStatusColor = (status: string | undefined) => {
