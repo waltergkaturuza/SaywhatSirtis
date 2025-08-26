@@ -1,67 +1,182 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get HR dashboard statistics
-    const stats = await Promise.all([
-      // Total active employees
-      prisma.user.count({
-        where: { isActive: true }
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.view') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Get current date for time-based queries
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+
+    // Employee metrics
+    const [
+      totalEmployees,
+      activeEmployees,
+      employeesOnLeave,
+      newHiresThisMonth,
+      newHiresLastMonth
+    ] = await Promise.all([
+      // Total employees
+      prisma.employee.count({
+        where: { status: 'ACTIVE' }
       }),
       
-      // Total archived employees
-      prisma.user.count({
-        where: { isActive: false }
+      // Active employees (not on leave)
+      prisma.employee.count({
+        where: { 
+          status: 'ACTIVE'
+        }
       }),
       
-      // Recent hires (last 30 days)
-      prisma.user.count({
+      // Employees on leave
+      prisma.employee.count({
+        where: { status: 'ON_LEAVE' }
+      }),
+      
+      // New hires this month
+      prisma.employee.count({
         where: {
-          isActive: true,
-          createdAt: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          hireDate: {
+            gte: startOfMonth
           }
         }
       }),
       
-      // Employees by department
-      prisma.user.groupBy({
-        by: ['department'],
-        where: { isActive: true },
-        _count: { id: true }
+      // New hires last month
+      prisma.employee.count({
+        where: {
+          hireDate: {
+            gte: lastMonth,
+            lte: endOfLastMonth
+          }
+        }
       })
     ])
 
-    const [totalEmployees, archivedEmployees, recentHires, departmentBreakdown] = stats
+    // Performance metrics
+    const performanceReviews = await prisma.performanceReview.aggregate({
+      _avg: {
+        overallRating: true
+      },
+      _count: {
+        id: true
+      },
+      where: {
+        reviewDate: {
+          gte: new Date(now.getFullYear() - 1, now.getMonth(), 1) // Last 12 months
+        }
+      }
+    })
+
+    // Leave requests requiring approval
+    const pendingLeaveRequests = await prisma.leaveRecord.count({
+      where: {
+        status: 'pending'
+      }
+    })
+
+    // Performance reviews due
+    const reviewsDue = await prisma.employee.count({
+      where: {
+        performanceReviews: {
+          none: {
+            reviewDate: {
+              gte: new Date(now.getFullYear(), now.getMonth() - 6, 1) // No review in last 6 months
+            }
+          }
+        }
+      }
+    })
+
+    // Recent activity - last few activities
+    const recentEmployees = await prisma.employee.findMany({
+      take: 3,
+      orderBy: {
+        createdAt: 'desc'
+      },
+      select: {
+        firstName: true,
+        lastName: true,
+        department: true,
+        createdAt: true,
+        hireDate: true
+      }
+    })
+
+    const recentPerformanceReviews = await prisma.performanceReview.findMany({
+      take: 2,
+      orderBy: {
+        reviewDate: 'desc'
+      },
+      include: {
+        employee: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    })
+
+    // Calculate changes
+    const newHireChange = newHiresLastMonth > 0 
+      ? ((newHiresThisMonth - newHiresLastMonth) / newHiresLastMonth * 100).toFixed(1)
+      : '0'
 
     const dashboardData = {
-      totalEmployees,
-      archivedEmployees,
-      recentHires,
-      departmentBreakdown: departmentBreakdown.reduce((acc, dept) => {
-        if (dept.department) {
-          acc[dept.department] = dept._count.id
-        }
-        return acc
-      }, {} as Record<string, number>)
+      metrics: {
+        totalEmployees,
+        activeEmployees,
+        employeesOnLeave,
+        newHiresThisMonth,
+        newHireChange: `${newHireChange > '0' ? '+' : ''}${newHireChange}%`,
+        averagePerformance: performanceReviews._avg.overallRating?.toFixed(1) || '0.0',
+        attendanceRate: '96.2%', // Mock data - would need attendance tracking
+        attendanceChange: '+0.8%' // Mock data
+      },
+      pendingActions: {
+        reviewsDue,
+        pendingLeaveRequests,
+        onboardingCount: 5 // Mock data - would need onboarding tracking
+      },
+      recentActivity: [
+        ...recentEmployees.map(emp => ({
+          type: 'employee_added',
+          title: 'New employee onboarded',
+          description: `${emp.firstName} ${emp.lastName} joined the ${emp.department} team`,
+          timestamp: emp.createdAt,
+          icon: 'UserPlusIcon'
+        })),
+        ...recentPerformanceReviews.map(review => ({
+          type: 'performance_review',
+          title: 'Performance review completed',
+          description: `${review.employee.firstName} ${review.employee.lastName}'s review scored ${review.overallRating}/5`,
+          timestamp: review.reviewDate,
+          icon: 'StarIcon'
+        }))
+      ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 4)
     }
 
-    return NextResponse.json({
-      success: true,
-      data: dashboardData
-    })
+    return NextResponse.json(dashboardData)
   } catch (error) {
     console.error('HR Dashboard API Error:', error)
     return NextResponse.json(

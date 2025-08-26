@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import Link from "next/link"
 import {
@@ -21,8 +22,95 @@ import {
   ChartBarIcon
 } from "@heroicons/react/24/outline"
 
+interface HRDashboardData {
+  metrics: {
+    totalEmployees: number
+    activeEmployees: number
+    employeesOnLeave: number
+    newHiresThisMonth: number
+    newHireChange: string
+    averagePerformance: string
+    attendanceRate: string
+    attendanceChange: string
+  }
+  pendingActions: {
+    reviewsDue: number
+    pendingLeaveRequests: number
+    onboardingCount: number
+  }
+  recentActivity: Array<{
+    type: string
+    title: string
+    description: string
+    timestamp: string
+    icon: string
+  }>
+}
+
+interface HRModulesData {
+  departments: {
+    total: number
+    breakdown: Array<{ department: string, _count: { id: number } }>
+  }
+  training: {
+    totalPrograms: number
+    activePrograms: number
+    completedThisMonth: number
+    upcomingPrograms: number
+  }
+  recruitment: {
+    openPositions: number
+    applicationsReceived: number
+    interviewsScheduled: number
+    offersExtended: number
+  }
+}
+
 export default function HRDashboard() {
+  const { data: session } = useSession()
   const [clickedIcons, setClickedIcons] = useState(new Set())
+  const [dashboardData, setDashboardData] = useState<HRDashboardData | null>(null)
+  const [modulesData, setModulesData] = useState<HRModulesData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>("")
+
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!session) return
+      
+      try {
+        setLoading(true)
+        setError("")
+        
+        const [dashboardResponse, modulesResponse] = await Promise.all([
+          fetch('/api/hr/dashboard'),
+          fetch('/api/hr/modules')
+        ])
+        
+        if (!dashboardResponse.ok) {
+          throw new Error(`Dashboard HTTP ${dashboardResponse.status}: ${dashboardResponse.statusText}`)
+        }
+        
+        if (!modulesResponse.ok) {
+          throw new Error(`Modules HTTP ${modulesResponse.status}: ${modulesResponse.statusText}`)
+        }
+        
+        const dashboardData = await dashboardResponse.json()
+        const modulesData = await modulesResponse.json()
+        
+        setDashboardData(dashboardData)
+        setModulesData(modulesData)
+      } catch (err) {
+        console.error('Failed to fetch HR dashboard data:', err)
+        setError(err instanceof Error ? err.message : 'Unknown error')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchDashboardData()
+  }, [session])
 
   const handleIconClick = (moduleIndex: number) => {
     setClickedIcons(prev => new Set(prev).add(moduleIndex))
@@ -60,19 +148,27 @@ export default function HRDashboard() {
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Total Employees</span>
-            <span className="font-semibold">-</span>
+            <span className="font-semibold">
+              {loading ? 'Loading...' : dashboardData?.metrics.totalEmployees || '0'}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Active</span>
-            <span className="font-semibold text-green-600">-</span>
+            <span className="font-semibold text-green-600">
+              {loading ? 'Loading...' : dashboardData?.metrics.activeEmployees || '0'}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">On Leave</span>
-            <span className="font-semibold text-orange-600">-</span>
+            <span className="font-semibold text-orange-600">
+              {loading ? 'Loading...' : dashboardData?.metrics.employeesOnLeave || '0'}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">New Hires (Month)</span>
-            <span className="font-semibold text-black">-</span>
+            <span className="font-semibold text-black">
+              {loading ? 'Loading...' : dashboardData?.metrics.newHiresThisMonth || '0'}
+            </span>
           </div>
         </div>
       </div>
@@ -81,15 +177,21 @@ export default function HRDashboard() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Actions</h3>
         <div className="space-y-3">
           <div className="p-3 bg-yellow-50 rounded-lg">
-            <div className="text-sm font-medium text-yellow-800">15 Reviews Due</div>
+            <div className="text-sm font-medium text-yellow-800">
+              {loading ? 'Loading...' : `${dashboardData?.pendingActions.reviewsDue || 0} Reviews Due`}
+            </div>
             <div className="text-xs text-yellow-600">Performance reviews pending</div>
           </div>
           <div className="p-3 bg-blue-50 rounded-lg">
-            <div className="text-sm font-medium text-blue-800">8 Leave Requests</div>
+            <div className="text-sm font-medium text-blue-800">
+              {loading ? 'Loading...' : `${dashboardData?.pendingActions.pendingLeaveRequests || 0} Leave Requests`}
+            </div>
             <div className="text-xs text-blue-600">Awaiting approval</div>
           </div>
           <div className="p-3 bg-green-50 rounded-lg">
-            <div className="text-sm font-medium text-green-800">5 Onboarding</div>
+            <div className="text-sm font-medium text-green-800">
+              {loading ? 'Loading...' : `${dashboardData?.pendingActions.onboardingCount || 0} Onboarding`}
+            </div>
             <div className="text-xs text-green-600">New employee setup</div>
           </div>
         </div>
@@ -122,7 +224,7 @@ export default function HRDashboard() {
       icon: UserGroupIcon,
       href: "/hr/employees",
       color: "blue",
-      stats: "Loading..."
+      stats: loading ? "Loading..." : `${dashboardData?.metrics.totalEmployees || 0} employees`
     },
     {
       title: "Performance Management",
@@ -130,7 +232,7 @@ export default function HRDashboard() {
       icon: StarIcon,
       href: "/hr/performance",
       color: "yellow",
-      stats: "15 reviews due"
+      stats: loading ? "Loading..." : `${dashboardData?.pendingActions.reviewsDue || 0} reviews due`
     },
     {
       title: "Training & Development",
@@ -138,7 +240,7 @@ export default function HRDashboard() {
       icon: AcademicCapIcon,
       href: "/hr/training",
       color: "purple",
-      stats: "89 active programs"
+      stats: loading ? "Loading..." : `${modulesData?.training.activePrograms || 0} active programs`
     },
     {
       title: "Payroll Management",
@@ -154,7 +256,7 @@ export default function HRDashboard() {
       icon: ClockIcon,
       href: "/hr/attendance",
       color: "indigo",
-      stats: "87 present today"
+      stats: loading ? "Loading..." : `${dashboardData?.metrics.activeEmployees || 0} present today`
     },
     {
       title: "Leave Management",
@@ -170,7 +272,7 @@ export default function HRDashboard() {
       icon: BuildingOfficeIcon,
       href: "/hr/departments",
       color: "red",
-      stats: "12 departments"
+      stats: loading ? "Loading..." : `${modulesData?.departments.total || 0} departments`
     },
     {
       title: "Recruitment",
@@ -178,7 +280,7 @@ export default function HRDashboard() {
       icon: UserPlusIcon,
       href: "/hr/recruitment",
       color: "pink",
-      stats: "8 open positions"
+      stats: loading ? "Loading..." : `${modulesData?.recruitment.openPositions || 0} open positions`
     },
     {
       title: "HR Analytics",
@@ -226,14 +328,18 @@ export default function HRDashboard() {
                 <UserGroupIcon className="w-6 h-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">-</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {loading ? 'Loading...' : dashboardData?.metrics.totalEmployees || '0'}
+                </h3>
                 <p className="text-sm text-gray-500">Total Employees</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">vs last month</span>
-                <span className="text-green-600 font-medium">-</span>
+                <span className="text-green-600 font-medium">
+                  {loading ? 'Loading...' : dashboardData?.metrics.newHireChange || '0%'}
+                </span>
               </div>
             </div>
           </div>
@@ -244,7 +350,9 @@ export default function HRDashboard() {
                 <AcademicCapIcon className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">-</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {loading ? 'Loading...' : modulesData?.training.activePrograms || '0'}
+                </h3>
                 <p className="text-sm text-gray-500">Training Sessions</p>
               </div>
             </div>
@@ -262,7 +370,9 @@ export default function HRDashboard() {
                 <StarIcon className="w-6 h-6 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">4.7</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {loading ? 'Loading...' : dashboardData?.metrics.averagePerformance || '0.0'}
+                </h3>
                 <p className="text-sm text-gray-500">Avg Performance</p>
               </div>
             </div>
@@ -280,14 +390,18 @@ export default function HRDashboard() {
                 <ClockIcon className="w-6 h-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">96.2%</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {loading ? 'Loading...' : dashboardData?.metrics.attendanceRate || '0%'}
+                </h3>
                 <p className="text-sm text-gray-500">Attendance Rate</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">This month</span>
-                <span className="text-green-600 font-medium">+0.8%</span>
+                <span className="text-green-600 font-medium">
+                  {loading ? 'Loading...' : dashboardData?.metrics.attendanceChange || '0%'}
+                </span>
               </div>
             </div>
           </div>
@@ -326,45 +440,44 @@ export default function HRDashboard() {
         <div className="bg-white rounded-lg border p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent HR Activity</h3>
           <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <UserPlusIcon className="h-6 w-6 text-green-500" />
+            {loading ? (
+              <div className="text-center py-4">
+                <p className="text-gray-500">Loading recent activities...</p>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">New employee onboarded</p>
-                <p className="text-sm text-gray-500">John Doe joined the Operations team - 2 hours ago</p>
+            ) : error ? (
+              <div className="text-center py-4">
+                <p className="text-red-500">Error loading activities: {error}</p>
               </div>
-            </div>
-            
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <StarIcon className="h-6 w-6 text-yellow-500" />
+            ) : dashboardData?.recentActivity.length ? (
+              dashboardData.recentActivity.map((activity, index) => (
+                <div key={index} className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    {activity.icon === 'UserPlusIcon' && (
+                      <UserPlusIcon className="h-6 w-6 text-green-500" />
+                    )}
+                    {activity.icon === 'StarIcon' && (
+                      <StarIcon className="h-6 w-6 text-yellow-500" />
+                    )}
+                    {activity.icon === 'AcademicCapIcon' && (
+                      <AcademicCapIcon className="h-6 w-6 text-purple-500" />
+                    )}
+                    {activity.icon === 'DocumentTextIcon' && (
+                      <DocumentTextIcon className="h-6 w-6 text-blue-500" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                    <p className="text-sm text-gray-500">
+                      {activity.description} - {new Date(activity.timestamp).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-500">No recent activities</p>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Performance review completed</p>
-                <p className="text-sm text-gray-500">Sarah Johnson's Q4 review scored 4.8/5 - 4 hours ago</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <AcademicCapIcon className="h-6 w-6 text-purple-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Training session scheduled</p>
-                <p className="text-sm text-gray-500">Leadership Development program starts Monday - 1 day ago</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <DocumentTextIcon className="h-6 w-6 text-blue-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Payroll processed</p>
-                <p className="text-sm text-gray-500">January 2024 payroll completed for all employees - 2 days ago</p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
