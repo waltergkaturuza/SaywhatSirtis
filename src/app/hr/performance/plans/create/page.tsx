@@ -37,6 +37,29 @@ export default function CreatePerformancePlanPage() {
     }))
   }
 
+  const handleNestedInputChange = (parentField: keyof PerformancePlanFormData, childField: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [parentField]: {
+        ...(prev[parentField] as any),
+        [childField]: value
+      }
+    }))
+  }
+
+  const handleDeepNestedInputChange = (parentField: keyof PerformancePlanFormData, nestedField: string, childField: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [parentField]: {
+        ...(prev[parentField] as any),
+        [nestedField]: {
+          ...(prev[parentField] as any)[nestedField],
+          [childField]: value
+        }
+      }
+    }))
+  }
+
   const handleArrayChange = (arrayName: keyof PerformancePlanFormData, index: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -156,8 +179,8 @@ export default function CreatePerformancePlanPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.employeeName}
-                  onChange={(e) => handleInputChange("employeeName", e.target.value)}
+                  value={formData.employee.name}
+                  onChange={(e) => handleNestedInputChange("employee", "name", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter employee name"
                 />
@@ -182,8 +205,8 @@ export default function CreatePerformancePlanPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.position}
-                  onChange={(e) => handleInputChange("position", e.target.value)}
+                  value={formData.employee.position}
+                  onChange={(e) => handleNestedInputChange("employee", "position", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter position"
                 />
@@ -194,8 +217,8 @@ export default function CreatePerformancePlanPage() {
                   Department
                 </label>
                 <select
-                  value={formData.department}
-                  onChange={(e) => handleInputChange("department", e.target.value)}
+                  value={formData.employee.department}
+                  onChange={(e) => handleNestedInputChange("employee", "department", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Department</option>
@@ -299,14 +322,18 @@ export default function CreatePerformancePlanPage() {
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-gray-900">Goals</h3>
               <button
-                onClick={() => addArrayItem("strategicGoals", {
-                  goal: "",
+                onClick={() => addArrayItem("goals", {
+                  id: Date.now().toString(),
+                  title: "",
                   description: "",
+                  category: "professional",
                   priority: "medium",
-                  successMetrics: "",
+                  status: "not-started",
                   targetDate: "",
                   progress: 0,
-                  status: "not-started"
+                  metrics: [],
+                  resources: [],
+                  comments: ""
                 })}
                 className="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
@@ -315,13 +342,13 @@ export default function CreatePerformancePlanPage() {
               </button>
             </div>
 
-            {formData.strategicGoals.map((goal, index) => (
+            {formData.goals.map((goal, index) => (
               <div key={index} className="border rounded-lg p-6 space-y-4">
                 <div className="flex justify-between items-start">
-                  <h4 className="text-lg font-semibold text-gray-900">Strategic Goal {index + 1}</h4>
-                  {formData.strategicGoals.length > 1 && (
+                  <h4 className="text-lg font-semibold text-gray-900">Goal {index + 1}</h4>
+                  {formData.goals.length > 1 && (
                     <button
-                      onClick={() => removeArrayItem("strategicGoals", index)}
+                      onClick={() => removeArrayItem("goals", index)}
                       className="text-red-600 hover:text-red-800"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -331,14 +358,14 @@ export default function CreatePerformancePlanPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Goal Statement
+                    Goal Title
                   </label>
                   <input
                     type="text"
-                    value={goal.goal}
-                    onChange={(e) => handleArrayChange("strategicGoals", index, "goal", e.target.value)}
+                    value={goal.title}
+                    onChange={(e) => handleArrayChange("goals", index, "title", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter clear, specific goal statement..."
+                    placeholder="Enter clear, specific goal title..."
                   />
                 </div>
 
@@ -348,7 +375,7 @@ export default function CreatePerformancePlanPage() {
                   </label>
                   <textarea
                     value={goal.description}
-                    onChange={(e) => handleArrayChange("strategicGoals", index, "description", e.target.value)}
+                    onChange={(e) => handleArrayChange("goals", index, "description", e.target.value)}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Provide detailed description of the goal and its importance..."
@@ -362,7 +389,7 @@ export default function CreatePerformancePlanPage() {
                     </label>
                     <select
                       value={goal.priority}
-                      onChange={(e) => handleArrayChange("strategicGoals", index, "priority", e.target.value)}
+                      onChange={(e) => handleArrayChange("goals", index, "priority", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="high">High Priority</option>
@@ -378,7 +405,7 @@ export default function CreatePerformancePlanPage() {
                     <input
                       type="date"
                       value={goal.targetDate}
-                      onChange={(e) => handleArrayChange("strategicGoals", index, "targetDate", e.target.value)}
+                      onChange={(e) => handleArrayChange("goals", index, "targetDate", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -389,7 +416,7 @@ export default function CreatePerformancePlanPage() {
                     </label>
                     <select
                       value={goal.status}
-                      onChange={(e) => handleArrayChange("strategicGoals", index, "status", e.target.value)}
+                      onChange={(e) => handleArrayChange("goals", index, "status", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="not-started">Not Started</option>
@@ -402,14 +429,14 @@ export default function CreatePerformancePlanPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Success Metrics & KPIs
+                    Success Metrics & Comments
                   </label>
                   <textarea
-                    value={goal.successMetrics}
-                    onChange={(e) => handleArrayChange("strategicGoals", index, "successMetrics", e.target.value)}
+                    value={goal.comments}
+                    onChange={(e) => handleArrayChange("goals", index, "comments", e.target.value)}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Define how success will be measured (quantifiable metrics)..."
+                    placeholder="Define how success will be measured and any additional comments..."
                   />
                 </div>
 
@@ -1055,9 +1082,9 @@ export default function CreatePerformancePlanPage() {
               <div className="bg-white border rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 mb-3">Employee Information</h4>
                 <div className="space-y-2 text-sm">
-                  <div><span className="font-medium">Name:</span> {formData.employeeName}</div>
-                  <div><span className="font-medium">Position:</span> {formData.position}</div>
-                  <div><span className="font-medium">Department:</span> {formData.department}</div>
+                  <div><span className="font-medium">Name:</span> {formData.employee.name}</div>
+                  <div><span className="font-medium">Position:</span> {formData.employee.position}</div>
+                  <div><span className="font-medium">Department:</span> {formData.employee.department}</div>
                   <div><span className="font-medium">Supervisor:</span> {formData.supervisor}</div>
                 </div>
               </div>
@@ -1075,11 +1102,11 @@ export default function CreatePerformancePlanPage() {
 
             {/* Goals Summary */}
             <div className="bg-white border rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-3">Strategic Goals Summary ({formData.strategicGoals.length})</h4>
+              <h4 className="font-semibold text-gray-900 mb-3">Goals Summary ({formData.goals.length})</h4>
               <div className="space-y-2">
-                {formData.strategicGoals.map((goal, index) => (
+                {formData.goals.map((goal, index) => (
                   <div key={index} className="flex justify-between items-center text-sm">
-                    <span>{goal.goal}</span>
+                    <span>{goal.title}</span>
                     <div className="flex space-x-2">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(goal.priority)}`}>
                         {goal.priority}

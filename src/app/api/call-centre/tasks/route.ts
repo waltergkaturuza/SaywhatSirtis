@@ -15,46 +15,73 @@ export async function GET(request: NextRequest) {
     const hasPermission = session.user?.permissions?.includes('calls.view') ||
                          session.user?.permissions?.includes('calls.full_access') ||
                          session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('manager')
+                         session.user?.roles?.includes('supervisor')
 
     if (!hasPermission) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Get follow-ups as tasks from CallRecord (no separate follow-up table)
-    const callsNeedingFollowUp = await prisma.callRecord.findMany({
-      where: {
-        followUpRequired: true,
-        status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] }
-      },
-      orderBy: { updatedAt: 'desc' },
+    // Get query parameters
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const assignedTo = searchParams.get('assignedTo')
+
+    // Build filter
+    const where: any = {
+      followUpRequired: true
+    }
+
+    if (status === 'pending') {
+      where.followUpDate = {
+        gte: new Date()
+      }
+    } else if (status === 'overdue') {
+      where.followUpDate = {
+        lt: new Date()
+      }
+    }
+
+    if (assignedTo) {
+      where.assignedOfficer = assignedTo
+    }
+
+    // Fetch calls with follow-up requirements
+    const calls = await prisma.callRecord.findMany({
+      where,
       select: {
         id: true,
         caseNumber: true,
         callerName: true,
         summary: true,
         notes: true,
-        assignedOfficer: true,
-        priority: true,
         followUpDate: true,
-        updatedAt: true
+        followUpRequired: true,
+        priority: true,
+        assignedOfficer: true,
+        status: true,
+        createdAt: true
+      },
+      orderBy: {
+        followUpDate: 'asc'
       }
     })
 
-    // Transform to match frontend interface
-    const formattedTasks = callsNeedingFollowUp.map(call => ({
+    // Format as tasks
+    const tasks = calls.map(call => ({
       id: call.id,
-      caseNumber: call.caseNumber.slice(-8),
-      title: call.summary || call.notes || 'Follow-up',
+      caseNumber: call.caseNumber,
+      title: call.summary || 'Follow-up required',
+      description: call.notes,
       assignedOfficer: call.assignedOfficer || 'Unassigned',
-      dueDate: (call.followUpDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))
-        .toISOString().split('T')[0],
-      priority: (call.priority?.toLowerCase() as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
+      dueDate: call.followUpDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+      priority: call.priority.toLowerCase() as 'low' | 'medium' | 'high',
       type: 'follow-up' as const,
-      status: 'pending' as const
+      status: call.followUpDate && call.followUpDate < new Date() ? 'overdue' as const : 'pending' as const,
+      caller: call.callerName
     }))
 
-    return NextResponse.json(formattedTasks)
+    return NextResponse.json(tasks)
+
   } catch (error) {
     console.error('Error fetching tasks:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -69,64 +96,107 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permissions
-    const hasPermission = session.user?.permissions?.includes('calls.create') ||
+    // Check permissions for creating follow-ups
+    const hasPermission = session.user?.permissions?.includes('calls.edit') ||
                          session.user?.permissions?.includes('calls.full_access') ||
                          session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('manager')
+                         session.user?.roles?.includes('supervisor')
 
     if (!hasPermission) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    const body = await request.json()
-  const { caseNumber, title, assignedOfficer, dueDate } = body
+    const { callId, title, dueDate, assignedOfficer } = await request.json()
 
-    // Find the call record by exact case number
-    const call = await prisma.callRecord.findUnique({
-      where: { caseNumber }
-    })
-
-    if (!call) {
-      return NextResponse.json({ error: 'Call record not found' }, { status: 404 })
+    if (!callId) {
+      return NextResponse.json({ error: 'Call ID is required' }, { status: 400 })
     }
 
-    // Update call to mark follow-up required and set details
-    const updated = await prisma.callRecord.update({
-      where: { id: call.id },
+    // Update the call record to enable follow-up
+    const updatedCall = await prisma.callRecord.update({
+      where: { id: callId },
       data: {
         followUpRequired: true,
-        followUpDate: dueDate ? new Date(dueDate) : (call.followUpDate ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
-        notes: [call.notes, title].filter(Boolean).join('\n'),
-        assignedOfficer: assignedOfficer || call.assignedOfficer
-      },
-      select: {
-        id: true,
-        caseNumber: true,
-        summary: true,
-        notes: true,
-        assignedOfficer: true,
-        priority: true,
-        followUpDate: true
+        followUpDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        assignedOfficer: assignedOfficer || session.user?.name,
+        summary: title || undefined
       }
     })
 
     // Format response
     const formattedTask = {
-      id: updated.id,
-      caseNumber: updated.caseNumber.slice(-8),
-      title: updated.summary || title,
-      assignedOfficer: updated.assignedOfficer || 'Unassigned',
-      dueDate: (updated.followUpDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
-      // Map priority enum to lowercase label
-      priority: (updated.priority?.toLowerCase() as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
+      id: updatedCall.id,
+      caseNumber: updatedCall.caseNumber,
+      title: title || 'Follow-up task',
+      assignedOfficer: updatedCall.assignedOfficer || 'Unassigned',
+      dueDate: updatedCall.followUpDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+      priority: updatedCall.priority.toLowerCase() as 'low' | 'medium' | 'high',
       type: 'follow-up' as const,
       status: 'pending' as const
     }
 
     return NextResponse.json(formattedTask, { status: 201 })
+
   } catch (error) {
     console.error('Error creating task:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('calls.edit') ||
+                         session.user?.permissions?.includes('calls.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('supervisor')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const { id, status, assignedOfficer, dueDate, notes } = await request.json()
+
+    if (!id) {
+      return NextResponse.json({ error: 'Task ID is required' }, { status: 400 })
+    }
+
+    // Update the call record
+    const updateData: any = {}
+
+    if (status === 'completed') {
+      updateData.followUpRequired = false
+      updateData.followUpDate = null
+    } else if (dueDate) {
+      updateData.followUpDate = new Date(dueDate)
+    }
+
+    if (assignedOfficer) {
+      updateData.assignedOfficer = assignedOfficer
+    }
+
+    if (notes) {
+      updateData.notes = notes
+    }
+
+    const updatedCall = await prisma.callRecord.update({
+      where: { id },
+      data: updateData
+    })
+
+    return NextResponse.json({
+      id: updatedCall.id,
+      status: updatedCall.followUpRequired ? 'pending' : 'completed'
+    })
+
+  } catch (error) {
+    console.error('Error updating task:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

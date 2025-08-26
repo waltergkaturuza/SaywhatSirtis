@@ -46,24 +46,15 @@ export async function GET(request: NextRequest) {
 
     // Get events with pagination
     const [events, total] = await Promise.all([
-      prisma.flagshipEvent.findMany({
+      prisma.event.findMany({
         where,
-        include: {
-          organizer: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
         orderBy: {
           createdAt: 'desc',
         },
         skip: offset,
         take: limit,
       }),
-      prisma.flagshipEvent.count({ where }),
+      prisma.event.count({ where }),
     ]);
 
     console.log(`Events API: Found ${events.length} events, total: ${total}`)
@@ -127,7 +118,8 @@ export async function POST(request: NextRequest) {
         where: {
           OR: [
             { email: organizer },
-            { name: organizer },
+            { firstName: organizer },
+            { lastName: organizer },
             { id: organizer },
           ],
         },
@@ -135,29 +127,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the event
-    const event = await prisma.flagshipEvent.create({
+    const event = await prisma.event.create({
       data: {
-        name,
+        title: name,
         description,
+        type: category?.toLowerCase() || 'conference',
+        status: status?.toLowerCase() || 'planning',
         startDate: new Date(startDate),
-        startTime,
-        endDate: new Date(endDate),
-        endTime,
+        endDate: endDate ? new Date(endDate) : null,
         location,
-        expectedAttendees: parseInt(expectedAttendees) || 0,
-        status: status?.toUpperCase() || 'PLANNING',
-        category: category?.toUpperCase() || 'CONFERENCE',
-        budget: parseFloat(budget) || 0,
-        organizerUserId: organizerUser?.id || session.user.id,
-      },
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+        capacity: parseInt(expectedAttendees) || null,
+        budget: parseFloat(budget) || null,
       },
     });
 

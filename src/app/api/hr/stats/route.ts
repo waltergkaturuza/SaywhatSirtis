@@ -42,31 +42,27 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Count pending leave requests
-    const pendingLeaveRequests = await prisma.leaveRequest.count({
-      where: {
-        status: 'PENDING'
-      }
-    })
-
     // Count departments
     const departments = await prisma.employee.groupBy({
       by: ['department'],
       _count: {
-        id: true
-      },
-      where: {
-        department: {
-          not: null
-        }
+        department: true
       }
     })
 
-    // Training statistics
-    const totalTrainings = await prisma.training.count()
-    const activeTrainings = await prisma.training.count({
+    // Training statistics (using Event model with type "training")
+    const totalTrainings = await prisma.event.count({
       where: {
-        status: 'ACTIVE'
+        type: 'training'
+      }
+    })
+    
+    const activeTrainings = await prisma.event.count({
+      where: {
+        type: 'training',
+        status: {
+          in: ['approved', 'in-progress']
+        }
       }
     })
 
@@ -74,11 +70,10 @@ export async function GET(request: NextRequest) {
       totalEmployees,
       activeEmployees,
       newEmployeesThisMonth,
-      pendingLeaveRequests,
       departmentCount: departments.length,
       departments: departments.map(d => ({
-        name: d.department,
-        count: d._count.id
+        name: d.department || 'Unknown',
+        count: d._count.department
       })),
       totalTrainings,
       activeTrainings

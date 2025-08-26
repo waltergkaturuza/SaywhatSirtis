@@ -40,31 +40,40 @@ interface SystemStats {
 
 interface User {
   id: string
-  name: string
+  firstName?: string
+  lastName?: string
   email: string
   role: string
-  department: string
-  lastLogin: string
+  department?: string
+  lastLogin?: string
   status: 'active' | 'inactive' | 'suspended'
+  createdAt?: string
+  permissions?: string[]
 }
 
 interface AuditLog {
   id: string
-  userId: string
+  userId?: string
+  userName?: string
   action: string
   resource: string
   timestamp: string
-  ipAddress: string
+  ipAddress?: string
+  userAgent?: string
   details: string
+  severity?: string
 }
 
 interface SystemConfig {
   id?: string
   key: string
   value: string
-  description: string
-  category: string
+  description?: string
+  category?: string
   type: 'string' | 'number' | 'boolean' | 'json'
+  validationRules?: any
+  lastModified?: string
+  modifiedBy?: string
 }
 
 export default function SystemAdminPage() {
@@ -75,84 +84,21 @@ export default function SystemAdminPage() {
 
   // State for different admin sections
   const [systemStats, setSystemStats] = useState<SystemStats>({
-    totalUsers: 245,
-    activeUsers: 89,
-    totalDocuments: 1234,
-    systemUptime: "99.9%",
-    storageUsed: "2.4 TB",
-    apiCalls: 15678,
-    errorRate: 0.02,
-    responseTime: 145
+    totalUsers: 0,
+    activeUsers: 0,
+    totalDocuments: 0,
+    systemUptime: "0%",
+    storageUsed: "0 GB",
+    apiCalls: 0,
+    errorRate: 0,
+    responseTime: 0
   })
 
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john.doe@saywhat.org",
-      role: "Administrator",
-      department: "IT",
-      lastLogin: "2025-07-17 09:30:00",
-      status: "active"
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane.smith@saywhat.org",
-      role: "HR Manager",
-      department: "HR",
-      lastLogin: "2025-07-17 08:45:00",
-      status: "active"
-    }
-  ])
+  const [users, setUsers] = useState<User[]>([])
 
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
-    {
-      id: "1",
-      userId: "admin",
-      action: "USER_LOGIN",
-      resource: "Authentication System",
-      timestamp: "2025-07-17 10:15:00",
-      ipAddress: "192.168.1.100",
-      details: "Successful login"
-    },
-    {
-      id: "2",
-      userId: "jane.smith",
-      action: "DOCUMENT_UPLOAD",
-      resource: "Document Repository",
-      timestamp: "2025-07-17 10:10:00",
-      ipAddress: "192.168.1.101",
-      details: "Uploaded performance appraisal document"
-    }
-  ])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
 
-  const [systemConfigs, setSystemConfigs] = useState<SystemConfig[]>([
-    {
-      id: "1",
-      key: "max_file_size",
-      value: "50",
-      description: "Maximum file upload size in MB",
-      category: "File Management",
-      type: "number"
-    },
-    {
-      id: "2",
-      key: "session_timeout",
-      value: "3600",
-      description: "User session timeout in seconds",
-      category: "Security",
-      type: "number"
-    },
-    {
-      id: "3",
-      key: "email_notifications",
-      value: "true",
-      description: "Enable email notifications",
-      category: "Notifications",
-      type: "boolean"
-    }
-  ])
+  const [systemConfigs, setSystemConfigs] = useState<SystemConfig[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -162,13 +108,41 @@ export default function SystemAdminPage() {
   const fetchAdminData = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/admin/dashboard')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.stats) {
-          setSystemStats(data.stats)
+      
+      // Fetch dashboard stats
+      const dashboardResponse = await fetch('/api/admin/dashboard')
+      if (dashboardResponse.ok) {
+        const dashboardData = await dashboardResponse.json()
+        if (dashboardData.data?.stats) {
+          setSystemStats(dashboardData.data.stats)
         }
-        // Update other data as needed
+      }
+      
+      // Fetch users
+      const usersResponse = await fetch('/api/admin/users')
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json()
+        if (usersData.users) {
+          setUsers(usersData.users)
+        }
+      }
+      
+      // Fetch audit logs
+      const auditResponse = await fetch('/api/admin/audit')
+      if (auditResponse.ok) {
+        const auditData = await auditResponse.json()
+        if (auditData.logs) {
+          setAuditLogs(auditData.logs)
+        }
+      }
+      
+      // Fetch system configs
+      const configResponse = await fetch('/api/admin/config')
+      if (configResponse.ok) {
+        const configData = await configResponse.json()
+        if (configData.configs) {
+          setSystemConfigs(configData.configs)
+        }
       }
     } catch (error) {
       console.error('Error fetching admin data:', error)
@@ -688,18 +662,20 @@ export default function SystemAdminPage() {
                   {auditLogs.map((log) => (
                     <tr key={log.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.timestamp}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.userId}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.userName || log.userId || 'Unknown'}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           log.action.includes('LOGIN') ? 'bg-green-100 text-green-800' :
                           log.action.includes('DELETE') ? 'bg-red-100 text-red-800' :
+                          log.action.includes('FAILED') ? 'bg-red-100 text-red-800' :
+                          log.severity === 'warning' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-blue-100 text-blue-800'
                         }`}>
                           {log.action}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.resource}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.ipAddress}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.ipAddress || 'Unknown'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.details}</td>
                     </tr>
                   ))}

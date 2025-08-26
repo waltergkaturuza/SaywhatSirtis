@@ -5,14 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { 
-  TrendingUpIcon, 
-  TrendingDownIcon,
+  ArrowTrendingUpIcon, 
+  ArrowTrendingDownIcon,
   UsersIcon,
-  DollarSignIcon,
+  CurrencyDollarIcon,
   ClockIcon,
-  AlertTriangleIcon,
-  BarChartIcon,
-  PieChartIcon
+  ExclamationTriangleIcon,
+  ChartBarIcon,
+  ChartPieIcon
 } from '@heroicons/react/24/outline'
 
 // MetricCard Component
@@ -31,7 +31,7 @@ export function MetricCard({
   value, 
   change, 
   changeType = 'neutral', 
-  icon: Icon = BarChartIcon,
+  icon: Icon = ChartBarIcon,
   description,
   className = ''
 }: MetricCardProps) {
@@ -45,8 +45,8 @@ export function MetricCard({
 
   const getChangeIcon = () => {
     switch (changeType) {
-      case 'increase': return <TrendingUpIcon className="h-4 w-4" />
-      case 'decrease': return <TrendingDownIcon className="h-4 w-4" />
+      case 'increase': return <ArrowTrendingUpIcon className="h-4 w-4" />
+      case 'decrease': return <ArrowTrendingDownIcon className="h-4 w-4" />
       default: return null
     }
   }
@@ -188,7 +188,7 @@ export function AlertBanner({
     <div className={`rounded-lg p-4 ${styles.container} ${className}`}>
       <div className="flex items-start">
         <div className="flex-shrink-0">
-          <AlertTriangleIcon className={`h-5 w-5 ${styles.icon}`} />
+          <ExclamationTriangleIcon className={`h-5 w-5 ${styles.icon}`} />
         </div>
         <div className="ml-3 flex-1">
           <h3 className={`text-sm font-medium ${styles.title}`}>

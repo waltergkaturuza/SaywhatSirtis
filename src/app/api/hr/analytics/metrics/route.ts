@@ -94,9 +94,8 @@ export async function GET(request: NextRequest) {
 
     const averageTenure = employees.length > 0 ? totalTenure / employees.length : 0
 
-    // Mock salary data since User model doesn't have salary field in current schema
-    const averageSalary = 65000 // Mock average salary
-    const totalPayroll = totalEmployees * averageSalary // Mock total payroll
+    // Mock salary data (handled by Belina software externally)
+    const averageSalary = 65000 // Mock average salary for display purposes
 
     // Get attendance rate (mock calculation - you'd implement based on your attendance system)
     const attendanceRate = 92.5 // This would be calculated from actual attendance data
@@ -130,7 +129,6 @@ export async function GET(request: NextRequest) {
       turnoverRate: Math.round(turnoverRate * 100) / 100,
       averageTenure: Math.round(averageTenure * 100) / 100,
       averageSalary: Math.round(averageSalary),
-      totalPayroll: Math.round(totalPayroll),
       attendanceRate,
       performanceScore: Math.round(performanceScore * 100) / 100,
       trainingCompletionRate

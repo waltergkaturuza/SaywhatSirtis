@@ -43,17 +43,19 @@ export async function GET(request: NextRequest) {
           }
         }
       }),
-      // Active cases (calls that are still open or in progress)
+      // Active cases (calls that are still open)
       prisma.callRecord.count({
         where: {
-          status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] }
+          status: 'OPEN'
         }
       }),
-      // Pending follow-ups (calls that require follow-up and are not closed/resolved)
+      // Pending follow-ups
       prisma.callRecord.count({
         where: {
           followUpRequired: true,
-          status: { in: ['OPEN', 'IN_PROGRESS', 'ESCALATED'] }
+          followUpDate: {
+            gte: new Date()
+          }
         }
       }),
       // Overdue cases (calls older than 7 days and still open)
@@ -74,12 +76,10 @@ export async function GET(request: NextRequest) {
           gte: today,
           lt: tomorrow
         },
-        // Treat calls as valid if they are not marked as SPAM and have a non-empty summary
-        status: { not: 'SPAM' },
-        AND: [
-          { summary: { not: null } },
-          { summary: { not: '' } }
-        ]
+        // Assuming calls with non-empty summary are valid calls
+        summary: {
+          not: null
+        }
       }
     })
 

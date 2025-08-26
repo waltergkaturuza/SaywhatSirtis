@@ -20,14 +20,16 @@ import {
 
 interface User {
   id: string
-  name: string
+  firstName?: string
+  lastName?: string
   email: string
   role: string
-  department: string
-  lastLogin: string
+  department?: string
+  position?: string
+  lastLogin?: string
   status: 'active' | 'inactive' | 'suspended'
-  permissions: string[]
-  createdAt: string
+  permissions?: string[]
+  createdAt?: string
   avatar?: string
   phone?: string
 }
@@ -47,74 +49,33 @@ export function UserManagement({ className = "" }: UserManagementProps) {
   const [showAddUser, setShowAddUser] = useState(false)
   const [showUserDetails, setShowUserDetails] = useState<string | null>(null)
 
-  // Mock data - in production, fetch from API
+  // Fetch users from API
   useEffect(() => {
-    setUsers([
-      {
-        id: "1",
-        name: "John Doe",
-        email: "john.doe@saywhat.org",
-        role: "Administrator",
-        department: "IT",
-        lastLogin: "2025-07-17 09:30:00",
-        status: "active",
-        createdAt: "2024-01-15",
-        permissions: ["admin", "user_management", "system_config"],
-        phone: "+1-555-0101"
-      },
-      {
-        id: "2",
-        name: "Jane Smith",
-        email: "jane.smith@saywhat.org",
-        role: "HR Manager",
-        department: "HR",
-        lastLogin: "2025-07-17 08:45:00",
-        status: "active",
-        createdAt: "2024-02-01",
-        permissions: ["hr_management", "employee_data"],
-        phone: "+1-555-0102"
-      },
-      {
-        id: "3",
-        name: "Mike Johnson",
-        email: "mike.johnson@saywhat.org",
-        role: "Programs Manager",
-        department: "Programs",
-        lastLogin: "2025-07-16 17:20:00",
-        status: "active",
-        createdAt: "2024-03-10",
-        permissions: ["programs_management", "project_data"],
-        phone: "+1-555-0103"
-      },
-      {
-        id: "4",
-        name: "Sarah Wilson",
-        email: "sarah.wilson@saywhat.org",
-        role: "Call Centre Agent",
-        department: "Call Centre",
-        lastLogin: "2025-07-17 07:15:00",
-        status: "suspended",
-        createdAt: "2024-05-20",
-        permissions: ["call_centre"],
-        phone: "+1-555-0104"
-      },
-      {
-        id: "5",
-        name: "David Brown",
-        email: "david.brown@saywhat.org",
-        role: "Finance Officer",
-        department: "Finance",
-        lastLogin: "2025-07-16 16:30:00",
-        status: "active",
-        createdAt: "2024-04-05",
-        permissions: ["finance_management", "payroll"],
-        phone: "+1-555-0105"
-      }
-    ])
+    fetchUsers()
   }, [])
 
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/admin/users')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.users) {
+          setUsers(data.users)
+        }
+      } else {
+        console.error('Failed to fetch users')
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim()
+    const matchesSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesRole = !roleFilter || user.role === roleFilter
     const matchesStatus = !statusFilter || user.status === statusFilter
@@ -347,12 +308,14 @@ export function UserManagement({ className = "" }: UserManagementProps) {
                     <div className="h-10 w-10 flex-shrink-0">
                       <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
                         <span className="text-sm font-medium text-indigo-600">
-                          {user.name.split(' ').map(n => n[0]).join('')}
+                          {`${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}` || user.email[0].toUpperCase()}
                         </span>
                       </div>
                     </div>
                     <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email}
+                      </div>
                       <div className="text-sm text-gray-500 flex items-center">
                         <EnvelopeIcon className="h-3 w-3 mr-1" />
                         {user.email}
@@ -370,7 +333,7 @@ export function UserManagement({ className = "" }: UserManagementProps) {
                   <div className="text-sm text-gray-900">{user.role}</div>
                   <div className="text-sm text-gray-500">{user.department}</div>
                   <div className="text-xs text-gray-400">
-                    {user.permissions.length} permission{user.permissions.length > 1 ? 's' : ''}
+                    {user.permissions?.length || 0} permission{(user.permissions?.length || 0) > 1 ? 's' : ''}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

@@ -11,17 +11,14 @@
     "test:ci": "npm run lint && npm run build",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
     "render:build": "npm ci --legacy-peer-deps && npx prisma generate && npm run build",
     "render:start": "next start",
     "render:deploy": "npm ci --legacy-peer-deps --registry https://registry.npmjs.org/ && npx prisma generate && npm run build",
     "vercel:build": "npx prisma generate && next build",
-    "vercel:db-setup": "npx prisma migrate deploy && npx prisma db seed",
     "vercel:configure": "powershell -ExecutionPolicy Bypass -File scripts/configure-vercel-db.ps1",
     "supabase:build": "npx prisma generate && next build",
     "supabase:deploy": "bash scripts/deploy-supabase.sh",
     "supabase:deploy-windows": "powershell -ExecutionPolicy Bypass -File scripts/deploy-supabase.ps1",
-    "supabase:db-setup": "npx prisma migrate deploy && npx prisma db seed",
     "supabase:schema": "cp prisma/schema-supabase.prisma prisma/schema.prisma"
   },
   "dependencies": {

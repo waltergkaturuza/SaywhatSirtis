@@ -19,17 +19,17 @@ export async function GET(request: NextRequest) {
     // Fetch projects from database with related data
     const projects = await prisma.project.findMany({
       include: {
-        manager: {
+        creator: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true
           }
         },
         _count: {
           select: {
-            activities: true,
-            reports: true
+            activities: true
           }
         }
       },

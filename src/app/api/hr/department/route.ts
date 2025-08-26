@@ -1,12 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 // GET /api/hr/department - Fetch all departments
 export async function GET() {
   try {
-    const departments = await prisma.department.findMany({
-      orderBy: { name: 'asc' }
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.view') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager');
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    // Get unique departments from employee records
+    const departmentData = await prisma.employee.findMany({
+      select: {
+        department: true
+      },
+      distinct: ['department']
     });
+
+    // Transform to match expected format
+    const departments = departmentData
+      .filter(item => item.department) // Filter out null/undefined departments
+      .map(item => ({
+        id: item.department.toLowerCase().replace(/\s+/g, '_'),
+        name: item.department,
+        description: `${item.department} Department`,
+        employeeCount: 0 // Will be calculated separately
+      }));
+
+    // Get employee count for each department
+    for (const dept of departments) {
+      const count = await prisma.employee.count({
+        where: {
+          department: dept.name,
+          status: 'ACTIVE'
+        }
+      });
+      dept.employeeCount = count;
+    }
     
     return NextResponse.json({
       success: true,
@@ -25,30 +68,68 @@ export async function GET() {
   }
 }
 
-// POST /api/hr/department - Create a new department
+// POST /api/hr/department - Create new department (by adding employee)
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, description } = body;
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.create') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager');
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { name, description } = await request.json();
 
     if (!name) {
       return NextResponse.json(
-        { success: false, error: 'Department name is required' },
+        { 
+          success: false, 
+          error: 'Department name is required' 
+        },
         { status: 400 }
       );
     }
 
-    const department = await prisma.department.create({
-      data: {
-        name,
-        description: description || null
+    // Check if department already exists
+    const existingDept = await prisma.employee.findFirst({
+      where: {
+        department: name
       }
     });
 
+    if (existingDept) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Department already exists' 
+        },
+        { status: 409 }
+      );
+    }
+
+    // Since we don't have a separate Department model,
+    // we'll return success but note that departments are created
+    // when employees are assigned to them
     return NextResponse.json({
       success: true,
-      data: department
+      message: 'Department will be created when first employee is assigned',
+      data: {
+        id: name.toLowerCase().replace(/\s+/g, '_'),
+        name: name,
+        description: description || `${name} Department`,
+        employeeCount: 0
+      }
     }, { status: 201 });
+
   } catch (error) {
     console.error('Error creating department:', error);
     return NextResponse.json(
@@ -62,31 +143,58 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/hr/department - Update a department
+// PUT /api/hr/department - Update department (rename all employees' department)
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { id, name, description } = body;
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!id || !name) {
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager');
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { oldName, newName, description } = await request.json();
+
+    if (!oldName || !newName) {
       return NextResponse.json(
-        { success: false, error: 'Department ID and name are required' },
+        { 
+          success: false, 
+          error: 'Both old and new department names are required' 
+        },
         { status: 400 }
       );
     }
 
-    const department = await prisma.department.update({
-      where: { id },
+    // Update all employees with the old department name
+    const updateResult = await prisma.employee.updateMany({
+      where: {
+        department: oldName
+      },
       data: {
-        name,
-        description: description || null
+        department: newName
       }
     });
 
     return NextResponse.json({
       success: true,
-      data: department
+      message: `Updated ${updateResult.count} employees to new department name`,
+      data: {
+        id: newName.toLowerCase().replace(/\s+/g, '_'),
+        name: newName,
+        description: description || `${newName} Department`,
+        employeeCount: updateResult.count
+      }
     });
+
   } catch (error) {
     console.error('Error updating department:', error);
     return NextResponse.json(
@@ -100,27 +208,74 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE /api/hr/department - Delete a department
+// DELETE /api/hr/department - Delete department (reassign employees)
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!id) {
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.delete') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin');
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const departmentName = searchParams.get('name');
+    const reassignTo = searchParams.get('reassignTo');
+
+    if (!departmentName) {
       return NextResponse.json(
-        { success: false, error: 'Department ID is required' },
+        { 
+          success: false, 
+          error: 'Department name is required' 
+        },
         { status: 400 }
       );
     }
 
-    await prisma.department.delete({
-      where: { id }
+    // Count employees in this department
+    const employeeCount = await prisma.employee.count({
+      where: {
+        department: departmentName
+      }
     });
+
+    if (employeeCount > 0 && !reassignTo) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Cannot delete department with ${employeeCount} employees. Please specify reassignTo parameter.` 
+        },
+        { status: 400 }
+      );
+    }
+
+    if (employeeCount > 0 && reassignTo) {
+      // Reassign employees to new department
+      await prisma.employee.updateMany({
+        where: {
+          department: departmentName
+        },
+        data: {
+          department: reassignTo
+        }
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Department deleted successfully'
+      message: employeeCount > 0 
+        ? `Reassigned ${employeeCount} employees to ${reassignTo}` 
+        : 'Department deleted (no employees to reassign)'
     });
+
   } catch (error) {
     console.error('Error deleting department:', error);
     return NextResponse.json(

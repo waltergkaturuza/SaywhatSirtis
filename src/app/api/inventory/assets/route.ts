@@ -5,6 +5,40 @@ import { z } from "zod"
 
 const prisma = new PrismaClient()
 
+// Map category to valid enum value
+const mapCategory = (category: string): 'COMPUTER' | 'FURNITURE' | 'VEHICLE' | 'EQUIPMENT' | 'OTHER' => {
+  switch (category.toUpperCase()) {
+    case 'COMPUTER':
+    case 'SOFTWARE':
+      return 'COMPUTER'
+    case 'FURNITURE':
+      return 'FURNITURE'
+    case 'VEHICLE':
+      return 'VEHICLE'
+    case 'EQUIPMENT':
+      return 'EQUIPMENT'
+    default:
+      return 'OTHER'
+  }
+}
+
+// Map status to valid enum value
+const mapStatus = (status: string): 'ACTIVE' | 'MAINTENANCE' | 'DISPOSED' => {
+  switch (status.toUpperCase()) {
+    case 'ACTIVE':
+    case 'GOOD':
+      return 'ACTIVE'
+    case 'MAINTENANCE':
+    case 'NEEDS_REPAIR':
+      return 'MAINTENANCE'
+    case 'DISPOSED':
+    case 'RETIRED':
+      return 'DISPOSED'
+    default:
+      return 'ACTIVE'
+  }
+}
+
 // Validation schema for asset creation/update
 const assetSchema = z.object({
   name: z.string().min(1, "Asset name is required"),
@@ -85,21 +119,21 @@ export async function GET(request: NextRequest) {
       assetNumber: asset.assetTag, // Use assetTag from schema
       category: asset.category, // Use category directly from schema
       type: asset.category,
-      brand: asset.brand,
+      brand: asset.manufacturer,
       model: asset.model,
       serialNumber: asset.serialNumber,
       status: asset.status.toLowerCase(),
-      condition: asset.condition.toLowerCase(),
+      condition: asset.status.toLowerCase(), // Use status as condition
       location: asset.location,
       department: asset.location, // Use location as department
-      assignedTo: asset.location,
+      assignedTo: asset.assignedTo,
       procurementValue: asset.purchasePrice ? parseFloat(asset.purchasePrice.toString()) : 0,
       currentValue: asset.currentValue ? parseFloat(asset.currentValue.toString()) : 0,
       depreciationRate: 0, // Not in schema, default to 0
       procurementDate: asset.purchaseDate?.toISOString().split('T')[0] || null,
       warrantyExpiry: asset.warrantyExpiry?.toISOString().split('T')[0] || null,
       lastAuditDate: null, // Not in current schema
-      nextMaintenanceDate: asset.maintenanceRecords[0]?.scheduledDate?.toISOString().split('T')[0] || null,
+      nextMaintenanceDate: asset.maintenanceRecords[0]?.nextDueDate?.toISOString().split('T')[0] || null,
       rfidTag: null, // Not in current schema
       qrCode: null, // Not in current schema
       description: asset.description,
@@ -173,13 +207,12 @@ export async function POST(request: NextRequest) {
       data: {
         name: validatedData.name,
         assetTag: validatedData.assetNumber,
-        category: validatedData.category,
+        category: mapCategory(validatedData.category),
         model: validatedData.model,
         purchasePrice: validatedData.procurementValue,
         currentValue: validatedData.currentValue,
         location: validatedData.location,
-        condition: validatedData.condition,
-        status: validatedData.status,
+        status: mapStatus(validatedData.status),
         purchaseDate: validatedData.procurementDate
       }
     })
@@ -191,14 +224,14 @@ export async function POST(request: NextRequest) {
       assetNumber: newAsset.assetTag,
       category: newAsset.category,
       type: newAsset.category,
-      brand: newAsset.brand,
+      brand: newAsset.manufacturer,
       model: newAsset.model,
       serialNumber: newAsset.serialNumber,
       status: newAsset.status.toLowerCase(),
-      condition: newAsset.condition.toLowerCase(),
+      condition: newAsset.status.toLowerCase(),
       location: newAsset.location,
       department: newAsset.location,
-      assignedTo: newAsset.location,
+      assignedTo: newAsset.assignedTo,
       procurementValue: newAsset.purchasePrice ? parseFloat(newAsset.purchasePrice.toString()) : 0,
       currentValue: newAsset.currentValue ? parseFloat(newAsset.currentValue.toString()) : 0,
       depreciationRate: 0, // Not in schema
@@ -301,11 +334,10 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {}
     if (validatedData.name) updateData.name = validatedData.name
     if (validatedData.assetNumber) updateData.assetTag = validatedData.assetNumber
-    if (validatedData.category) updateData.category = validatedData.category
+    if (validatedData.category) updateData.category = mapCategory(validatedData.category)
     if (validatedData.model) updateData.model = validatedData.model
     if (validatedData.location) updateData.location = validatedData.location
-    if (validatedData.status) updateData.status = validatedData.status
-    if (validatedData.condition) updateData.condition = validatedData.condition
+    if (validatedData.status) updateData.status = mapStatus(validatedData.status)
     if (validatedData.procurementValue) updateData.purchasePrice = validatedData.procurementValue
     if (validatedData.procurementDate) updateData.purchaseDate = validatedData.procurementDate
 
@@ -322,14 +354,14 @@ export async function PUT(request: NextRequest) {
       assetNumber: updatedAsset.assetTag,
       category: updatedAsset.category,
       type: updatedAsset.category,
-      brand: updatedAsset.brand,
+      brand: updatedAsset.manufacturer,
       model: updatedAsset.model,
       serialNumber: updatedAsset.serialNumber,
       status: updatedAsset.status.toLowerCase(),
-      condition: updatedAsset.condition.toLowerCase(),
+      condition: updatedAsset.status.toLowerCase(),
       location: updatedAsset.location,
       department: updatedAsset.location,
-      assignedTo: updatedAsset.location,
+      assignedTo: updatedAsset.assignedTo,
       procurementValue: updatedAsset.purchasePrice ? parseFloat(updatedAsset.purchasePrice.toString()) : 0,
       currentValue: updatedAsset.currentValue ? parseFloat(updatedAsset.currentValue.toString()) : 0,
       depreciationRate: 0, // Not in schema

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,11 +9,21 @@ export async function POST(request: NextRequest) {
     
     if (!session) {
       return NextResponse.json({ 
-        success: false,
-        error: "Authentication required", 
-        message: "Please log in to upload documents.",
-        code: "UNAUTHORIZED"
+        success: false, 
+        error: "Unauthorized" 
       }, { status: 401 })
+    }
+
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('documents.create') ||
+                         session.user?.permissions?.includes('documents.full_access') ||
+                         session.user?.roles?.includes('admin')
+
+    if (!hasPermission) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Insufficient permissions" 
+      }, { status: 403 })
     }
 
     const formData = await request.formData()
@@ -23,27 +31,27 @@ export async function POST(request: NextRequest) {
     const title = formData.get('title') as string
     const category = formData.get('category') as string
     const classification = formData.get('classification') as string
-    const projectId = formData.get('projectId') as string
 
     if (!file) {
       return NextResponse.json({ 
-        success: false,
+        success: false, 
         error: "No file provided" 
       }, { status: 400 })
     }
 
     if (!title || !category) {
       return NextResponse.json({ 
-        success: false,
+        success: false, 
         error: "Title and category are required" 
       }, { status: 400 })
     }
 
     // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    if (file.size > maxSize) {
       return NextResponse.json({ 
-        success: false,
-        error: `File is too large. Maximum size is 10MB.` 
+        success: false, 
+        error: "File size exceeds 10MB limit" 
       }, { status: 400 })
     }
 
@@ -54,63 +62,72 @@ export async function POST(request: NextRequest) {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
       'image/jpeg',
       'image/png',
-      'image/jpg',
-      'text/plain'
+      'image/gif'
     ]
 
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json({ 
-        success: false,
-        error: `File type ${file.type} is not allowed.` 
+        success: false, 
+        error: "File type not allowed" 
       }, { status: 400 })
     }
 
-    // In a real implementation, you would:
-    // 1. Upload to cloud storage (AWS S3, Azure Blob, etc.)
-    // 2. Get the file URL
-    // For now, we'll simulate the file storage
+    // Generate unique filename
     const documentId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
-    const filePath = `/uploads/${documentId}_${file.name}`
+    const filename = `${documentId}_${file.name}`
+    const filePath = `/uploads/${filename}`
+    
+    // TODO: Implement actual file storage (AWS S3, Azure Blob, etc.)
+    // For now, we'll just save the metadata
     
     // Save document metadata to database
     const document = await prisma.document.create({
       data: {
-        title,
-        fileName: file.name,
-        filePath,
-        fileSize: file.size,
+        filename: filename,
+        originalName: file.name,
         mimeType: file.type,
-        category: category as any, // Will be validated by Prisma
-        classification: (classification || 'PUBLIC') as any,
-        uploadedBy: session.user?.id,
-        projectId: projectId || null
-      },
-      include: {
-        uploader: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
+        size: file.size,
+        path: filePath,
+        url: null, // Will be set when file is actually uploaded to storage
+        category: category as any,
+        description: title,
+        tags: [],
+        isPublic: classification === 'PUBLIC',
+        accessLevel: classification?.toLowerCase() || 'internal',
+        uploadedBy: session.user?.id
       }
     })
+
+    // Get uploader info for response
+    let uploaderName = 'Unknown'
+    if (session.user?.id) {
+      const uploader = await prisma.employee.findUnique({
+        where: { id: session.user.id },
+        select: {
+          firstName: true,
+          lastName: true
+        }
+      })
+      if (uploader) {
+        uploaderName = `${uploader.firstName} ${uploader.lastName}`
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 
       message: "Document uploaded successfully",
       document: {
         id: document.id,
-        title: document.title,
-        fileName: document.fileName,
+        title: document.description,
+        fileName: document.originalName,
         category: document.category,
-        classification: 'PUBLIC', // document.classification,
-        uploadedBy: 'Unknown', // document.uploader?.name || document.uploader?.email,
+        classification: document.accessLevel?.toUpperCase(),
+        uploadedBy: uploaderName,
         uploadedAt: document.createdAt,
-        size: document.fileSize
+        size: `${(document.size / 1024 / 1024).toFixed(1)} MB`
       }
     }, { status: 201 })
 

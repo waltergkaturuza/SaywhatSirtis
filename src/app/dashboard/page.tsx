@@ -551,8 +551,7 @@ export default function DashboardPage() {
                   <CardContent>
                     <div className="h-64 flex items-center justify-center text-saywhat-grey">
                       <div className="text-center">
-                        <Target className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.grey }} />
-                        <p>Program distribution charts will be displayed here</p>
+                        <Target className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.grey }} />                        
                         <p className="text-sm">Connected to program management data</p>
                       </div>
                     </div>

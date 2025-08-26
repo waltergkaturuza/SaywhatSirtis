@@ -27,26 +27,44 @@ export async function GET() {
       return NextResponse.json(response, { status })
     }
 
-    // Get all users (employees) with active status
-    const employees = await prisma.user.findMany({
+    // Get all active employees
+    const employees = await prisma.employee.findMany({
       where: { 
-        isActive: true
+        status: 'ACTIVE'
       },
       select: {
         id: true,
+        employeeId: true,
+        firstName: true,
+        lastName: true,
         email: true,
-        username: true,
         department: true,
         position: true,
-        phone: true,
+        phoneNumber: true,
+        hireDate: true,
+        status: true,
         createdAt: true,
-        updatedAt: true,
-        lastLogin: true
+        updatedAt: true
       },
-      orderBy: { email: 'asc' }
+      orderBy: { firstName: 'asc' }
     })
 
-    const response = createSuccessResponse(employees, {
+    // Transform data for frontend
+    const transformedEmployees = employees.map(emp => ({
+      id: emp.id,
+      employeeId: emp.employeeId,
+      name: `${emp.firstName} ${emp.lastName}`,
+      email: emp.email,
+      department: emp.department,
+      position: emp.position,
+      phone: emp.phoneNumber,
+      hireDate: emp.hireDate.toISOString().split('T')[0],
+      status: emp.status,
+      createdAt: emp.createdAt,
+      updatedAt: emp.updatedAt
+    }))
+
+    const response = createSuccessResponse(transformedEmployees, {
       message: `Retrieved ${employees.length} employees`,
       meta: { count: employees.length }
     })
@@ -104,11 +122,11 @@ export async function POST(request: Request) {
     }
 
     // Check if employee email already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingEmployee = await prisma.employee.findUnique({
       where: { email: formData.email }
     })
 
-    if (existingUser) {
+    if (existingEmployee) {
       const { response, status } = createErrorResponse(
         'Employee with this email already exists',
         HttpStatus.CONFLICT,
@@ -117,25 +135,39 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status })
     }
 
+    // Generate employee ID
+    const employeeCount = await prisma.employee.count()
+    const employeeId = `EMP${(employeeCount + 1).toString().padStart(4, '0')}`
+
     // Sanitize input data
     const sanitizedData = {
+      employeeId,
+      firstName: sanitizeInput(formData.firstName),
+      lastName: sanitizeInput(formData.lastName),
       email: formData.email.toLowerCase().trim(),
-      username: formData.username ? sanitizeInput(formData.username) : null,
+      phoneNumber: formData.phoneNumber ? sanitizeInput(formData.phoneNumber) : null,
       department: sanitizeInput(formData.department),
       position: sanitizeInput(formData.position),
+      hireDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
+      salary: formData.salary ? parseFloat(formData.salary) : null,
+      status: 'ACTIVE' as const
     }
 
     // Create new employee
-    const newEmployee = await prisma.user.create({
-      data: {
-        ...sanitizedData,
-        password: '$2a$10$rZvGJ5xI7gMEwAi8IWW8KO7/Eo3QKsVxQhVJ2X7w9m0N1QmRZJQzK', // Default password
-        isActive: true
-      }
+    const newEmployee = await prisma.employee.create({
+      data: sanitizedData
     })
 
-    const response = createSuccessResponse(newEmployee, {
-      message: `Employee ${newEmployee.email} created successfully`
+    const response = createSuccessResponse({
+      id: newEmployee.id,
+      employeeId: newEmployee.employeeId,
+      name: `${newEmployee.firstName} ${newEmployee.lastName}`,
+      email: newEmployee.email,
+      department: newEmployee.department,
+      position: newEmployee.position,
+      status: newEmployee.status
+    }, {
+      message: `Employee ${newEmployee.firstName} ${newEmployee.lastName} created successfully`
     })
 
     return NextResponse.json(response, { status: HttpStatus.CREATED })

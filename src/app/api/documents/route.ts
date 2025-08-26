@@ -1,206 +1,182 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    console.log('Documents API: Starting request...')
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
-      console.log('Documents API: Unauthorized - no session')
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('Documents API: Fetching documents from database...')
-    
-    // Check if database is connected
-    try {
-      await prisma.$connect()
-      console.log('Documents API: Database connected successfully')
-    } catch (dbError) {
-      console.error('Documents API: Database connection failed:', dbError)
-      return NextResponse.json({ 
-        error: 'Database connection failed',
-        details: process.env.NODE_ENV === 'development' ? dbError : undefined
-      }, { status: 500 })
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('documents.view') ||
+                         session.user?.permissions?.includes('documents.full_access') ||
+                         session.user?.roles?.includes('admin')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    // Get query parameters
+    const { searchParams } = new URL(request.url)
+    const category = searchParams.get('category')
+    const search = searchParams.get('search')
+
+    // Build filter
+    const where: any = {}
+
+    if (category) {
+      where.category = category
+    }
+
+    if (search) {
+      where.OR = [
+        {
+          filename: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          originalName: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          description: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }
+      ]
     }
 
     // Fetch documents from database
     const documents = await prisma.document.findMany({
-      include: {
-        uploader: {
-          select: {
-            name: true,
-            email: true
-          }
-        },
-        project: {
-          select: {
-            name: true
+      where,
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
+
+    // Get uploader details separately if needed
+    const documentsWithUploaders = await Promise.all(
+      documents.map(async (doc) => {
+        let uploaderInfo = null
+        if (doc.uploadedBy) {
+          try {
+            const uploader = await prisma.employee.findUnique({
+              where: { id: doc.uploadedBy },
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            })
+            uploaderInfo = uploader ? {
+              name: `${uploader.firstName} ${uploader.lastName}`,
+              email: uploader.email
+            } : null
+          } catch (error) {
+            // Handle case where uploader doesn't exist
+            uploaderInfo = null
           }
         }
-      },
-      orderBy: {
-        updatedAt: 'desc'
-      }
-    })
 
-    // Transform data for frontend
-    const transformedDocuments = documents.map(doc => ({
-      id: doc.id,
-      title: doc.title,
-      fileName: doc.fileName,
-      description: doc.description,
-      classification: 'PUBLIC', // doc.classification,
-      category: doc.category,
-      type: doc.mimeType?.split('/')[1]?.toUpperCase() || 'FILE',
-      size: doc.fileSize ? `${(doc.fileSize / 1024 / 1024).toFixed(1)} MB` : 'Unknown',
-      uploadedBy: 'Unknown', // doc.uploader?.name || doc.uploader?.email || 'Unknown',
-      uploadDate: doc.createdAt.toISOString(),
-      lastModified: doc.updatedAt.toISOString(),
-      version: doc.version || '1.0',
-      tags: doc.tags ? JSON.parse(doc.tags) : [],
-      folder: `/${doc.category.toLowerCase().replace(/_/g, '-')}`,
-      downloadCount: 0, // TODO: Implement download tracking
-      viewCount: 0, // TODO: Implement view tracking
-      favoriteCount: 0, // TODO: Implement favorites
-      thumbnail: null,
-      aiScore: {
-        sentiment: 0.7,
-        readability: 0.75,
-        quality: 0.8
-      },
-      permissions: {
-        canView: true,
-        canDownload: true,
-        canEdit: doc.uploadedBy === session.user.id,
-        canDelete: doc.uploadedBy === session.user.id,
-        canShare: true // doc.classification !== 'TOP_SECRET'
-      }
-    }))
+        return {
+          id: doc.id,
+          title: doc.originalName,
+          fileName: doc.filename,
+          description: doc.description,
+          classification: doc.accessLevel?.toUpperCase() || 'INTERNAL',
+          category: doc.category,
+          type: doc.mimeType?.split('/')[1]?.toUpperCase() || 'FILE',
+          size: `${(doc.size / 1024 / 1024).toFixed(1)} MB`,
+          uploadDate: doc.createdAt.toISOString().split('T')[0],
+          uploadedBy: uploaderInfo?.name || 'Unknown',
+          url: doc.url,
+          tags: doc.tags,
+          canEdit: doc.uploadedBy === session.user?.id,
+          canDelete: doc.uploadedBy === session.user?.id || session.user?.roles?.includes('admin')
+        }
+      })
+    )
 
-    return NextResponse.json({
-      success: true,
-      documents: transformedDocuments,
-      total: transformedDocuments.length
-    })
+    return NextResponse.json(documentsWithUploaders)
+
   } catch (error) {
-    console.error('Failed to fetch documents:', error)
+    console.error('Error fetching documents:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { title, fileName, filePath, fileSize, mimeType, category, classification, description } = await request.json()
-    
-    if (!title || !fileName || !filePath || !category) {
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('documents.create') ||
+                         session.user?.permissions?.includes('documents.full_access') ||
+                         session.user?.roles?.includes('admin')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const { filename, originalName, mimeType, size, path, url, category, description, tags, isPublic, accessLevel } = await request.json()
+
+    if (!filename || !originalName || !mimeType || !size || !path) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const newDocument = await prisma.document.create({
+    const document = await prisma.document.create({
       data: {
-        title,
-        fileName,
-        filePath,
-        fileSize,
+        filename,
+        originalName,
         mimeType,
+        size,
+        path,
+        url,
         category,
-        // classification: classification || 'PUBLIC',
         description,
-        uploadedBy: session.user.id
-      },
-      include: {
-        uploader: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
+        tags: tags || [],
+        isPublic: isPublic || false,
+        accessLevel: accessLevel || 'internal',
+        uploadedBy: session.user?.id
       }
     })
 
     return NextResponse.json({
-      success: true,
-      document: newDocument
+      id: document.id,
+      title: document.originalName,
+      fileName: document.filename,
+      url: document.url
     }, { status: 201 })
+
   } catch (error) {
-    console.error('Failed to create document:', error)
+    console.error('Error creating document:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id, title, description, category, classification } = await request.json()
-    
-    // Check if document exists and user has permission
-    const existingDocument = await prisma.document.findUnique({
-      where: { id }
-    })
+    const { id, description, category, tags, isPublic, accessLevel } = await request.json()
 
-    if (!existingDocument) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 })
-    }
-
-    if (existingDocument.uploadedBy !== session.user.id) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
-
-    const updatedDocument = await prisma.document.update({
-      where: { id },
-      data: {
-        title: title || existingDocument.title,
-        description: description || existingDocument.description,
-        category: category || existingDocument.category,
-        // classification: classification || existingDocument.classification,
-        updatedAt: new Date()
-      },
-      include: {
-        uploader: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
-      }
-    })
-
-    return NextResponse.json({
-      success: true,
-      document: updatedDocument
-    })
-  } catch (error) {
-    console.error('Failed to update document:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
-
-export async function DELETE(request: Request) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-    
     if (!id) {
       return NextResponse.json({ error: 'Document ID is required' }, { status: 400 })
     }
@@ -214,21 +190,76 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
-    if (existingDocument.uploadedBy !== session.user.id) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    const canEdit = existingDocument.uploadedBy === session.user?.id ||
+                   session.user?.roles?.includes('admin') ||
+                   session.user?.permissions?.includes('documents.full_access')
+
+    if (!canEdit) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    const deletedDocument = await prisma.document.delete({
+    const updatedDocument = await prisma.document.update({
+      where: { id },
+      data: {
+        description: description || existingDocument.description,
+        category: category || existingDocument.category,
+        tags: tags || existingDocument.tags,
+        isPublic: isPublic !== undefined ? isPublic : existingDocument.isPublic,
+        accessLevel: accessLevel || existingDocument.accessLevel
+      }
+    })
+
+    return NextResponse.json({
+      id: updatedDocument.id,
+      success: true
+    })
+
+  } catch (error) {
+    console.error('Error updating document:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'Document ID is required' }, { status: 400 })
+    }
+
+    // Check if document exists and user has permission
+    const existingDocument = await prisma.document.findUnique({
       where: { id }
     })
 
-    return NextResponse.json({ 
-      success: true,
-      message: 'Document deleted successfully',
-      document: deletedDocument
+    if (!existingDocument) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 })
+    }
+
+    const canDelete = existingDocument.uploadedBy === session.user?.id ||
+                     session.user?.roles?.includes('admin') ||
+                     session.user?.permissions?.includes('documents.full_access')
+
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    await prisma.document.delete({
+      where: { id }
     })
+
+    return NextResponse.json({ success: true })
+
   } catch (error) {
-    console.error('Failed to delete document:', error)
+    console.error('Error deleting document:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

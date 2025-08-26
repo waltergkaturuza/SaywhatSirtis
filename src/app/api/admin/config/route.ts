@@ -1,122 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
-// Mock system configuration data - in production, this would come from your database
-let systemConfigs = [
-  {
-    id: "1",
-    key: "max_file_size",
-    value: "50",
-    description: "Maximum file upload size in MB",
-    category: "File Management",
-    type: "number",
-    validationRules: { min: 1, max: 1000 },
-    lastModified: "2025-07-17 08:20:00",
-    modifiedBy: "admin"
-  },
-  {
-    id: "2",
-    key: "session_timeout",
-    value: "3600",
-    description: "User session timeout in seconds",
-    category: "Security",
-    type: "number",
-    validationRules: { min: 300, max: 86400 },
-    lastModified: "2025-07-16 14:30:00",
-    modifiedBy: "admin"
-  },
-  {
-    id: "3",
-    key: "email_notifications",
-    value: "true",
-    description: "Enable email notifications",
-    category: "Notifications",
-    type: "boolean",
-    validationRules: {},
-    lastModified: "2025-07-15 10:45:00",
-    modifiedBy: "admin"
-  },
-  {
-    id: "4",
-    key: "api_rate_limit",
-    value: "1000",
-    description: "API requests per hour per user",
-    category: "Security",
-    type: "number",
-    validationRules: { min: 100, max: 10000 },
-    lastModified: "2025-07-14 16:20:00",
-    modifiedBy: "admin"
-  },
-  {
-    id: "5",
-    key: "backup_retention_days",
-    value: "30",
-    description: "Number of days to retain backups",
-    category: "Backup",
-    type: "number",
-    validationRules: { min: 7, max: 365 },
-    lastModified: "2025-07-13 09:15:00",
-    modifiedBy: "admin"
-  },
-  {
-    id: "6",
-    key: "default_theme",
-    value: "light",
-    description: "Default application theme",
-    category: "UI/UX",
-    type: "string",
-    validationRules: { enum: ["light", "dark", "auto"] },
-    lastModified: "2025-07-12 11:30:00",
-    modifiedBy: "admin"
-  },
-  {
-    id: "7",
-    key: "maintenance_mode",
-    value: "false",
-    description: "Enable maintenance mode",
-    category: "System",
-    type: "boolean",
-    validationRules: {},
-    lastModified: "2025-07-11 08:00:00",
-    modifiedBy: "admin"
-  },
-  {
-    id: "8",
-    key: "log_level",
-    value: "info",
-    description: "System logging level",
-    category: "System",
-    type: "string",
-    validationRules: { enum: ["error", "warn", "info", "debug"] },
-    lastModified: "2025-07-10 15:45:00",
-    modifiedBy: "admin"
-  },
-  {
-    id: "9",
-    key: "database_connection_pool",
-    value: "20",
-    description: "Maximum database connections",
-    category: "Database",
-    type: "number",
-    validationRules: { min: 5, max: 100 },
-    lastModified: "2025-07-09 12:20:00",
-    modifiedBy: "admin"
-  },
-  {
-    id: "10",
-    key: "audit_log_retention",
-    value: "90",
-    description: "Audit log retention period in days",
-    category: "Security",
-    type: "number",
-    validationRules: { min: 30, max: 365 },
-    lastModified: "2025-07-08 14:10:00",
-    modifiedBy: "admin"
-  }
-]
-
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions)
 
@@ -129,41 +16,54 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
-    const url = new URL(request.url)
-    const category = url.searchParams.get("category")
-    const search = url.searchParams.get("search")
+    // Fetch system configurations from database
+    const systemConfigs = await prisma.systemConfig.findMany({
+      orderBy: {
+        category: 'asc'
+      }
+    })
 
-    let filteredConfigs = [...systemConfigs]
-
-    // Apply filters
-    if (category) {
-      filteredConfigs = filteredConfigs.filter(config =>
-        config.category.toLowerCase() === category.toLowerCase()
-      )
-    }
-
-    if (search) {
-      filteredConfigs = filteredConfigs.filter(config =>
-        config.key.toLowerCase().includes(search.toLowerCase()) ||
-        config.description.toLowerCase().includes(search.toLowerCase())
-      )
-    }
-
-    // Get unique categories for filter dropdown
-    const categories = [...new Set(systemConfigs.map(config => config.category))]
+    // Transform data to match frontend interface
+    const transformedConfigs = systemConfigs.map(config => ({
+      id: config.id,
+      key: config.key,
+      value: typeof config.value === 'string' ? config.value : JSON.stringify(config.value),
+      description: config.description,
+      category: config.category,
+      type: determineType(config.value),
+      lastModified: config.updatedAt.toISOString(),
+      modifiedBy: "admin" // TODO: Add user tracking to SystemConfig model
+    }))
 
     return NextResponse.json({
-      configs: filteredConfigs,
-      categories,
-      total: filteredConfigs.length
+      success: true,
+      configs: transformedConfigs,
+      total: systemConfigs.length
     })
   } catch (error) {
-    console.error("Error fetching system configurations:", error)
+    console.error("Error fetching system configs:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        success: false,
+        error: "Failed to fetch system configurations",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     )
   }
+}
+
+function determineType(value: any): 'string' | 'number' | 'boolean' | 'json' {
+  if (typeof value === 'boolean') return 'boolean'
+  if (typeof value === 'number') return 'number'
+  if (typeof value === 'string') {
+    // Try to parse as number
+    if (!isNaN(Number(value))) return 'number'
+    // Try to parse as boolean
+    if (value === 'true' || value === 'false') return 'boolean'
+    return 'string'
+  }
+  return 'json'
 }
 
 export async function POST(request: NextRequest) {
@@ -182,212 +82,116 @@ export async function POST(request: NextRequest) {
     const { action, configId, configData } = await request.json()
 
     switch (action) {
-      case "create_config":
-        // Validate required fields
-        if (!configData.key || !configData.value || !configData.description || !configData.category || !configData.type) {
-          return NextResponse.json(
-            { error: "Missing required fields" },
-            { status: 400 }
-          )
-        }
+      case 'update_config':
+        try {
+          let value = configData.value
+          
+          // Convert value to appropriate type
+          if (value === 'true') value = true
+          else if (value === 'false') value = false
+          else if (!isNaN(Number(value))) value = Number(value)
 
-        // Check if key already exists
-        if (systemConfigs.some(config => config.key === configData.key)) {
-          return NextResponse.json(
-            { error: "Configuration key already exists" },
-            { status: 400 }
-          )
-        }
+          const updatedConfig = await prisma.systemConfig.update({
+            where: { id: configId },
+            data: { value }
+          })
 
-        const newConfig = {
-          id: (systemConfigs.length + 1).toString(),
-          ...configData,
-          lastModified: new Date().toISOString().replace('T', ' ').substring(0, 19),
-          modifiedBy: session.user?.email || "unknown",
-          validationRules: configData.validationRules || {}
-        }
-
-        systemConfigs.push(newConfig)
-
-        return NextResponse.json({
-          success: true,
-          message: "Configuration created successfully",
-          config: newConfig
-        })
-
-      case "update_config":
-        const configIndex = systemConfigs.findIndex(config => config.id === configId)
-        if (configIndex === -1) {
-          return NextResponse.json({ error: "Configuration not found" }, { status: 404 })
-        }
-
-        const existingConfig = systemConfigs[configIndex]
-
-        // Validate value based on type and rules
-        const validationResult = validateConfigValue(configData.value, existingConfig.type, existingConfig.validationRules)
-        if (!validationResult.isValid) {
-          return NextResponse.json(
-            { error: validationResult.error },
-            { status: 400 }
-          )
-        }
-
-        // Update configuration
-        systemConfigs[configIndex] = {
-          ...existingConfig,
-          value: configData.value,
-          lastModified: new Date().toISOString().replace('T', ' ').substring(0, 19),
-          modifiedBy: session.user?.email || "unknown"
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: "Configuration updated successfully",
-          config: systemConfigs[configIndex]
-        })
-
-      case "delete_config":
-        const configToDelete = systemConfigs.find(config => config.id === configId)
-        if (!configToDelete) {
-          return NextResponse.json({ error: "Configuration not found" }, { status: 404 })
-        }
-
-        systemConfigs = systemConfigs.filter(config => config.id !== configId)
-
-        return NextResponse.json({
-          success: true,
-          message: "Configuration deleted successfully"
-        })
-
-      case "reset_to_default":
-        // Reset specific configuration to default value
-        const defaultValues: Record<string, string> = {
-          "max_file_size": "25",
-          "session_timeout": "3600",
-          "email_notifications": "true",
-          "api_rate_limit": "500",
-          "backup_retention_days": "30",
-          "default_theme": "light",
-          "maintenance_mode": "false",
-          "log_level": "info",
-          "database_connection_pool": "10",
-          "audit_log_retention": "90"
-        }
-
-        const configToReset = systemConfigs.find(config => config.id === configId)
-        if (!configToReset) {
-          return NextResponse.json({ error: "Configuration not found" }, { status: 404 })
-        }
-
-        const defaultValue = defaultValues[configToReset.key]
-        if (!defaultValue) {
-          return NextResponse.json({ error: "No default value available" }, { status: 400 })
-        }
-
-        const resetConfigIndex = systemConfigs.findIndex(config => config.id === configId)
-        systemConfigs[resetConfigIndex] = {
-          ...systemConfigs[resetConfigIndex],
-          value: defaultValue,
-          lastModified: new Date().toISOString().replace('T', ' ').substring(0, 19),
-          modifiedBy: session.user?.email || "unknown"
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: "Configuration reset to default value",
-          config: systemConfigs[resetConfigIndex]
-        })
-
-      case "bulk_update":
-        const { configs } = configData
-        const updatedConfigs = []
-
-        for (const updateConfig of configs) {
-          const index = systemConfigs.findIndex(config => config.id === updateConfig.id)
-          if (index !== -1) {
-            const validationResult = validateConfigValue(
-              updateConfig.value,
-              systemConfigs[index].type,
-              systemConfigs[index].validationRules
-            )
-
-            if (validationResult.isValid) {
-              systemConfigs[index] = {
-                ...systemConfigs[index],
-                value: updateConfig.value,
-                lastModified: new Date().toISOString().replace('T', ' ').substring(0, 19),
-                modifiedBy: session.user?.email || "unknown"
-              }
-              updatedConfigs.push(systemConfigs[index])
-            }
+          const transformedConfig = {
+            id: updatedConfig.id,
+            key: updatedConfig.key,
+            value: typeof updatedConfig.value === 'string' ? updatedConfig.value : JSON.stringify(updatedConfig.value),
+            description: updatedConfig.description,
+            category: updatedConfig.category,
+            type: determineType(updatedConfig.value),
+            lastModified: updatedConfig.updatedAt.toISOString(),
+            modifiedBy: "admin"
           }
+
+          return NextResponse.json({
+            success: true,
+            config: transformedConfig,
+            message: "Configuration updated successfully"
+          })
+        } catch (error) {
+          console.error("Error updating config:", error)
+          return NextResponse.json(
+            { error: "Failed to update configuration" },
+            { status: 500 }
+          )
         }
 
-        return NextResponse.json({
-          success: true,
-          message: `Updated ${updatedConfigs.length} configurations`,
-          updatedConfigs
-        })
+      case 'create_config':
+        try {
+          let value = configData.value
+          
+          // Convert value to appropriate type
+          if (value === 'true') value = true
+          else if (value === 'false') value = false
+          else if (!isNaN(Number(value))) value = Number(value)
+
+          const newConfig = await prisma.systemConfig.create({
+            data: {
+              key: configData.key,
+              value,
+              description: configData.description,
+              category: configData.category
+            }
+          })
+
+          const transformedConfig = {
+            id: newConfig.id,
+            key: newConfig.key,
+            value: typeof newConfig.value === 'string' ? newConfig.value : JSON.stringify(newConfig.value),
+            description: newConfig.description,
+            category: newConfig.category,
+            type: determineType(newConfig.value),
+            lastModified: newConfig.updatedAt.toISOString(),
+            modifiedBy: "admin"
+          }
+
+          return NextResponse.json({
+            success: true,
+            config: transformedConfig,
+            message: "Configuration created successfully"
+          })
+        } catch (error) {
+          console.error("Error creating config:", error)
+          return NextResponse.json(
+            { error: "Failed to create configuration" },
+            { status: 500 }
+          )
+        }
+
+      case 'delete_config':
+        try {
+          await prisma.systemConfig.delete({
+            where: { id: configId }
+          })
+
+          return NextResponse.json({
+            success: true,
+            message: "Configuration deleted successfully"
+          })
+        } catch (error) {
+          console.error("Error deleting config:", error)
+          return NextResponse.json(
+            { error: "Failed to delete configuration" },
+            { status: 500 }
+          )
+        }
 
       default:
-        return NextResponse.json(
-          { error: "Invalid action" },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: "Invalid action" }, { status: 400 })
     }
   } catch (error) {
-    console.error("Error processing system configuration action:", error)
+    console.error("Error in config API:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        success: false,
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     )
   }
-}
-
-interface ValidationRules {
-  min?: number;
-  max?: number;
-  enum?: string[];
-  minLength?: number;
-  maxLength?: number;
-}
-
-function validateConfigValue(value: string, type: string, rules: ValidationRules): { isValid: boolean; error?: string } {
-  switch (type) {
-    case "number":
-      const numValue = parseFloat(value)
-      if (isNaN(numValue)) {
-        return { isValid: false, error: "Value must be a valid number" }
-      }
-      if (rules.min !== undefined && numValue < rules.min) {
-        return { isValid: false, error: `Value must be at least ${rules.min}` }
-      }
-      if (rules.max !== undefined && numValue > rules.max) {
-        return { isValid: false, error: `Value must be at most ${rules.max}` }
-      }
-      break
-
-    case "boolean":
-      if (!["true", "false"].includes(value.toLowerCase())) {
-        return { isValid: false, error: "Value must be true or false" }
-      }
-      break
-
-    case "string":
-      if (rules.enum && !rules.enum.includes(value)) {
-        return { isValid: false, error: `Value must be one of: ${rules.enum.join(", ")}` }
-      }
-      if (rules.minLength && value.length < rules.minLength) {
-        return { isValid: false, error: `Value must be at least ${rules.minLength} characters` }
-      }
-      if (rules.maxLength && value.length > rules.maxLength) {
-        return { isValid: false, error: `Value must be at most ${rules.maxLength} characters` }
-      }
-      break
-
-    default:
-      break
-  }
-
-  return { isValid: true }
 }

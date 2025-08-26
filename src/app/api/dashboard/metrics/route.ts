@@ -27,21 +27,21 @@ export async function GET(request: NextRequest) {
 
     // Get call statistics
     const [callsThisMonth, callsThisYear, callsToday] = await Promise.all([
-      prisma.callCentreRecord.count({
+      prisma.callRecord.count({
         where: {
           createdAt: {
             gte: firstDayOfMonth
           }
         }
       }),
-      prisma.callCentreRecord.count({
+      prisma.callRecord.count({
         where: {
           createdAt: {
             gte: firstDayOfYear
           }
         }
       }),
-      prisma.callCentreRecord.count({
+      prisma.callRecord.count({
         where: {
           createdAt: {
             gte: new Date(now.getFullYear(), now.getMonth(), now.getDate())

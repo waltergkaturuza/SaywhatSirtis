@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
       
       return {
         id: call.id,
-        caseNumber: call.caseNumber,
-        callNumber: call.caseNumber,
+        caseNumber: `CASE-${call.id.substring(0, 8)}`,
+        callNumber: call.id,
         clientName: call.callerName,
         phone: call.callerPhone,
         purpose: call.summary || 'General Inquiry',

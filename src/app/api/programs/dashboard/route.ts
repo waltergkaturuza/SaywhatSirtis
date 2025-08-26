@@ -53,9 +53,10 @@ export async function GET(request: NextRequest) {
         take: 6,
         orderBy: { createdAt: 'desc' },
         include: {
-          manager: {
+          creator: {
             select: {
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true
             }
           },
@@ -159,7 +160,7 @@ export async function GET(request: NextRequest) {
       status: project.status?.toLowerCase() || 'planning',
       progress: averageProgress, // You might want to store actual progress per project
       dueDate: project.endDate?.toISOString() || '',
-      manager: project.manager?.name || 'Unassigned',
+      manager: project.creator ? `${project.creator.firstName || ''} ${project.creator.lastName || ''}`.trim() || 'Unassigned' : 'Unassigned',
       priority: 'medium', // You might want to add this field to your schema
       budget: project.budget || 0,
       spent: project.actualSpent || 0

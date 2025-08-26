@@ -1,4 +1,33 @@
 export interface PerformancePlanFormData {
+  // Basic Plan Information
+  supervisor: string
+  planYear: string
+  planType: string
+  startDate: string
+  endDate: string
+  supervisorComments: string
+  employeeId: string
+  status: string
+  
+  // Step 6 - Resources & Support
+  resourcesNeeded: string
+  trainingRequirements: string
+  mentorshipNeeds: string
+  supportFromManager: string
+  
+  // Step 7 - Review Schedule
+  reviewMilestones: {
+    id: string
+    milestone: string
+    date: string
+    reviewType: string
+    expectedOutcomes: string
+  }[]
+  
+  // Step 8 - Final Review
+  employeeComments: string
+  employeeAgreement: boolean
+  
   employee: {
     id: string
     name: string
@@ -23,6 +52,34 @@ export interface PerformancePlanFormData {
     metrics: string[]
     resources: string[]
     comments: string
+  }[]
+  kpis: {
+    id: string
+    indicator: string
+    target: string
+    description: string
+    measurement: string
+    frequency: string
+    weight: number
+    currentValue: string
+  }[]
+  developmentObjectives: {
+    id: string
+    objective: string
+    description: string
+    timeline: string
+    resources: string
+    successCriteria: string
+    competencyArea: string
+    developmentActivities: string
+  }[]
+  behavioralExpectations: {
+    id: string
+    behavior: string
+    description: string
+    examples: string
+    priority: 'high' | 'medium' | 'low'
+    importance: 'critical' | 'high' | 'medium' | 'low'
   }[]
   development: {
     strengths: string[]
@@ -50,6 +107,29 @@ export interface PerformancePlanFormData {
 }
 
 export const defaultPlanFormData: PerformancePlanFormData = {
+  // Basic Plan Information
+  supervisor: '',
+  planYear: '',
+  planType: '',
+  startDate: '',
+  endDate: '',
+  supervisorComments: '',
+  employeeId: '',
+  status: 'draft',
+  
+  // Step 6 - Resources & Support
+  resourcesNeeded: '',
+  trainingRequirements: '',
+  mentorshipNeeds: '',
+  supportFromManager: '',
+  
+  // Step 7 - Review Schedule
+  reviewMilestones: [],
+  
+  // Step 8 - Final Review
+  employeeComments: '',
+  employeeAgreement: false,
+  
   employee: {
     id: '',
     name: '',
@@ -75,6 +155,40 @@ export const defaultPlanFormData: PerformancePlanFormData = {
       metrics: [''],
       resources: [''],
       comments: ''
+    }
+  ],
+  kpis: [
+    {
+      id: '1',
+      indicator: '',
+      target: '',
+      description: '',
+      measurement: '',
+      frequency: '',
+      weight: 0,
+      currentValue: ''
+    }
+  ],
+  developmentObjectives: [
+    {
+      id: '1',
+      objective: '',
+      description: '',
+      timeline: '',
+      resources: '',
+      successCriteria: '',
+      competencyArea: '',
+      developmentActivities: ''
+    }
+  ],
+  behavioralExpectations: [
+    {
+      id: '1',
+      behavior: '',
+      description: '',
+      examples: '',
+      priority: 'medium',
+      importance: 'medium'
     }
   ],
   development: {

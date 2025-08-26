@@ -1,230 +1,246 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { 
-  createSuccessResponse, 
-  createErrorResponse, 
-  handlePrismaError,
-  logError,
-  HttpStatus,
-  ErrorCodes
-} from '@/lib/api-utils'
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
-      const { response, status } = createErrorResponse(
-        'Authentication required',
-        HttpStatus.UNAUTHORIZED,
-        { code: ErrorCodes.UNAUTHORIZED }
-      )
-      return NextResponse.json(response, { status })
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    // Get all archived employees (inactive users)
-    const archivedEmployees = await prisma.user.findMany({
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.view') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    // Get all archived employees (inactive employees)
+    const archivedEmployees = await prisma.employee.findMany({
       where: { 
-        isActive: false
+        status: 'INACTIVE'
       },
       select: {
         id: true,
+        employeeId: true,
+        firstName: true,
+        lastName: true,
         email: true,
-        username: true,
         department: true,
         position: true,
-        phone: true,
+        phoneNumber: true,
+        status: true,
+        hireDate: true,
         createdAt: true,
-        updatedAt: true,
-        lastLogin: true,
-        archiveReason: true,
-        archiveDate: true,
-        supervisor: true,
-        exitInterview: true,
-        clearanceStatus: true
+        updatedAt: true
       },
       orderBy: { updatedAt: 'desc' }
     })
 
-    // Calculate archive statistics
+    // Calculate stats
     const stats = {
       totalArchived: archivedEmployees.length,
       thisYear: archivedEmployees.filter(emp => 
-        emp.archiveDate && new Date(emp.archiveDate).getFullYear() === new Date().getFullYear()
+        emp.updatedAt && new Date(emp.updatedAt).getFullYear() === new Date().getFullYear()
       ).length,
       accessRevoked: archivedEmployees.length, // All archived employees have revoked access
       dataRetained: archivedEmployees.length
     }
 
-    // Calculate archive reasons breakdown
-    const reasonsBreakdown = archivedEmployees.reduce((acc, emp) => {
-      const reason = emp.archiveReason || 'other'
-      acc[reason] = (acc[reason] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
+    // Transform data for frontend
+    const transformedEmployees = archivedEmployees.map(emp => ({
+      id: emp.id,
+      employeeId: emp.employeeId,
+      name: `${emp.firstName} ${emp.lastName}`,
+      email: emp.email,
+      department: emp.department,
+      position: emp.position,
+      phone: emp.phoneNumber,
+      status: emp.status,
+      hireDate: emp.hireDate.toISOString().split('T')[0],
+      archiveDate: emp.updatedAt.toISOString().split('T')[0], // Using updatedAt as archive date
+      reason: 'Terminated' // Default reason since we don't have this field
+    }))
 
-    const response = createSuccessResponse({
-      employees: archivedEmployees,
-      stats,
-      reasonsBreakdown
-    }, {
-      message: `Retrieved ${archivedEmployees.length} archived employees`,
-      meta: { count: archivedEmployees.length }
+    return NextResponse.json({
+      success: true,
+      data: {
+        employees: transformedEmployees,
+        stats,
+        reasonsBreakdown: {
+          'terminated': archivedEmployees.length,
+          'resigned': 0,
+          'retired': 0,
+          'other': 0
+        }
+      }
     })
 
-    return NextResponse.json(response)
   } catch (error) {
-    logError(error, {
-      endpoint: '/api/hr/employees/archived',
-      userId: 'unknown'
-    })
-
-    const { response, status } = handlePrismaError(error)
-    return NextResponse.json(response, { status })
+    console.error('Error fetching archived employees:', error)
+    return NextResponse.json({ 
+      success: false,
+      error: 'Failed to fetch archived employees',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
-      const { response, status } = createErrorResponse(
-        'Authentication required',
-        HttpStatus.UNAUTHORIZED,
-        { code: ErrorCodes.UNAUTHORIZED }
-      )
-      return NextResponse.json(response, { status })
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { employeeId, reason, exitInterview, notes } = body
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager')
 
-    // Find the employee
-    const employee = await prisma.user.findUnique({
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const { employeeId, reason } = await request.json()
+
+    if (!employeeId) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Employee ID is required' 
+      }, { status: 400 })
+    }
+
+    // Check if employee exists and is active
+    const employee = await prisma.employee.findUnique({
       where: { id: employeeId }
     })
 
     if (!employee) {
-      const { response, status } = createErrorResponse(
-        'Employee not found',
-        HttpStatus.NOT_FOUND,
-        { code: ErrorCodes.NOT_FOUND }
-      )
-      return NextResponse.json(response, { status })
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Employee not found' 
+      }, { status: 404 })
     }
 
-    if (!employee.isActive) {
-      const { response, status } = createErrorResponse(
-        'Employee is already archived',
-        HttpStatus.BAD_REQUEST,
-        { code: ErrorCodes.VALIDATION_ERROR }
-      )
-      return NextResponse.json(response, { status })
+    if (employee.status === 'INACTIVE') {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Employee is already archived' 
+      }, { status: 400 })
     }
 
     // Archive the employee
-    const archivedEmployee = await prisma.user.update({
+    const archivedEmployee = await prisma.employee.update({
       where: { id: employeeId },
       data: {
-        isActive: false,
-        archiveDate: new Date(),
-        archiveReason: reason,
-        exitInterview: exitInterview || false,
-        clearanceStatus: 'pending',
-        notes: notes || null
+        status: 'INACTIVE'
       }
     })
 
-    const response = createSuccessResponse(archivedEmployee, {
-      message: `Employee ${employee.email} has been archived successfully`
+    return NextResponse.json({
+      success: true,
+      message: 'Employee archived successfully',
+      data: {
+        id: archivedEmployee.id,
+        employeeId: archivedEmployee.employeeId,
+        name: `${archivedEmployee.firstName} ${archivedEmployee.lastName}`,
+        status: archivedEmployee.status,
+        archiveDate: new Date().toISOString().split('T')[0],
+        reason: reason || 'Terminated'
+      }
     })
 
-    return NextResponse.json(response)
   } catch (error) {
-    logError(error, {
-      endpoint: '/api/hr/employees/archived',
-      userId: 'unknown'
-    })
-
-    const { response, status } = handlePrismaError(error)
-    return NextResponse.json(response, { status })
+    console.error('Error archiving employee:', error)
+    return NextResponse.json({ 
+      success: false,
+      error: 'Failed to archive employee',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
-      const { response, status } = createErrorResponse(
-        'Authentication required',
-        HttpStatus.UNAUTHORIZED,
-        { code: ErrorCodes.UNAUTHORIZED }
-      )
-      return NextResponse.json(response, { status })
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { employeeId, action } = body
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager')
 
-    // Find the archived employee
-    const employee = await prisma.user.findUnique({
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const { employeeId } = await request.json()
+
+    if (!employeeId) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Employee ID is required' 
+      }, { status: 400 })
+    }
+
+    // Check if employee exists and is archived
+    const employee = await prisma.employee.findUnique({
       where: { id: employeeId }
     })
 
     if (!employee) {
-      const { response, status } = createErrorResponse(
-        'Employee not found',
-        HttpStatus.NOT_FOUND,
-        { code: ErrorCodes.NOT_FOUND }
-      )
-      return NextResponse.json(response, { status })
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Employee not found' 
+      }, { status: 404 })
     }
 
-    if (action === 'restore') {
-      if (employee.isActive) {
-        const { response, status } = createErrorResponse(
-          'Employee is already active',
-          HttpStatus.BAD_REQUEST,
-          { code: ErrorCodes.VALIDATION_ERROR }
-        )
-        return NextResponse.json(response, { status })
+    if (employee.status === 'ACTIVE') {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Employee is not archived' 
+      }, { status: 400 })
+    }
+
+    // Restore the employee
+    const restoredEmployee = await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        status: 'ACTIVE'
       }
-
-      // Restore the employee
-      const restoredEmployee = await prisma.user.update({
-        where: { id: employeeId },
-        data: {
-          isActive: true,
-          archiveDate: null,
-          archiveReason: null,
-          clearanceStatus: null
-        }
-      })
-
-      const response = createSuccessResponse(restoredEmployee, {
-        message: `Employee ${employee.email} has been restored successfully`
-      })
-
-      return NextResponse.json(response)
-    }
-
-    const { response, status } = createErrorResponse(
-      'Invalid action specified',
-      HttpStatus.BAD_REQUEST,
-      { code: ErrorCodes.VALIDATION_ERROR }
-    )
-    return NextResponse.json(response, { status })
-  } catch (error) {
-    logError(error, {
-      endpoint: '/api/hr/employees/archived',
-      userId: 'unknown'
     })
 
-    const { response, status } = handlePrismaError(error)
-    return NextResponse.json(response, { status })
+    return NextResponse.json({
+      success: true,
+      message: 'Employee restored successfully',
+      data: {
+        id: restoredEmployee.id,
+        employeeId: restoredEmployee.employeeId,
+        name: `${restoredEmployee.firstName} ${restoredEmployee.lastName}`,
+        status: restoredEmployee.status,
+        restoreDate: new Date().toISOString().split('T')[0]
+      }
+    })
+
+  } catch (error) {
+    console.error('Error restoring employee:', error)
+    return NextResponse.json({ 
+      success: false,
+      error: 'Failed to restore employee',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
