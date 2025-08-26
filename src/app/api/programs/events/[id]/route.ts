@@ -15,17 +15,8 @@ export async function GET(
 
     const { id } = await params;
 
-    const event = await prisma.flagshipEvent.findUnique({
+    const event = await prisma.event.findUnique({
       where: { id },
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
     });
 
     if (!event) {
@@ -73,7 +64,7 @@ export async function PUT(
     } = body;
 
     // Check if event exists
-    const existingEvent = await prisma.flagshipEvent.findUnique({
+    const existingEvent = await prisma.event.findUnique({
       where: { id },
     });
 
@@ -81,50 +72,21 @@ export async function PUT(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    // Find organizer user if provided
-    let organizerUserId = existingEvent.organizerUserId;
-    if (organizer) {
-      const organizerUser = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: organizer },
-            { name: organizer },
-            { id: organizer },
-          ],
-        },
-      });
-      if (organizerUser) {
-        organizerUserId = organizerUser.id;
-      }
-    }
-
     // Update the event
-    const event = await prisma.flagshipEvent.update({
+    const event = await prisma.event.update({
       where: { id },
       data: {
-        name,
+        title: name,
         description,
+        type: category?.toLowerCase() || 'meeting',
+        status: status?.toLowerCase() || 'planning',
         startDate: startDate ? new Date(startDate) : undefined,
-        startTime,
         endDate: endDate ? new Date(endDate) : undefined,
-        endTime,
         location,
-        expectedAttendees: expectedAttendees ? parseInt(expectedAttendees) : undefined,
-        actualAttendees: actualAttendees ? parseInt(actualAttendees) : undefined,
-        status: status?.toUpperCase(),
-        category: category?.toUpperCase(),
+        venue: location,
+        capacity: expectedAttendees ? parseInt(expectedAttendees) : undefined,
         budget: budget ? parseFloat(budget) : undefined,
         actualCost: actualCost ? parseFloat(actualCost) : undefined,
-        organizerUserId,
-      },
-      include: {
-        organizer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
       },
     });
 
@@ -151,7 +113,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if event exists
-    const existingEvent = await prisma.flagshipEvent.findUnique({
+    const existingEvent = await prisma.event.findUnique({
       where: { id },
     });
 
@@ -160,7 +122,7 @@ export async function DELETE(
     }
 
     // Delete the event
-    await prisma.flagshipEvent.delete({
+    await prisma.event.delete({
       where: { id },
     });
 

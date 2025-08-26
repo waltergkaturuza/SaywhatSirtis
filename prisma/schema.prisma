@@ -138,7 +138,7 @@ model Project {
   // Relationships
   creatorId       String?
   creator         User?     @relation("ProjectCreator", fields: [creatorId], references: [id])
-  activities      Activity[]
+  activities      Activity[] // Temporarily commented until activities table is created
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -151,6 +151,7 @@ model Project {
   @@map("projects")
 }
 
+// Temporarily commented until activities table can be created
 model Activity {
   id          String    @id @default(cuid())
   title       String

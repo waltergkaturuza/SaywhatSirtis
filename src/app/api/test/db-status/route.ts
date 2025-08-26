@@ -16,7 +16,7 @@ export async function GET() {
     const documentCount = await prisma.document.count()
     console.log(`DB Status: Found ${documentCount} documents`)
     
-    const eventCount = await prisma.flagshipEvent.count()
+    const eventCount = await prisma.event.count()
     console.log(`DB Status: Found ${eventCount} events`)
     
     // Test database info
