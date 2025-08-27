@@ -141,9 +141,9 @@ export async function GET(request: NextRequest) {
       todaysMetrics: todayStats,
       summaryStats,
       callsByPurpose: callsByPurpose.map(item => ({
-        purpose: item.callType,
+        purpose: item.callType || 'UNKNOWN',
         count: item._count.callType,
-        color: getColorForCallType(item.callType)
+        color: getColorForCallType(item.callType || 'UNKNOWN')
       })),
       activeCases,
       overdueCases,
@@ -164,7 +164,8 @@ function getColorForCallType(callType: string) {
     'COMPLAINT': 'bg-red-100 text-red-800',
     'SUPPORT': 'bg-green-100 text-green-800',
     'EMERGENCY': 'bg-purple-100 text-purple-800',
-    'FEEDBACK': 'bg-yellow-100 text-yellow-800'
+    'FEEDBACK': 'bg-yellow-100 text-yellow-800',
+    'UNKNOWN': 'bg-gray-100 text-gray-800'
   }
   return colors[callType] || 'bg-gray-100 text-gray-800'
 }

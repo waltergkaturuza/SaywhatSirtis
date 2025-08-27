@@ -145,12 +145,18 @@ export default function JobDescriptionsPage() {
     console.log('Duplicate job description:', job.id)
   }
 
+  const metadata = {
+    title: "Job Descriptions",
+    description: "Manage position descriptions and requirements",
+    breadcrumbs: [
+      { name: "HR" },
+      { name: "Job Descriptions" }
+    ]
+  }
+
   if (loading) {
     return (
-      <ModulePage 
-        title="Job Descriptions"
-        description="Manage position descriptions and requirements"
-      >
+      <ModulePage metadata={metadata}>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
         </div>
@@ -159,10 +165,7 @@ export default function JobDescriptionsPage() {
   }
 
   return (
-    <ModulePage 
-      title="Job Descriptions"
-      description="Manage position descriptions and requirements"
-    >
+    <ModulePage metadata={metadata}>
       {/* Header Actions */}
       <div className="mb-6 flex justify-between items-center">
         <div className="flex items-center space-x-4">

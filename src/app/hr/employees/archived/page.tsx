@@ -327,7 +327,7 @@ export default function EmployeeArchivePage() {
               >
                 <option value="all">All Departments</option>
                 {getUniqueValues('department').map((dept) => (
-                  <option key={dept} value={dept}>{dept}</option>
+                  <option key={String(dept)} value={String(dept)}>{String(dept)}</option>
                 ))}
               </select>
             </div>
@@ -344,7 +344,7 @@ export default function EmployeeArchivePage() {
               >
                 <option value="all">All Reasons</option>
                 {getUniqueValues('archiveReason').map((reason) => (
-                  <option key={reason} value={reason}>{reason}</option>
+                  <option key={String(reason)} value={String(reason)}>{String(reason)}</option>
                 ))}
               </select>
             </div>
@@ -361,7 +361,7 @@ export default function EmployeeArchivePage() {
               >
                 <option value="all">All Statuses</option>
                 {getUniqueValues('clearanceStatus').map((status) => (
-                  <option key={status} value={status}>{status}</option>
+                  <option key={String(status)} value={String(status)}>{String(status)}</option>
                 ))}
               </select>
             </div>

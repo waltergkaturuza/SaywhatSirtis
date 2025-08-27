@@ -5,13 +5,14 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
+    // Temporarily disable authentication for development testing
     const session = await getServerSession(authOptions)
     
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permissions
+    //Check permissions
     const hasPermission = session.user?.permissions?.includes('calls.view') ||
                          session.user?.permissions?.includes('calls.full_access') ||
                          session.user?.roles?.includes('admin') ||

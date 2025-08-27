@@ -72,16 +72,13 @@ export async function POST(request: NextRequest) {
     const performanceReview = await prisma.performanceReview.create({
       data: {
         employeeId,
-        reviewerId,
+        reviewPeriod: `${new Date(reviewPeriodStart).getFullYear()}-${Math.ceil((new Date(reviewPeriodStart).getMonth() + 1) / 3)}Q`,
+        reviewType: 'quarterly',
         reviewDate: new Date(reviewDate),
-        reviewPeriodStart: new Date(reviewPeriodStart),
-        reviewPeriodEnd: new Date(reviewPeriodEnd),
+        nextReviewDate: new Date(new Date(reviewDate).setMonth(new Date(reviewDate).getMonth() + 3)), // Next review in 3 months
         overallRating,
         goals,
-        achievements,
-        areasForImprovement,
-        comments,
-        status
+        feedback: `Achievements: ${achievements || 'N/A'}\n\nAreas for Improvement: ${areasForImprovement || 'N/A'}\n\nComments: ${comments || 'N/A'}`
       },
       include: {
         employee: {

@@ -102,8 +102,10 @@ export async function POST(request: NextRequest) {
         callType: callType || 'INBOUND',
         category: 'INQUIRY', // Default category
         priority: priority || 'MEDIUM',
-        summary: subject,
-        notes: description,
+        subject: subject || 'Call inquiry', // Required field
+        description: description || '', // Description field
+        summary: subject || 'Call inquiry', // Summary based on subject
+        notes: description || '',
         assignedOfficer: assignedTo,
         status: 'OPEN',
         callStartTime: new Date()

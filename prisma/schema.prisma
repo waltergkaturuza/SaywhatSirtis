@@ -120,23 +120,22 @@ model Project {
   id              String    @id @default(cuid())
   name            String
   description     String?   @db.Text
-  status          String    @default("PLANNING")  // Changed from enum to String
-  priority        String    @default("MEDIUM")    // Changed from enum to String
-  progress        Int       @default(0)
+  objectives      String?   // This was text in DB, might be converted to JSONB in migration
+  timeframe       String?
   startDate       DateTime?
   endDate         DateTime?
-  timeframe       String?
   country         String?
   province        String?
   budget          Float?
-  actualSpent     Float     @default(0)
-  currency        String    @default("USD")
-  
-  // Enhanced project data stored as JSON
-  objectives      Json?     // Contains categories, implementing orgs, results framework, etc.
+  actualSpent     Float?    @default(0)
+  status          String    @default("PLANNING")  // Converted from enum to String
+  priority        String    @default("MEDIUM")    // Converted from enum to String
+  progress        Int       @default(0)  // Converted from double to integer in migration
+  managerId       String?
+  currency        String?   @default("USD")
+  creatorId       String?
   
   // Relationships
-  creatorId       String?
   creator         User?     @relation("ProjectCreator", fields: [creatorId], references: [id])
   activities      Activity[]
   
@@ -225,27 +224,31 @@ model CallRecord {
 
 model Employee {
   id              String    @id @default(cuid())
+  userId          String    @unique
   employeeId      String    @unique
   firstName       String
   lastName        String
-  email           String    @unique
-  phoneNumber     String?
-  position        String
-  department      String
-  hireDate        DateTime
-  salary          Float?
-  status          String?   @default("ACTIVE")  // Changed from enum to String
-  
-  // Personal Information
+  middleName      String?
   dateOfBirth     DateTime?
+  gender          String?
+  nationality     String?
   nationalId      String?   @unique
+  passportNumber  String?
+  email           String    @unique
+  phoneNumber     String?   // This was renamed from 'phone' in migration
+  alternativePhone String?
   address         String?
   emergencyContact String?
-  
-  // Employment Details
-  contractType    String?   // "permanent", "contract", "intern"
-  reportingTo     String?
-  workLocation    String?
+  emergencyPhone  String?
+  department      String?
+  position        String
+  employmentType  String    @default("FULL_TIME")  // Converted from enum to String
+  startDate       DateTime  // This is the original field
+  hireDate        DateTime? // This was added in migration, copied from startDate
+  endDate         DateTime?
+  salary          Float?
+  currency        String?   @default("USD")
+  status          String    @default("ACTIVE")  // Converted from enum to String
   
   // HR Records
   performanceReviews PerformanceReview[]

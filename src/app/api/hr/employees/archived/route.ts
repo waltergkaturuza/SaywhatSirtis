@@ -63,7 +63,7 @@ export async function GET() {
       position: emp.position,
       phone: emp.phoneNumber,
       status: emp.status,
-      hireDate: emp.hireDate.toISOString().split('T')[0],
+      hireDate: emp.hireDate ? emp.hireDate.toISOString().split('T')[0] : 'N/A',
       archiveDate: emp.updatedAt.toISOString().split('T')[0], // Using updatedAt as archive date
       reason: 'Terminated' // Default reason since we don't have this field
     }))

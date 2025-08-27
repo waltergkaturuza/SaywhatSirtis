@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         location,
-        instructor,
-        attendees: JSON.stringify(attendees),
-        status: 'SCHEDULED'
+        speakers: instructor ? [{ name: instructor, role: 'Instructor' }] : undefined,
+        requiresRegistration: true,
+        status: 'planning'
       }
     })
 

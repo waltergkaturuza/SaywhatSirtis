@@ -16,6 +16,7 @@ import {
 
 export async function GET() {
   try {
+    // Authentication required for production
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.email) {
@@ -58,7 +59,7 @@ export async function GET() {
       department: emp.department,
       position: emp.position,
       phone: emp.phoneNumber,
-      hireDate: emp.hireDate.toISOString().split('T')[0],
+      hireDate: emp.hireDate ? emp.hireDate.toISOString().split('T')[0] : 'N/A',
       status: emp.status,
       createdAt: emp.createdAt,
       updatedAt: emp.updatedAt
@@ -141,6 +142,7 @@ export async function POST(request: Request) {
 
     // Sanitize input data
     const sanitizedData = {
+      userId: `user_${employeeId}`, // Temporary user ID for standalone employee
       employeeId,
       firstName: sanitizeInput(formData.firstName),
       lastName: sanitizeInput(formData.lastName),
@@ -148,6 +150,7 @@ export async function POST(request: Request) {
       phoneNumber: formData.phoneNumber ? sanitizeInput(formData.phoneNumber) : null,
       department: sanitizeInput(formData.department),
       position: sanitizeInput(formData.position),
+      startDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
       hireDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
       salary: formData.salary ? parseFloat(formData.salary) : null,
       status: 'ACTIVE' as const

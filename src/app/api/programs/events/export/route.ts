@@ -21,13 +21,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Get events
-    const events = await prisma.flagshipEvent.findMany({
+    const events = await prisma.event.findMany({
       where,
       include: {
-        organizer: {
+        registrations: {
           select: {
-            name: true,
-            email: true,
+            id: true,
+            participantName: true,
+            participantEmail: true,
+            status: true,
           },
         },
       },
@@ -58,21 +60,21 @@ export async function GET(request: NextRequest) {
       ];
 
       const csvRows = events.map(event => [
-        event.name,
+        event.title,
         event.description || '',
         new Date(event.startDate).toLocaleDateString(),
-        event.startTime || '',
-        new Date(event.endDate).toLocaleDateString(),
-        event.endTime || '',
-        event.location,
-        event.expectedAttendees.toString(),
-        event.actualAttendees?.toString() || '',
-        event.status,
-        event.category,
-        event.budget.toString(),
-        event.actualCost?.toString() || '',
-        event.organizer?.name || '',
-        event.organizer?.email || '',
+        '', // startTime not available in model
+        event.endDate ? new Date(event.endDate).toLocaleDateString() : '',
+        '', // endTime not available in model
+        event.location || '',
+        event.capacity?.toString() || '',
+        '', // actualAttendees not available in model
+        event.status || '',
+        event.type || '',
+        event.budget?.toString() || '',
+        '', // actualCost not available in model
+        '', // organizer name not available in model
+        '', // organizer email not available in model
         new Date(event.createdAt).toLocaleDateString(),
       ]);
 
@@ -81,7 +83,7 @@ export async function GET(request: NextRequest) {
         .join('\n');
 
       const fileName = eventId 
-        ? `event-${events[0]?.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`
+        ? `event-${events[0]?.title?.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.csv`
         : `saywhat-events-${new Date().toISOString().split('T')[0]}.csv`;
 
       return new NextResponse(csvContent, {

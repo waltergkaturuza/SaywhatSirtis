@@ -32,13 +32,16 @@ export async function GET() {
 
     // Transform to match expected format
     const departments = departmentData
-      .filter(item => item.department) // Filter out null/undefined departments
-      .map(item => ({
-        id: item.department.toLowerCase().replace(/\s+/g, '_'),
-        name: item.department,
-        description: `${item.department} Department`,
-        employeeCount: 0 // Will be calculated separately
-      }));
+      .filter(item => item.department && item.department.trim()) // Filter out null/undefined/empty departments
+      .map(item => {
+        const deptName = item.department as string; // Type assertion after filter
+        return {
+          id: deptName.toLowerCase().replace(/\s+/g, '_'),
+          name: deptName,
+          description: `${deptName} Department`,
+          employeeCount: 0 // Will be calculated separately
+        };
+      });
 
     // Get employee count for each department
     for (const dept of departments) {
