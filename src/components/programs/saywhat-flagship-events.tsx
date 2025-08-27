@@ -22,7 +22,7 @@ interface FlagshipEvent {
   endDate: string
   endTime: string | null
   location: string
-  expectedAttendees: number
+  expectedAttendees: number | null
   actualAttendees: number | null
   status: 'PLANNING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
   category: 'CONFERENCE' | 'WORKSHOP' | 'CAMPAIGN' | 'OUTREACH' | 'FUNDRAISING'
@@ -268,7 +268,7 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
           <p><strong>Description:</strong> ${event.description || 'N/A'}</p>
           <p><strong>Date:</strong> ${new Date(event.startDate).toLocaleDateString()} ${event.startTime || ''} - ${new Date(event.endDate).toLocaleDateString()} ${event.endTime || ''}</p>
           <p><strong>Location:</strong> ${event.location}</p>
-          <p><strong>Expected Attendees:</strong> ${event.expectedAttendees.toLocaleString()}</p>
+          <p><strong>Expected Attendees:</strong> ${event.expectedAttendees ? event.expectedAttendees.toLocaleString() : 'N/A'}</p>
           ${event.actualAttendees ? `<p><strong>Actual Attendees:</strong> ${event.actualAttendees.toLocaleString()}</p>` : ''}
           <p><strong>Status:</strong> ${event.status.charAt(0) + event.status.slice(1).toLowerCase()}</p>
           <p><strong>Category:</strong> ${event.category.charAt(0) + event.category.slice(1).toLowerCase()}</p>
@@ -305,7 +305,7 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
       location: event.location,
       venue: '', // TODO: Load from event data when backend supports it
       address: '', // TODO: Load from event data when backend supports it
-      expectedAttendees: event.expectedAttendees,
+      expectedAttendees: event.expectedAttendees || 0,
       requiresRegistration: false, // TODO: Load from event data when backend supports it
       registrationDeadline: '',
       registrationFields: ['name', 'email', 'phone'],
@@ -728,7 +728,7 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
                     
                     <div className="flex items-center text-sm text-gray-600">
                       <UsersIcon className="h-4 w-4 mr-2 text-gray-400" />
-                      <span>{event.expectedAttendees.toLocaleString()} expected</span>
+                      <span>{event.expectedAttendees ? event.expectedAttendees.toLocaleString() : 'N/A'} expected</span>
                       {event.actualAttendees && (
                         <span className="ml-2 text-green-600">({event.actualAttendees.toLocaleString()} actual)</span>
                       )}
@@ -832,7 +832,7 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
                               
                               <div className="flex items-center">
                                 <UsersIcon className="h-4 w-4 mr-2 text-gray-400" />
-                                <span>{event.expectedAttendees.toLocaleString()} expected</span>
+                                <span>{event.expectedAttendees ? event.expectedAttendees.toLocaleString() : 'N/A'} expected</span>
                               </div>
                             </div>
                             

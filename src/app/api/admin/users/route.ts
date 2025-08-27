@@ -81,7 +81,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
-    const { action, userId, userData } = await request.json()
+    const requestBody = await request.json()
+    const { action, userId } = requestBody
+    
+    // Extract userData from request body (handle both nested and flattened structures)
+    let userData
+    if (requestBody.userData) {
+      userData = requestBody.userData
+    } else {
+      // Extract user fields from flattened structure
+      const { action: _, userId: __, ...userFields } = requestBody
+      userData = userFields
+    }
 
     switch (action) {
       case 'toggle_status':
@@ -140,14 +151,46 @@ export async function POST(request: NextRequest) {
 
       case 'create_user':
         try {
+          // Validate required fields
+          if (!userData.email || !userData.firstName || !userData.lastName) {
+            return NextResponse.json(
+              { error: "Missing required fields: email, firstName, and lastName are required" },
+              { status: 400 }
+            )
+          }
+
+          // Validate email format
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+          if (!emailRegex.test(userData.email)) {
+            return NextResponse.json(
+              { error: "Invalid email format" },
+              { status: 400 }
+            )
+          }
+
+          // Check if user already exists
+          const existingUser = await prisma.user.findUnique({
+            where: { email: userData.email }
+          })
+
+          if (existingUser) {
+            return NextResponse.json(
+              { error: "User with this email already exists" },
+              { status: 409 }
+            )
+          }
+
+          // Note: Password handling would be implemented here in production
+          // For now, we create users without password (OAuth/SSO authentication)
+          
           const newUser = await prisma.user.create({
             data: {
               email: userData.email,
               firstName: userData.firstName,
               lastName: userData.lastName,
-              role: userData.role || 'USER',
-              department: userData.department,
-              position: userData.position,
+              role: userData.role ? userData.role.toUpperCase() as any : 'USER',
+              department: userData.department || '',
+              position: userData.position || '',
               isActive: true
             },
             select: {
@@ -198,7 +241,7 @@ export async function POST(request: NextRequest) {
             data: {
               firstName: userData.firstName,
               lastName: userData.lastName,
-              role: userData.role,
+              role: userData.role ? userData.role.toUpperCase() as any : undefined,
               department: userData.department,
               position: userData.position,
             },
@@ -239,6 +282,24 @@ export async function POST(request: NextRequest) {
           console.error("Error updating user:", error)
           return NextResponse.json(
             { error: "Failed to update user" },
+            { status: 500 }
+          )
+        }
+
+      case 'delete_user':
+        try {
+          await prisma.user.delete({
+            where: { id: userId }
+          })
+
+          return NextResponse.json({
+            success: true,
+            message: "User deleted successfully"
+          })
+        } catch (error) {
+          console.error("Error deleting user:", error)
+          return NextResponse.json(
+            { error: "Failed to delete user" },
             { status: 500 }
           )
         }

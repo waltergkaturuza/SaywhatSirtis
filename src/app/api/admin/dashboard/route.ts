@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getSystemMetrics, getServiceStatus } from "@/lib/platform-metrics"
 
 export async function GET() {
   try {
@@ -12,85 +13,58 @@ export async function GET() {
     }
 
     // Check if user has admin privileges
-    // In production, check against user roles/permissions
     if (!session.user?.email?.includes("admin") && !session.user?.email?.includes("john.doe")) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
-    // Get real statistics from database
-    let totalUsers = 0
-    let activeUsers = 0
-    
-    try {
-      totalUsers = await prisma.user.count()
-      activeUsers = await prisma.user.count({ where: { isActive: true } })
-    } catch (error) {
-      console.error("Database query error:", error)
-      // Use mock data if database fails
-      totalUsers = 15
-      activeUsers = 12
-    }
+    // Get real system metrics from platform
+    const systemStats = await getSystemMetrics()
 
-    // Calculate system stats
-    const systemStats = {
-      totalUsers,
-      activeUsers,
-      totalDepartments: 3, // Mock for now until Prisma client is fixed
-      totalDocuments: 0, // Would need Document model
-      systemUptime: "99.9%", // Mock for now
-      storageUsed: "1.2 GB", // Mock for now
-      apiCalls: 0, // Would need AuditLog aggregation
-      errorRate: 0.01,
-      responseTime: Math.floor(Math.random() * 200) + 50,
-      cpuUsage: Math.floor(Math.random() * 50) + 25,
-      memoryUsage: Math.floor(Math.random() * 40) + 40,
-      diskUsage: Math.floor(Math.random() * 30) + 20,
-      networkUsage: Math.floor(Math.random() * 25) + 10
-    }
+    // Get real service status from platform
+    const serviceStatus = await getServiceStatus()
 
-    // Mock security events for now - would come from audit logs
-    const securityEvents = [
-      {
-        id: "1",
-        type: "login_success",
-        user: session.user.email,
-        ipAddress: "192.168.1.100",
-        timestamp: new Date().toISOString(),
-        details: "Current session login"
+    // Get real security events from audit logs
+    const securityEvents = await prisma.auditLog.findMany({
+      where: {
+        timestamp: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+        }
       },
-      {
-        id: "2",
-        type: "admin_access",
-        user: session.user.email,
-        ipAddress: "192.168.1.100",
-        timestamp: new Date().toISOString(),
-        details: "Admin dashboard accessed"
-      }
-    ]
-
-    // Mock alerts for now
-    const alerts = [
-      {
-        id: "1",
-        type: "info",
-        title: "Database Connected",
-        message: "SQLite database is operational",
-        timestamp: new Date().toISOString()
+      orderBy: {
+        timestamp: 'desc'
       },
-      {
-        id: "2",
-        type: "success",
-        title: "System Health Check",
-        message: "All services are running normally",
-        timestamp: new Date(Date.now() - 3600000).toISOString()
+      take: 10,
+      select: {
+        id: true,
+        action: true,
+        userId: true,
+        ipAddress: true,
+        timestamp: true,
+        details: true
       }
-    ]
+    })
+
+    // Transform audit logs to security events format
+    const formattedSecurityEvents = securityEvents.map(log => ({
+      id: log.id.toString(),
+      type: log.action.toLowerCase().includes('login') ? 'login_success' : 
+            log.action.toLowerCase().includes('admin') ? 'admin_access' : 
+            log.action.toLowerCase().includes('error') ? 'security_alert' : 'activity',
+      user: log.userId || 'System',
+      ipAddress: log.ipAddress || '127.0.0.1',
+      timestamp: log.timestamp.toISOString(),
+      details: typeof log.details === 'string' ? log.details : log.action
+    }))
+
+    // Get system alerts based on metrics and service status
+    const alerts = generateSystemAlerts(systemStats, serviceStatus)
 
     return NextResponse.json({
       success: true,
       data: {
         stats: systemStats,
-        securityEvents,
+        serviceStatus,
+        securityEvents: formattedSecurityEvents,
         alerts,
         timestamp: new Date().toISOString()
       }
@@ -106,6 +80,77 @@ export async function GET() {
       { status: 500 }
     )
   }
+}
+
+// Helper function to generate system alerts based on metrics
+function generateSystemAlerts(systemStats: any, serviceStatus: any) {
+  const alerts = []
+  const now = new Date().toISOString()
+
+  // Database status alert
+  if (serviceStatus.database.status === 'online') {
+    alerts.push({
+      id: "db_status",
+      type: "success",
+      title: "Database Online",
+      message: `Supabase PostgreSQL is operational with ${serviceStatus.database.connections} active connections`,
+      timestamp: now
+    })
+  } else {
+    alerts.push({
+      id: "db_status", 
+      type: "error",
+      title: "Database Issues",
+      message: "Database connectivity problems detected",
+      timestamp: now
+    })
+  }
+
+  // High CPU usage alert
+  if (systemStats.cpuUsage > 80) {
+    alerts.push({
+      id: "cpu_usage",
+      type: "warning",
+      title: "High CPU Usage",
+      message: `CPU usage is at ${systemStats.cpuUsage}%`,
+      timestamp: now
+    })
+  }
+
+  // High memory usage alert
+  if (systemStats.memoryUsage > 85) {
+    alerts.push({
+      id: "memory_usage",
+      type: "warning", 
+      title: "High Memory Usage",
+      message: `Memory usage is at ${systemStats.memoryUsage}%`,
+      timestamp: now
+    })
+  }
+
+  // Storage usage alert
+  if (serviceStatus.storage.usage > 75) {
+    alerts.push({
+      id: "storage_usage",
+      type: "warning",
+      title: "Storage Space Low",
+      message: `Storage usage is at ${serviceStatus.storage.usage.toFixed(1)}%`,
+      timestamp: now
+    })
+  }
+
+  // System health check
+  if (alerts.length === 1 && alerts[0].type === 'success') {
+    alerts.push({
+      id: "health_check",
+      type: "info",
+      title: "System Health Check",
+      message: "All services are running normally",
+      timestamp: now
+    })
+  }
+
+  return alerts
 }
 
 export async function POST(request: NextRequest) {
@@ -125,22 +170,8 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case "refresh_stats":
-        // Get updated real-time stats
-        const [totalUsers, activeUsers] = await Promise.all([
-          prisma.user.count(),
-          prisma.user.count({ where: { isActive: true } })
-        ])
-        
-        const updatedStats = {
-          totalUsers,
-          activeUsers,
-          totalDepartments: 3, // Mock for now
-          responseTime: Math.floor(Math.random() * 200) + 50,
-          cpuUsage: Math.floor(Math.random() * 50) + 25,
-          memoryUsage: Math.floor(Math.random() * 40) + 40,
-          diskUsage: Math.floor(Math.random() * 30) + 20,
-          networkUsage: Math.floor(Math.random() * 25) + 10
-        }
+        // Get updated real-time stats from platform
+        const updatedStats = await getSystemMetrics()
         
         return NextResponse.json({
           success: true,
