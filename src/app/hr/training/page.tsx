@@ -514,6 +514,137 @@ export default function TrainingPage() {
           </div>
         </div>
 
+        {/* Agora Learning Platform & Certificate Upload Section */}
+        <div className="bg-white rounded-lg border overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+            <h2 className="text-xl font-semibold text-white">Required Learning Platform</h2>
+            <p className="text-blue-100 mt-1">Complete mandatory courses on Agora and submit certificates</p>
+          </div>
+          
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Agora Platform Information */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <AcademicCapIcon className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Agora Learning Platform</h3>
+                </div>
+                
+                <p className="text-gray-600">
+                  All employees must complete mandatory courses on the Agora platform. Access your required training modules and track your progress.
+                </p>
+                
+                <div className="space-y-3">
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">Platform Access</h4>
+                    <a 
+                      href="https://agora.learning.platform" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      <BookOpenIcon className="w-4 h-4 mr-2" />
+                      Access Agora Platform
+                    </a>
+                  </div>
+                  
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-900 mb-2">Learner's Hub</h4>
+                    <p className="text-sm text-green-700 mb-3">
+                      Submit your completed course certificates and track your learning progress.
+                    </p>
+                    <a 
+                      href="https://learners.hub.portal" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      <DocumentTextIcon className="w-4 h-4 mr-2" />
+                      Access Learner's Hub
+                    </a>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Certificate Upload Section */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <TrophyIcon className="w-5 h-5 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Upload Certificates</h3>
+                </div>
+                
+                <p className="text-gray-600">
+                  Upload your completed course certificates as proof of training completion. These will be automatically added to your employee file.
+                </p>
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors">
+                  <div className="text-center">
+                    <ArrowDownTrayIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <div className="mt-4">
+                      <label htmlFor="certificate-upload" className="cursor-pointer">
+                        <span className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                          <PlusIcon className="w-4 h-4 mr-2" />
+                          Upload Certificate
+                        </span>
+                        <input
+                          id="certificate-upload"
+                          name="certificate-upload"
+                          type="file"
+                          className="sr-only"
+                          multiple
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => {
+                            const files = e.target.files
+                            if (files) {
+                              console.log('Files selected:', files)
+                              // TODO: Implement file upload logic
+                              alert(`Selected ${files.length} file(s) for upload`)
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <p className="mt-2 text-sm text-gray-500">
+                      PDF, JPG, PNG up to 10MB each
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Sample uploaded certificates */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-gray-700">Recently Uploaded:</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <DocumentTextIcon className="w-5 h-5 text-red-500" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Leadership Training Certificate</p>
+                          <p className="text-xs text-gray-500">Uploaded 2 days ago</p>
+                        </div>
+                      </div>
+                      <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <DocumentTextIcon className="w-5 h-5 text-red-500" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Data Protection Certificate</p>
+                          <p className="text-xs text-gray-500">Uploaded 1 week ago</p>
+                        </div>
+                      </div>
+                      <CheckCircleIcon className="w-5 h-5 text-green-500" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Tabs */}
         <div className="bg-white shadow rounded-lg">
           <div className="border-b border-gray-200">

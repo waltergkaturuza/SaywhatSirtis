@@ -4,13 +4,6 @@ declare global {
   var prisma: PrismaClient | undefined
 }
 
-// Extend the module interface to include hot module replacement
-declare const module: {
-  hot?: {
-    dispose(callback: () => void): void
-  }
-} & NodeModule
-
 // Create a new Prisma client with better error handling and connection management
 const createPrismaClient = () => {
   return new PrismaClient({
@@ -32,8 +25,8 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Ensure proper cleanup on hot reload
-if (typeof module !== 'undefined' && module.hot) {
-  module.hot.dispose(() => {
+if (process.env.NODE_ENV === 'development' && (module as any).hot) {
+  (module as any).hot.dispose(() => {
     prisma.$disconnect()
   })
 }

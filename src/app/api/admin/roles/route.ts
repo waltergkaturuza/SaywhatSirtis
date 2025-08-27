@@ -18,7 +18,7 @@ let roles = [
     id: '2',
     name: 'hr_manager',
     description: 'HR Manager',
-    permissions: ['hr_management', 'employee_data', 'payroll_management'],
+    permissions: ['hr_management', 'employee_data'],
     userCount: 3,
     createdAt: '2024-02-01',
     updatedAt: '2024-02-01'
@@ -89,7 +89,6 @@ export async function GET(request: NextRequest) {
           'audit_log',
           'hr_management',
           'employee_data',
-          'payroll_management',
           'programs_management',
           'project_data',
           'reports',

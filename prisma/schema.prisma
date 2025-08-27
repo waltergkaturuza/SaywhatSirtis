@@ -45,6 +45,7 @@ model User {
   sessions          Session[]
   auditLogs         AuditLog[]
   createdProjects   Project[]           @relation("ProjectCreator")
+  managedProjects   Project[]           @relation("ProjectManager")
   
   @@map("users")
 }
@@ -119,8 +120,8 @@ model AuditLog {
 model Project {
   id              String    @id @default(cuid())
   name            String
-  description     String?   @db.Text
-  objectives      String?   // This was text in DB, might be converted to JSONB in migration
+  description     String?
+  objectives      Json?
   timeframe       String?
   startDate       DateTime?
   endDate         DateTime?
@@ -128,25 +129,22 @@ model Project {
   province        String?
   budget          Float?
   actualSpent     Float?    @default(0)
-  status          String    @default("PLANNING")  // Converted from enum to String
-  priority        String    @default("MEDIUM")    // Converted from enum to String
-  progress        Int       @default(0)  // Converted from double to integer in migration
+  status          String    @default("PLANNING")
+  priority        String    @default("MEDIUM")
+  progress        Int?      @default(0)
   managerId       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   currency        String?   @default("USD")
   creatorId       String?
   
-  // Relationships
-  creator         User?     @relation("ProjectCreator", fields: [creatorId], references: [id])
-  activities      Activity[]
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  // Relationships - match the actual database
+  documents          Document[]
+  activities         Activity[]
+  manager            User?     @relation("ProjectManager", fields: [managerId], references: [id])
+  creator            User?     @relation("ProjectCreator", fields: [creatorId], references: [id])
   
   @@index([status])
-  @@index([priority])
-  @@index([startDate])
-  @@index([endDate])
-  @@index([country])
   @@map("projects")
 }
 
@@ -393,6 +391,10 @@ model Document {
   uploadedBy      String?
   version         String    @default("1.0")
   description     String?   @db.Text
+  projectId       String?
+  
+  // Relationships
+  project         Project?  @relation(fields: [projectId], references: [id])
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

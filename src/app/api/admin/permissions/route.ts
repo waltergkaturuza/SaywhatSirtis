@@ -47,12 +47,6 @@ export async function GET(request: NextRequest) {
         category: 'Human Resources'
       },
       {
-        id: 'hr.payroll',
-        name: 'Payroll Access',
-        description: 'Access and manage payroll information',
-        category: 'Human Resources'
-      },
-      {
         id: 'programs.view',
         name: 'Programs View',
         description: 'View programs and project information',

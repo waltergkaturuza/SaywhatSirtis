@@ -14,7 +14,7 @@ const developmentUsers = [
     permissions: [
       // HR Module - Full Access
       "hr.full_access", "hr.view", "hr.create", "hr.edit", "hr.delete", "hr.attendance", 
-      "hr.notifications", "hr.payroll", "hr.performance", "hr.training", "hr.leave", "hr.employees",
+      "hr.notifications", "hr.performance", "hr.training", "hr.employees",
       // Programs Module - Full Access  
       "programs.full_access", "programs.view", "programs.create", "programs.edit", "programs.delete",
       "programs.me_access", "programs.upload", "programs.documents", "programs.progress", 

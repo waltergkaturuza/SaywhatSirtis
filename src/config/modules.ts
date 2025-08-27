@@ -381,34 +381,6 @@ export const modulesConfig: ModuleConfig[] = [
         ]
       },
       {
-        id: "leave",
-        name: "Leave Management",
-        href: "/hr/leave",
-        icon: CalendarIcon,
-        description: "Leave applications and approvals",
-        children: [
-          {
-            id: "leave-dashboard",
-            name: "Leave Dashboard",
-            href: "/hr/leave",
-            icon: CalendarIcon
-          },
-          {
-            id: "leave-approvals",
-            name: "Approvals",
-            href: "/hr/leave/approvals",
-            icon: DocumentIcon,
-            requiredPermissions: ["hr.leave.approve"]
-          },
-          {
-            id: "leave-calendar",
-            name: "Leave Calendar",
-            href: "/hr/leave/calendar",
-            icon: CalendarIcon
-          }
-        ]
-      },
-      {
         id: "notifications",
         name: "Notification Routing",
         href: "/hr/notifications",

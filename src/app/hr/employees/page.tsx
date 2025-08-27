@@ -512,6 +512,108 @@ export default function EmployeesPage() {
                 </div>
               </div>
               
+              {/* Training Certificates Section */}
+              <div className="border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-medium text-gray-900">Training Certificates</h4>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      // TODO: Open certificate upload modal
+                      alert('Certificate upload functionality will be implemented')
+                    }}
+                  >
+                    <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
+                    Upload Certificate
+                  </Button>
+                </div>
+                
+                <div className="space-y-3">
+                  {/* Sample certificates - replace with actual data */}
+                  {[
+                    {
+                      id: 1,
+                      name: "Leadership Training Certificate",
+                      issuer: "Agora Learning Platform",
+                      dateCompleted: "2024-01-15",
+                      certificateNumber: "AGR-2024-001",
+                      status: "verified"
+                    },
+                    {
+                      id: 2,
+                      name: "Data Protection & Privacy",
+                      issuer: "Learner's Hub",
+                      dateCompleted: "2024-02-28",
+                      certificateNumber: "LH-2024-047",
+                      status: "verified"
+                    },
+                    {
+                      id: 3,
+                      name: "Project Management Basics",
+                      issuer: "Agora Learning Platform",
+                      dateCompleted: "2024-03-10",
+                      certificateNumber: "AGR-2024-089",
+                      status: "pending"
+                    }
+                  ].map((cert) => (
+                    <div key={cert.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-2 h-2 rounded-full ${
+                          cert.status === 'verified' ? 'bg-green-500' : 'bg-yellow-500'
+                        }`} />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{cert.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {cert.issuer} • {new Date(cert.dateCompleted).toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-gray-400">Cert #: {cert.certificateNumber}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          cert.status === 'verified' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {cert.status === 'verified' ? 'Verified' : 'Pending'}
+                        </span>
+                        <Button size="sm" variant="ghost">
+                          <EyeIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Add certificate button */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+                    <p className="text-sm text-gray-500 mb-2">Upload additional certificates</p>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        // TODO: Implement certificate upload
+                        const input = document.createElement('input')
+                        input.type = 'file'
+                        input.accept = '.pdf,.jpg,.jpeg,.png'
+                        input.multiple = true
+                        input.onchange = (e) => {
+                          const files = (e.target as HTMLInputElement).files
+                          if (files) {
+                            console.log('Certificate files selected:', files)
+                            alert(`Selected ${files.length} certificate(s) for upload`)
+                          }
+                        }
+                        input.click()
+                      }}
+                    >
+                      <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
+                      Choose Files
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
               <div className="flex justify-end space-x-3">
                 <DownloadPDFButton
                   data={[selectedEmployee]}

@@ -96,7 +96,6 @@ const availablePermissions = [
   'admin.system.manage',
   'hr.access',
   'hr.employees.manage',
-  'hr.payroll.manage',
   'hr.performance.manage',
   'finance.access',
   'finance.budgets.manage',

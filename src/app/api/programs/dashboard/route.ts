@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
 
     // Fetch all projects with counts
     try {
-      // Add connection check and retry logic
+      // Ensure fresh connection
+      await prisma.$disconnect()
       await prisma.$connect()
       
       const [
@@ -36,22 +37,22 @@ export async function GET(request: NextRequest) {
         budgetInfo
       ] = await Promise.all([
         // Total projects count
-        prisma.project.count().catch(() => 0),
+        prisma.project.count(),
         
         // Active projects count
         prisma.project.count({
           where: { status: 'ACTIVE' }
-        }).catch(() => 0),
+        }),
         
         // Completed projects count
         prisma.project.count({
           where: { status: 'COMPLETED' }
-        }).catch(() => 0),
+        }),
         
         // On-hold projects count
         prisma.project.count({
           where: { status: 'ON_HOLD' }
-        }).catch(() => 0),
+        }),
 
         // Recent activities
         prisma.activity.findMany({
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
               }
             }
           }
-        }).catch(() => []),
+        }),
 
         // Recent projects for the dashboard cards
         prisma.project.findMany({
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
               }
             }
           }
-        }).catch(() => []),
+        }),
 
         // Budget information
         prisma.project.aggregate({
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
           _count: {
             id: true
           }
-        }).catch(() => ({ _sum: { budget: 0, actualSpent: 0 }, _count: { id: 0 } }))
+        })
       ])
 
       // Calculate metrics
@@ -102,12 +103,18 @@ export async function GET(request: NextRequest) {
       // Calculate overdue projects (projects past end date with non-completed status)
       const overdueProjects = await prisma.project.count({
         where: {
-          endDate: {
-            lt: now
-          },
-          status: {
-            notIn: ['COMPLETED', 'CANCELLED']
-          }
+          AND: [
+            {
+              endDate: {
+                lt: now
+              }
+            },
+            {
+              status: {
+                notIn: ['COMPLETED', 'CANCELLED']
+              }
+            }
+          ]
         }
       })
 
@@ -116,13 +123,19 @@ export async function GET(request: NextRequest) {
         where: {
           OR: [
             {
-              endDate: {
-                lt: now
-              },
-              status: {
-                notIn: ['COMPLETED', 'CANCELLED']
-              }
-            },
+              AND: [
+                {
+                  endDate: {
+                    lt: now
+                  }
+                },
+                {
+                  status: {
+                    notIn: ['COMPLETED', 'CANCELLED']
+                  }
+                }
+              ]
+            }
             // Add more risk criteria as needed
           ]
         }

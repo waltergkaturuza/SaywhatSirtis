@@ -50,7 +50,7 @@ interface ModulePermission {
 
 type DepartmentKey = 'HR' | 'Finance' | 'Operations' | 'IT' | 'Call Centre' | 'Management'
 type SupervisoryLevelKey = 'Staff' | 'Supervisor' | 'Manager' | 'Director'
-type ModuleKey = 'Employee Management' | 'Recruitment' | 'Program Management' | 'Call Management' | 'Financial Reports' | 'System Administration' | 'User Management'
+type ModuleKey = 'Employee Management' | 'Program Management' | 'Call Management' | 'Financial Reports' | 'System Administration' | 'User Management'
 
 interface Role {
   id: string
@@ -111,7 +111,7 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
   const departments: Record<DepartmentKey, Department> = {
     'HR': {
       name: 'Human Resources',
-      modules: ['Employee Management', 'Recruitment', 'Performance', 'Payroll', 'Time & Attendance']
+      modules: ['Employee Management', 'Performance', 'Time & Attendance']
     },
     'Finance': {
       name: 'Finance & Accounting',
@@ -169,14 +169,6 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
       { id: 'emp.delete', name: 'Delete Employees', description: 'Remove employees from system', actions: ['delete'] },
       { id: 'emp.approve_basic', name: 'Approve Basic Changes', description: 'Approve basic employee changes', actions: ['approve_basic'] },
       { id: 'emp.manage_team', name: 'Manage Team', description: 'Manage team members', actions: ['manage_team'] },
-    ],
-    'Recruitment': [
-      { id: 'rec.view', name: 'View Recruitment', description: 'View job postings and applications', actions: ['view'] },
-      { id: 'rec.create', name: 'Create Job Postings', description: 'Create new job postings', actions: ['create'] },
-      { id: 'rec.edit', name: 'Edit Recruitment', description: 'Modify job postings and applications', actions: ['edit'] },
-      { id: 'rec.delete', name: 'Delete Recruitment', description: 'Remove job postings', actions: ['delete'] },
-      { id: 'rec.approve_basic', name: 'Approve Applications', description: 'Approve job applications', actions: ['approve_basic'] },
-      { id: 'rec.manage_team', name: 'Manage Recruitment Team', description: 'Oversee recruitment team', actions: ['manage_team'] },
     ],
     'Program Management': [
       { id: 'prog.view', name: 'View Programs', description: 'View program information and status', actions: ['view'] },
