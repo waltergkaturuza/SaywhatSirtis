@@ -129,6 +129,7 @@ If needed, you can quickly rollback to Vercel:
 - Check Node.js version (use Node 18+)
 - Verify all environment variables are set
 - Check for missing dependencies
+- **CRITICAL**: Ensure CSS build tools (`tailwindcss`, `postcss`, `autoprefixer`) are in `dependencies`, not `devDependencies` - Render production builds don't install devDependencies by default
 
 **Database Connection Issues:**
 - Verify `DATABASE_URL` format
