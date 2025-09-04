@@ -58,6 +58,11 @@ Start Command: npm run render:start
 Health Check Path: /api/test/hello
 ```
 
+**Important Build Notes:**
+- The `render:build` command handles dependency installation and Prisma generation
+- Environment variables must be set before build for proper Next.js compilation
+- CSS dependencies (`tailwindcss`, `postcss`, `autoprefixer`) are in production dependencies
+
 #### Step 3: Add Environment Variables
 Copy all environment variables from your current Vercel deployment.
 
@@ -135,10 +140,16 @@ If needed, you can quickly rollback to Vercel:
 - **Database Build Issues**: Ensure `DATABASE_URL` is available during build phase for Next.js page data collection. Configure Prisma client with proper error handling for build-time scenarios
 
 **Database Connection Issues:**
-- Verify `DATABASE_URL` format
+- Verify `DATABASE_URL` format matches: `postgres://` (not `postgresql://`)
 - Check Supabase project status
 - Confirm IP allowlisting if required
 - **Build-time Database Access**: Ensure environment variables are available during the build process, not just runtime
+- **BigInt Serialization**: API endpoints may fail with "Do not know how to serialize a BigInt" - this is fixed in our latest code
+- **Environment Variables**: Use the `render.yaml` file to set environment variables or manually configure them in Render dashboard
+
+**Quick Database Test:**
+- After deployment, test: `https://your-app.onrender.com/api/test/database-simple`
+- Should return: `{"success":true,"message":"Database connection successful"}`
 
 **Authentication Problems:**
 - Update `NEXTAUTH_URL` to new Render domain
