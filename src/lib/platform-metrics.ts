@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { prisma } from './prisma'
+import { processPrismaResult } from './json-utils'
 
 // Initialize Supabase client for direct API access
 const supabaseAdmin = createClient(
