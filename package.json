@@ -11,7 +11,7 @@
     "test:ci": "npm run lint && npm run build",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "render:build": "npm ci --legacy-peer-deps && npm install postcss tailwindcss autoprefixer --save-dev && npx prisma generate && npm run build",
+    "render:build": "npm ci --legacy-peer-deps && npx prisma generate && npm run build",
     "render:start": "next start -p $PORT",
     "render:deploy": "bash scripts/deploy-render.sh",
     "render:deploy-windows": "powershell -ExecutionPolicy Bypass -File scripts/deploy-render.ps1",
@@ -91,7 +91,6 @@
     "socket.io-client": "^4.8.1",
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss": "^3.4.17",
     "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
@@ -105,6 +104,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.4.1",
     "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.12",
     "typescript": "^5"
   },
   "prisma": {
