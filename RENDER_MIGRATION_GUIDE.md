@@ -132,11 +132,13 @@ If needed, you can quickly rollback to Vercel:
 - **CRITICAL**: Ensure CSS build tools (`tailwindcss`, `postcss`, `autoprefixer`) are in `dependencies`, not `devDependencies` - Render production builds don't install devDependencies by default
 - **Tailwind CSS Version**: Use Tailwind CSS v3.x for traditional PostCSS configuration. Tailwind v4+ requires `@tailwindcss/postcss` plugin with different setup
 - **CSS Import Syntax**: Use `@tailwind base;`, `@tailwind components;`, `@tailwind utilities;` (v3 syntax) instead of `@import "tailwindcss";` (v4 syntax)
+- **Database Build Issues**: Ensure `DATABASE_URL` is available during build phase for Next.js page data collection. Configure Prisma client with proper error handling for build-time scenarios
 
 **Database Connection Issues:**
 - Verify `DATABASE_URL` format
 - Check Supabase project status
 - Confirm IP allowlisting if required
+- **Build-time Database Access**: Ensure environment variables are available during the build process, not just runtime
 
 **Authentication Problems:**
 - Update `NEXTAUTH_URL` to new Render domain
