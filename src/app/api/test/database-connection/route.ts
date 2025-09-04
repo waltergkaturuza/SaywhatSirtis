@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
 import { PrismaClient } from '@prisma/client'
 
+// Helper function to serialize BigInt values
+function serializeBigInt(obj: any): any {
+  return JSON.parse(JSON.stringify(obj, (key, value) =>
+    typeof value === 'bigint' ? value.toString() + 'n' : value
+  ))
+}
+
 export async function GET() {
   try {
     console.log('🔍 Starting enhanced database connection test...')
@@ -51,7 +58,7 @@ export async function GET() {
     // Initialize Prisma with explicit configuration
     console.log('🔄 Initializing Prisma client with enhanced configuration...')
     const prisma = new PrismaClient({
-      log: ['error', 'warn', 'info', 'query'],
+      log: ['error', 'warn', 'info'],
       datasources: {
         db: {
           url: dbUrl
@@ -68,27 +75,12 @@ export async function GET() {
       await prisma.$connect()
       console.log('✅ Prisma client connected')
       
-      // Simple query to test connection
-      const result = await prisma.$queryRaw`SELECT 1 as test, NOW() as timestamp, current_database() as database_name`
+      // Simple query to test connection (casting to text to avoid BigInt)
+      const result = await prisma.$queryRaw`SELECT '1' as test, NOW()::text as timestamp_text, current_database() as database_name`
       const connectionTime = Date.now() - startTime
       
       console.log(`✅ Database query successful (${connectionTime}ms)`)
       console.log('Query result:', result)
-      
-      // Test if we can access tables (optional)
-      let tableCheck = null
-      try {
-        const tableCount = await prisma.$queryRaw`
-          SELECT COUNT(*) as table_count 
-          FROM information_schema.tables 
-          WHERE table_schema = 'public'
-        `
-        tableCheck = tableCount
-        console.log('✅ Table access successful:', tableCount)
-      } catch (tableError) {
-        console.log('⚠️ Table access failed (may be normal):', tableError)
-        tableCheck = { error: 'Could not access table information' }
-      }
       
       await prisma.$disconnect()
       console.log('✅ Database connection test completed successfully')
@@ -100,7 +92,6 @@ export async function GET() {
         environment: nodeEnv,
         isRender: !!renderEnv,
         queryResult: result,
-        tableCheck: tableCheck,
         maskedDbUrl: maskedDbUrl,
         timestamp: new Date().toISOString()
       })
@@ -115,7 +106,6 @@ export async function GET() {
           error: 'Database connection failed',
           details: dbError instanceof Error ? dbError.message : 'Unknown error',
           errorName: dbError instanceof Error ? dbError.name : 'Unknown',
-          stack: dbError instanceof Error ? dbError.stack : 'No stack trace',
           environment: nodeEnv,
           isRender: !!renderEnv,
           maskedDbUrl: maskedDbUrl,
@@ -133,7 +123,6 @@ export async function GET() {
         error: 'Connection test initialization failed',
         details: error instanceof Error ? error.message : 'Unknown error',
         errorName: error instanceof Error ? error.name : 'Unknown',
-        stack: error instanceof Error ? error.stack : 'No stack trace',
         timestamp: new Date().toISOString()
       },
       { status: 500 }
