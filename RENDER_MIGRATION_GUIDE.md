@@ -130,6 +130,7 @@ If needed, you can quickly rollback to Vercel:
 - Verify all environment variables are set
 - Check for missing dependencies
 - **CRITICAL**: Ensure CSS build tools (`tailwindcss`, `postcss`, `autoprefixer`) are in `dependencies`, not `devDependencies` - Render production builds don't install devDependencies by default
+- **Tailwind CSS Version**: Use Tailwind CSS v3.x for traditional PostCSS configuration. Tailwind v4+ requires `@tailwindcss/postcss` plugin with different setup
 
 **Database Connection Issues:**
 - Verify `DATABASE_URL` format
