@@ -11,7 +11,7 @@
     "test:ci": "npm run lint && npm run build",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "render:build": "npm ci --legacy-peer-deps && npx prisma generate && DATABASE_URL=${DATABASE_URL:-postgresql://build:build@localhost:5432/build} npm run build",
+    "render:build": "npm ci --legacy-peer-deps && npx prisma generate && npm run build",
     "render:start": "next start -p $PORT",
     "render:deploy": "bash scripts/deploy-render.sh",
     "render:deploy-windows": "powershell -ExecutionPolicy Bypass -File scripts/deploy-render.ps1",
