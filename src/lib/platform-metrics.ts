@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { prisma } from './prisma'
+import { executeQuery } from './prisma'
 import { processPrismaResult } from './json-utils'
 
 // Initialize Supabase client for direct API access
@@ -59,17 +59,26 @@ export interface ServiceStatus {
  */
 export async function getSystemMetrics(): Promise<SystemMetrics> {
   try {
-    // Get user statistics from database
+    // Get user statistics from database with safe execution
     const [totalUsers, activeUsers] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { isActive: true } })
+      executeQuery(async () => {
+        const { prisma } = await import('./prisma')
+        return await prisma.user.count()
+      }).catch(() => 0),
+      executeQuery(async () => {
+        const { prisma } = await import('./prisma')
+        return await prisma.user.count({ where: { isActive: true } })
+      }).catch(() => 0)
     ])
 
     // Get department count (fallback if model doesn't exist)
     let totalDepartments = 0
     try {
-      // @ts-ignore - Department model may not exist yet
-      totalDepartments = await prisma.department?.count() || 0
+      totalDepartments = await executeQuery(async () => {
+        const { prisma } = await import('./prisma')
+        // @ts-ignore - Department model may not exist yet
+        return await prisma.department?.count() || 0
+      }).catch(() => 3) // Default fallback
     } catch (error) {
       // Department model doesn't exist yet
       totalDepartments = 3 // Default fallback
@@ -79,13 +88,16 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     let recentAuditLogs = 0
     try {
-      recentAuditLogs = await prisma.auditLog.count({
-        where: {
-          timestamp: {
-            gte: yesterday
+      recentAuditLogs = await executeQuery(async () => {
+        const { prisma } = await import('./prisma')
+        return await prisma.auditLog.count({
+          where: {
+            timestamp: {
+              gte: yesterday
+            }
           }
-        }
-      })
+        })
+      }).catch(() => 0)
     } catch (error) {
       // AuditLog model might not have data yet
       recentAuditLogs = 0

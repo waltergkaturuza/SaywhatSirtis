@@ -146,10 +146,18 @@ If needed, you can quickly rollback to Vercel:
 - **Build-time Database Access**: Ensure environment variables are available during the build process, not just runtime
 - **BigInt Serialization**: API endpoints may fail with "Do not know how to serialize a BigInt" - this is fixed in our latest code
 - **Environment Variables**: Use the `render.yaml` file to set environment variables or manually configure them in Render dashboard
+- **Prepared Statement Errors**: If you see `"prepared statement \"s10\" does not exist"` errors, this indicates connection pooling issues. The code includes automatic retry logic to handle this.
+
+**Connection Pooling Issues:**
+- Supabase connection pooling can sometimes cause prepared statement errors
+- The application includes automatic reconnection and retry logic
+- If persistent issues occur, consider using the direct connection URL instead of the pooler URL
+- Format: Change `pooler.supabase.com:6543` to `db.supabase.com:5432` in DATABASE_URL
 
 **Quick Database Test:**
 - After deployment, test: `https://your-app.onrender.com/api/test/database-simple`
 - Should return: `{"success":true,"message":"Database connection successful"}`
+- For retry logic test: `https://your-app.onrender.com/api/test/database-retry`
 
 **Authentication Problems:**
 - Update `NEXTAUTH_URL` to new Render domain

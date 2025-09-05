@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { executeQuery } from "@/lib/prisma"
 import { getSystemMetrics, getServiceStatus } from "@/lib/platform-metrics"
+import { createSafeJsonResponse } from "@/lib/json-utils"
 
 export async function GET() {
   try {
@@ -23,25 +24,31 @@ export async function GET() {
     // Get real service status from platform
     const serviceStatus = await getServiceStatus()
 
-    // Get real security events from audit logs
-    const securityEvents = await prisma.auditLog.findMany({
-      where: {
-        timestamp: {
-          gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+    // Get real security events from audit logs with safe query execution
+    const securityEvents = await executeQuery(async () => {
+      const { prisma } = await import("@/lib/prisma")
+      return await prisma.auditLog.findMany({
+        where: {
+          timestamp: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+          }
+        },
+        orderBy: {
+          timestamp: 'desc'
+        },
+        take: 10,
+        select: {
+          id: true,
+          action: true,
+          userId: true,
+          ipAddress: true,
+          timestamp: true,
+          details: true
         }
-      },
-      orderBy: {
-        timestamp: 'desc'
-      },
-      take: 10,
-      select: {
-        id: true,
-        action: true,
-        userId: true,
-        ipAddress: true,
-        timestamp: true,
-        details: true
-      }
+      })
+    }).catch((error) => {
+      console.error('Failed to fetch security events:', error)
+      return [] // Return empty array if query fails
     })
 
     // Transform audit logs to security events format
@@ -59,7 +66,7 @@ export async function GET() {
     // Get system alerts based on metrics and service status
     const alerts = generateSystemAlerts(systemStats, serviceStatus)
 
-    return NextResponse.json({
+    return createSafeJsonResponse({
       success: true,
       data: {
         stats: systemStats,
@@ -71,13 +78,13 @@ export async function GET() {
     })
   } catch (error) {
     console.error("Error fetching admin dashboard data:", error)
-    return NextResponse.json(
+    return createSafeJsonResponse(
       { 
         success: false,
         error: "Failed to fetch dashboard data",
         message: error instanceof Error ? error.message : "Unknown error"
       },
-      { status: 500 }
+      500
     )
   }
 }
