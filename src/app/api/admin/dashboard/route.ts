@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { executeQuery } from "@/lib/prisma"
+import { safeQuery } from "@/lib/prisma"
 import { getSystemMetrics, getServiceStatus } from "@/lib/platform-metrics"
 import { createSafeJsonResponse } from "@/lib/json-utils"
 
@@ -25,8 +25,7 @@ export async function GET() {
     const serviceStatus = await getServiceStatus()
 
     // Get real security events from audit logs with safe query execution
-    const securityEvents = await executeQuery(async () => {
-      const { prisma } = await import("@/lib/prisma")
+    const securityEvents = await safeQuery(async (prisma) => {
       return await prisma.auditLog.findMany({
         where: {
           timestamp: {
@@ -46,7 +45,7 @@ export async function GET() {
           details: true
         }
       })
-    }).catch((error) => {
+    }).catch((error: any) => {
       console.error('Failed to fetch security events:', error)
       return [] // Return empty array if query fails
     })

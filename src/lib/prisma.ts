@@ -10,12 +10,15 @@ const createPrismaClient = () => {
     throw new Error('DATABASE_URL environment variable is not set')
   }
 
+  // Use direct URL when available to avoid pooling issues
+  const connectionUrl = process.env.DIRECT_URL || process.env.DATABASE_URL
+
   return new PrismaClient({
     log: ['error', 'warn'],
     errorFormat: 'pretty',
     datasources: {
       db: {
-        url: process.env.DATABASE_URL
+        url: connectionUrl + '&prepared_statements=false&connection_limit=1'
       }
     }
   })
@@ -39,25 +42,47 @@ export async function connectPrisma() {
   }
 }
 
-// Safe query execution with automatic reconnection
-export async function executeQuery<T>(queryFn: () => Promise<T>): Promise<T> {
+// Safe query execution with automatic reconnection and prepared statement cleanup
+export async function executeQuery<T>(queryFn: (prisma: PrismaClient) => Promise<T>): Promise<T> {
   let retries = 3
   
   while (retries > 0) {
     try {
-      // Ensure connection is active
-      await prisma.$connect()
-      return await queryFn()
+      // Create a new client instance using direct URL to avoid pooling conflicts
+      const directUrl = process.env.DIRECT_URL || process.env.DATABASE_URL
+      const freshPrisma = new PrismaClient({
+        log: ['error'],
+        errorFormat: 'pretty',
+        datasources: {
+          db: {
+            url: directUrl + '&prepared_statements=false&connection_limit=1'
+          }
+        }
+      })
+      
+      try {
+        await freshPrisma.$connect()
+        const result = await queryFn(freshPrisma)
+        return result
+      } finally {
+        // Ensure immediate cleanup
+        await freshPrisma.$disconnect().catch(() => {})
+      }
     } catch (error: any) {
       console.error(`Query failed (${retries} retries left):`, error)
       
       // Check if it's a connection-related error
-      if (error?.code === '26000' || error?.message?.includes('prepared statement') || error?.message?.includes('connection')) {
+      if (
+        error?.code === '26000' || 
+        error?.code === '42P05' || 
+        error?.message?.includes('prepared statement') || 
+        error?.message?.includes('connection') ||
+        error?.message?.includes('already exists')
+      ) {
         retries--
         if (retries > 0) {
-          console.log('Attempting to reconnect...')
-          await prisma.$disconnect()
-          await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+          console.log('Attempting to retry with fresh connection...')
+          await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
           continue
         }
       }
@@ -67,6 +92,11 @@ export async function executeQuery<T>(queryFn: () => Promise<T>): Promise<T> {
   }
   
   throw new Error('Max retries reached')
+}
+
+// Alternative safe query that uses the callback pattern
+export async function safeQuery<T>(callback: (prisma: PrismaClient) => Promise<T>): Promise<T> {
+  return executeQuery(callback)
 }
 
 // Ensure proper cleanup on hot reload

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { executeQuery } from './prisma'
+import { safeQuery } from './prisma'
 import { processPrismaResult } from './json-utils'
 
 // Initialize Supabase client for direct API access
@@ -61,12 +61,10 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
   try {
     // Get user statistics from database with safe execution
     const [totalUsers, activeUsers] = await Promise.all([
-      executeQuery(async () => {
-        const { prisma } = await import('./prisma')
+      safeQuery(async (prisma) => {
         return await prisma.user.count()
       }).catch(() => 0),
-      executeQuery(async () => {
-        const { prisma } = await import('./prisma')
+      safeQuery(async (prisma) => {
         return await prisma.user.count({ where: { isActive: true } })
       }).catch(() => 0)
     ])
@@ -74,8 +72,7 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
     // Get department count (fallback if model doesn't exist)
     let totalDepartments = 0
     try {
-      totalDepartments = await executeQuery(async () => {
-        const { prisma } = await import('./prisma')
+      totalDepartments = await safeQuery(async (prisma) => {
         // @ts-ignore - Department model may not exist yet
         return await prisma.department?.count() || 0
       }).catch(() => 3) // Default fallback
@@ -88,8 +85,7 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     let recentAuditLogs = 0
     try {
-      recentAuditLogs = await executeQuery(async () => {
-        const { prisma } = await import('./prisma')
+      recentAuditLogs = await safeQuery(async (prisma) => {
         return await prisma.auditLog.count({
           where: {
             timestamp: {

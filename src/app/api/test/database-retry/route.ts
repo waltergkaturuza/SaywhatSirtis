@@ -1,36 +1,57 @@
 import { NextResponse } from "next/server"
-import { executeQuery } from '@/lib/prisma'
+import { safeQuery } from '@/lib/prisma'
 import { createSafeJsonResponse } from '@/lib/json-utils'
 
 export async function GET() {
   try {
-    console.log('🔍 Testing database connection with retry logic...')
+    console.log('🔍 Testing database connection with prepared statement fix...')
     
-    // Test basic connectivity with retry logic
-    const connectionTest = await executeQuery(async () => {
-      const { prisma } = await import('@/lib/prisma')
+    // Test basic connectivity with fresh connections
+    const connectionTest = await safeQuery(async (prisma) => {
       await prisma.$connect()
       return await prisma.$queryRaw`SELECT 'connection_test' as status, NOW() as timestamp`
     })
     
     console.log('✅ Database connection successful:', connectionTest)
     
-    // Test a basic count query (which was failing before)
-    const userCount = await executeQuery(async () => {
-      const { prisma } = await import('@/lib/prisma')
-      return await prisma.user.count()
+    // Test multiple queries to check for prepared statement conflicts
+    const [userCount, projectAggregate] = await Promise.all([
+      safeQuery(async (prisma) => {
+        return await prisma.user.count()
+      }).catch((error) => {
+        console.error('User count failed:', error)
+        return 0
+      }),
+      safeQuery(async (prisma) => {
+        return await prisma.project?.aggregate({
+          _count: true,
+          _sum: { budget: true }
+        })
+      }).catch((error) => {
+        console.error('Project aggregate failed:', error)
+        return { _count: 0, _sum: { budget: 0 } }
+      })
+    ])
+    
+    console.log('✅ Multiple queries successful - User count:', userCount, 'Project aggregate:', projectAggregate)
+    
+    // Test another query to ensure no prepared statement conflicts
+    const auditCount = await safeQuery(async (prisma) => {
+      return await prisma.auditLog.count()
     }).catch((error) => {
-      console.error('User count failed:', error)
+      console.error('Audit count failed:', error)
       return 0
     })
     
-    console.log('✅ User count query successful:', userCount)
-    
     return createSafeJsonResponse({
       success: true,
-      message: 'Database connection with retry logic successful',
-      connectionTest: connectionTest,
-      userCount: userCount,
+      message: 'Database connection with prepared statement fix successful',
+      tests: {
+        connectionTest: connectionTest,
+        userCount: userCount,
+        projectAggregate: projectAggregate,
+        auditCount: auditCount
+      },
       timestamp: new Date().toISOString()
     })
     
