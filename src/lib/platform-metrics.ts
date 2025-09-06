@@ -217,7 +217,9 @@ async function getSupabaseMetrics() {
 async function checkDatabaseStatus() {
   try {
     const startTime = Date.now()
-    await prisma.$queryRaw`SELECT 1`
+    await safeQuery(async (prisma) => {
+      return await prisma.$queryRaw`SELECT 1`
+    })
     const responseTime = Date.now() - startTime
 
     // Get connection count approximation
@@ -293,14 +295,16 @@ async function getStorageInfo() {
 async function getActiveSessionCount(): Promise<number> {
   try {
     // Count active sessions from NextAuth sessions table if it exists
-    const activeSessionsCount = await prisma.session?.count({
-      where: {
-        expires: {
-          gt: new Date()
+    return await safeQuery(async (prisma) => {
+      const activeSessionsCount = await prisma.session?.count({
+        where: {
+          expires: {
+            gt: new Date()
+          }
         }
-      }
+      })
+      return activeSessionsCount || 0
     })
-    return activeSessionsCount || 0
   } catch (error) {
     // Session model might not exist or have data
     return 1 // Assume current session
@@ -313,12 +317,14 @@ async function getActiveSessionCount(): Promise<number> {
 async function getApiRequestCount(): Promise<number> {
   try {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    return await prisma.auditLog.count({
-      where: {
-        timestamp: {
-          gte: yesterday
+    return await safeQuery(async (prisma) => {
+      return await prisma.auditLog.count({
+        where: {
+          timestamp: {
+            gte: yesterday
+          }
         }
-      }
+      })
     })
   } catch (error) {
     return 0
@@ -331,23 +337,25 @@ async function getApiRequestCount(): Promise<number> {
 async function getApiErrorRate(): Promise<number> {
   try {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    const [totalRequests, errorRequests] = await Promise.all([
-      prisma.auditLog.count({
-        where: {
-          timestamp: { gte: yesterday }
-        }
-      }),
-      prisma.auditLog.count({
-        where: {
-          timestamp: { gte: yesterday },
-          action: {
-            contains: 'error'
+    return await safeQuery(async (prisma) => {
+      const [totalRequests, errorRequests] = await Promise.all([
+        prisma.auditLog.count({
+          where: {
+            timestamp: { gte: yesterday }
           }
-        }
-      })
-    ])
+        }),
+        prisma.auditLog.count({
+          where: {
+            timestamp: { gte: yesterday },
+            action: {
+              contains: 'error'
+            }
+          }
+        })
+      ])
 
-    return totalRequests > 0 ? (errorRequests / totalRequests) * 100 : 0
+      return totalRequests > 0 ? (errorRequests / totalRequests) * 100 : 0
+    })
   } catch (error) {
     return 0.01
   }
