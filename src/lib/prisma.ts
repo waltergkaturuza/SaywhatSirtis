@@ -56,14 +56,22 @@ export async function executeQuery<T>(queryFn: (prisma: PrismaClient) => Promise
   
   while (retries > 0) {
     try {
-      // Convert pooler URL to direct connection URL automatically
-      let directUrl = process.env.DIRECT_URL || process.env.DATABASE_URL
+      // Handle Supabase database URL - use pooler connection as it's more reliable in production
+      let connectionUrl = process.env.DIRECT_URL || process.env.DATABASE_URL
       
-      // If using Supabase pooler (port 6543), convert to direct connection (port 5432)
-      if (directUrl && directUrl.includes(':6543') && directUrl.includes('pooler.supabase.com')) {
-        directUrl = directUrl
-          .replace(':6543', ':5432')
-          .replace('pooler.supabase.com', 'compute.amazonaws.com')
+      // For Supabase, if we have a direct URL that's failing, fall back to pooler
+      if (connectionUrl && connectionUrl.includes('compute.amazonaws.com')) {
+        // Convert back to pooler for better reliability
+        connectionUrl = connectionUrl
+          .replace(':5432', ':6543')
+          .replace('compute.amazonaws.com', 'pooler.supabase.com')
+        console.log('🔄 Using Supabase pooler connection for better reliability')
+      }
+      
+      // Ensure we have the pooler URL format for Supabase
+      if (connectionUrl && connectionUrl.includes('pooler.supabase.com') && !connectionUrl.includes(':6543')) {
+        connectionUrl = connectionUrl.replace(':5432', ':6543')
+        console.log('🔄 Corrected port for Supabase pooler connection')
       }
       
       const freshPrisma = new PrismaClient({
@@ -71,7 +79,7 @@ export async function executeQuery<T>(queryFn: (prisma: PrismaClient) => Promise
         errorFormat: 'pretty',
         datasources: {
           db: {
-            url: directUrl + '&prepared_statements=false&connection_limit=1'
+            url: connectionUrl + '&prepared_statements=false&connection_limit=1'
           }
         }
       })
