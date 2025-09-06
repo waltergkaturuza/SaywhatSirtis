@@ -290,26 +290,18 @@ model Asset {
   id              String    @id @default(cuid())
   assetTag        String    @unique
   name            String
-  category        String    // Changed from enum to String: "IT Equipment", "Furniture", "Vehicle", etc.
   description     String?   @db.Text
-  serialNumber    String?
+  category        String    // Match database: "Computer", "Equipment", etc.
+  brand           String?   // Match database field name
   model           String?
-  manufacturer    String?
+  serialNumber    String?
   purchaseDate    DateTime?
   purchasePrice   Float?
   currentValue    Float?
-  status          String    @default("ACTIVE")  // Changed from enum to String: "active", "maintenance", "disposed"
   location        String?
-  assignedTo      String?   // Employee ID or department
-  
-  // Maintenance
-  lastMaintenance DateTime?
-  nextMaintenance DateTime?
+  condition       AssetCondition @default(GOOD) // Enum for asset condition
+  status          String    @default("ACTIVE")  // Match database: "ACTIVE", "maintenance", "disposed"
   warrantyExpiry  DateTime?
-  
-  // Tracking
-  rfidTag         String?   @unique
-  qrCode          String?   @unique
   
   // Records
   maintenanceRecords MaintenanceRecord[]
@@ -562,6 +554,14 @@ enum CallType {
 enum CallDirection {
   INBOUND
   OUTBOUND
+}
+
+enum AssetCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
 }
 
 enum CallPriority {

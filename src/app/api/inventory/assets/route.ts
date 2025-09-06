@@ -113,30 +113,30 @@ export async function GET(request: NextRequest) {
     ])
 
     // Transform data to match frontend expectations
-    const transformedAssets = assets.map(asset => ({
+    const transformedAssets = assets.map((asset: any) => ({
       id: asset.id,
       name: asset.name,
       assetNumber: asset.assetTag, // Use assetTag from schema
       category: asset.category, // Use category directly from schema
       type: asset.category,
-      brand: asset.manufacturer,
-      model: asset.model,
-      serialNumber: asset.serialNumber,
-      status: asset.status.toLowerCase(),
-      condition: asset.status.toLowerCase(), // Use status as condition
-      location: asset.location,
-      department: asset.location, // Use location as department
-      assignedTo: asset.assignedTo,
+      brand: asset.brand || '', // Use brand field from database
+      model: asset.model || '',
+      serialNumber: asset.serialNumber || '',
+      status: asset.status ? asset.status.toLowerCase() : 'active',
+      condition: asset.condition ? (typeof asset.condition === 'string' ? asset.condition.toLowerCase() : asset.condition) : 'good',
+      location: asset.location || '',
+      department: asset.location || '', // Use location as department
+      assignedTo: '', // Not available in current schema
       procurementValue: asset.purchasePrice ? parseFloat(asset.purchasePrice.toString()) : 0,
       currentValue: asset.currentValue ? parseFloat(asset.currentValue.toString()) : 0,
       depreciationRate: 0, // Not in schema, default to 0
       procurementDate: asset.purchaseDate?.toISOString().split('T')[0] || null,
       warrantyExpiry: asset.warrantyExpiry?.toISOString().split('T')[0] || null,
       lastAuditDate: null, // Not in current schema
-      nextMaintenanceDate: asset.maintenanceRecords[0]?.nextDueDate?.toISOString().split('T')[0] || null,
+      nextMaintenanceDate: asset.maintenanceRecords?.[0]?.nextDueDate?.toISOString().split('T')[0] || null,
       rfidTag: null, // Not in current schema
       qrCode: null, // Not in current schema
-      description: asset.description,
+      description: asset.description || '',
       createdAt: asset.createdAt.toISOString(),
       updatedAt: asset.updatedAt.toISOString()
     }))
