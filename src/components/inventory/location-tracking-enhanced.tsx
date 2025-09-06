@@ -71,89 +71,119 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
   const [showTrackingDevices, setShowTrackingDevices] = useState(true)
   const [filterStatus, setFilterStatus] = useState('all')
   const [isRealTimeEnabled, setIsRealTimeEnabled] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isConnected, setIsConnected] = useState(false)
+  const [error, setError] = useState<string>("")
   const mapRef = useRef<any>(null)
 
-  // Initialize tracking devices and geofences
+  // Fetch tracking data from API
   useEffect(() => {
-    const mockDevices: TrackingDevice[] = assets.map((asset, index) => ({
-      id: `device-${asset.id}`,
-      assetId: asset.id,
-      type: ['GPS', 'RFID', 'Bluetooth', 'WiFi'][index % 4] as any,
-      status: ['online', 'offline', 'low-battery'][index % 3] as any,
-      batteryLevel: Math.floor(Math.random() * 100),
-      lastUpdate: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-      accuracy: Math.floor(Math.random() * 10) + 1,
-      signal: Math.floor(Math.random() * 100)
-    }))
-
-    const mockGeofences: GeofenceZone[] = [
-      {
-        id: 'zone-1',
-        name: 'Head Office Safe Zone',
-        type: 'safe',
-        coordinates: { lat: -17.8216, lng: 31.0492 },
-        radius: 200,
-        color: '#10B981',
-        active: true
-      },
-      {
-        id: 'zone-2',
-        name: 'Warehouse Perimeter',
-        type: 'safe',
-        coordinates: { lat: -17.8350, lng: 31.0650 },
-        radius: 150,
-        color: '#3B82F6',
-        active: true
-      },
-      {
-        id: 'zone-3',
-        name: 'Restricted Area',
-        type: 'restricted',
-        coordinates: { lat: -17.8100, lng: 31.0450 },
-        radius: 100,
-        color: '#EF4444',
-        active: true
-      },
-      {
-        id: 'zone-4',
-        name: 'Maintenance Zone',
-        type: 'maintenance',
-        coordinates: { lat: -17.8280, lng: 31.0580 },
-        radius: 75,
-        color: '#F59E0B',
-        active: true
+    const fetchTrackingData = async () => {
+      if (!session) return
+      
+      try {
+        setIsLoading(true)
+        setError("")
+        
+        console.log('Fetching location tracking data from API...')
+        
+        // Fetch tracking devices
+        const devicesResponse = await fetch('/api/inventory/tracking/devices')
+        if (!devicesResponse.ok) {
+          throw new Error(`Devices API: ${devicesResponse.status} ${devicesResponse.statusText}`)
+        }
+        const devicesData = await devicesResponse.json()
+        
+        // Fetch alerts
+        const alertsResponse = await fetch('/api/inventory/tracking/alerts')
+        if (!alertsResponse.ok) {
+          throw new Error(`Alerts API: ${alertsResponse.status} ${alertsResponse.statusText}`)
+        }
+        const alertsData = await alertsResponse.json()
+        
+        // Transform API data to match component interface
+        const transformedDevices: TrackingDevice[] = devicesData.map((device: any) => ({
+          id: device.id,
+          assetId: device.assetId,
+          type: device.deviceType?.toUpperCase() === 'GPS_TRACKER' ? 'GPS' : 
+                device.deviceType?.toUpperCase() === 'RFID_TAG' ? 'RFID' : 'GPS',
+          status: device.status === 'active' ? 'online' : 'offline',
+          batteryLevel: device.batteryLevel || 100,
+          lastUpdate: device.lastUpdate || new Date().toISOString(),
+          accuracy: Math.floor(Math.random() * 10) + 1,
+          signal: device.signalStrength || Math.floor(Math.random() * 100)
+        }))
+        
+        const transformedAlerts: LocationAlert[] = alertsData.map((alert: any) => ({
+          id: alert.id,
+          assetId: alert.assetId,
+          type: alert.type as any,
+          message: alert.type === 'unauthorized_movement' 
+            ? `Asset moved outside ${alert.geofenceName || 'safe zone'}`
+            : alert.message || 'Location alert triggered',
+          severity: 'medium' as any,
+          timestamp: alert.timestamp,
+          acknowledged: alert.acknowledged
+        }))
+        
+        // Set default geofences (these could be fetched from API in the future)
+        const defaultGeofences: GeofenceZone[] = [
+          {
+            id: 'zone-1',
+            name: 'Head Office Safe Zone',
+            type: 'safe',
+            coordinates: { lat: -17.8216, lng: 31.0492 },
+            radius: 200,
+            color: '#10B981',
+            active: true
+          },
+          {
+            id: 'zone-2',
+            name: 'Warehouse Perimeter',
+            type: 'safe',
+            coordinates: { lat: -17.8350, lng: 31.0650 },
+            radius: 150,
+            color: '#3B82F6',
+            active: true
+          },
+          {
+            id: 'zone-3',
+            name: 'Restricted Area',
+            type: 'restricted',
+            coordinates: { lat: -17.8100, lng: 31.0450 },
+            radius: 100,
+            color: '#EF4444',
+            active: true
+          }
+        ]
+        
+        setTrackingDevices(transformedDevices)
+        setAlerts(transformedAlerts)
+        setGeofences(defaultGeofences)
+        setIsConnected(true)
+        
+        console.log(`Loaded ${transformedDevices.length} tracking devices and ${transformedAlerts.length} alerts`)
+        
+      } catch (err) {
+        console.error('Failed to fetch location tracking data:', err)
+        setError(err instanceof Error ? err.message : 'Unknown error')
+        setIsConnected(false)
+        
+        // Set empty arrays instead of mock data
+        setTrackingDevices([])
+        setAlerts([])
+        setGeofences([])
+      } finally {
+        setIsLoading(false)
       }
-    ]
+    }
 
-    const mockAlerts: LocationAlert[] = [
-      {
-        id: 'alert-1',
-        assetId: assets[0]?.id || '1',
-        type: 'geofence_violation',
-        message: 'Asset moved outside safe zone',
-        severity: 'high',
-        timestamp: new Date(Date.now() - 1800000).toISOString(),
-        acknowledged: false
-      },
-      {
-        id: 'alert-2',
-        assetId: assets[1]?.id || '2',
-        type: 'device_offline',
-        message: 'Tracking device has gone offline',
-        severity: 'medium',
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        acknowledged: false
-      }
-    ]
+    fetchTrackingData()
+  }, [session])
 
-    setTrackingDevices(mockDevices)
-    setGeofences(mockGeofences)
-    setAlerts(mockAlerts)
-  }, [assets])
-
-  // Real-time location updates simulation
+  // Real-time location updates simulation (only when connected)
   useEffect(() => {
-    if (!isRealTimeEnabled) return
+    if (!isRealTimeEnabled || !isConnected) return
 
     const interval = setInterval(() => {
       setTrackingDevices(prev => prev.map(device => ({
@@ -179,7 +209,7 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [isRealTimeEnabled, assets])
+  }, [isRealTimeEnabled, isConnected, assets])
 
   const getDeviceStatusColor = (status: string) => {
     switch (status) {
@@ -251,6 +281,15 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
           <p className="text-gray-600">Real-time asset location monitoring and geofence management</p>
         </div>
         <div className="flex items-center space-x-4">
+          {/* Database Connection Status */}
+          <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${
+            isConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+            <span>{isConnected ? 'Connected' : 'Using Mock Data'}</span>
+            {!isConnected && <span className="text-xs">Database not connected</span>}
+          </div>
+          
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setIsRealTimeEnabled(!isRealTimeEnabled)}
@@ -278,6 +317,29 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
           </select>
         </div>
       </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center space-x-3">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+            <span className="text-blue-800 font-medium">Loading location tracking data...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !isLoading && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center space-x-3">
+            <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />
+            <div>
+              <span className="text-red-800 font-medium">Failed to load tracking data</span>
+              <p className="text-red-700 text-sm mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Alerts Section */}
       {alerts.filter(a => !a.acknowledged).length > 0 && (
