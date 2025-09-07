@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ExportButton } from "@/components/ui/export-button"
 import { ImportButton } from "@/components/ui/import-button"
@@ -31,6 +31,9 @@ export default function TrainingPage() {
   const [selectedProgram, setSelectedProgram] = useState<any>(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [trainingPrograms, setTrainingPrograms] = useState<any[]>([])
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [editFormData, setEditFormData] = useState<{
     title?: string
     description?: string
@@ -45,73 +48,35 @@ export default function TrainingPage() {
     endDate?: string
   }>({})
 
-  // Training programs data
-  const trainingPrograms = [
-    {
-      id: 1,
-      title: "Leadership Development Program",
-      category: "Leadership",
-      description: "Comprehensive leadership training for management roles",
-      instructor: "Dr. Sarah Johnson",
-      duration: "6 weeks",
-      format: "Blended",
-      enrolled: 25,
-      capacity: 30,
-      startDate: "2024-02-01",
-      endDate: "2024-03-15",
-      status: "active",
-      completion: 68,
-      certificationAvailable: true
-    },
-    {
-      id: 2,
-      title: "Data Analysis with Python",
-      category: "Technical Skills",
-      description: "Learn data analysis techniques using Python and pandas",
-      instructor: "Michael Chen",
-      duration: "4 weeks",
-      format: "Online",
-      enrolled: 18,
-      capacity: 25,
-      startDate: "2024-01-15",
-      endDate: "2024-02-12",
-      status: "active",
-      completion: 45,
-      certificationAvailable: true
-    },
-    {
-      id: 3,
-      title: "Workplace Safety Training",
-      category: "Safety",
-      description: "Mandatory safety training for all employees",
-      instructor: "Safety Team",
-      duration: "2 hours",
-      format: "In-person",
-      enrolled: 150,
-      capacity: 200,
-      startDate: "2024-01-20",
-      endDate: "2024-01-20",
-      status: "completed",
-      completion: 95,
-      certificationAvailable: true
-    },
-    {
-      id: 4,
-      title: "Financial Management Basics",
-      category: "Professional Development",
-      description: "Basic financial management concepts for non-finance staff",
-      instructor: "Jennifer Smith",
-      duration: "3 weeks",
-      format: "Hybrid",
-      enrolled: 12,
-      capacity: 20,
-      startDate: "2024-02-05",
-      endDate: "2024-02-26",
-      status: "upcoming",
-      completion: 0,
-      certificationAvailable: false
+  // Fetch training programs and analytics
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        
+        const [programsResponse, analyticsResponse] = await Promise.all([
+          fetch('/api/hr/training/programs'),
+          fetch('/api/hr/training/analytics')
+        ])
+
+        if (programsResponse.ok) {
+          const programsData = await programsResponse.json()
+          setTrainingPrograms(programsData.programs || [])
+        }
+
+        if (analyticsResponse.ok) {
+          const analyticsData = await analyticsResponse.json()
+          setAnalytics(analyticsData.analytics)
+        }
+      } catch (error) {
+        console.error('Failed to fetch training data:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
+
+    fetchData()
+  }, [])
 
   const handleViewProgram = (program: any) => {
     setSelectedProgram(program)
@@ -130,34 +95,66 @@ export default function TrainingPage() {
       instructor: program.instructor,
       status: program.status,
       certificationAvailable: program.certificationAvailable,
-      startDate: program.startDate,
-      endDate: program.endDate
+      startDate: program.startDate?.split('T')[0],
+      endDate: program.endDate?.split('T')[0]
     })
     setShowEditModal(true)
   }
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (selectedProgram) {
-      // TODO: Implement API call to update training program
-      console.log('Saving program changes:', {
-        programId: selectedProgram.id,
-        updates: editFormData
-      })
-      
-      // Update the local data (in a real app, this would be handled by state management)
-      const updatedProgram = { ...selectedProgram, ...editFormData }
-      console.log('Updated program:', updatedProgram)
-      
-      alert('Program updated successfully!')
-      setShowEditModal(false)
+      try {
+        const response = await fetch(`/api/hr/training/programs/${selectedProgram.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(editFormData)
+        })
+
+        if (response.ok) {
+          // Refresh the programs list
+          const programsResponse = await fetch('/api/hr/training/programs')
+          if (programsResponse.ok) {
+            const data = await programsResponse.json()
+            setTrainingPrograms(data.programs || [])
+          }
+          alert('Program updated successfully!')
+          setShowEditModal(false)
+        } else {
+          const error = await response.json()
+          alert(`Failed to update program: ${error.error}`)
+        }
+      } catch (error) {
+        console.error('Error updating program:', error)
+        alert('Failed to update program')
+      }
     }
   }
 
-  const handleDeleteProgram = (programId: number) => {
+  const handleDeleteProgram = async (programId: string) => {
     if (confirm('Are you sure you want to delete this training program?')) {
-      console.log('Deleting program:', programId)
-      // TODO: Implement delete functionality
-      alert('Program deleted successfully!')
+      try {
+        const response = await fetch(`/api/hr/training/programs/${programId}`, {
+          method: 'DELETE'
+        })
+
+        if (response.ok) {
+          // Refresh the programs list
+          const programsResponse = await fetch('/api/hr/training/programs')
+          if (programsResponse.ok) {
+            const data = await programsResponse.json()
+            setTrainingPrograms(data.programs || [])
+          }
+          alert('Program deleted successfully!')
+        } else {
+          const error = await response.json()
+          alert(`Failed to delete program: ${error.error}`)
+        }
+      } catch (error) {
+        console.error('Error deleting program:', error)
+        alert('Failed to delete program')
+      }
     }
   }
 
@@ -187,16 +184,17 @@ export default function TrainingPage() {
       />
       <ExportButton
         data={{
-          headers: ['Title', 'Category', 'Duration', 'Format', 'Status', 'Instructor', 'Enrolled/Capacity', 'Completion Rate'],
-          rows: trainingPrograms.map(program => [
+          headers: ['Title', 'Category', 'Duration', 'Format', 'Status', 'Instructor', 'Capacity', 'Start Date', 'End Date'],
+          rows: (trainingPrograms || []).map(program => [
             program.title,
             program.category,
-            program.duration,
-            program.format,
+            program.duration || 'N/A',
+            program.format || 'N/A',
             program.status,
-            program.instructor,
-            `${program.enrolled}/${program.capacity}`,
-            `${program.completion}%`
+            program.instructor || 'N/A',
+            program.capacity?.toString() || 'N/A',
+            program.startDate ? new Date(program.startDate).toLocaleDateString() : 'N/A',
+            program.endDate ? new Date(program.endDate).toLocaleDateString() : 'N/A'
           ])
         }}
         filename="training-programs-export"
@@ -204,7 +202,7 @@ export default function TrainingPage() {
         showOptions={true}
       />
       <Link href="/hr/training/create">
-        <button className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700">
+        <button className="inline-flex items-center px-4 py-2 bg-orange-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-orange-700">
           <PlusIcon className="h-4 w-4 mr-2" />
           Create Program
         </button>
@@ -219,19 +217,27 @@ export default function TrainingPage() {
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Active Programs</span>
-            <span className="font-semibold text-blue-600">12</span>
+            <span className="font-semibold text-orange-600">
+              {analytics?.overview?.totalPrograms || 0}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Enrollments</span>
-            <span className="font-semibold text-green-600">387</span>
+            <span className="font-semibold text-green-600">
+              {analytics?.overview?.totalEnrollments || 0}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Completions</span>
-            <span className="font-semibold text-purple-600">234</span>
+            <span className="font-semibold text-orange-600">
+              {analytics?.overview?.completedEnrollments || 0}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Certifications</span>
-            <span className="font-semibold text-yellow-600">156</span>
+            <span className="font-semibold text-green-600">
+              {analytics?.overview?.certificatesIssued || 0}
+            </span>
           </div>
         </div>
       </div>
@@ -243,7 +249,7 @@ export default function TrainingPage() {
             <span className="text-sm text-gray-600">Leadership</span>
             <div className="flex items-center space-x-2">
               <div className="w-16 bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: "65%" }}></div>
+                <div className="bg-orange-500 h-2 rounded-full" style={{ width: "65%" }}></div>
               </div>
               <span className="text-xs text-gray-500">65%</span>
             </div>
@@ -281,16 +287,16 @@ export default function TrainingPage() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="space-y-2">
-          <Link href="/hr/training/create" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+          <Link href="/hr/training/create" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
             Create Program
           </Link>
-          <Link href="/hr/training/enroll" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+          <Link href="/hr/training/enroll" className="block w-full text-left p-2 text-sm text-green-600 hover:bg-green-50 rounded">
             Enroll Employees
           </Link>
-          <Link href="/hr/training/calendar" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+          <Link href="/hr/training/calendar" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
             Training Calendar
           </Link>
-          <Link href="/hr/training/certificates" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+          <Link href="/hr/training/certificates" className="block w-full text-left p-2 text-sm text-green-600 hover:bg-green-50 rounded">
             Certificates
           </Link>
         </div>
@@ -386,11 +392,19 @@ export default function TrainingPage() {
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800"
+      case "ACTIVE":
+        return "bg-green-100 text-green-800"
       case "completed":
-        return "bg-blue-100 text-blue-800"
+        return "bg-orange-100 text-orange-800"
+      case "COMPLETED":
+        return "bg-orange-100 text-orange-800"
       case "upcoming":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-gray-100 text-gray-800"
+      case "DRAFT":
+        return "bg-gray-100 text-gray-800"
       case "cancelled":
+        return "bg-red-100 text-red-800"
+      case "INACTIVE":
         return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
@@ -401,11 +415,19 @@ export default function TrainingPage() {
     switch (status) {
       case "completed":
         return "bg-green-100 text-green-800"
+      case "COMPLETED":
+        return "bg-green-100 text-green-800"
       case "in-progress":
-        return "bg-blue-100 text-blue-800"
+        return "bg-orange-100 text-orange-800"
+      case "IN_PROGRESS":
+        return "bg-orange-100 text-orange-800"
       case "not-started":
         return "bg-gray-100 text-gray-800"
+      case "ENROLLED":
+        return "bg-gray-100 text-gray-800"
       case "dropped":
+        return "bg-red-100 text-red-800"
+      case "DROPPED":
         return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
@@ -415,12 +437,12 @@ export default function TrainingPage() {
   const getFormatIcon = (format: string) => {
     switch (format) {
       case "Online":
-        return <PlayIcon className="h-4 w-4 text-blue-600" />
+        return <PlayIcon className="h-4 w-4 text-orange-600" />
       case "In-person":
         return <UserGroupIcon className="h-4 w-4 text-green-600" />
       case "Hybrid":
       case "Blended":
-        return <BookOpenIcon className="h-4 w-4 text-purple-600" />
+        return <BookOpenIcon className="h-4 w-4 text-orange-600" />
       default:
         return <BookOpenIcon className="h-4 w-4 text-gray-600" />
     }
@@ -439,22 +461,31 @@ export default function TrainingPage() {
       sidebar={sidebar}
     >
       <div className="space-y-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+            <span className="ml-3 text-gray-600">Loading training data...</span>
+          </div>
+        ) : (
+          <>
         {/* Training Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg border p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <AcademicCapIcon className="w-6 h-6 text-blue-600" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <AcademicCapIcon className="w-6 h-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">12</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {analytics?.overview?.totalPrograms || 0}
+                </h3>
                 <p className="text-sm text-gray-500">Active Programs</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Running</span>
-                <span className="text-blue-600 font-medium">+2 New</span>
+                <span className="text-orange-600 font-medium">Active</span>
               </div>
             </div>
           </div>
@@ -465,50 +496,62 @@ export default function TrainingPage() {
                 <UserGroupIcon className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">387</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {analytics?.overview?.totalEnrollments || 0}
+                </h3>
                 <p className="text-sm text-gray-500">Total Enrollments</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">This month</span>
-                <span className="text-green-600 font-medium">+15%</span>
+                <span className="text-gray-500">All time</span>
+                <span className="text-green-600 font-medium">
+                  {analytics?.overview?.completionRate || 0}% rate
+                </span>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-lg border p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <CheckCircleIcon className="w-6 h-6 text-purple-600" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <CheckCircleIcon className="w-6 h-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">234</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {analytics?.overview?.completedEnrollments || 0}
+                </h3>
                 <p className="text-sm text-gray-500">Completions</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">60% completion rate</span>
-                <span className="text-purple-600 font-medium">Good</span>
+                <span className="text-gray-500">
+                  {analytics?.overview?.completionRate || 0}% completion rate
+                </span>
+                <span className="text-orange-600 font-medium">
+                  {(analytics?.overview?.completionRate || 0) >= 70 ? 'Good' : 'Fair'}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-lg border p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <TrophyIcon className="w-6 h-6 text-yellow-600" />
+              <div className="p-2 bg-green-100 rounded-lg">
+                <TrophyIcon className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">156</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {analytics?.overview?.certificatesIssued || 0}
+                </h3>
                 <p className="text-sm text-gray-500">Certificates Issued</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">This year</span>
-                <span className="text-yellow-600 font-medium">+23%</span>
+                <span className="text-gray-500">All time</span>
+                <span className="text-green-600 font-medium">Available</span>
               </div>
             </div>
           </div>
@@ -516,9 +559,9 @@ export default function TrainingPage() {
 
         {/* Agora Learning Platform & Certificate Upload Section */}
         <div className="bg-white rounded-lg border overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+          <div className="bg-gradient-to-r from-orange-600 to-green-600 px-6 py-4">
             <h2 className="text-xl font-semibold text-white">Required Learning Platform</h2>
-            <p className="text-blue-100 mt-1">Complete mandatory courses on Agora and submit certificates</p>
+            <p className="text-orange-100 mt-1">Complete mandatory courses on Agora and submit certificates</p>
           </div>
           
           <div className="p-6">
@@ -526,8 +569,8 @@ export default function TrainingPage() {
               {/* Agora Platform Information */}
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <AcademicCapIcon className="w-5 h-5 text-blue-600" />
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <AcademicCapIcon className="w-5 h-5 text-orange-600" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900">Agora Learning Platform</h3>
                 </div>
@@ -537,13 +580,13 @@ export default function TrainingPage() {
                 </p>
                 
                 <div className="space-y-3">
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-900 mb-2">Platform Access</h4>
+                  <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                    <h4 className="font-medium text-orange-900 mb-2">Platform Access</h4>
                     <a 
                       href="https://agora.learning.platform" 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors"
                     >
                       <BookOpenIcon className="w-4 h-4 mr-2" />
                       Access Agora Platform
@@ -727,27 +770,28 @@ export default function TrainingPage() {
                         <div>
                           <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-600">Enrollment</span>
-                            <span className="font-medium">{program.enrolled}/{program.capacity}</span>
+                            <span className="font-medium">
+                              {program._count?.enrollments || 0}
+                              {program.capacity ? `/${program.capacity}` : ''}
+                            </span>
                           </div>
-                          <div className="bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-500 h-2 rounded-full"
-                              style={{ width: `${(program.enrolled / program.capacity) * 100}%` }}
-                            ></div>
-                          </div>
-                        </div>
-
-                        {program.status === "active" && (
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="text-gray-600">Completion</span>
-                              <span className="font-medium">{program.completion}%</span>
-                            </div>
+                          {program.capacity && (
                             <div className="bg-gray-200 rounded-full h-2">
                               <div
-                                className="bg-green-500 h-2 rounded-full"
-                                style={{ width: `${program.completion}%` }}
+                                className="bg-orange-500 h-2 rounded-full"
+                                style={{ 
+                                  width: `${Math.min(((program._count?.enrollments || 0) / program.capacity) * 100, 100)}%` 
+                                }}
                               ></div>
+                            </div>
+                          )}
+                        </div>
+
+                        {program.status === "ACTIVE" && program._count?.enrollments > 0 && (
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-gray-600">Enrollments</span>
+                              <span className="font-medium">{program._count?.enrollments || 0} enrolled</span>
                             </div>
                           </div>
                         )}
@@ -989,6 +1033,8 @@ export default function TrainingPage() {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* View Program Modal */}

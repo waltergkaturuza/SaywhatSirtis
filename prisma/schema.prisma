@@ -251,6 +251,10 @@ model Employee {
   // HR Records
   performanceReviews PerformanceReview[]
   
+  // Training Records
+  trainingEnrollments TrainingEnrollment[]
+  trainingAttendance  TrainingAttendance[]
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
@@ -280,6 +284,138 @@ model PerformanceReview {
   @@index([employeeId])
   @@index([reviewDate])
   @@map("performance_reviews")
+}
+
+// =============================================
+// TRAINING MANAGEMENT
+// =============================================
+
+model TrainingProgram {
+  id              String    @id @default(cuid())
+  title           String
+  description     String?   @db.Text
+  category        String    // "Technical", "Soft Skills", "Compliance", etc.
+  duration        String    // "1 week", "3 days", "2 hours", etc.
+  format          String    // "Online", "In-Person", "Hybrid"
+  capacity        Int?
+  instructor      String?
+  status          String    @default("DRAFT") // "DRAFT", "PUBLISHED", "ACTIVE", "COMPLETED", "CANCELLED"
+  startDate       DateTime?
+  endDate         DateTime?
+  enrollmentDeadline DateTime?
+  certificationAvailable Boolean @default(false)
+  prerequisites   String?   @db.Text
+  learningObjectives Json?  // Array of objectives
+  materials       Json?     // Array of materials/resources
+  cost            Float?    @default(0)
+  currency        String?   @default("USD")
+  location        String?   // For in-person training
+  onlineLink      String?   // For online training
+  
+  // Relationships
+  enrollments     TrainingEnrollment[]
+  sessions        TrainingSession[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([category])
+  @@index([status])
+  @@index([startDate])
+  @@map("training_programs")
+}
+
+model TrainingEnrollment {
+  id                String           @id @default(cuid())
+  programId         String
+  employeeId        String
+  enrollmentDate    DateTime         @default(now())
+  status            String           @default("ENROLLED") // "ENROLLED", "IN_PROGRESS", "COMPLETED", "DROPPED", "FAILED"
+  progress          Int              @default(0) // Percentage
+  completionDate    DateTime?
+  finalScore        Float?
+  feedback          String?          @db.Text
+  attendanceRate    Float?           // Percentage
+  
+  // Relationships
+  program           TrainingProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  employee          Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  certificate       TrainingCertificate?
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@unique([programId, employeeId])
+  @@index([employeeId])
+  @@index([status])
+  @@map("training_enrollments")
+}
+
+model TrainingSession {
+  id              String          @id @default(cuid())
+  programId       String
+  title           String
+  description     String?         @db.Text
+  sessionDate     DateTime
+  startTime       String          // "09:00"
+  endTime         String          // "17:00"
+  instructor      String?
+  location        String?
+  onlineLink      String?
+  materials       Json?           // Session-specific materials
+  maxAttendees    Int?
+  
+  // Relationships
+  program         TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  attendance      TrainingAttendance[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@index([programId])
+  @@index([sessionDate])
+  @@map("training_sessions")
+}
+
+model TrainingAttendance {
+  id              String          @id @default(cuid())
+  sessionId       String
+  employeeId      String
+  status          String          // "PRESENT", "ABSENT", "LATE", "EXCUSED"
+  checkInTime     DateTime?
+  checkOutTime    DateTime?
+  notes           String?
+  
+  // Relationships
+  session         TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  employee        Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@unique([sessionId, employeeId])
+  @@index([employeeId])
+  @@map("training_attendance")
+}
+
+model TrainingCertificate {
+  id              String               @id @default(cuid())
+  enrollmentId    String               @unique
+  certificateNumber String             @unique
+  issuedDate      DateTime
+  expiryDate      DateTime?
+  isValid         Boolean              @default(true)
+  downloadCount   Int                  @default(0)
+  
+  // Relationships
+  enrollment      TrainingEnrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  
+  @@index([certificateNumber])
+  @@index([issuedDate])
+  @@map("training_certificates")
 }
 
 // =============================================
