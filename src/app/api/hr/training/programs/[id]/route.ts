@@ -5,9 +5,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     
     if (!session) {
@@ -22,7 +23,7 @@ export async function GET(
     }
 
     const program = await prisma.trainingProgram.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         enrollments: {
           include: {
@@ -63,9 +64,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     
     if (!session) {
@@ -90,7 +92,7 @@ export async function PUT(
     }
 
     const updatedProgram = await prisma.trainingProgram.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         title: data.title,
         description: data.description,
@@ -123,9 +125,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     
     if (!session) {
@@ -141,7 +144,7 @@ export async function DELETE(
 
     // Check if program has enrollments
     const enrollmentCount = await prisma.trainingEnrollment.count({
-      where: { programId: params.id }
+      where: { programId: id }
     })
 
     if (enrollmentCount > 0) {
@@ -152,7 +155,7 @@ export async function DELETE(
     }
 
     await prisma.trainingProgram.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({
