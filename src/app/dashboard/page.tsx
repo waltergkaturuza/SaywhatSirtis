@@ -295,7 +295,7 @@ export default function DashboardPage() {
                   <div>
                     <p className="text-sm font-medium text-saywhat-grey">Program Performance</p>
                     <p className="text-2xl font-bold text-saywhat-dark">
-                      {metrics ? `${metrics.programSuccessRate.toFixed(1)}%` : '---'}
+                      {metrics && metrics.programSuccessRate !== null ? `${metrics.programSuccessRate.toFixed(1)}%` : '---'}
                     </p>
                     <p className="text-xs flex items-center mt-1" style={{ color: SAYWHAT_COLORS.grey }}>
                       <Target className="h-3 w-3 mr-1" />
@@ -318,11 +318,11 @@ export default function DashboardPage() {
                   <div>
                     <p className="text-sm font-medium text-saywhat-grey">Call Success Rate</p>
                     <p className="text-2xl font-bold text-saywhat-dark">
-                      {metrics ? `${metrics.callSuccessRate.toFixed(1)}%` : '---'}
+                      {metrics && metrics.callSuccessRate !== null ? `${metrics.callSuccessRate.toFixed(1)}%` : '---'}
                     </p>
                     <p className="text-xs flex items-center mt-1" style={{ color: SAYWHAT_COLORS.dark }}>
                       <Award className="h-3 w-3 mr-1" />
-                      {metrics ? `${metrics.avgCallDuration.toFixed(1)}min avg` : '--- avg'}
+                      {metrics && metrics.avgCallDuration !== null ? `${metrics.avgCallDuration.toFixed(1)}min avg` : '--- avg'}
                     </p>
                   </div>
                   <div 
@@ -475,13 +475,13 @@ export default function DashboardPage() {
                       <div className="flex justify-between items-center">
                         <span className="text-saywhat-grey">Average Duration</span>
                         <span className="text-2xl font-bold text-saywhat-dark">
-                          {metrics ? `${metrics.avgCallDuration.toFixed(1)}min` : '---'}
+                          {metrics && metrics.avgCallDuration !== null ? `${metrics.avgCallDuration.toFixed(1)}min` : '---'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-saywhat-grey">Success Rate</span>
                         <span className="text-2xl font-bold" style={{ color: SAYWHAT_COLORS.orange }}>
-                          {metrics ? `${metrics.callSuccessRate.toFixed(1)}%` : '---'}
+                          {metrics && metrics.callSuccessRate !== null ? `${metrics.callSuccessRate.toFixed(1)}%` : '---'}
                         </span>
                       </div>
                     </div>
@@ -536,7 +536,7 @@ export default function DashboardPage() {
                       <div className="flex justify-between items-center">
                         <span className="text-saywhat-grey">Success Rate</span>
                         <span className="text-2xl font-bold" style={{ color: SAYWHAT_COLORS.orange }}>
-                          {metrics ? `${metrics.programSuccessRate.toFixed(1)}%` : '---'}
+                          {metrics && metrics.programSuccessRate !== null ? `${metrics.programSuccessRate.toFixed(1)}%` : '---'}
                         </span>
                       </div>
                     </div>
