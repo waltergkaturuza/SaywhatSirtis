@@ -91,7 +91,7 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
     fetchAudits()
   }, [])
 
-  const filteredAudits = audits.filter(audit => {
+  const filteredAudits = (audits || []).filter(audit => {
     const matchesStatus = statusFilter === 'all' || audit.status === statusFilter
     const matchesType = typeFilter === 'all' || audit.type === typeFilter
     const matchesSearch = !searchQuery || 
@@ -219,7 +219,7 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">In Progress</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {audits.filter(a => a.status === 'in-progress').length}
+                      {(audits || []).filter(a => a.status === 'in-progress').length}
                     </p>
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Completed</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {audits.filter(a => a.status === 'completed').length}
+                      {(audits || []).filter(a => a.status === 'completed').length}
                     </p>
                   </div>
                 </div>
@@ -247,7 +247,7 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Open Findings</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {audits.reduce((sum, audit) => sum + audit.findings.filter(f => f.status === 'open').length, 0)}
+                      {(audits || []).reduce((sum, audit) => sum + (audit.findings || []).filter(f => f.status === 'open').length, 0)}
                     </p>
                   </div>
                 </div>
@@ -300,8 +300,8 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
               <CardContent>
                 <div className="space-y-3">
                   {['critical', 'high', 'medium', 'low'].map(severity => {
-                    const count = audits.reduce((sum, audit) => 
-                      sum + audit.findings.filter(f => f.severity === severity && f.status === 'open').length, 0
+                    const count = (audits || []).reduce((sum, audit) => 
+                      sum + (audit.findings || []).filter(f => f.severity === severity && f.status === 'open').length, 0
                     )
                     return (
                       <div key={severity} className="flex items-center justify-between">
