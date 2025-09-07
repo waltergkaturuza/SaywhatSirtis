@@ -208,42 +208,33 @@ export default function TrainingPage() {
 
   const metadata = {
     title: "Training Management",
-    description: "Manage training programs, courses, and certifications",
-    breadcrumbs: [
-      { name: "HR", href: "/hr" },
-      { name: "Training" }
-    ]
+    description: "Manage training programs, courses, and certifications"
   }
 
-  const actions = (
-    <div className="flex space-x-2">
-      <Button 
-        variant="outline"
-        onClick={() => {
-          console.log('Import clicked')
-        }}
-      >
-        Import Programs
-      </Button>
-      <Button 
-        variant="outline"
-        onClick={() => {
-          console.log('Export clicked')
-        }}
-      >
-        Export Data
-      </Button>
-      <Button 
-        onClick={() => {
-          window.location.href = '/hr/training/create'
-        }}
-        className="bg-orange-600 hover:bg-orange-700 text-white"
-      >
-        <PlusIcon className="w-4 h-4 mr-2" />
-        Create Program
-      </Button>
-    </div>
-  )
+  const actions = [
+    {
+      label: "Import Programs",
+      onClick: () => {
+        console.log('Import clicked')
+      },
+      variant: "outline" as const
+    },
+    {
+      label: "Export Data",
+      onClick: () => {
+        console.log('Export clicked')
+      },
+      variant: "outline" as const
+    },
+    {
+      label: "Create Program",
+      onClick: () => {
+        window.location.href = '/hr/training/create'
+      },
+      icon: PlusIcon,
+      variant: "default" as const
+    }
+  ]
 
   const getStatusColor = (status: string) => {
     switch (status) {

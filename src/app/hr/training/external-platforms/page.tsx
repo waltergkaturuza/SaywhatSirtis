@@ -81,8 +81,15 @@ export default function ExternalPlatformsAdmin() {
 
   return (
     <ModulePage 
-      title="External Learning Platforms"
-      description="Configure and manage external learning platform integrations"
+      metadata={{
+        title: "External Learning Platforms",
+        description: "Configure and manage external learning platform integrations",
+        breadcrumbs: [
+          { name: "HR", href: "/hr" },
+          { name: "Training", href: "/hr/training" },
+          { name: "External Platforms" }
+        ]
+      }}
     >
       <div className="space-y-6">
         {/* Header Actions */}

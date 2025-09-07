@@ -340,68 +340,6 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
-  try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager');
-
-    if (!hasPermission) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-    }
-
-    const { oldName, newName, description } = await request.json();
-
-    if (!oldName || !newName) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Both old and new department names are required' 
-        },
-        { status: 400 }
-      );
-    }
-
-    // Update all employees with the old department name
-    const updateResult = await prisma.employee.updateMany({
-      where: {
-        department: oldName
-      },
-      data: {
-        department: newName
-      }
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: `Updated ${updateResult.count} employees to new department name`,
-      data: {
-        id: newName.toLowerCase().replace(/\s+/g, '_'),
-        name: newName,
-        description: description || `${newName} Department`,
-        employeeCount: updateResult.count
-      }
-    });
-
-  } catch (error) {
-    console.error('Error updating department:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to update department',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
-  }
-}
 
 // DELETE /api/hr/department - Delete department (reassign employees)
 export async function DELETE(request: NextRequest) {

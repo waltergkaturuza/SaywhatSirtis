@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 import { ExportButton } from "@/components/ui/export-button"
 import { PrintButton } from "@/components/ui/print-button"
 import { 
@@ -68,14 +69,17 @@ export default function DepartmentsPage() {
   // Metadata for ModulePage
   const metadata = {
     title: "Departments Management",
-    description: "Manage organizational departments, assign managers, and track employee distribution"
+    description: "Manage organizational departments, assign managers, and track employee distribution",
+    breadcrumbs: [
+      { name: "HR", href: "/hr" },
+      { name: "Departments" }
+    ]
   }
 
   // Actions for the page
-  const actions = [
-    {
-      label: "Add Department",
-      onClick: () => {
+  const actions = (
+    <Button 
+      onClick={() => {
         setFormData({
           name: '',
           description: '',
@@ -86,11 +90,13 @@ export default function DepartmentsPage() {
           status: 'ACTIVE'
         })
         setShowAddModal(true)
-      },
-      icon: PlusIcon,
-      variant: "default" as const
-    }
-  ]
+      }}
+      className="bg-orange-600 hover:bg-orange-700 text-white"
+    >
+      <PlusIcon className="w-4 h-4 mr-2" />
+      Add Department
+    </Button>
+  )
 
   useEffect(() => {
     fetchDepartments()
@@ -232,18 +238,26 @@ export default function DepartmentsPage() {
   }
 
   // Export configuration
-  const exportData = departments.map(dept => ({
-    'Department Name': dept.name,
-    'Description': dept.description || '',
-    'Code': dept.code || '',
-    'Manager': dept.manager || '',
-    'Budget': dept.budget ? `$${dept.budget.toLocaleString()}` : '',
-    'Location': dept.location || '',
-    'Status': dept.status,
-    'Employee Count': dept.employeeCount,
-    'Created': new Date(dept.createdAt).toLocaleDateString(),
-    'Last Updated': new Date(dept.updatedAt).toLocaleDateString()
-  }))
+  const exportData = {
+    headers: [
+      'Department Name', 'Description', 'Code', 'Manager', 'Budget', 
+      'Location', 'Status', 'Employee Count', 'Created', 'Last Updated'
+    ],
+    rows: departments.map(dept => [
+      dept.name,
+      dept.description || '',
+      dept.code || '',
+      dept.manager || '',
+      dept.budget ? `$${dept.budget.toLocaleString()}` : '',
+      dept.location || '',
+      dept.status,
+      dept.employeeCount,
+      new Date(dept.createdAt).toLocaleDateString(),
+      new Date(dept.updatedAt).toLocaleDateString()
+    ]),
+    title: 'Departments Report',
+    subtitle: `Generated on ${new Date().toLocaleDateString()}`
+  }
 
   if (loading) {
     return (
@@ -364,7 +378,7 @@ export default function DepartmentsPage() {
             className="bg-green-600 hover:bg-green-700"
           />
           <PrintButton
-            data={exportData}
+            targetId="departments-table"
             title="Departments Report"
             className="bg-blue-600 hover:bg-blue-700"
           />

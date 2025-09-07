@@ -34,7 +34,7 @@ export async function GET() {
     })
 
     // Transform data to match frontend interface
-    const transformedLogs = auditLogs.map(log => ({
+    const transformedLogs = auditLogs.map((log: any) => ({
       id: log.id,
       userId: log.userId,
       userName: log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() || log.user.email : 'Unknown',
