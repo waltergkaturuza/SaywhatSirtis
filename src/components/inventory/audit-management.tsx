@@ -271,7 +271,7 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {audits.slice(0, 5).map((audit) => (
+                    {(audits || []).slice(0, 5).map((audit) => (
                       <div key={audit.id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div>
                           <h4 className="font-medium text-gray-900">{audit.title}</h4>
