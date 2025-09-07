@@ -1,0 +1,31 @@
+  // Fetch enrollments and certificates data
+  const fetchEnrollmentsAndCertificates = async () => {
+    try {
+      const [enrollmentsResponse, certificatesResponse] = await Promise.all([
+        fetch('/api/hr/training/enrollments'),
+        fetch('/api/hr/training/certificates')
+      ])
+
+      if (enrollmentsResponse.ok) {
+        const enrollmentsData = await enrollmentsResponse.json()
+        setEnrollments(enrollmentsData.enrollments || [])
+      }
+
+      if (certificatesResponse.ok) {
+        const certificatesData = await certificatesResponse.json()
+        setCertificates(certificatesData.certificates || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch enrollments and certificates:', error)
+    }
+  }
+
+  // Fetch data when tab changes
+  useEffect(() => {
+    if (activeTab === 'enrollments' && enrollments.length === 0) {
+      fetchEnrollmentsAndCertificates()
+    }
+    if (activeTab === 'certificates' && certificates.length === 0) {
+      fetchEnrollmentsAndCertificates()
+    }
+  }, [activeTab])

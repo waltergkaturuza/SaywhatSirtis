@@ -8,7 +8,6 @@ import { ImportButton } from "@/components/ui/import-button"
 import { PrintButton } from "@/components/ui/print-button"
 import { DownloadExcelButton, DownloadPDFButton } from "@/components/ui/download-button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { getActivePlatforms, generatePlatformUrl, type ExternalPlatform } from "@/lib/external-platforms"
 import { Button } from "@/components/ui/button"
 import {
   AcademicCapIcon,
@@ -36,10 +35,7 @@ export default function TrainingPage() {
   const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [enrollments, setEnrollments] = useState<any[]>([])
-  const [loadingEnrollments, setLoadingEnrollments] = useState(true)
   const [certificates, setCertificates] = useState<any[]>([])
-  const [loadingCertificates, setLoadingCertificates] = useState(true)
-  const [externalPlatforms, setExternalPlatforms] = useState<ExternalPlatform[]>([])
   const [editFormData, setEditFormData] = useState<{
     title?: string
     description?: string
@@ -81,46 +77,7 @@ export default function TrainingPage() {
       }
     }
 
-    // Load external platforms
-    const loadExternalPlatforms = () => {
-      const platforms = getActivePlatforms()
-      setExternalPlatforms(platforms)
-    }
-
     fetchData()
-    loadExternalPlatforms()
-  }, [])
-
-  // Fetch enrollments and certificates
-  useEffect(() => {
-    const fetchEnrollmentsAndCertificates = async () => {
-      try {
-        setLoadingEnrollments(true)
-        setLoadingCertificates(true)
-        
-        const [enrollmentsResponse, certificatesResponse] = await Promise.all([
-          fetch('/api/hr/training/enrollments'),
-          fetch('/api/hr/training/certificates')
-        ])
-
-        if (enrollmentsResponse.ok) {
-          const enrollmentsData = await enrollmentsResponse.json()
-          setEnrollments(enrollmentsData.enrollments || [])
-        }
-
-        if (certificatesResponse.ok) {
-          const certificatesData = await certificatesResponse.json()
-          setCertificates(certificatesData.certificates || [])
-        }
-      } catch (error) {
-        console.error('Failed to fetch enrollments and certificates:', error)
-      } finally {
-        setLoadingEnrollments(false)
-        setLoadingCertificates(false)
-      }
-    }
-
-    fetchEnrollmentsAndCertificates()
   }, [])
 
   const handleViewProgram = (program: any) => {
@@ -349,6 +306,90 @@ export default function TrainingPage() {
     </div>
   )
 
+  // Real data will be fetched from APIs
+    {
+      id: 1,
+      employeeName: "Sarah Johnson",
+      employeeId: "EMP001",
+      program: "Leadership Development Program",
+      enrollDate: "2024-01-28",
+      progress: 85,
+      status: "in-progress",
+      expectedCompletion: "2024-03-10",
+      grade: null,
+      certificateIssued: false
+    },
+    {
+      id: 2,
+      employeeName: "Michael Adebayo",
+      employeeId: "EMP002",
+      program: "Data Analysis with Python",
+      enrollDate: "2024-01-14",
+      progress: 60,
+      status: "in-progress",
+      expectedCompletion: "2024-02-08",
+      grade: null,
+      certificateIssued: false
+    },
+    {
+      id: 3,
+      employeeName: "David Okonkwo",
+      employeeId: "EMP004",
+      program: "Workplace Safety Training",
+      enrollDate: "2024-01-19",
+      progress: 100,
+      status: "completed",
+      expectedCompletion: "2024-01-20",
+      grade: "A",
+      certificateIssued: true
+    },
+    {
+      id: 4,
+      employeeName: "Fatima Bello",
+      employeeId: "EMP005",
+      program: "Leadership Development Program",
+      enrollDate: "2024-01-30",
+      progress: 25,
+      status: "in-progress",
+      expectedCompletion: "2024-03-12",
+      grade: null,
+      certificateIssued: false
+    }
+  ]
+
+  const certificates = [
+    {
+      id: 1,
+      employeeName: "David Okonkwo",
+      program: "Workplace Safety Training",
+      issueDate: "2024-01-20",
+      expiryDate: "2025-01-20",
+      grade: "A",
+      certificateNumber: "WS-2024-001",
+      status: "active"
+    },
+    {
+      id: 2,
+      employeeName: "Alice Brown",
+      program: "Data Analysis with Python",
+      issueDate: "2024-01-10",
+      expiryDate: "2026-01-10",
+      grade: "B+",
+      certificateNumber: "DA-2024-002",
+      status: "active"
+    },
+    {
+      id: 3,
+      employeeName: "John Smith",
+      program: "Leadership Development Program",
+      issueDate: "2023-12-15",
+      expiryDate: "2025-12-15",
+      grade: "A-",
+      certificateNumber: "LD-2023-015",
+      status: "active"
+    }
+  ]
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -518,86 +559,46 @@ export default function TrainingPage() {
           </div>
         </div>
 
-        {/* External Learning Platforms & Certificate Upload Section */}
+        {/* Agora Learning Platform & Certificate Upload Section */}
         <div className="bg-white rounded-lg border overflow-hidden">
           <div className="bg-orange-600 px-6 py-4">
-            <h2 className="text-xl font-semibold text-white">External Learning Platforms</h2>
-            <p className="text-orange-100 mt-1">Access external platforms for mandatory courses and submit certificates</p>
+            <h2 className="text-xl font-semibold text-white">Required Learning Platform</h2>
+            <p className="text-orange-100 mt-1">Complete mandatory courses on Agora and submit certificates</p>
           </div>
           
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* External Platforms Information */}
+              {/* Agora Platform Information */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <AcademicCapIcon className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900">Available Learning Platforms</h3>
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <AcademicCapIcon className="w-5 h-5 text-orange-600" />
                   </div>
-                  <Link 
-                    href="/hr/training/external-platforms"
-                    className="text-sm text-orange-600 hover:text-orange-800 font-medium"
-                  >
-                    Manage Platforms →
-                  </Link>
+                  <h3 className="text-lg font-semibold text-gray-900">Agora Learning Platform</h3>
                 </div>
                 
                 <p className="text-gray-600">
-                  Access your required training modules from configured external platforms. Complete mandatory courses and track your progress.
+                  All employees must complete mandatory courses on the Agora platform. Access your required training modules and track your progress.
                 </p>
                 
                 <div className="space-y-3">
-                  {externalPlatforms.length > 0 ? (
-                    externalPlatforms.slice(0, 2).map((platform) => (
-                      <div key={platform.id} className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-orange-900">{platform.name}</h4>
-                          {platform.ssoEnabled && (
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">SSO Enabled</span>
-                          )}
-                        </div>
-                        <p className="text-sm text-orange-700 mb-3">{platform.description}</p>
-                        <a 
-                          href={generatePlatformUrl(platform.id, 'current-user-id')} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors"
-                        >
-                          <BookOpenIcon className="w-4 h-4 mr-2" />
-                          Access {platform.name}
-                        </a>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <h4 className="font-medium text-gray-700 mb-2">No External Platforms Configured</h4>
-                      <p className="text-sm text-gray-600 mb-3">
-                        Contact your administrator to configure external learning platforms.
-                      </p>
-                      <Link 
-                        href="/hr/training/external-platforms"
-                        className="text-sm text-orange-600 hover:text-orange-800"
-                      >
-                        Configure Platforms →
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Certificate Upload Section */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <TrophyIcon className="w-5 h-5 text-green-600" />
+                  <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                    <h4 className="font-medium text-orange-900 mb-2">Platform Access</h4>
+                    <a 
+                      href="https://agora.learning.platform" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors"
+                    >
+                      <BookOpenIcon className="w-4 h-4 mr-2" />
+                      Access Agora Platform
+                    </a>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Upload Certificates</h3>
-                </div>
-                
-                <p className="text-gray-600">
-                  Upload your completed course certificates as proof of training completion. These will be automatically added to your employee file.
+                  
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-900 mb-2">Learner's Hub</h4>
+                    <p className="text-sm text-green-700 mb-3">
+                      Submit your completed course certificates and track your learning progress.
                     </p>
                     <a 
                       href="https://learners.hub.portal" 
@@ -899,20 +900,7 @@ export default function TrainingPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {loadingEnrollments ? (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                            Loading enrollments...
-                          </td>
-                        </tr>
-                      ) : enrollments.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                            No enrollments found
-                          </td>
-                        </tr>
-                      ) : (
-                        enrollments.map((enrollment) => (
+                      {enrollments.map((enrollment) => (
                         <tr key={enrollment.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{enrollment.employeeName}</div>
@@ -938,7 +926,7 @@ export default function TrainingPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getEnrollmentStatusColor(enrollment.status)}`}>
-                              {enrollment.status.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                              {enrollment.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -967,8 +955,7 @@ export default function TrainingPage() {
                             </div>
                           </td>
                         </tr>
-                      ))
-                      )}
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -995,16 +982,7 @@ export default function TrainingPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {loadingCertificates ? (
-                    <div className="col-span-full text-center py-8 text-gray-500">
-                      Loading certificates...
-                    </div>
-                  ) : certificates.length === 0 ? (
-                    <div className="col-span-full text-center py-8 text-gray-500">
-                      No certificates found
-                    </div>
-                  ) : (
-                    certificates.map((certificate) => (
+                  {certificates.map((certificate) => (
                     <div key={certificate.id} className="bg-white border-2 border-yellow-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between mb-4">
                         <TrophyIcon className="h-8 w-8 text-yellow-600" />
@@ -1051,8 +1029,7 @@ export default function TrainingPage() {
                         </div>
                       </div>
                     </div>
-                  ))
-                  )}
+                  ))}
                 </div>
               </div>
             )}

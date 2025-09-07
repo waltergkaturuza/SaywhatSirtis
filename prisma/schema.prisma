@@ -1,6 +1,3 @@
-// SIRTIS Database Schema - Supabase PostgreSQL Version
-// SAYWHAT Integrated Real-Time Information System
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,42 +8,32 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// =============================================
-// USER MANAGEMENT & AUTHENTICATION
-// =============================================
-
 model User {
-  id                String              @id @default(cuid())
-  email             String              @unique
-  username          String?             @unique
-  firstName         String?
-  lastName          String?
-  role              UserRole            @default(USER)
-  roles             String[]            @default([])
-  department        String?
-  position          String?
-  isActive          Boolean             @default(true)
-  lastLogin         DateTime?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  
-  // Profile Information
-  phoneNumber       String?
-  profileImage      String?
-  bio               String?
-  location          String?
-  
-  // Security
-  emailVerified     DateTime?
-  twoFactorEnabled  Boolean             @default(false)
-  
-  // Relationships
-  accounts          Account[]
-  sessions          Session[]
-  auditLogs         AuditLog[]
-  createdProjects   Project[]           @relation("ProjectCreator")
-  managedProjects   Project[]           @relation("ProjectManager")
-  
+  id               String     @id @default(cuid())
+  email            String     @unique
+  username         String?    @unique
+  role             UserRole   @default(USER)
+  department       String?
+  position         String?
+  isActive         Boolean    @default(true)
+  lastLogin        DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  emailVerified    DateTime?
+  firstName        String?
+  lastName         String?
+  roles            String[]   @default([])
+  phoneNumber      String?
+  profileImage     String?
+  bio              String?
+  location         String?
+  twoFactorEnabled Boolean    @default(false)
+  accounts         Account[]
+  auditLogs        AuditLog[]
+  createdProjects  Project[]  @relation("ProjectCreator")
+  managedProjects  Project[]  @relation("ProjectManager")
+  sessions         Session[]
+
   @@map("users")
 }
 
@@ -56,15 +43,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -89,23 +75,18 @@ model VerificationToken {
   @@map("verificationtokens")
 }
 
-// =============================================
-// AUDIT & LOGGING
-// =============================================
-
 model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String?
-  action      String
-  resource    String
-  resourceId  String?
-  details     Json?
-  ipAddress   String?
-  userAgent   String?
-  timestamp   DateTime @default(now())
-  
-  user        User?    @relation(fields: [userId], references: [id])
-  
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
   @@index([userId])
   @@index([action])
   @@index([resource])
@@ -113,37 +94,31 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-// =============================================
-// PROGRAMS MANAGEMENT
-// =============================================
-
 model Project {
-  id              String    @id @default(cuid())
-  name            String
-  description     String?
-  objectives      Json?
-  timeframe       String?
-  startDate       DateTime?
-  endDate         DateTime?
-  country         String?
-  province        String?
-  budget          Float?
-  actualSpent     Float?    @default(0)
-  status          String    @default("PLANNING")
-  priority        String    @default("MEDIUM")
-  progress        Int?      @default(0)
-  managerId       String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  currency        String?   @default("USD")
-  creatorId       String?
-  
-  // Relationships - match the actual database
-  documents          Document[]
-  activities         Activity[]
-  manager            User?     @relation("ProjectManager", fields: [managerId], references: [id])
-  creator            User?     @relation("ProjectCreator", fields: [creatorId], references: [id])
-  
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  objectives  Json?
+  timeframe   String?
+  startDate   DateTime?
+  endDate     DateTime?
+  country     String?
+  province    String?
+  budget      Float?
+  actualSpent Float?     @default(0)
+  status      String     @default("PLANNING")
+  priority    String     @default("MEDIUM")
+  progress    Int?       @default(0)
+  managerId   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  currency    String?    @default("USD")
+  creatorId   String?
+  activities  Activity[]
+  documents   Document[]
+  creator     User?      @relation("ProjectCreator", fields: [creatorId], references: [id])
+  manager     User?      @relation("ProjectManager", fields: [managerId], references: [id])
+
   @@index([status])
   @@map("projects")
 }
@@ -151,62 +126,48 @@ model Project {
 model Activity {
   id          String    @id @default(cuid())
   title       String
-  description String?   @db.Text
+  description String?
   status      String    @default("pending")
   dueDate     DateTime?
   completedAt DateTime?
   projectId   String
-  
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
   @@index([status])
   @@index([dueDate])
   @@index([projectId])
   @@map("activities")
 }
 
-// =============================================
-// CALL CENTRE MANAGEMENT
-// =============================================
-
 model CallRecord {
-  id              String    @id @default(cuid())
-  caseNumber      String    @unique
-  callerName      String
-  callerPhone     String?
-  callerEmail     String?
-  callType        String?   @default("INBOUND")  // Changed from enum to String
-  category        String?   @default("INQUIRY")  // Changed from enum to String
-  priority        String?   @default("MEDIUM")   // Changed from enum to String
-  status          String?   @default("OPEN")     // Changed from enum to String
-  subject         String    // Added missing field
-  description     String?   // Added missing field
-  assignedOfficer String?
-  
-  // Call Details
-  summary         String?   @db.Text
-  notes           String?   @db.Text
-  resolution      String?   @db.Text
+  id                 String    @id @default(cuid())
+  caseNumber         String    @unique
+  callerName         String
+  callerPhone        String?
+  callerEmail        String?
+  callType           String?   @default("INBOUND")
+  category           String?   @default("INQUIRY")
+  priority           String?   @default("MEDIUM")
+  status             String?   @default("OPEN")
+  subject            String
+  description        String?
+  assignedOfficer    String?
+  summary            String?
+  notes              String?
+  resolution         String?
   satisfactionRating Int?
-  
-  // Timestamps
-  callStartTime   DateTime?
-  callEndTime     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  resolvedAt      DateTime?
-  
-  // Location
-  district        String?
-  ward            String?
-  
-  // Follow-up
-  followUpRequired Boolean  @default(false)
-  followUpDate    DateTime?
-  
+  callStartTime      DateTime?
+  callEndTime        DateTime?
+  resolvedAt         DateTime?
+  district           String?
+  ward               String?
+  followUpRequired   Boolean   @default(false)
+  followUpDate       DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
   @@index([caseNumber])
   @@index([status])
   @@index([category])
@@ -216,48 +177,59 @@ model CallRecord {
   @@map("call_records")
 }
 
-// =============================================
-// HR MANAGEMENT
-// =============================================
+model Department {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  budget      Float?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  code        String?    @unique
+  location    String?
+  manager     String?
+  status      String     @default("ACTIVE")
+  employees   Employee[]
+
+  @@index([name])
+  @@index([status])
+  @@map("departments")
+}
 
 model Employee {
-  id              String    @id @default(cuid())
-  userId          String    @unique
-  employeeId      String    @unique
-  firstName       String
-  lastName        String
-  middleName      String?
-  dateOfBirth     DateTime?
-  gender          String?
-  nationality     String?
-  nationalId      String?   @unique
-  passportNumber  String?
-  email           String    @unique
-  phoneNumber     String?   // This was renamed from 'phone' in migration
-  alternativePhone String?
-  address         String?
-  emergencyContact String?
-  emergencyPhone  String?
-  department      String?
-  position        String
-  employmentType  String    @default("FULL_TIME")  // Converted from enum to String
-  startDate       DateTime  // This is the original field
-  hireDate        DateTime? // This was added in migration, copied from startDate
-  endDate         DateTime?
-  salary          Float?
-  currency        String?   @default("USD")
-  status          String    @default("ACTIVE")  // Converted from enum to String
-  
-  // HR Records
-  performanceReviews PerformanceReview[]
-  
-  // Training Records
-  trainingEnrollments TrainingEnrollment[]
+  id                  String               @id @default(cuid())
+  userId              String               @unique
+  employeeId          String               @unique
+  firstName           String
+  lastName            String
+  middleName          String?
+  dateOfBirth         DateTime?
+  gender              String?
+  nationality         String?
+  nationalId          String?              @unique
+  passportNumber      String?
+  email               String               @unique
+  phoneNumber         String?
+  alternativePhone    String?
+  address             String?
+  emergencyContact    String?
+  emergencyPhone      String?
+  department          String?
+  position            String
+  employmentType      String               @default("FULL_TIME")
+  startDate           DateTime
+  endDate             DateTime?
+  salary              Float?
+  currency            String?              @default("USD")
+  status              String               @default("ACTIVE")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  hireDate            DateTime?
+  departmentId        String?
+  departmentRef       Department?          @relation(fields: [departmentId], references: [id])
+  performanceReviews  PerformanceReview[]
   trainingAttendance  TrainingAttendance[]
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  trainingEnrollments TrainingEnrollment[]
+
   @@index([employeeId])
   @@index([department])
   @@index([status])
@@ -266,59 +238,50 @@ model Employee {
 }
 
 model PerformanceReview {
-  id            String    @id @default(cuid())
-  employeeId    String
-  reviewPeriod  String    // "Q1 2024", "Annual 2024", etc.
-  reviewType    String    // "quarterly", "annual", "probationary"
-  overallRating Float?
-  goals         Json?     // Array of goals and achievements
-  feedback      String?   @db.Text
-  reviewDate    DateTime
+  id             String    @id @default(cuid())
+  employeeId     String
+  reviewPeriod   String
+  reviewType     String
+  overallRating  Float?
+  goals          Json?
+  feedback       String?
+  reviewDate     DateTime
   nextReviewDate DateTime?
-  
-  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   @@index([employeeId])
   @@index([reviewDate])
   @@map("performance_reviews")
 }
 
-// =============================================
-// TRAINING MANAGEMENT
-// =============================================
-
 model TrainingProgram {
-  id              String    @id @default(cuid())
-  title           String
-  description     String?   @db.Text
-  category        String    // "Technical", "Soft Skills", "Compliance", etc.
-  duration        String    // "1 week", "3 days", "2 hours", etc.
-  format          String    // "Online", "In-Person", "Hybrid"
-  capacity        Int?
-  instructor      String?
-  status          String    @default("DRAFT") // "DRAFT", "PUBLISHED", "ACTIVE", "COMPLETED", "CANCELLED"
-  startDate       DateTime?
-  endDate         DateTime?
-  enrollmentDeadline DateTime?
-  certificationAvailable Boolean @default(false)
-  prerequisites   String?   @db.Text
-  learningObjectives Json?  // Array of objectives
-  materials       Json?     // Array of materials/resources
-  cost            Float?    @default(0)
-  currency        String?   @default("USD")
-  location        String?   // For in-person training
-  onlineLink      String?   // For online training
-  
-  // Relationships
-  enrollments     TrainingEnrollment[]
-  sessions        TrainingSession[]
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id                     String               @id @default(cuid())
+  title                  String
+  description            String?
+  category               String
+  duration               String
+  format                 String
+  capacity               Int?
+  instructor             String?
+  status                 String               @default("DRAFT")
+  startDate              DateTime?
+  endDate                DateTime?
+  enrollmentDeadline     DateTime?
+  certificationAvailable Boolean              @default(false)
+  prerequisites          String?
+  learningObjectives     Json?
+  materials              Json?
+  cost                   Float?               @default(0)
+  currency               String?              @default("USD")
+  location               String?
+  onlineLink             String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  enrollments            TrainingEnrollment[]
+  sessions               TrainingSession[]
+
   @@index([category])
   @@index([status])
   @@index([startDate])
@@ -326,25 +289,22 @@ model TrainingProgram {
 }
 
 model TrainingEnrollment {
-  id                String           @id @default(cuid())
-  programId         String
-  employeeId        String
-  enrollmentDate    DateTime         @default(now())
-  status            String           @default("ENROLLED") // "ENROLLED", "IN_PROGRESS", "COMPLETED", "DROPPED", "FAILED"
-  progress          Int              @default(0) // Percentage
-  completionDate    DateTime?
-  finalScore        Float?
-  feedback          String?          @db.Text
-  attendanceRate    Float?           // Percentage
-  
-  // Relationships
-  program           TrainingProgram  @relation(fields: [programId], references: [id], onDelete: Cascade)
-  employee          Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  certificate       TrainingCertificate?
-  
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  
+  id             String               @id @default(cuid())
+  employeeId     String
+  enrollmentDate DateTime             @default(now())
+  completionDate DateTime?
+  attendanceRate Float?
+  createdAt      DateTime             @default(now())
+  feedback       String?
+  finalScore     Float?
+  programId      String
+  progress       Int                  @default(0)
+  updatedAt      DateTime             @updatedAt
+  status         String               @default("ENROLLED")
+  certificate    TrainingCertificate?
+  employee       Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  program        TrainingProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
+
   @@unique([programId, employeeId])
   @@index([employeeId])
   @@index([status])
@@ -352,100 +312,84 @@ model TrainingEnrollment {
 }
 
 model TrainingSession {
-  id              String          @id @default(cuid())
-  programId       String
-  title           String
-  description     String?         @db.Text
-  sessionDate     DateTime
-  startTime       String          // "09:00"
-  endTime         String          // "17:00"
-  instructor      String?
-  location        String?
-  onlineLink      String?
-  materials       Json?           // Session-specific materials
-  maxAttendees    Int?
-  
-  // Relationships
-  program         TrainingProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
-  attendance      TrainingAttendance[]
-  
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  
+  id           String               @id @default(cuid())
+  programId    String
+  title        String
+  description  String?
+  sessionDate  DateTime
+  startTime    String
+  endTime      String
+  instructor   String?
+  location     String?
+  onlineLink   String?
+  materials    Json?
+  maxAttendees Int?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  attendance   TrainingAttendance[]
+  program      TrainingProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
+
   @@index([programId])
   @@index([sessionDate])
   @@map("training_sessions")
 }
 
 model TrainingAttendance {
-  id              String          @id @default(cuid())
-  sessionId       String
-  employeeId      String
-  status          String          // "PRESENT", "ABSENT", "LATE", "EXCUSED"
-  checkInTime     DateTime?
-  checkOutTime    DateTime?
-  notes           String?
-  
-  // Relationships
-  session         TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  employee        Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  
+  id           String          @id @default(cuid())
+  sessionId    String
+  employeeId   String
+  status       String
+  checkInTime  DateTime?
+  checkOutTime DateTime?
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  employee     Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  session      TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
   @@unique([sessionId, employeeId])
   @@index([employeeId])
   @@map("training_attendance")
 }
 
 model TrainingCertificate {
-  id              String               @id @default(cuid())
-  enrollmentId    String               @unique
+  id                String             @id @default(cuid())
+  enrollmentId      String             @unique
   certificateNumber String             @unique
-  issuedDate      DateTime
-  expiryDate      DateTime?
-  isValid         Boolean              @default(true)
-  downloadCount   Int                  @default(0)
-  
-  // Relationships
-  enrollment      TrainingEnrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  
+  issuedDate        DateTime
+  expiryDate        DateTime?
+  isValid           Boolean            @default(true)
+  downloadCount     Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  enrollment        TrainingEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
   @@index([certificateNumber])
   @@index([issuedDate])
   @@map("training_certificates")
 }
 
-// =============================================
-// INVENTORY MANAGEMENT
-// =============================================
-
 model Asset {
-  id              String    @id @default(cuid())
-  assetTag        String    @unique
-  name            String
-  description     String?   @db.Text
-  category        String    // Match database: "Computer", "Equipment", etc.
-  brand           String?   // Match database field name
-  model           String?
-  serialNumber    String?
-  purchaseDate    DateTime?
-  purchasePrice   Float?
-  currentValue    Float?
-  location        String?
-  condition       AssetCondition @default(GOOD) // Enum for asset condition
-  status          String    @default("ACTIVE")  // Match database: "ACTIVE", "maintenance", "disposed"
-  warrantyExpiry  DateTime?
-  
-  // Records
+  id                 String              @id @default(cuid())
+  assetTag           String              @unique
+  name               String
+  description        String?
+  category           String
+  brand              String?
+  model              String?
+  serialNumber       String?
+  purchaseDate       DateTime?
+  purchasePrice      Float?
+  currentValue       Float?
+  location           String?
+  condition          AssetCondition      @default(GOOD)
+  status             String              @default("ACTIVE")
+  warrantyExpiry     DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  auditRecords       AssetAudit[]
   maintenanceRecords MaintenanceRecord[]
-  auditRecords    AssetAudit[]
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+
   @@index([assetTag])
   @@index([category])
   @@index([status])
@@ -456,116 +400,88 @@ model Asset {
 model MaintenanceRecord {
   id              String    @id @default(cuid())
   assetId         String
-  maintenanceType String    // "preventive", "corrective", "emergency"
-  description     String?   @db.Text
+  description     String?
   cost            Float?
-  performedBy     String?
-  performedDate   DateTime
-  nextDueDate     DateTime?
-  
-  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
+  nextDueDate     DateTime?
+  performedBy     String?
+  performedDate   DateTime
+  maintenanceType String
+  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
   @@index([assetId])
   @@index([performedDate])
   @@map("maintenance_records")
 }
 
 model AssetAudit {
-  id              String    @id @default(cuid())
-  assetId         String
-  auditDate       DateTime
-  condition       String    // "excellent", "good", "fair", "poor"
-  notes           String?   @db.Text
-  auditedBy       String?
-  
-  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id        String   @id @default(cuid())
+  assetId   String
+  auditDate DateTime
+  condition String
+  notes     String?
+  auditedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
   @@index([assetId])
   @@index([auditDate])
   @@map("asset_audits")
 }
 
-// =============================================
-// DOCUMENT MANAGEMENT
-// =============================================
-
 model Document {
-  id              String    @id @default(cuid())
-  filename        String
-  originalName    String
-  mimeType        String
-  size            Int
-  path            String    // File storage path
-  url             String?   // Public URL if applicable
-  category        DocumentCategory? // "policy", "report", "form", etc.
-  tags            String[]  @default([])
-  
-  // AI Search Integration
-  extractedText   String?   @db.Text
-  summary         String?   @db.Text
-  searchKeywords  String[]  @default([])
-  
-  // Access Control
-  isPublic        Boolean   @default(false)
-  accessLevel     String    @default("internal") // "public", "internal", "restricted"
-  
-  // Metadata
-  uploadedBy      String?
-  version         String    @default("1.0")
-  description     String?   @db.Text
-  projectId       String?
-  
-  // Relationships
-  project         Project?  @relation(fields: [projectId], references: [id])
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id             String            @id @default(cuid())
+  mimeType       String
+  category       DocumentCategory?
+  description    String?
+  version        String            @default("1.0")
+  isPublic       Boolean           @default(false)
+  uploadedBy     String?
+  projectId      String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  accessLevel    String            @default("internal")
+  extractedText  String?
+  filename       String
+  originalName   String
+  path           String
+  searchKeywords String[]          @default([])
+  size           Int
+  summary        String?
+  url            String?
+  tags           String[]          @default([])
+  project        Project?          @relation(fields: [projectId], references: [id])
+
   @@index([category])
   @@index([uploadedBy])
   @@index([isPublic])
   @@map("documents")
 }
 
-// =============================================
-// EVENTS MANAGEMENT
-// =============================================
-
 model Event {
-  id              String    @id @default(cuid())
-  title           String
-  description     String?   @db.Text
-  type            String    // "flagship", "training", "meeting", etc.
-  status          String    @default("planning") // "planning", "approved", "in-progress", "completed", "cancelled"
-  startDate       DateTime
-  endDate         DateTime?
-  location        String?
-  venue           String?
-  capacity        Int?
-  
-  // Event Details
-  agenda          Json?     // Event agenda/program
-  speakers        Json?     // Speaker information
-  budget          Float?
-  actualCost      Float     @default(0)
-  
-  // Registration
-  requiresRegistration Boolean @default(false)
+  id                   String              @id @default(cuid())
+  title                String
+  description          String?
+  type                 String
+  status               String              @default("planning")
+  startDate            DateTime
+  endDate              DateTime?
+  location             String?
+  venue                String?
+  capacity             Int?
+  agenda               Json?
+  speakers             Json?
+  budget               Float?
+  actualCost           Float               @default(0)
+  requiresRegistration Boolean             @default(false)
   registrationDeadline DateTime?
-  registrations   EventRegistration[]
-  
-  // Implementation Partners
-  partners        Json?     // Implementation partners data
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  partners             Json?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  registrations        EventRegistration[]
+
   @@index([type])
   @@index([status])
   @@index([startDate])
@@ -573,70 +489,54 @@ model Event {
 }
 
 model EventRegistration {
-  id              String    @id @default(cuid())
-  eventId         String
-  participantName String
-  participantEmail String
-  participantPhone String?
-  organization    String?
-  position        String?
-  specialRequirements String? @db.Text
-  status          String    @default("pending") // "pending", "confirmed", "cancelled"
-  
-  event           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
-  registeredAt    DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id                  String   @id @default(cuid())
+  eventId             String
+  participantName     String
+  participantEmail    String
+  participantPhone    String?
+  organization        String?
+  position            String?
+  specialRequirements String?
+  status              String   @default("pending")
+  registeredAt        DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  event               Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   @@unique([eventId, participantEmail])
   @@index([eventId])
   @@index([status])
   @@map("event_registrations")
 }
 
-// =============================================
-// SYSTEM CONFIGURATION
-// =============================================
-
 model SystemConfig {
-  id              String    @id @default(cuid())
-  key             String    @unique
-  value           Json
-  description     String?
-  category        String?   // "general", "security", "integrations"
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   @@index([category])
   @@map("system_config")
 }
 
-// =============================================
-// NOTIFICATIONS
-// =============================================
-
 model Notification {
-  id              String    @id @default(cuid())
-  userId          String?
-  type            NotificationType @default(INFO) // "info", "warning", "error", "success"
-  title           String
-  message         String    @db.Text
-  isRead          Boolean   @default(false)
-  actionUrl       String?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id        String           @id @default(cuid())
+  userId    String?
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  actionUrl String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
   @@map("notifications")
 }
-
-// =============================================
-// ENUMS
-// =============================================
 
 enum UserRole {
   SUPER_ADMIN

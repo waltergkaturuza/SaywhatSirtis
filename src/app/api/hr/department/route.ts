@@ -22,41 +22,56 @@ export async function GET() {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    // Get unique departments from employee records
-    const departmentData = await prisma.employee.findMany({
-      select: {
-        department: true
+    // Fetch departments with employee count
+    const departments = await prisma.department.findMany({
+      include: {
+        employees: {
+          where: {
+            status: 'ACTIVE'
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            position: true,
+            email: true
+          }
+        },
+        _count: {
+          select: {
+            employees: {
+              where: {
+                status: 'ACTIVE'
+              }
+            }
+          }
+        }
       },
-      distinct: ['department']
+      orderBy: {
+        name: 'asc'
+      }
     });
 
-    // Transform to match expected format
-    const departments = departmentData
-      .filter(item => item.department && item.department.trim()) // Filter out null/undefined/empty departments
-      .map(item => {
-        const deptName = item.department as string; // Type assertion after filter
-        return {
-          id: deptName.toLowerCase().replace(/\s+/g, '_'),
-          name: deptName,
-          description: `${deptName} Department`,
-          employeeCount: 0 // Will be calculated separately
-        };
-      });
-
-    // Get employee count for each department
-    for (const dept of departments) {
-      const count = await prisma.employee.count({
-        where: {
-          department: dept.name,
-          status: 'ACTIVE'
-        }
-      });
-      dept.employeeCount = count;
-    }
+    // Transform data for frontend
+    const transformedDepartments = departments.map(dept => ({
+      id: dept.id,
+      name: dept.name,
+      description: dept.description,
+      code: dept.code,
+      manager: dept.manager,
+      budget: dept.budget,
+      location: dept.location,
+      status: dept.status,
+      employeeCount: dept._count.employees,
+      employees: dept.employees,
+      createdAt: dept.createdAt.toISOString(),
+      updatedAt: dept.updatedAt.toISOString()
+    }));
     
     return NextResponse.json({
       success: true,
-      data: departments
+      data: transformedDepartments,
+      total: transformedDepartments.length
     });
   } catch (error) {
     console.error('Error fetching departments:', error);
@@ -71,7 +86,7 @@ export async function GET() {
   }
 }
 
-// POST /api/hr/department - Create new department (by adding employee)
+// POST /api/hr/department - Create new department
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -90,9 +105,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    const { name, description } = await request.json();
+    const { name, description, code, manager, budget, location, status } = await request.json();
 
-    if (!name) {
+    // Validation
+    if (!name || name.trim() === '') {
       return NextResponse.json(
         { 
           success: false, 
@@ -102,34 +118,77 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if department already exists
-    const existingDept = await prisma.employee.findFirst({
-      where: {
-        department: name
-      }
+    // Check if department name already exists
+    const existingDept = await prisma.department.findUnique({
+      where: { name: name.trim() }
     });
 
     if (existingDept) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Department already exists' 
+          error: 'Department with this name already exists' 
         },
         { status: 409 }
       );
     }
 
-    // Since we don't have a separate Department model,
-    // we'll return success but note that departments are created
-    // when employees are assigned to them
+    // Check if code already exists (if provided)
+    if (code && code.trim() !== '') {
+      const existingCode = await prisma.department.findUnique({
+        where: { code: code.trim().toUpperCase() }
+      });
+
+      if (existingCode) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Department with this code already exists' 
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Create department
+    const newDepartment = await prisma.department.create({
+      data: {
+        name: name.trim(),
+        description: description?.trim() || null,
+        code: code?.trim().toUpperCase() || null,
+        manager: manager?.trim() || null,
+        budget: budget ? parseFloat(budget) : null,
+        location: location?.trim() || null,
+        status: status || 'ACTIVE'
+      },
+      include: {
+        _count: {
+          select: {
+            employees: {
+              where: {
+                status: 'ACTIVE'
+              }
+            }
+          }
+        }
+      }
+    });
+
     return NextResponse.json({
       success: true,
-      message: 'Department will be created when first employee is assigned',
+      message: 'Department created successfully',
       data: {
-        id: name.toLowerCase().replace(/\s+/g, '_'),
-        name: name,
-        description: description || `${name} Department`,
-        employeeCount: 0
+        id: newDepartment.id,
+        name: newDepartment.name,
+        description: newDepartment.description,
+        code: newDepartment.code,
+        manager: newDepartment.manager,
+        budget: newDepartment.budget,
+        location: newDepartment.location,
+        status: newDepartment.status,
+        employeeCount: newDepartment._count.employees,
+        createdAt: newDepartment.createdAt.toISOString(),
+        updatedAt: newDepartment.updatedAt.toISOString()
       }
     }, { status: 201 });
 
@@ -146,8 +205,141 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT /api/hr/department - Update department (rename all employees' department)
+// PUT /api/hr/department - Update department
 export async function PUT(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager');
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { id, name, description, code, manager, budget, location, status } = await request.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Department ID is required' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if department exists
+    const existingDept = await prisma.department.findUnique({
+      where: { id }
+    });
+
+    if (!existingDept) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Department not found' 
+        },
+        { status: 404 }
+      );
+    }
+
+    // Check if new name conflicts (if name is being changed)
+    if (name && name.trim() !== existingDept.name) {
+      const nameConflict = await prisma.department.findUnique({
+        where: { name: name.trim() }
+      });
+
+      if (nameConflict) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Department with this name already exists' 
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Check if new code conflicts (if code is being changed)
+    if (code && code.trim() !== existingDept.code) {
+      const codeConflict = await prisma.department.findUnique({
+        where: { code: code.trim().toUpperCase() }
+      });
+
+      if (codeConflict) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Department with this code already exists' 
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Update department
+    const updatedDepartment = await prisma.department.update({
+      where: { id },
+      data: {
+        name: name?.trim() || existingDept.name,
+        description: description?.trim() || existingDept.description,
+        code: code?.trim().toUpperCase() || existingDept.code,
+        manager: manager?.trim() || existingDept.manager,
+        budget: budget !== undefined ? (budget ? parseFloat(budget) : null) : existingDept.budget,
+        location: location?.trim() || existingDept.location,
+        status: status || existingDept.status
+      },
+      include: {
+        _count: {
+          select: {
+            employees: {
+              where: {
+                status: 'ACTIVE'
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Department updated successfully',
+      data: {
+        id: updatedDepartment.id,
+        name: updatedDepartment.name,
+        description: updatedDepartment.description,
+        code: updatedDepartment.code,
+        manager: updatedDepartment.manager,
+        budget: updatedDepartment.budget,
+        location: updatedDepartment.location,
+        status: updatedDepartment.status,
+        employeeCount: updatedDepartment._count.employees,
+        createdAt: updatedDepartment.createdAt.toISOString(),
+        updatedAt: updatedDepartment.updatedAt.toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating department:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to update department',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}
   try {
     const session = await getServerSession(authOptions);
     
