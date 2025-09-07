@@ -249,14 +249,14 @@ export async function POST(request: NextRequest) {
       assetNumber: newAsset.assetTag,
       category: newAsset.category,
       type: newAsset.category,
-      brand: newAsset.manufacturer,
-      model: newAsset.model,
-      serialNumber: newAsset.serialNumber,
+      brand: (newAsset as any).brand || '',
+      model: newAsset.model || '',
+      serialNumber: newAsset.serialNumber || '',
       status: newAsset.status.toLowerCase(),
       condition: newAsset.status.toLowerCase(),
-      location: newAsset.location,
-      department: newAsset.location,
-      assignedTo: newAsset.assignedTo,
+      location: newAsset.location || '',
+      department: newAsset.location || '',
+      assignedTo: '', // Not available in current schema
       procurementValue: newAsset.purchasePrice ? parseFloat(newAsset.purchasePrice.toString()) : 0,
       currentValue: newAsset.currentValue ? parseFloat(newAsset.currentValue.toString()) : 0,
       depreciationRate: 0, // Not in schema
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
       nextMaintenanceDate: null,
       rfidTag: null,
       qrCode: null,
-      description: null,
+      description: newAsset.description || null,
       createdAt: newAsset.createdAt.toISOString(),
       updatedAt: newAsset.updatedAt.toISOString()
     }
@@ -383,14 +383,14 @@ export async function PUT(request: NextRequest) {
       assetNumber: updatedAsset.assetTag,
       category: updatedAsset.category,
       type: updatedAsset.category,
-      brand: updatedAsset.manufacturer,
-      model: updatedAsset.model,
-      serialNumber: updatedAsset.serialNumber,
+      brand: (updatedAsset as any).brand || '',
+      model: updatedAsset.model || '',
+      serialNumber: updatedAsset.serialNumber || '',
       status: updatedAsset.status.toLowerCase(),
       condition: updatedAsset.status.toLowerCase(),
-      location: updatedAsset.location,
-      department: updatedAsset.location,
-      assignedTo: updatedAsset.assignedTo,
+      location: updatedAsset.location || '',
+      department: updatedAsset.location || '',
+      assignedTo: '', // Not available in current schema
       procurementValue: updatedAsset.purchasePrice ? parseFloat(updatedAsset.purchasePrice.toString()) : 0,
       currentValue: updatedAsset.currentValue ? parseFloat(updatedAsset.currentValue.toString()) : 0,
       depreciationRate: 0, // Not in schema
@@ -400,7 +400,7 @@ export async function PUT(request: NextRequest) {
       nextMaintenanceDate: null,
       rfidTag: null,
       qrCode: null,
-      description: null,
+      description: updatedAsset.description || null,
       createdAt: updatedAsset.createdAt.toISOString(),
       updatedAt: updatedAsset.updatedAt.toISOString()
     }
