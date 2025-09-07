@@ -247,9 +247,9 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
     ))
   }
 
-  const filteredAssets = assets.filter(asset => {
+  const filteredAssets = (assets || []).filter(asset => {
     if (filterStatus === 'all') return true
-    const device = trackingDevices.find(d => d.assetId === asset.id)
+    const device = (trackingDevices || []).find(d => d.assetId === asset.id)
     return device?.status === filterStatus
   })
 
@@ -342,24 +342,24 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
       )}
 
       {/* Alerts Section */}
-      {alerts.filter(a => !a.acknowledged).length > 0 && (
+      {(alerts || []).filter(a => !a.acknowledged).length > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
               <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 mr-2" />
               <h4 className="text-sm font-medium text-yellow-800">
-                Active Location Alerts ({alerts.filter(a => !a.acknowledged).length})
+                Active Location Alerts ({(alerts || []).filter(a => !a.acknowledged).length})
               </h4>
             </div>
           </div>
           <div className="space-y-2">
-            {alerts.filter(a => !a.acknowledged).slice(0, 3).map(alert => (
+            {(alerts || []).filter(a => !a.acknowledged).slice(0, 3).map(alert => (
               <div key={alert.id} className={`p-3 rounded border ${getAlertSeverityColor(alert.severity)}`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">{alert.message}</p>
                     <p className="text-xs opacity-75">
-                      Asset: {assets.find(a => a.id === alert.assetId)?.name} - {new Date(alert.timestamp).toLocaleString()}
+                      Asset: {(assets || []).find(a => a.id === alert.assetId)?.name} - {new Date(alert.timestamp).toLocaleString()}
                     </p>
                   </div>
                   <button
@@ -419,7 +419,7 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
                   {/* Asset Markers */}
                   {filteredAssets.map(asset => {
                     if (!asset.coordinates) return null
-                    const device = trackingDevices.find(d => d.assetId === asset.id)
+                    const device = (trackingDevices || []).find(d => d.assetId === asset.id)
                     const isSelected = selectedAsset === asset.id
                     const markerColor = device?.status === 'online' ? '#10B981' : 
                                        device?.status === 'low-battery' ? '#F59E0B' : '#EF4444'
@@ -453,7 +453,7 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
                   })}
                   
                   {/* Geofence Circles */}
-                  {showGeofences && geofences.filter(zone => zone.active).map(zone => (
+                  {showGeofences && (geofences || []).filter(zone => zone.active).map(zone => (
                     <Circle
                       key={zone.id}
                       center={[zone.coordinates.lat, zone.coordinates.lng]}
@@ -518,7 +518,7 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
             <h4 className="text-lg font-semibold text-gray-900 mb-4">Tracked Assets</h4>
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {filteredAssets.map(asset => {
-                const device = trackingDevices.find(d => d.assetId === asset.id)
+                const device = (trackingDevices || []).find(d => d.assetId === asset.id)
                 const isSelected = selectedAsset === asset.id
                 
                 return (
@@ -613,25 +613,25 @@ export function LocationTracking({ assets, permissions }: LocationTrackingProps)
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Online</span>
                 <span className="font-medium text-green-600">
-                  {trackingDevices.filter(d => d.status === 'online').length}
+                  {(trackingDevices || []).filter(d => d.status === 'online').length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Low Battery</span>
                 <span className="font-medium text-yellow-600">
-                  {trackingDevices.filter(d => d.status === 'low-battery').length}
+                  {(trackingDevices || []).filter(d => d.status === 'low-battery').length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Offline</span>
                 <span className="font-medium text-red-600">
-                  {trackingDevices.filter(d => d.status === 'offline').length}
+                  {(trackingDevices || []).filter(d => d.status === 'offline').length}
                 </span>
               </div>
               <div className="pt-2 border-t">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-gray-900">Total Devices</span>
-                  <span className="font-medium">{trackingDevices.length}</span>
+                  <span className="font-medium">{(trackingDevices || []).length}</span>
                 </div>
               </div>
             </div>
