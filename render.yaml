@@ -17,9 +17,9 @@ services:
       - key: NEXTAUTH_SECRET
         value: "6a1f9c25c069957affc22548e3fb186f86caf4dc8005f1148a18b1d9fa912744"
       - key: DATABASE_URL
-        value: "postgres://postgres.yuwwqupyqpmkbqzvqiee:8FNI4OdtFINUw2GL@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+        value: "postgres://postgres.yuwwqupyqpmkbqzvqiee:8FNI4OdtFINUw2GL@aws-0-us-east-1.compute-1.amazonaws.com:5432/postgres?sslmode=require"
       - key: DIRECT_URL
-        value: "postgres://postgres.yuwwqupyqpmkbqzvqiee:8FNI4OdtFINUw2GL@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+        value: "postgres://postgres.yuwwqupyqpmkbqzvqiee:8FNI4OdtFINUw2GL@aws-0-us-east-1.compute-1.amazonaws.com:5432/postgres?sslmode=require"
       - key: SUPABASE_URL
         value: "https://yuwwqupyqpmkbqzvqiee.supabase.co"
       - key: SUPABASE_ANON_KEY
