@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
-import { PrismaClient } from "@prisma/client"
+import { executeQuery } from "@/lib/prisma"
 import { z } from "zod"
-
-const prisma = new PrismaClient()
 
 // Map category to valid enum value
 const mapCategory = (category: string): 'COMPUTER' | 'FURNITURE' | 'VEHICLE' | 'EQUIPMENT' | 'OTHER' => {
@@ -73,72 +71,94 @@ export async function GET(request: NextRequest) {
     const location = searchParams.get('location')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '50')
-    const skip = (page - 1) * limit
+    const offset = (page - 1) * limit
 
-    // Build where clause for filtering
-    const where: any = {}
-    
+    // Build SQL query with proper filtering
+    let whereClause = "WHERE 1=1"
+    const params: any[] = []
+    let paramIndex = 1
+
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { assetTag: { contains: search, mode: 'insensitive' } },
-        { category: { contains: search, mode: 'insensitive' } },
-        { location: { contains: search, mode: 'insensitive' } }
-      ]
-    }
-    
-    if (status && status !== 'all') {
-      where.status = status.toUpperCase()
-    }
-    
-    if (location && location !== 'all') {
-      where.location = { contains: location, mode: 'insensitive' }
+      whereClause += ` AND (name ILIKE $${paramIndex} OR "assetTag" ILIKE $${paramIndex} OR category ILIKE $${paramIndex} OR location ILIKE $${paramIndex})`
+      params.push(`%${search}%`)
+      paramIndex++
     }
 
-    // Fetch assets from database
-    const [assets, totalCount] = await Promise.all([
-      prisma.asset.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-        include: {
-          maintenanceRecords: {
-            orderBy: { createdAt: 'desc' },
-            take: 1
-          }
-        }
+    if (status && status !== 'all') {
+      whereClause += ` AND status = $${paramIndex}`
+      params.push(status.toUpperCase())
+      paramIndex++
+    }
+
+    if (location && location !== 'all') {
+      whereClause += ` AND location ILIKE $${paramIndex}`
+      params.push(`%${location}%`)
+      paramIndex++
+    }
+
+    // Get assets with safe field access
+    const [assets, countResult] = await Promise.all([
+      executeQuery(async (prisma) => {
+        return await prisma.$queryRawUnsafe(`
+          SELECT 
+            id, 
+            "assetTag", 
+            name, 
+            description, 
+            category, 
+            COALESCE(brand, '') as brand,
+            COALESCE(model, '') as model,
+            COALESCE("serialNumber", '') as "serialNumber",
+            "purchaseDate",
+            COALESCE("purchasePrice", 0) as "purchasePrice",
+            COALESCE("currentValue", 0) as "currentValue",
+            COALESCE(location, '') as location,
+            condition,
+            status,
+            "warrantyExpiry",
+            "createdAt",
+            "updatedAt"
+          FROM assets 
+          ${whereClause}
+          ORDER BY "createdAt" DESC
+          LIMIT ${limit} OFFSET ${offset}
+        `)
       }),
-      prisma.asset.count({ where })
+      executeQuery(async (prisma) => {
+        const result = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM assets ${whereClause}`)
+        return result
+      })
     ])
 
+    const totalCount = parseInt((countResult as any)[0]?.count || '0')
+
     // Transform data to match frontend expectations
-    const transformedAssets = assets.map((asset: any) => ({
+    const transformedAssets = (assets as any[]).map((asset: any) => ({
       id: asset.id,
       name: asset.name,
-      assetNumber: asset.assetTag, // Use assetTag from schema
-      category: asset.category, // Use category directly from schema
+      assetNumber: asset.assetTag,
+      category: asset.category,
       type: asset.category,
-      brand: asset.brand || '', // Use brand field from database
+      brand: asset.brand || '',
       model: asset.model || '',
       serialNumber: asset.serialNumber || '',
       status: asset.status ? asset.status.toLowerCase() : 'active',
       condition: asset.condition ? (typeof asset.condition === 'string' ? asset.condition.toLowerCase() : asset.condition) : 'good',
       location: asset.location || '',
-      department: asset.location || '', // Use location as department
+      department: asset.location || '',
       assignedTo: '', // Not available in current schema
       procurementValue: asset.purchasePrice ? parseFloat(asset.purchasePrice.toString()) : 0,
       currentValue: asset.currentValue ? parseFloat(asset.currentValue.toString()) : 0,
-      depreciationRate: 0, // Not in schema, default to 0
-      procurementDate: asset.purchaseDate?.toISOString().split('T')[0] || null,
-      warrantyExpiry: asset.warrantyExpiry?.toISOString().split('T')[0] || null,
-      lastAuditDate: null, // Not in current schema
-      nextMaintenanceDate: asset.maintenanceRecords?.[0]?.nextDueDate?.toISOString().split('T')[0] || null,
-      rfidTag: null, // Not in current schema
-      qrCode: null, // Not in current schema
+      depreciationRate: 0,
+      procurementDate: asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().split('T')[0] : null,
+      warrantyExpiry: asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toISOString().split('T')[0] : null,
+      lastAuditDate: null,
+      nextMaintenanceDate: null,
+      rfidTag: null,
+      qrCode: null,
       description: asset.description || '',
-      createdAt: asset.createdAt.toISOString(),
-      updatedAt: asset.updatedAt.toISOString()
+      createdAt: new Date(asset.createdAt).toISOString(),
+      updatedAt: new Date(asset.updatedAt).toISOString()
     }))
 
     return NextResponse.json({
@@ -155,11 +175,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching assets:", error)
     return NextResponse.json(
-      { error: "Failed to fetch assets" },
+      { 
+        error: "Failed to fetch assets",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -191,8 +212,10 @@ export async function POST(request: NextRequest) {
     const validatedData = validationResult.data
 
     // Check if asset number already exists
-    const existingAsset = await prisma.asset.findUnique({
-      where: { assetTag: validatedData.assetNumber }
+    const existingAsset = await executeQuery(async (prisma) => {
+      return await prisma.asset.findUnique({
+        where: { assetTag: validatedData.assetNumber }
+      })
     })
 
     if (existingAsset) {
@@ -203,18 +226,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new asset in database
-    const newAsset = await prisma.asset.create({
-      data: {
-        name: validatedData.name,
-        assetTag: validatedData.assetNumber,
-        category: mapCategory(validatedData.category),
-        model: validatedData.model,
-        purchasePrice: validatedData.procurementValue,
-        currentValue: validatedData.currentValue,
-        location: validatedData.location,
-        status: mapStatus(validatedData.status),
-        purchaseDate: validatedData.procurementDate
-      }
+    const newAsset = await executeQuery(async (prisma) => {
+      return await prisma.asset.create({
+        data: {
+          name: validatedData.name,
+          assetTag: validatedData.assetNumber,
+          category: mapCategory(validatedData.category),
+          model: validatedData.model,
+          purchasePrice: validatedData.procurementValue,
+          currentValue: validatedData.currentValue,
+          location: validatedData.location,
+          status: mapStatus(validatedData.status),
+          purchaseDate: validatedData.procurementDate
+        }
+      })
     })
 
     // Transform response to match frontend expectations
@@ -260,8 +285,6 @@ export async function POST(request: NextRequest) {
       { error: "Failed to create asset" },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -305,8 +328,10 @@ export async function PUT(request: NextRequest) {
     const validatedData = validationResult.data
 
     // Check if asset exists
-    const existingAsset = await prisma.asset.findUnique({
-      where: { id }
+    const existingAsset = await executeQuery(async (prisma) => {
+      return await prisma.asset.findUnique({
+        where: { id }
+      })
     })
 
     if (!existingAsset) {
@@ -318,8 +343,10 @@ export async function PUT(request: NextRequest) {
 
     // Check if asset number is being changed and already exists (validatedData uses assetNumber)
     if (validatedData.assetNumber && validatedData.assetNumber !== existingAsset.assetTag) {
-      const duplicateAsset = await prisma.asset.findUnique({
-        where: { assetTag: validatedData.assetNumber }
+      const duplicateAsset = await executeQuery(async (prisma) => {
+        return await prisma.asset.findUnique({
+          where: { assetTag: validatedData.assetNumber }
+        })
       })
 
       if (duplicateAsset) {
@@ -342,9 +369,11 @@ export async function PUT(request: NextRequest) {
     if (validatedData.procurementDate) updateData.purchaseDate = validatedData.procurementDate
 
     // Update asset in database
-    const updatedAsset = await prisma.asset.update({
-      where: { id },
-      data: updateData
+    const updatedAsset = await executeQuery(async (prisma) => {
+      return await prisma.asset.update({
+        where: { id },
+        data: updateData
+      })
     })
 
     // Transform response to match frontend expectations
@@ -387,8 +416,6 @@ export async function PUT(request: NextRequest) {
       { error: "Failed to update asset" },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -414,8 +441,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if asset exists
-    const existingAsset = await prisma.asset.findUnique({
-      where: { id }
+    const existingAsset = await executeQuery(async (prisma) => {
+      return await prisma.asset.findUnique({
+        where: { id }
+      })
     })
 
     if (!existingAsset) {
@@ -426,8 +455,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete asset from database (this will cascade delete maintenance records)
-    await prisma.asset.delete({
-      where: { id }
+    await executeQuery(async (prisma) => {
+      return await prisma.asset.delete({
+        where: { id }
+      })
     })
 
     return NextResponse.json({
@@ -440,7 +471,5 @@ export async function DELETE(request: NextRequest) {
       { error: "Failed to delete asset" },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
