@@ -88,10 +88,10 @@ export default function CaseManagementPage() {
   }
 
   // Extract unique officers from cases for filter dropdown
-  const officers = [...new Set(cases.map(c => c.officer).filter(Boolean))]
+  const officers = [...new Set((cases || []).map(c => c.officer).filter(Boolean))]
 
   // Filter cases based on active tab and search
-  const filteredCases = cases.filter(caseItem => {
+  const filteredCases = (cases || []).filter(caseItem => {
     const matchesTab = activeTab === 'all' || 
                       (activeTab === 'open' && caseItem.status === 'open') ||
                       (activeTab === 'in-progress' && caseItem.status === 'in-progress') ||
@@ -111,12 +111,12 @@ export default function CaseManagementPage() {
 
   // Calculate statistics
   const stats = {
-    totalCases: cases.length,
-    openCases: cases.filter(c => c.status === 'open').length,
-    inProgressCases: cases.filter(c => c.status === 'in-progress').length,
-    pendingCases: cases.filter(c => c.status === 'pending').length,
-    closedCases: cases.filter(c => c.status === 'closed').length,
-    overdueCases: cases.filter(c => c.isOverdue).length
+    totalCases: (cases || []).length,
+    openCases: (cases || []).filter(c => c.status === 'open').length,
+    inProgressCases: (cases || []).filter(c => c.status === 'in-progress').length,
+    pendingCases: (cases || []).filter(c => c.status === 'pending').length,
+    closedCases: (cases || []).filter(c => c.status === 'closed').length,
+    overdueCases: (cases || []).filter(c => c.isOverdue).length
   }
 
   const getStatusColor = (status: string) => {
@@ -195,8 +195,8 @@ export default function CaseManagementPage() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Officer Workload</h3>
         <div className="space-y-2">
           {officers.map((officer) => {
-            const officerCases = cases.filter(c => c.officer === officer && c.status !== 'closed')
-            const overdueCount = cases.filter(c => c.officer === officer && c.isOverdue).length
+            const officerCases = (cases || []).filter(c => c.officer === officer && c.status !== 'closed')
+            const overdueCount = (cases || []).filter(c => c.officer === officer && c.isOverdue).length
             
             return (
               <div key={officer} className="p-2 border rounded">

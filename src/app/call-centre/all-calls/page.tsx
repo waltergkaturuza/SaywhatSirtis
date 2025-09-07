@@ -112,7 +112,7 @@ export default function AllCallsPage() {
   const canEdit = session?.user?.permissions?.includes("callcentre.officer");
 
   useEffect(() => {
-    let filtered = calls;
+    let filtered = calls || [];
 
     // Apply search
     if (searchTerm) {

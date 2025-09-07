@@ -55,7 +55,7 @@ export default function ReferralDirectoryPage() {
   }, [searchQuery, selectedCategory, selectedProvince])
 
   const filterOrganizations = () => {
-    let filtered = referralDirectory
+    let filtered = referralDirectory || []
 
     // Apply search filter
     if (searchQuery) {
@@ -64,14 +64,14 @@ export default function ReferralDirectoryPage() {
 
     // Apply category filter
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(org => 
+      filtered = (filtered || []).filter(org => 
         org.categories.some(cat => cat.toLowerCase().includes(selectedCategory.toLowerCase()))
       )
     }
 
     // Apply province filter
     if (selectedProvince !== 'all') {
-      filtered = filtered.filter(org => 
+      filtered = (filtered || []).filter(org => 
         org.province?.toLowerCase() === selectedProvince.toLowerCase()
       )
     }
