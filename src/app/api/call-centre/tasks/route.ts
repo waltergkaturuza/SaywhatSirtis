@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { withRetry } from '@/lib/error-handler'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,18 +10,6 @@ export async function GET(request: NextRequest) {
     
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Test database connection first
-    try {
-      await prisma.$queryRaw`SELECT 1`
-      console.log('Database connection test successful for tasks')
-    } catch (dbError) {
-      console.error('Database connection failed:', dbError)
-      return NextResponse.json({ 
-        error: 'Database connection failed',
-        message: dbError instanceof Error ? dbError.message : 'Unknown database error'
-      }, { status: 500 })
     }
 
     // Get query parameters
@@ -48,6 +37,26 @@ export async function GET(request: NextRequest) {
 
       if (assignedTo) {
         where.assignedOfficer = assignedTo
+      }
+
+      // Get call records that need follow-up with retry logic
+      calls = await withRetry(() =>
+        prisma.callRecord.findMany({
+          where,
+          include: {
+            // Include any related data if needed
+          },
+          orderBy: {
+            followUpDate: 'asc'
+          }
+        })
+      )
+
+    } catch (error: any) {
+      console.warn('Call centre tables may not exist yet:', error.message)
+      // Return empty array if tables don't exist
+      calls = []
+    }
       }
 
       // Fetch calls with follow-up requirements

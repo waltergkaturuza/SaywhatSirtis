@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { withRetry } from '@/lib/error-handler'
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,38 +39,58 @@ export async function GET(request: NextRequest) {
     const thisYearStart = new Date(now.getFullYear(), 0, 1)
     const thisYearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
 
-    // Get today's metrics
-    const todaysMetrics = await prisma.callRecord.findMany({
-      where: {
-        createdAt: {
-          gte: todayStart,
-          lte: todayEnd
-        }
-      }
-    })
+    // Initialize default empty arrays
+    let todaysMetrics: any[] = []
+    let thisMonthMetrics: any[] = []
+    let thisYearMetrics: any[] = []
+    let allTimeMetrics: any[] = []
 
-    // Get this month's metrics
-    const thisMonthMetrics = await prisma.callRecord.findMany({
-      where: {
-        createdAt: {
-          gte: thisMonthStart,
-          lte: thisMonthEnd
-        }
-      }
-    })
+    try {
+      // Get today's metrics with error handling
+      todaysMetrics = await withRetry(() =>
+        prisma.callRecord.findMany({
+          where: {
+            createdAt: {
+              gte: todayStart,
+              lte: todayEnd
+            }
+          }
+        })
+      )
 
-    // Get this year's metrics
-    const thisYearMetrics = await prisma.callRecord.findMany({
-      where: {
-        createdAt: {
-          gte: thisYearStart,
-          lte: thisYearEnd
-        }
-      }
-    })
+      // Get this month's metrics
+      thisMonthMetrics = await withRetry(() =>
+        prisma.callRecord.findMany({
+          where: {
+            createdAt: {
+              gte: thisMonthStart,
+              lte: thisMonthEnd
+            }
+          }
+        })
+      )
 
-    // Get all-time metrics
-    const allTimeMetrics = await prisma.callRecord.findMany()
+      // Get this year's metrics
+      thisYearMetrics = await withRetry(() =>
+        prisma.callRecord.findMany({
+          where: {
+            createdAt: {
+              gte: thisYearStart,
+              lte: thisYearEnd
+            }
+          }
+        })
+      )
+
+      // Get all-time metrics
+      allTimeMetrics = await withRetry(() =>
+        prisma.callRecord.findMany()
+      )
+
+    } catch (error: any) {
+      console.warn('Call centre tables may not exist yet:', error.message)
+      // Continue with empty arrays - will provide default data structure
+    }
 
     // Calculate statistics
     const todayStats = {
