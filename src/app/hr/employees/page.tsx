@@ -68,13 +68,17 @@ export default function EmployeesPage() {
 
     const fetchDepartments = async () => {
       try {
-        const response = await fetch('/api/hr/department')
+        const response = await fetch('/api/hr/department/list')
         const result = await response.json()
         if (result.success) {
-          setDepartments(result.data)
+          setDepartments(result.data || [])
+        } else {
+          console.error('Failed to fetch departments:', result.error)
+          setDepartments([]) // Set empty array on error
         }
       } catch (error) {
         console.error('Error fetching departments:', error)
+        setDepartments([]) // Set empty array on network error
       }
     }
     

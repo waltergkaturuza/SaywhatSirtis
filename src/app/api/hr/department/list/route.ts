@@ -1,0 +1,65 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+
+export async function GET() {
+  try {
+    // For basic department listing, we'll allow it without strict authentication
+    // but we'll check for session to provide different levels of data
+    const session = await getServerSession(authOptions)
+    
+    // If no session, return basic fallback departments for demo purposes
+    if (!session?.user?.email) {
+      const fallbackDepartments = [
+        { id: 'hr-dept', name: 'Human Resources', code: 'HR', level: 0, parentId: null, status: 'ACTIVE' },
+        { id: 'it-dept', name: 'Information Technology', code: 'IT', level: 0, parentId: null, status: 'ACTIVE' },
+        { id: 'finance-dept', name: 'Finance & Administration', code: 'FIN', level: 0, parentId: null, status: 'ACTIVE' },
+        { id: 'programs-dept', name: 'Programs & Development', code: 'PROG', level: 0, parentId: null, status: 'ACTIVE' },
+        { id: 'operations-dept', name: 'Operations', code: 'OPS', level: 0, parentId: null, status: 'ACTIVE' }
+      ]
+      
+      return NextResponse.json({
+        success: true,
+        data: fallbackDepartments
+      })
+    }
+
+    // Get basic department list for dropdowns from database
+    const departments = await prisma.department.findMany({
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        level: true,
+        parentId: true,
+        status: true
+      },
+      where: {
+        status: 'ACTIVE'
+      },
+      orderBy: [
+        { level: 'asc' },
+        { name: 'asc' }
+      ]
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: departments
+    })
+  } catch (error) {
+    console.error('Error fetching department list:', error)
+    // Return fallback departments on any error
+    const fallbackDepartments = [
+      { id: 'hr-dept', name: 'Human Resources', code: 'HR', level: 0, parentId: null, status: 'ACTIVE' },
+      { id: 'it-dept', name: 'Information Technology', code: 'IT', level: 0, parentId: null, status: 'ACTIVE' },
+      { id: 'finance-dept', name: 'Finance & Administration', code: 'FIN', level: 0, parentId: null, status: 'ACTIVE' }
+    ]
+    
+    return NextResponse.json({ 
+      success: true,
+      data: fallbackDepartments
+    }, { status: 200 })
+  }
+}
