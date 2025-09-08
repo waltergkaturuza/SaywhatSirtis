@@ -5,24 +5,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    // For basic department listing, we'll allow it without strict authentication
-    // but we'll check for session to provide different levels of data
     const session = await getServerSession(authOptions)
     
-    // If no session, return basic fallback departments for demo purposes
     if (!session?.user?.email) {
-      const fallbackDepartments = [
-        { id: 'hr-dept', name: 'Human Resources', code: 'HR', level: 0, parentId: null, status: 'ACTIVE' },
-        { id: 'it-dept', name: 'Information Technology', code: 'IT', level: 0, parentId: null, status: 'ACTIVE' },
-        { id: 'finance-dept', name: 'Finance & Administration', code: 'FIN', level: 0, parentId: null, status: 'ACTIVE' },
-        { id: 'programs-dept', name: 'Programs & Development', code: 'PROG', level: 0, parentId: null, status: 'ACTIVE' },
-        { id: 'operations-dept', name: 'Operations', code: 'OPS', level: 0, parentId: null, status: 'ACTIVE' }
-      ]
-      
-      return NextResponse.json({
-        success: true,
-        data: fallbackDepartments
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get basic department list for dropdowns from database

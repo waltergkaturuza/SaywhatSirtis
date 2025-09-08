@@ -3,39 +3,12 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// Fallback data for when database is not available or user is not authenticated
-const fallbackStats = {
-  totalEmployees: 147,
-  activeEmployees: 142,
-  newEmployeesThisMonth: 8,
-  departmentCount: 6,
-  trainingCount: 23,
-  activeTrainings: 15,
-  averagePerformance: 4.7,
-  attendanceRate: 96.2,
-  attendanceIncrease: 0.8,
-  pendingReviews: 15,
-  onboardingCount: 5,
-  departments: [
-    { name: 'HR', count: 12 },
-    { name: 'IT', count: 24 },
-    { name: 'Finance', count: 18 },
-    { name: 'Programs', count: 35 },
-    { name: 'Operations', count: 28 },
-    { name: 'Legal', count: 8 },
-    { name: 'Marketing', count: 15 },
-    { name: 'Admin', count: 7 }
-  ]
-}
-
 export async function GET(request: NextRequest) {
   try {
-    // Try to get session, but don't require it for fallback data
     const session = await getServerSession(authOptions)
     
-    // If no session, return fallback data
     if (!session) {
-      return NextResponse.json(fallbackStats)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check permissions
@@ -44,9 +17,8 @@ export async function GET(request: NextRequest) {
                          session.user?.roles?.includes('admin') ||
                          session.user?.roles?.includes('hr_manager')
 
-    // If no permission, return fallback data
     if (!hasPermission) {
-      return NextResponse.json(fallbackStats)
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
     try {
@@ -104,14 +76,43 @@ export async function GET(request: NextRequest) {
         count: dept._count.employees
       }))
 
-      // Calculate performance metrics (using fallback for complex calculations)
-      const averagePerformance = 4.7
-      const attendanceRate = 96.2
-      const attendanceIncrease = 0.8
+      // Calculate real performance metrics
+      const performanceReviews = await prisma.performanceReview.aggregate({
+        _avg: {
+          overallRating: true
+        },
+        where: {
+          overallRating: { not: null }
+        }
+      })
 
-      // Get pending actions counts
-      const pendingReviews = 15 // This would need a performance review table
-      const onboardingCount = 5 // This would need an onboarding status field
+      const averagePerformance = performanceReviews._avg.overallRating || 0
+
+      // Calculate attendance rate from actual data
+      const today = new Date()
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      
+      // Get pending performance reviews
+      const pendingReviews = await prisma.performanceReview.count({
+        where: {
+          nextReviewDate: {
+            lte: new Date()
+          }
+        }
+      })
+
+      // Get employees in onboarding (recently hired)
+      const onboardingThreshold = new Date()
+      onboardingThreshold.setDate(onboardingThreshold.getDate() - 30) // 30 days
+      
+      const onboardingCount = await prisma.employee.count({
+        where: {
+          startDate: {
+            gte: onboardingThreshold
+          },
+          status: 'ACTIVE'
+        }
+      })
 
       return NextResponse.json({
         totalEmployees,
@@ -121,20 +122,26 @@ export async function GET(request: NextRequest) {
         trainingCount,
         activeTrainings,
         averagePerformance,
-        attendanceRate,
-        attendanceIncrease,
+        attendanceRate: 0, // Will implement attendance tracking later
+        attendanceIncrease: 0,
         pendingReviews,
         onboardingCount,
         departments
       })
 
-    } catch (dbError) {
-      console.error('Database error, falling back to default stats:', dbError)
-      return NextResponse.json(fallbackStats)
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch dashboard statistics' },
+        { status: 500 }
+      )
     }
 
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error)
-    return NextResponse.json(fallbackStats)
+    console.error('Error in dashboard stats API:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }

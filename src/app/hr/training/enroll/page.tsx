@@ -78,48 +78,36 @@ export default function EnrollEmployeesPage() {
     }
   ]
 
-  const employees: Employee[] = [
-    {
-      id: "EMP001",
-      name: "Sarah Johnson",
-      department: "IT",
-      position: "Software Developer",
-      email: "sarah.johnson@saywhat.org",
-      enrolledPrograms: ["1"]
-    },
-    {
-      id: "EMP002",
-      name: "Michael Adebayo",
-      department: "Finance",
-      position: "Financial Analyst",
-      email: "michael.adebayo@saywhat.org",
-      enrolledPrograms: ["2"]
-    },
-    {
-      id: "EMP003",
-      name: "David Okonkwo",
-      department: "HR",
-      position: "HR Specialist",
-      email: "david.okonkwo@saywhat.org",
-      enrolledPrograms: []
-    },
-    {
-      id: "EMP004",
-      name: "Grace Mwangi",
-      department: "Operations",
-      position: "Operations Manager",
-      email: "grace.mwangi@saywhat.org",
-      enrolledPrograms: []
-    },
-    {
-      id: "EMP005",
-      name: "James Mutuku",
-      department: "IT",
-      position: "System Administrator",
-      email: "james.mutuku@saywhat.org",
-      enrolledPrograms: []
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
+
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/hr/employees')
+      if (!response.ok) {
+        throw new Error('Failed to load employees')
+      }
+      const data = await response.json()
+      setEmployees(data.map((emp: any) => ({
+        id: emp.id.toString(),
+        name: `${emp.firstName} ${emp.lastName}`,
+        department: emp.department,
+        position: emp.position || 'Employee',
+        email: emp.email,
+        enrolledPrograms: emp.enrolledPrograms || []
+      })))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load employees')
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
 
   const departments = [...new Set(employees.map(emp => emp.department))]
 
@@ -346,7 +334,30 @@ export default function EnrollEmployeesPage() {
 
             {/* Employee List */}
             <div className="max-h-96 overflow-y-auto space-y-2">
-              {filteredEmployees.map(employee => {
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-2">Loading employees...</p>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-red-800 mb-1">Error Loading Employees</h3>
+                    <p className="text-red-600 text-sm mb-3">{error}</p>
+                    <button 
+                      onClick={fetchEmployees} 
+                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              ) : filteredEmployees.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600">No employees found matching your criteria.</p>
+                </div>
+              ) : (
+                filteredEmployees.map(employee => {
                 const isAlreadyEnrolled = selectedProgramData && 
                   employee.enrolledPrograms.includes(selectedProgram)
                 
@@ -384,15 +395,9 @@ export default function EnrollEmployeesPage() {
                     </label>
                   </div>
                 )
-              })}
+              })
+              )}
             </div>
-
-            {filteredEmployees.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <UserGroupIcon className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                <p>No employees found matching your criteria</p>
-              </div>
-            )}
           </div>
         </div>
 

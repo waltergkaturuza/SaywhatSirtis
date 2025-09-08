@@ -31,23 +31,50 @@ interface NewAppraisalForm {
   customerFeedbackRequired: boolean
 }
 
-// Sample employees data
-const employees = [
-  { id: "EMP001", name: "John Doe", department: "Operations", position: "Operations Manager" },
-  { id: "EMP002", name: "Michael Adebayo", department: "Healthcare", position: "Healthcare Coordinator" },
-  { id: "EMP003", name: "Sarah Johnson", department: "Education", position: "Education Program Manager" },
-  { id: "EMP004", name: "Fatima Al-Zahra", department: "Water & Sanitation", position: "WASH Specialist" },
-  { id: "EMP005", name: "Ahmed Hassan", department: "Nutrition", position: "Nutrition Coordinator" },
-]
+  const [employees, setEmployees] = useState<Array<{id: string, name: string, department: string, position: string}>>([])
+  const [supervisors, setSupervisors] = useState<Array<{id: string, name: string, department: string}>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-// Sample supervisors
-const supervisors = [
-  { id: "SUP001", name: "Mark Wilson", department: "Operations" },
-  { id: "SUP002", name: "Dr. Amina Hassan", department: "Healthcare" },
-  { id: "SUP003", name: "Prof. Ibrahim Musa", department: "Education" },
-  { id: "SUP004", name: "Eng. Hassan Ali", department: "Water & Sanitation" },
-  { id: "SUP005", name: "Dr. Khadija Omar", department: "Nutrition" },
-]
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const [employeesRes, supervisorsRes] = await Promise.all([
+        fetch('/api/hr/employees'),
+        fetch('/api/hr/supervisors')
+      ])
+      
+      if (!employeesRes.ok || !supervisorsRes.ok) {
+        throw new Error('Failed to load data')
+      }
+      
+      const [employeesData, supervisorsData] = await Promise.all([
+        employeesRes.json(),
+        supervisorsRes.json()
+      ])
+      
+      setEmployees(employeesData.map((emp: any) => ({
+        id: emp.id.toString(),
+        name: `${emp.firstName} ${emp.lastName}`,
+        department: emp.department,
+        position: emp.position || 'Employee'
+      })))
+      
+      setSupervisors(supervisorsData.map((sup: any) => ({
+        id: sup.id.toString(),
+        name: `${sup.firstName} ${sup.lastName}`,
+        department: sup.department
+      })))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data')
+    } finally {
+      setLoading(false)
+    }
+  }
 
 // Default performance areas
 const defaultPerformanceAreas = [

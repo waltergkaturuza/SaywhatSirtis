@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import {
@@ -153,93 +153,29 @@ export default function EmployeeManagementPage() {
     </div>
   )
 
-  const employees = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john.doe@saywhat.org",
-      phone: "+234-801-123-4567",
-      staffId: "SW001",
-      position: "Senior Program Officer",
-      secretariat: "Programs & M&E",
-      supervisor: "Mark Wilson",
-      accessLevel: "Standard User",
-      permissions: ["programs.view", "programs.edit", "documents.view"],
-      status: "active",
-      joinDate: "2023-01-15",
-      lastLogin: "2024-01-15 14:30",
-      performanceRating: 4.2,
-      profileImage: "/api/placeholder/32/32"
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane.smith@saywhat.org",
-      phone: "+234-803-987-6543",
-      staffId: "SW002",
-      position: "Healthcare Coordinator",
-      secretariat: "Healthcare",
-      supervisor: "Dr. Amina Hassan",
-      accessLevel: "Department Admin",
-      permissions: ["healthcare.full", "hr.view", "documents.edit"],
-      status: "active",
-      joinDate: "2022-11-20",
-      lastLogin: "2024-01-15 11:45",
-      performanceRating: 4.5,
-      profileImage: "/api/placeholder/32/32"
-    },
-    {
-      id: 3,
-      name: "Mike Wilson",
-      email: "mike.wilson@saywhat.org",
-      phone: "+234-805-456-7890",
-      staffId: "SW003",
-      position: "Finance Assistant",
-      secretariat: "Finance & Admin",
-      supervisor: "Jennifer Smith",
-      accessLevel: "Standard User",
-      permissions: ["finance.view", "inventory.view"],
-      status: "active",
-      joinDate: "2023-08-10",
-      lastLogin: "2024-01-14 16:20",
-      performanceRating: 3.8,
-      profileImage: "/api/placeholder/32/32"
-    },
-    {
-      id: 4,
-      name: "Sarah Johnson",
-      email: "sarah.johnson@saywhat.org",
-      phone: "+234-807-234-5678",
-      staffId: "SW004",
-      position: "Operations Manager",
-      secretariat: "Operations",
-      supervisor: "Michael Brown",
-      accessLevel: "Senior Admin",
-      permissions: ["operations.full", "hr.manage", "analytics.view"],
-      status: "active",
-      joinDate: "2021-05-03",
-      lastLogin: "2024-01-15 09:10",
-      performanceRating: 4.7,
-      profileImage: "/api/placeholder/32/32"
-    },
-    {
-      id: 5,
-      name: "Alex Chen",
-      email: "alex.chen@saywhat.org",
-      phone: "+234-809-345-6789",
-      staffId: "SW005",
-      position: "Data Analyst",
-      secretariat: "Programs & M&E",
-      supervisor: "Mark Wilson",
-      accessLevel: "Standard User",
-      permissions: ["analytics.view", "programs.view"],
-      status: "pending",
-      joinDate: "2024-01-10",
-      lastLogin: "Never",
-      performanceRating: null,
-      profileImage: "/api/placeholder/32/32"
+  const [employees, setEmployees] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
+
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/hr/employees/manage')
+      if (!response.ok) {
+        throw new Error('Failed to load employees')
+      }
+      const data = await response.json()
+      setEmployees(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load employees')
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
 
   const accessLevels = [
     {

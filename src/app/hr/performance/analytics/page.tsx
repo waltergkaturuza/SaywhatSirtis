@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { EnhancedLayout } from "@/components/layout/enhanced-layout"
 import { 
   ChartBarIcon,
@@ -13,44 +13,69 @@ import {
   CalendarIcon
 } from "@heroicons/react/24/outline"
 
+interface PerformanceMetrics {
+  overall: {
+    averageRating: number;
+    totalReviews: number;
+    completionRate: number;
+    improvementRate: number;
+  };
+  departments: Array<{
+    name: string;
+    avgRating: number;
+    employees: number;
+    trend: string;
+  }>;
+  topPerformers: Array<{
+    name: string;
+    department: string;
+    rating: number;
+    position: string;
+  }>;
+  needsAttention: Array<{
+    name: string;
+    department: string;
+    rating: number;
+    position: string;
+    issue: string;
+  }>;
+  skillGaps: Array<{
+    skill: string;
+    gap: number;
+    priority: string;
+  }>;
+}
+
 export default function PerformanceAnalyticsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("quarterly")
   const [selectedDepartment, setSelectedDepartment] = useState("all")
+  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data for performance analytics
-  const performanceMetrics = {
-    overall: {
-      averageRating: 4.2,
-      totalReviews: 156,
-      completionRate: 89,
-      improvementRate: 15
-    },
-    departments: [
-      { name: "IT", avgRating: 4.5, employees: 25, trend: "up" },
-      { name: "Programs", avgRating: 4.3, employees: 35, trend: "up" },
-      { name: "HR", avgRating: 4.1, employees: 12, trend: "stable" },
-      { name: "Finance", avgRating: 3.9, employees: 18, trend: "down" },
-      { name: "Operations", avgRating: 4.0, employees: 22, trend: "up" }
-    ],
-    topPerformers: [
-      { name: "Sarah Johnson", department: "IT", rating: 4.9, position: "Senior Developer" },
-      { name: "Michael Chen", department: "Programs", rating: 4.8, position: "Project Manager" },
-      { name: "Emily Davis", department: "HR", rating: 4.7, position: "HR Specialist" },
-      { name: "David Wilson", department: "Finance", rating: 4.6, position: "Financial Analyst" },
-      { name: "Lisa Anderson", department: "Operations", rating: 4.6, position: "Operations Lead" }
-    ],
-    needsAttention: [
-      { name: "John Smith", department: "Finance", rating: 2.8, position: "Accountant", issue: "Missed deadlines" },
-      { name: "Jane Doe", department: "Operations", rating: 3.1, position: "Admin Assistant", issue: "Communication issues" },
-      { name: "Bob Johnson", department: "IT", rating: 3.2, position: "Junior Developer", issue: "Technical skills gap" }
-    ],
-    skillGaps: [
-      { skill: "Data Analysis", gap: 35, priority: "high" },
-      { skill: "Project Management", gap: 28, priority: "medium" },
-      { skill: "Communication", gap: 22, priority: "high" },
-      { skill: "Leadership", gap: 18, priority: "medium" },
-      { skill: "Technical Writing", gap: 15, priority: "low" }
-    ]
+  useEffect(() => {
+    fetchPerformanceAnalytics()
+  }, [selectedPeriod, selectedDepartment])
+
+  const fetchPerformanceAnalytics = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/hr/performance/analytics?' + new URLSearchParams({
+        period: selectedPeriod,
+        department: selectedDepartment
+      }))
+      
+      if (!response.ok) {
+        throw new Error('Failed to load performance analytics')
+      }
+      
+      const data = await response.json()
+      setPerformanceMetrics(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load performance analytics')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getTrendIcon = (trend: string) => {
@@ -113,6 +138,35 @@ export default function PerformanceAnalyticsPage() {
             </select>
           </div>
         </div>
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="text-gray-600 mt-4">Loading performance analytics...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-8">
+              <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Analytics</h3>
+              <p className="text-red-600 mb-4">{error}</p>
+              <button 
+                onClick={fetchPerformanceAnalytics} 
+                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : !performanceMetrics ? (
+          <div className="text-center py-12">
+            <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Analytics Data</h3>
+            <p className="text-gray-600">No performance analytics data available.</p>
+          </div>
+        ) : (
+          <>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -341,6 +395,8 @@ export default function PerformanceAnalyticsPage() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </EnhancedLayout>
   )

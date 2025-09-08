@@ -52,6 +52,7 @@ export default function HRDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [activities, setActivities] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const getIconComponent = (iconName: string) => {
     const iconMap: { [key: string]: React.ComponentType<any> } = {
@@ -80,6 +81,7 @@ export default function HRDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
+        setError(null)
         const [statsResponse, activitiesResponse] = await Promise.all([
           fetch('/api/hr/dashboard/stats'),
           fetch('/api/hr/dashboard/activities')
@@ -88,14 +90,20 @@ export default function HRDashboard() {
         if (statsResponse.ok) {
           const statsData = await statsResponse.json()
           setStats(statsData)
+        } else {
+          const errorData = await statsResponse.json()
+          setError(errorData.error || 'Failed to fetch statistics')
         }
 
         if (activitiesResponse.ok) {
           const activitiesData = await activitiesResponse.json()
           setActivities(activitiesData)
+        } else {
+          console.error('Failed to fetch activities')
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
+        setError('Unable to connect to server')
       } finally {
         setLoading(false)
       }
@@ -137,44 +145,56 @@ export default function HRDashboard() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Total Employees</span>
-            <span className="font-semibold">
-              {loading ? '...' : stats?.totalEmployees || '-'}
-            </span>
+        {error ? (
+          <div className="p-3 bg-red-50 rounded-lg">
+            <div className="text-sm text-red-800">{error}</div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Active</span>
-            <span className="font-semibold text-green-600">
-              {loading ? '...' : stats?.activeEmployees || '-'}
-            </span>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Total Employees</span>
+              <span className="font-semibold">
+                {loading ? '...' : stats?.totalEmployees || 0}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Active</span>
+              <span className="font-semibold text-green-600">
+                {loading ? '...' : stats?.activeEmployees || 0}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">New Hires (Month)</span>
+              <span className="font-semibold text-black">
+                {loading ? '...' : stats?.newEmployeesThisMonth || 0}
+              </span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">New Hires (Month)</span>
-            <span className="font-semibold text-black">
-              {loading ? '...' : stats?.newEmployeesThisMonth || '-'}
-            </span>
-          </div>
-        </div>
+        )}
       </div>
 
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Actions</h3>
-        <div className="space-y-3">
-          <div className="p-3 bg-yellow-50 rounded-lg">
-            <div className="text-sm font-medium text-yellow-800">
-              {loading ? '...' : `${stats?.pendingReviews || 0} Reviews Due`}
-            </div>
-            <div className="text-xs text-yellow-600">Performance reviews pending</div>
+        {error ? (
+          <div className="p-3 bg-red-50 rounded-lg">
+            <div className="text-sm text-red-800">Unable to load pending actions</div>
           </div>
-          <div className="p-3 bg-green-50 rounded-lg">
-            <div className="text-sm font-medium text-green-800">
-              {loading ? '...' : `${stats?.onboardingCount || 0} Onboarding`}
+        ) : (
+          <div className="space-y-3">
+            <div className="p-3 bg-yellow-50 rounded-lg">
+              <div className="text-sm font-medium text-yellow-800">
+                {loading ? '...' : `${stats?.pendingReviews || 0} Reviews Due`}
+              </div>
+              <div className="text-xs text-yellow-600">Performance reviews pending</div>
             </div>
-            <div className="text-xs text-green-600">New employee setup</div>
+            <div className="p-3 bg-green-50 rounded-lg">
+              <div className="text-sm font-medium text-green-800">
+                {loading ? '...' : `${stats?.onboardingCount || 0} Onboarding`}
+              </div>
+              <div className="text-xs text-green-600">New employee setup</div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div>

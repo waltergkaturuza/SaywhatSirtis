@@ -1,7 +1,8 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
   StarIcon,
@@ -18,7 +19,41 @@ import {
 } from "@heroicons/react/24/outline"
 
 export default function PerformancePage() {
+  const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState("reviews")
+  const [performanceReviews, setPerformanceReviews] = useState<any[]>([])
+  const [goals, setGoals] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch performance data from backend
+  useEffect(() => {
+    const fetchPerformanceData = async () => {
+      if (!session) return
+      
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const response = await fetch('/api/hr/performance')
+        if (response.ok) {
+          const data = await response.json()
+          setPerformanceReviews(data.reviews || [])
+          setGoals(data.goals || [])
+        } else {
+          const errorData = await response.json()
+          setError(errorData.error || 'Failed to fetch performance data')
+        }
+      } catch (error) {
+        console.error('Error fetching performance data:', error)
+        setError('Unable to connect to server')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPerformanceData()
+  }, [session])
 
   const metadata = {
     title: "Performance Management",
@@ -130,105 +165,6 @@ export default function PerformancePage() {
       </div>
     </div>
   )
-
-  const performanceReviews = [
-    {
-      id: 1,
-      employeeName: "Sarah Johnson",
-      employeeId: "EMP001",
-      department: "Operations",
-      position: "Operations Manager",
-      reviewType: "Annual Review",
-      status: "completed",
-      rating: 4.8,
-      reviewer: "Mark Wilson",
-      dueDate: "2024-01-15",
-      completedDate: "2024-01-12",
-      goals: 5,
-      goalsCompleted: 4
-    },
-    {
-      id: 2,
-      employeeName: "Michael Adebayo",
-      employeeId: "EMP002",
-      department: "Healthcare",
-      position: "Healthcare Coordinator",
-      reviewType: "Quarterly Review",
-      status: "overdue",
-      rating: null,
-      reviewer: "Dr. Amina Hassan",
-      dueDate: "2024-01-10",
-      completedDate: null,
-      goals: 4,
-      goalsCompleted: 3
-    },
-    {
-      id: 3,
-      employeeName: "David Okonkwo",
-      employeeId: "EMP004",
-      department: "Finance",
-      position: "Financial Analyst",
-      reviewType: "Mid-Year Review",
-      status: "in-progress",
-      rating: null,
-      reviewer: "Jennifer Smith",
-      dueDate: "2024-01-20",
-      completedDate: null,
-      goals: 6,
-      goalsCompleted: 4
-    },
-    {
-      id: 4,
-      employeeName: "Fatima Bello",
-      employeeId: "EMP005",
-      department: "HR",
-      position: "HR Specialist",
-      reviewType: "Probation Review",
-      status: "scheduled",
-      rating: null,
-      reviewer: "Sarah Johnson",
-      dueDate: "2024-01-25",
-      completedDate: null,
-      goals: 3,
-      goalsCompleted: 2
-    }
-  ]
-
-  const goals = [
-    {
-      id: 1,
-      employeeName: "Sarah Johnson",
-      title: "Improve Team Productivity",
-      description: "Increase team productivity by 20% through process optimization",
-      category: "Operational Excellence",
-      progress: 85,
-      dueDate: "2024-03-31",
-      status: "on-track",
-      priority: "high"
-    },
-    {
-      id: 2,
-      employeeName: "Michael Adebayo",
-      title: "Complete Healthcare Certification",
-      description: "Obtain advanced healthcare management certification",
-      category: "Professional Development",
-      progress: 60,
-      dueDate: "2024-02-28",
-      status: "at-risk",
-      priority: "medium"
-    },
-    {
-      id: 3,
-      employeeName: "David Okonkwo",
-      title: "Financial Process Automation",
-      description: "Implement automated reporting for monthly financial statements",
-      category: "Technology",
-      progress: 40,
-      dueDate: "2024-04-15",
-      status: "behind",
-      priority: "high"
-    }
-  ]
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -401,55 +337,86 @@ export default function PerformancePage() {
           </div>
 
           <div className="p-6">
-            {activeTab === "reviews" && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Performance Reviews</h3>
-                  <div className="flex space-x-2">
-                    <select className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-                      <option>All Status</option>
-                      <option>Completed</option>
-                      <option>In Progress</option>
-                      <option>Overdue</option>
-                      <option>Scheduled</option>
-                    </select>
-                    <select className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-                      <option>All Departments</option>
-                      <option>Operations</option>
-                      <option>Healthcare</option>
-                      <option>Finance</option>
-                    </select>
-                  </div>
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-gray-600 mt-4">Loading performance data...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Data</h3>
+                  <p className="text-red-600">{error}</p>
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="mt-4 bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700"
+                  >
+                    Retry
+                  </button>
                 </div>
+              </div>
+            ) : (
+              <>
+                {activeTab === "reviews" && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold text-gray-900">Performance Reviews</h3>
+                      <div className="flex space-x-2">
+                        <select className="px-3 py-2 border border-gray-300 rounded-md text-sm">
+                          <option>All Status</option>
+                          <option>Completed</option>
+                          <option>In Progress</option>
+                          <option>Overdue</option>
+                          <option>Scheduled</option>
+                        </select>
+                        <Link href="/hr/performance/schedule">
+                          <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                            Schedule Review
+                          </button>
+                        </Link>
+                      </div>
+                    </div>
 
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Review Type</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reviewer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Goals</th>
-                        <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {performanceReviews.map((review) => (
-                        <tr key={review.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                <UserIcon className="h-4 w-4 text-indigo-600" />
-                              </div>
-                              <div className="ml-3">
-                                <div className="text-sm font-medium text-gray-900">{review.employeeName}</div>
-                                <div className="text-sm text-gray-500">{review.position}</div>
-                              </div>
-                            </div>
-                          </td>
+                    {performanceReviews.length === 0 ? (
+                      <div className="text-center py-8">
+                        <StarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Performance Reviews</h3>
+                        <p className="text-gray-600">No performance reviews found. Schedule a review to get started.</p>
+                        <Link href="/hr/performance/schedule">
+                          <button className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                            Schedule Review
+                          </button>
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Review Type</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reviewer</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Goals</th>
+                              <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {performanceReviews.map((review) => (
+                              <tr key={review.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                      <UserIcon className="h-4 w-4 text-indigo-600" />
+                                    </div>
+                                    <div className="ml-3">
+                                      <div className="text-sm font-medium text-gray-900">{review.employeeName}</div>
+                                      <div className="text-sm text-gray-500">{review.position}</div>
+                                    </div>
+                                  </div>
+                                </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {review.reviewType}
                           </td>
@@ -489,10 +456,13 @@ export default function PerformancePage() {
                           </td>
                         </tr>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
             {activeTab === "goals" && (
@@ -506,8 +476,22 @@ export default function PerformancePage() {
                   </Link>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {goals.map((goal) => (
+                {goals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No Goals Set</h3>
+                    <p className="text-gray-600">No employee goals found. Add a goal to get started.</p>
+                    <Link href="/hr/performance/goals/add">
+                      <button className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                        Add Goal
+                      </button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {goals.map((goal) => (
                     <div key={goal.id} className="bg-white border rounded-lg p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
@@ -551,8 +535,9 @@ export default function PerformancePage() {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

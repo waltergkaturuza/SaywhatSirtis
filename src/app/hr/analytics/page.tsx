@@ -76,6 +76,7 @@ interface DepartmentData {
   turnoverRate: number
   performanceScore: number
   satisfactionScore: number
+  attendanceRate?: number
 }
 
 interface TurnoverData {
@@ -639,7 +640,7 @@ export default function HRAnalytics() {
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={departmentData.map(dept => ({
                     ...dept,
-                    attendanceRate: Math.random() * 15 + 85 // Mock data
+                    attendanceRate: dept.attendanceRate || 0
                   }))}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="department" />

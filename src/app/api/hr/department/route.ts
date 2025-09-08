@@ -104,73 +104,16 @@ export async function GET(request: NextRequest) {
         message: `Found ${transformedDepartments.length} departments`
       });
 
-    } catch (dbError) {
-      console.error('Database error in department fetch:', dbError);
-      
-      // Return fallback data when database is not available
-      const fallbackDepartments = [
-        {
-          id: '1',
-          name: 'Human Resources',
-          description: 'Human resources management and employee services',
-          code: 'HR',
-          manager: 'Sarah Wilson',
-          budget: 500000,
-          location: 'Main Office',
-          status: 'ACTIVE',
-          level: 0,
-          parentId: null,
-          parent: null,
-          subunits: [],
-          employeeCount: 12,
-          subunitCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+    } catch (error) {
+      console.error('Database error in department fetch:', error);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Failed to fetch departments from database',
+          message: error instanceof Error ? error.message : 'Unknown database error'
         },
-        {
-          id: '2',
-          name: 'Information Technology',
-          description: 'Technology infrastructure and software development',
-          code: 'IT',
-          manager: 'John Smith',
-          budget: 800000,
-          location: 'Tech Building',
-          status: 'ACTIVE',
-          level: 0,
-          parentId: null,
-          parent: null,
-          subunits: [],
-          employeeCount: 24,
-          subunitCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          name: 'Finance',
-          description: 'Financial planning and accounting services',
-          code: 'FIN',
-          manager: 'Mary Johnson',
-          budget: 600000,
-          location: 'Finance Wing',
-          status: 'ACTIVE',
-          level: 0,
-          parentId: null,
-          parent: null,
-          subunits: [],
-          employeeCount: 18,
-          subunitCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-
-      return NextResponse.json({
-        success: true,
-        data: fallbackDepartments,
-        message: `Fallback data: ${fallbackDepartments.length} departments`,
-        fallback: true
-      });
+        { status: 500 }
+      );
     }
 
   } catch (error) {
