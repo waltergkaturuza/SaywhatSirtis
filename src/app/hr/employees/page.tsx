@@ -21,6 +21,7 @@ import {
   EyeIcon,
   PencilIcon,
   TrashIcon,
+  ArchiveBoxIcon,
   StarIcon,
   EnvelopeIcon,
   PhoneIcon,
@@ -43,28 +44,31 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string>("")  // Fetch employees from API
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setLoading(true)
-        setError("")
-        
-        const response = await fetch('/api/hr/employees')
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-        
-        const data = await response.json()
-        setEmployees(data.data || [])
-      } catch (err) {
-        console.error('Failed to fetch employees:', err)
-        setError(err instanceof Error ? err.message : 'Unknown error')
-        setEmployees([]) // Empty state instead of mock data
-      } finally {
-        setLoading(false)
+  const [error, setError] = useState<string>("")
+
+  // Fetch employees from API
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true)
+      setError("")
+      
+      const response = await fetch('/api/hr/employees')
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
+      
+      const data = await response.json()
+      setEmployees(data.data || [])
+    } catch (err) {
+      console.error('Failed to fetch employees:', err)
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      setEmployees([]) // Empty state instead of mock data
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
 
     const fetchDepartments = async () => {
       try {
@@ -267,11 +271,30 @@ export default function EmployeesPage() {
     setShowEditModal(true)
   }
 
-  const handleDeleteEmployee = (employeeId: number) => {
-    if (confirm('Are you sure you want to delete this employee?')) {
-      // Implement delete functionality
-      console.log('Deleting employee:', employeeId)
-      // Here you would call an API to delete the employee
+  const handleArchiveEmployee = async (employeeId: number) => {
+    if (confirm('Are you sure you want to archive this employee? They will be moved to archived employees but their history will be preserved.')) {
+      try {
+        // Call API to archive employee (change status to ARCHIVED)
+        const response = await fetch(`/api/hr/employees/${employeeId}/archive`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: 'ARCHIVED' })
+        })
+
+        if (response.ok) {
+          // Refresh the employee list to remove archived employee from active view
+          fetchEmployees()
+          console.log('Employee archived successfully:', employeeId)
+        } else {
+          const error = await response.json()
+          alert(`Failed to archive employee: ${error.message || 'Unknown error'}`)
+        }
+      } catch (error) {
+        console.error('Error archiving employee:', error)
+        alert('Failed to archive employee. Please try again.')
+      }
     }
   }
 
@@ -346,6 +369,14 @@ export default function EmployeesPage() {
                 <option value="on-leave">On Leave</option>
                 <option value="inactive">Inactive</option>
               </select>
+              
+              <Link
+                href="/hr/employees/archived"
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <ArchiveBoxIcon className="h-4 w-4 mr-2" />
+                View Archived
+              </Link>
               
               <button className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                 <FunnelIcon className="h-4 w-4 mr-2" />
@@ -465,11 +496,11 @@ export default function EmployeesPage() {
                           className="text-green-600 hover:text-green-900 p-1 h-8 w-8"
                         />
                         <button 
-                          onClick={() => handleDeleteEmployee(employee.id)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                          title="Delete Employee"
+                          onClick={() => handleArchiveEmployee(employee.id)}
+                          className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50"
+                          title="Archive Employee"
                         >
-                          <TrashIcon className="h-4 w-4" />
+                          <ArchiveBoxIcon className="h-4 w-4" />
                         </button>
                       </div>
                     </td>

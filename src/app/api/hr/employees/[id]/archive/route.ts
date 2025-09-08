@@ -1,0 +1,92 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+
+interface RouteParams {
+  params: {
+    id: string
+  }
+}
+
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    const employeeId = params.id
+    const body = await request.json()
+
+    // Validate employee exists
+    const existingEmployee = await prisma.employee.findUnique({
+      where: { id: employeeId }
+    })
+
+    if (!existingEmployee) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+    }
+
+    // Update employee status to ARCHIVED
+    const updatedEmployee = await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        status: 'ARCHIVED',
+        updatedAt: new Date()
+      },
+      include: {
+        departmentRef: {
+          select: {
+            name: true
+          }
+        }
+      }
+    })
+
+    // Create audit log entry for archiving
+    try {
+      await prisma.auditLog.create({
+        data: {
+          action: 'ARCHIVE_EMPLOYEE',
+          resource: 'Employee',
+          resourceId: employeeId,
+          userId: session.user.id,
+          details: {
+            employeeName: `${existingEmployee.firstName} ${existingEmployee.lastName}`,
+            previousStatus: existingEmployee.status,
+            newStatus: 'ARCHIVED',
+            reason: 'Employee archived via HR dashboard'
+          }
+        }
+      })
+    } catch (auditError) {
+      // Log audit error but don't fail the archive operation
+      console.error('Failed to create audit log:', auditError)
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Employee archived successfully',
+      employee: updatedEmployee
+    })
+
+  } catch (error) {
+    console.error('Error archiving employee:', error)
+    return NextResponse.json(
+      { error: 'Failed to archive employee' },
+      { status: 500 }
+    )
+  }
+}

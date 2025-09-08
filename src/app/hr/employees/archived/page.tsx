@@ -60,19 +60,16 @@ export default function EmployeeArchivePage() {
   const handleRestoreEmployee = async (employeeId: string) => {
     try {
       setRestoring(true)
-      const response = await fetch('/api/hr/employees/archived', {
+      const response = await fetch(`/api/hr/employees/${employeeId}/restore`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          employeeId,
-          action: 'restore'
-        })
+        }
       })
 
       if (!response.ok) {
-        throw new Error('Failed to restore employee')
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to restore employee')
       }
 
       toast({
@@ -88,7 +85,7 @@ export default function EmployeeArchivePage() {
       console.error('Error restoring employee:', error)
       toast({
         title: "Error",
-        description: "Failed to restore employee. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to restore employee. Please try again.",
         variant: "destructive"
       })
     } finally {
