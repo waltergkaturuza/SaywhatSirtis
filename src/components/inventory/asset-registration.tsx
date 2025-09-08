@@ -313,13 +313,64 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
           </p>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Indicator */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-4">
             <span className="text-sm font-medium text-gray-900">Step {step} of 4</span>
             <span className="text-sm text-gray-500">{(step / 4 * 100).toFixed(0)}% Complete</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          
+          {/* Step Indicators */}
+          <div className="flex items-center justify-between">
+            {[1, 2, 3, 4].map((stepNum, index) => (
+              <div key={stepNum} className="flex items-center">
+                {/* Step Circle */}
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300 ${
+                  stepNum === step 
+                    ? 'border-orange-500 bg-orange-500 text-white'
+                    : stepNum < step 
+                    ? 'border-green-500 bg-green-500 text-white'
+                    : 'border-gray-300 bg-white text-gray-400'
+                }`}>
+                  {stepNum < step ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <span className="text-sm font-medium">{stepNum}</span>
+                  )}
+                </div>
+                
+                {/* Step Label */}
+                <div className="ml-3 min-w-0 flex-1">
+                  <div className={`text-sm font-medium ${
+                    stepNum === step ? 'text-orange-600' : stepNum < step ? 'text-green-600' : 'text-gray-400'
+                  }`}>
+                    {stepNum === 1 && 'Basic Info'}
+                    {stepNum === 2 && 'Financial'}
+                    {stepNum === 3 && 'Assignment & Value'}
+                    {stepNum === 4 && 'Additional Info'}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {stepNum === 1 && 'Name, type, category'}
+                    {stepNum === 2 && 'Procurement, depreciation'}
+                    {stepNum === 3 && 'Location, department, value'}
+                    {stepNum === 4 && 'Images, documents, tags'}
+                  </div>
+                </div>
+                
+                {/* Connecting Line */}
+                {index < 3 && (
+                  <div className={`flex-1 h-0.5 mx-4 transition-all duration-300 ${
+                    stepNum < step ? 'bg-green-500' : 'bg-gray-300'
+                  }`}></div>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
             <div
               className="h-2 rounded-full transition-all duration-300"
               style={{ 
