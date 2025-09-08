@@ -239,15 +239,50 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
         formData.assetNumber = generateAssetNumber()
       }
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      console.log("Asset registration data:", formData)
-      alert(editAsset ? "Asset updated successfully!" : "Asset registered successfully!")
-      onSuccess()
+      // Prepare asset data for API
+      const assetData = {
+        name: formData.name,
+        assetNumber: formData.assetNumber,
+        category: formData.category || "OTHER",
+        model: formData.model,
+        procurementValue: Number(formData.procurementValue),
+        currentValue: Number(formData.procurementValue), // Set current value to procurement value initially
+        location: formData.location,
+        allocation: formData.department,
+        status: formData.status || "active",
+        procurementDate: formData.procurementDate ? new Date(formData.procurementDate).toISOString() : new Date().toISOString(),
+        depreciationRate: Number(formData.depreciationRate),
+        assignedTo: formData.assignedTo,
+        assignedEmail: formData.assignedEmail,
+        description: formData.description,
+        serialNumber: formData.serialNumber,
+        brand: formData.brand
+      }
+
+      // Call the actual API
+      const response = await fetch('/api/inventory/assets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(assetData)
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        // Success popup
+        alert(editAsset ? "✅ Asset updated successfully!" : "✅ Asset registered successfully!")
+        onSuccess() // This should refresh the asset list
+      } else {
+        // Error popup with details
+        const errorMessage = result.error || 'Failed to register asset'
+        alert(`❌ Error: ${errorMessage}`)
+        console.error("API Error:", result)
+      }
     } catch (error) {
       console.error("Error registering asset:", error)
-      alert("Error registering asset. Please try again.")
+      alert("❌ Network error. Please check your connection and try again.")
     } finally {
       setLoading(false)
     }
@@ -559,7 +594,7 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
                   <select
                     value={formData.location}
                     onChange={(e) => handleInputChange("location", e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     required
                   >
                     <option value="">Select location</option>
