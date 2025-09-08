@@ -107,17 +107,30 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Create employee
+        // Create employee with required userId (temporary approach - create minimal user)
+        const userData = await prisma.user.create({
+          data: {
+            email: employeeData.email,
+            username: employeeData.email.split('@')[0],
+            firstName: employeeData.firstname || null,
+            lastName: employeeData.lastname || null,
+            department: employeeData.department || null,
+            position: employeeData.position || null,
+            role: 'USER'
+          }
+        })
+
         await prisma.employee.create({
           data: {
+            userId: userData.id,
             firstName: employeeData.firstname,
             lastName: employeeData.lastname,
             email: employeeData.email,
             department: employeeData.department,
-            position: employeeData.position || null,
+            position: employeeData.position || 'Staff',
             status: employeeData.status?.toUpperCase() || 'ACTIVE',
             hireDate: employeeData.hiredate ? new Date(employeeData.hiredate) : null,
-            phone: employeeData.phone || null,
+            phoneNumber: employeeData.phone || null,
             address: employeeData.address || null,
             employeeId: employeeData.employeeid || `EMP${Date.now()}-${i}`,
             startDate: employeeData.startdate ? new Date(employeeData.startdate) : new Date()

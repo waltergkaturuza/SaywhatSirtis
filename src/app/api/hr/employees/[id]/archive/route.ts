@@ -40,9 +40,10 @@ export async function PATCH(
       where: { id: employeeId },
       data: {
         status: 'ARCHIVED',
-        archivedAt: new Date(),
-        archiveReason: body.reason || 'Other',
-        accessRevoked: true, // Automatically revoke access when archiving
+        // TODO: Add these fields after schema migration
+        // archivedAt: new Date(),
+        // archiveReason: body.reason || 'Other',
+        // accessRevoked: true, // Automatically revoke access when archiving
         updatedAt: new Date()
       },
       include: {

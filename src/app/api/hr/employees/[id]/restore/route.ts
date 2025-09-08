@@ -42,9 +42,10 @@ export async function PATCH(
     const restoredEmployee = await prisma.employee.update({
       where: { id: employeeId },
       data: {
-        status: 'ACTIVE',
-        archivedAt: null,
-        archiveReason: null
+        status: 'ACTIVE'
+        // TODO: Add these fields after schema migration
+        // archivedAt: null,
+        // archiveReason: null
       }
     })
 

@@ -41,7 +41,9 @@ export async function PATCH(
     const updatedEmployee = await prisma.employee.update({
       where: { id: employeeId },
       data: {
-        isReviewer: isReviewer
+        // TODO: Add isReviewer field after schema migration
+        // isReviewer: isReviewer
+        status: existingEmployee.status // Keep existing status for now
       }
     })
 

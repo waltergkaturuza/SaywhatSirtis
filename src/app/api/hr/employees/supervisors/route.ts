@@ -27,7 +27,8 @@ export async function GET() {
       where: {
         status: 'ACTIVE',
         OR: [
-          { isSupervisor: true },
+          // TODO: Add isSupervisor filter after schema migration
+          // { isSupervisor: true },
           { 
             position: {
               contains: 'manager',
@@ -66,12 +67,14 @@ export async function GET() {
         lastName: true,
         position: true,
         department: true,
-        email: true,
-        isSupervisor: true,
-        isReviewer: true
+        email: true
+        // TODO: Add these fields after schema migration
+        // isSupervisor: true,
+        // isReviewer: true
       },
       orderBy: [
-        { isSupervisor: 'desc' },
+        // TODO: Add isSupervisor ordering after schema migration
+        // { isSupervisor: 'desc' },
         { firstName: 'asc' },
         { lastName: 'asc' }
       ]
