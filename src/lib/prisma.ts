@@ -21,12 +21,15 @@ const createPrismaClient = () => {
     console.log('🔄 Automatically converted pooler URL to direct connection')
   }
 
+  // Add connection pool settings for production
+  const connectionString = connectionUrl + '&prepared_statements=false&connection_limit=5&pool_timeout=10'
+
   return new PrismaClient({
-    log: ['error', 'warn'],
+    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
     errorFormat: 'pretty',
     datasources: {
       db: {
-        url: connectionUrl + '&prepared_statements=false&connection_limit=1'
+        url: connectionString
       }
     }
   })
@@ -40,14 +43,25 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Enhanced connection management with retry logic
-export async function connectPrisma() {
-  try {
-    await prisma.$connect()
-    return true
-  } catch (error) {
-    console.error('Failed to connect to database:', error)
-    return false
+export async function connectPrisma(retries: number = 3): Promise<boolean> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await prisma.$connect()
+      console.log('✅ Database connected successfully')
+      return true
+    } catch (error) {
+      console.error(`❌ Database connection attempt ${attempt}/${retries} failed:`, error)
+      
+      if (attempt < retries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000) // Exponential backoff with max 5s
+        console.log(`⏳ Retrying in ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
   }
+  
+  console.error('❌ All database connection attempts failed')
+  return false
 }
 
 // Safe query execution with automatic reconnection and prepared statement cleanup
