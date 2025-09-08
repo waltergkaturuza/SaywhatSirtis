@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
     }
 
     try {
+      console.log('Fetching HR statistics...')
+      
       // Get real HR statistics from database
       const [
         totalEmployees,
@@ -30,21 +32,23 @@ export async function GET(request: NextRequest) {
         trainingCount,
         activeTrainings
       ] = await Promise.all([
-        prisma.employee.count(),
+        prisma.employee.count().catch(e => { console.error('Employee count error:', e); return 0; }),
         prisma.employee.count({
           where: { status: 'ACTIVE' }
-        }),
-        prisma.department.count(),
+        }).catch(e => { console.error('Active employee count error:', e); return 0; }),
+        prisma.department.count().catch(e => { console.error('Department count error:', e); return 0; }),
         prisma.event.count({
           where: { type: 'training' }
-        }),
+        }).catch(e => { console.error('Training count error:', e); return 0; }),
         prisma.event.count({
           where: {
             type: 'training',
             status: { in: ['approved', 'in-progress'] }
           }
-        })
+        }).catch(e => { console.error('Active training count error:', e); return 0; })
       ])
+
+      console.log('Stats fetched:', { totalEmployees, activeEmployees, departmentCount, trainingCount, activeTrainings })
 
       // Get new employees this month
       const thisMonthStart = new Date()

@@ -11,12 +11,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user has HR permissions
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email! }
-    })
+    // Check permissions using session data instead of database lookup
+    const hasPermission = session.user?.permissions?.includes('hr.view') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager')
 
-    if (!user || !['HR', 'ADMIN'].includes(user.department || '')) {
+    if (!hasPermission) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -31,82 +32,94 @@ export async function GET(request: NextRequest) {
       status: string;
     }> = []
 
-    // Get recent employee onboarding
-    const recentEmployees = await prisma.employee.findMany({
-      where: {
-        createdAt: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
-        }
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 5
-    })
-
-    recentEmployees.forEach(employee => {
-      activities.push({
-        id: `emp-${employee.id}`,
-        type: 'employee_onboarding',
-        title: 'New Employee Onboarded',
-        description: `${employee.firstName} ${employee.lastName} joined the ${employee.department} department`,
-        timestamp: employee.createdAt.toISOString(),
-        user: `${employee.firstName} ${employee.lastName}`,
-        status: 'completed'
+    try {
+      // Get recent employee onboarding
+      const recentEmployees = await prisma.employee.findMany({
+        where: {
+          createdAt: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5
       })
-    })
 
-    // Get recent training completions
-    const recentTraining = await prisma.trainingEnrollment.findMany({
-      where: {
-        status: 'completed',
-        updatedAt: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        }
-      },
-      include: {
-        employee: true,
-        program: true
-      },
-      orderBy: { updatedAt: 'desc' },
-      take: 5
-    })
-
-    recentTraining.forEach(training => {
-      activities.push({
-        id: `training-${training.id}`,
-        type: 'training_completion',
-        title: 'Training Completed',
-        description: `${training.employee.firstName} ${training.employee.lastName} completed "${training.program.title}"`,
-        timestamp: training.updatedAt.toISOString(),
-        user: `${training.employee.firstName} ${training.employee.lastName}`,
-        status: 'completed'
+      recentEmployees.forEach(employee => {
+        activities.push({
+          id: `emp-${employee.id}`,
+          type: 'employee_onboarding',
+          title: 'New Employee Onboarded',
+          description: `${employee.firstName} ${employee.lastName} joined the ${employee.department} department`,
+          timestamp: employee.createdAt.toISOString(),
+          user: `${employee.firstName} ${employee.lastName}`,
+          status: 'completed'
+        })
       })
-    })
+    } catch (error) {
+      console.error('Error fetching recent employees:', error)
+    }
 
-    // Get recent performance reviews
-    const recentReviews = await prisma.performanceReview.findMany({
-      where: {
-        createdAt: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        }
-      },
-      include: {
-        employee: true
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 5
-    })
-
-    recentReviews.forEach(review => {
-      activities.push({
-        id: `review-${review.id}`,
-        type: 'performance_review',
-        title: 'Performance Review Scheduled',
-        description: `Performance review scheduled for ${review.employee.firstName} ${review.employee.lastName}`,
-        timestamp: review.createdAt.toISOString(),
-        user: `${review.employee.firstName} ${review.employee.lastName}`,
-        status: 'pending'
+    try {
+      // Get recent training completions
+      const recentTraining = await prisma.trainingEnrollment.findMany({
+        where: {
+          status: 'completed',
+          updatedAt: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          }
+        },
+        include: {
+          employee: true,
+          program: true
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 5
       })
-    })
+
+      recentTraining.forEach(training => {
+        activities.push({
+          id: `training-${training.id}`,
+          type: 'training_completion',
+          title: 'Training Completed',
+          description: `${training.employee.firstName} ${training.employee.lastName} completed "${training.program.title}"`,
+          timestamp: training.updatedAt.toISOString(),
+          user: `${training.employee.firstName} ${training.employee.lastName}`,
+          status: 'completed'
+        })
+      })
+    } catch (error) {
+      console.error('Error fetching recent training:', error)
+    }
+
+    try {
+      // Get recent performance reviews
+      const recentReviews = await prisma.performanceReview.findMany({
+        where: {
+          createdAt: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          }
+        },
+        include: {
+          employee: true
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 5
+      })
+
+      recentReviews.forEach(review => {
+        activities.push({
+          id: `review-${review.id}`,
+          type: 'performance_review',
+          title: 'Performance Review Scheduled',
+          description: `Performance review scheduled for ${review.employee.firstName} ${review.employee.lastName}`,
+          timestamp: review.createdAt.toISOString(),
+          user: `${review.employee.firstName} ${review.employee.lastName}`,
+          status: 'pending'
+        })
+      })
+    } catch (error) {
+      console.error('Error fetching recent reviews:', error)
+    }
 
     // Sort activities by timestamp (most recent first)
     activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())

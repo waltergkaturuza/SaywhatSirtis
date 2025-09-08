@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import Link from "next/link"
 import {
@@ -48,11 +50,37 @@ interface RecentActivity {
 }
 
 export default function HRDashboard() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [clickedIcons, setClickedIcons] = useState(new Set())
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [activities, setActivities] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Handle authentication
+  useEffect(() => {
+    if (status === 'loading') return // Still loading
+
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin?callbackUrl=/hr/dashboard')
+      return
+    }
+
+    // Check HR permissions
+    if (session?.user) {
+      const hasPermission = session.user?.permissions?.includes('hr.view') ||
+                           session.user?.permissions?.includes('hr.full_access') ||
+                           session.user?.roles?.includes('admin') ||
+                           session.user?.roles?.includes('hr_manager')
+      
+      if (!hasPermission) {
+        setError('You do not have permission to access the HR dashboard')
+        setLoading(false)
+        return
+      }
+    }
+  }, [session, status, router])
 
   const getIconComponent = (iconName: string) => {
     const iconMap: { [key: string]: React.ComponentType<any> } = {
@@ -79,6 +107,9 @@ export default function HRDashboard() {
   }
 
   useEffect(() => {
+    // Don't fetch data if not authenticated or no permission
+    if (status !== 'authenticated' || error) return
+
     const fetchDashboardData = async () => {
       try {
         setError(null)
@@ -92,14 +123,31 @@ export default function HRDashboard() {
           setStats(statsData)
         } else {
           const errorData = await statsResponse.json()
-          setError(errorData.error || 'Failed to fetch statistics')
+          console.error('Stats API error:', errorData)
+          if (statsResponse.status === 401) {
+            router.push('/auth/signin?callbackUrl=/hr/dashboard')
+            return
+          } else if (statsResponse.status === 403) {
+            setError('You do not have permission to view HR statistics')
+          } else {
+            setError(errorData.error || 'Failed to fetch statistics')
+          }
         }
 
         if (activitiesResponse.ok) {
           const activitiesData = await activitiesResponse.json()
           setActivities(activitiesData)
         } else {
-          console.error('Failed to fetch activities')
+          const errorData = await activitiesResponse.json()
+          console.error('Activities API error:', errorData)
+          if (activitiesResponse.status === 401) {
+            router.push('/auth/signin?callbackUrl=/hr/dashboard')
+            return
+          } else if (activitiesResponse.status === 403) {
+            console.warn('No permission to view activities')
+          } else {
+            console.error('Failed to fetch activities:', errorData)
+          }
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -110,7 +158,7 @@ export default function HRDashboard() {
     }
 
     fetchDashboardData()
-  }, [])
+  }, [session, status, error, router])
 
   const handleIconClick = (moduleIndex: number) => {
     setClickedIcons(prev => new Set(prev).add(moduleIndex))
