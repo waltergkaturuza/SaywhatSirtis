@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
   CubeIcon,
   CurrencyDollarIcon,
@@ -15,6 +15,29 @@ import {
 } from "@heroicons/react/24/outline"
 import type { Asset, InventoryPermissions } from "@/types/inventory"
 
+// SAYWHAT brand colors
+const COLORS = {
+  primary: '#FF8C00',    // SAYWHAT orange
+  secondary: '#228B22',  // SAYWHAT green
+  accent: '#2F4F4F',     // Dark slate gray
+  muted: '#708090'       // Slate gray
+}
+
+interface Department {
+  id: string
+  name: string
+  code: string
+}
+
+interface Employee {
+  id: string
+  employeeId: string
+  firstName: string
+  lastName: string
+  email: string
+  department: string
+}
+
 interface AssetRegistrationProps {
   permissions: InventoryPermissions
   onSuccess: () => void
@@ -25,6 +48,11 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Backend data states
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loadingData, setLoadingData] = useState(true)
   
   const [formData, setFormData] = useState({
     // Basic Information
@@ -100,10 +128,45 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
     { id: "remote", name: "Remote/Mobile" }
   ]
 
-  const departments = [
-    "Finance", "Administration", "IT", "HR", "Operations", 
-    "Marketing", "Sales", "Legal", "Procurement", "Security"
-  ]
+  // Fetch departments and employees from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoadingData(true)
+        
+        // Fetch departments
+        const deptResponse = await fetch('/api/hr/department/list')
+        if (deptResponse.ok) {
+          const deptData = await deptResponse.json()
+          if (deptData.success && deptData.data) {
+            setDepartments(deptData.data)
+          }
+        }
+        
+        // Fetch employees
+        const empResponse = await fetch('/api/hr/employees')
+        if (empResponse.ok) {
+          const empData = await empResponse.json()
+          if (empData.success && empData.data) {
+            setEmployees(empData.data)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dropdown data:', error)
+        // Fallback data
+        setDepartments([
+          { id: 'hr', name: 'Human Resources', code: 'HR' },
+          { id: 'it', name: 'Information Technology', code: 'IT' },
+          { id: 'finance', name: 'Finance', code: 'FIN' },
+          { id: 'operations', name: 'Operations', code: 'OPS' }
+        ])
+      } finally {
+        setLoadingData(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -223,8 +286,11 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(step / 4) * 100}%` }}
+              className="h-2 rounded-full transition-all duration-300"
+              style={{ 
+                backgroundColor: COLORS.primary,
+                width: `${(step / 4) * 100}%` 
+              }}
             ></div>
           </div>
         </div>
@@ -234,7 +300,10 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
           {step === 1 && (
             <div className="bg-white border rounded-lg p-6">
               <div className="flex items-center mb-6">
-                <CubeIcon className="h-6 w-6 text-blue-600 mr-3" />
+                <CubeIcon 
+                  className="h-6 w-6 mr-3" 
+                  style={{ color: COLORS.primary }} 
+                />
                 <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
               </div>
               
@@ -247,7 +316,7 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleInputChange("name", e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="e.g., Dell Laptop Inspiron 15"
                     required
                   />
@@ -370,7 +439,10 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
           {step === 2 && permissions.canViewFinancials && (
             <div className="bg-white border rounded-lg p-6">
               <div className="flex items-center mb-6">
-                <CurrencyDollarIcon className="h-6 w-6 text-green-600 mr-3" />
+                <CurrencyDollarIcon 
+                  className="h-6 w-6 mr-3" 
+                  style={{ color: COLORS.secondary }} 
+                />
                 <h3 className="text-lg font-medium text-gray-900">Financial Information</h3>
               </div>
               
@@ -472,7 +544,10 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
           {step === 3 && (
             <div className="bg-white border rounded-lg p-6">
               <div className="flex items-center mb-6">
-                <MapPinIcon className="h-6 w-6 text-purple-600 mr-3" />
+                <MapPinIcon 
+                  className="h-6 w-6 mr-3" 
+                  style={{ color: COLORS.accent }} 
+                />
                 <h3 className="text-lg font-medium text-gray-900">Location & Allocation</h3>
               </div>
               
@@ -501,12 +576,15 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
                   <select
                     value={formData.department}
                     onChange={(e) => handleInputChange("department", e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     required
+                    disabled={loadingData}
                   >
-                    <option value="">Select department</option>
+                    <option value="">
+                      {loadingData ? 'Loading departments...' : 'Select department'}
+                    </option>
                     {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
                     ))}
                   </select>
                 </div>
@@ -515,13 +593,21 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Assigned To
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.assignedTo}
                     onChange={(e) => handleInputChange("assignedTo", e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Employee name"
-                  />
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    disabled={loadingData}
+                  >
+                    <option value="">
+                      {loadingData ? 'Loading employees...' : 'Select employee (optional)'}
+                    </option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.firstName} {emp.lastName} ({emp.employeeId})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -532,7 +618,7 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
                     type="email"
                     value={formData.assignedEmail}
                     onChange={(e) => handleInputChange("assignedEmail", e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     placeholder="employee@company.com"
                   />
                 </div>
@@ -640,7 +726,10 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
               {/* File Uploads */}
               <div className="bg-white border rounded-lg p-6">
                 <div className="flex items-center mb-6">
-                  <DocumentTextIcon className="h-6 w-6 text-orange-600 mr-3" />
+                  <DocumentTextIcon 
+                    className="h-6 w-6 mr-3" 
+                    style={{ color: COLORS.primary }} 
+                  />
                   <h3 className="text-lg font-medium text-gray-900">Images & Documents</h3>
                 </div>
                 
@@ -748,7 +837,8 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="px-6 py-2 bg-blue-600 border border-transparent rounded-md text-white hover:bg-blue-700"
+                  className="px-6 py-2 border border-transparent rounded-md text-white hover:opacity-90"
+                  style={{ backgroundColor: COLORS.primary }}
                 >
                   Next
                 </button>
@@ -756,7 +846,8 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
                 <button
                   type="submit"
                   disabled={loading || !validateStep(step)}
-                  className="px-6 py-2 bg-green-600 border border-transparent rounded-md text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-6 py-2 border border-transparent rounded-md text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  style={{ backgroundColor: COLORS.secondary }}
                 >
                   {loading && (
                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
