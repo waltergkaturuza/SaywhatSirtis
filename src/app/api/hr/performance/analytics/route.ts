@@ -13,11 +13,10 @@ export async function GET(request: NextRequest) {
 
     // Check if user has HR permissions
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email! },
-      include: { employee: true }
+      where: { email: session.user.email! }
     })
 
-    if (!user?.employee || !['HR', 'Admin'].includes(user.employee.department)) {
+    if (!user || !['HR', 'ADMIN'].includes(user.department || '')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -62,7 +61,7 @@ export async function GET(request: NextRequest) {
       ? performanceReviews.reduce((sum, review) => sum + (review.overallRating || 0), 0) / totalReviews
       : 0
     
-    const completedReviews = performanceReviews.filter(review => review.status === 'completed').length
+    const completedReviews = performanceReviews.filter(review => review.reviewType === 'annual').length
     const completionRate = totalReviews > 0 ? (completedReviews / totalReviews) * 100 : 0
 
     // Calculate improvement rate (simplified)
@@ -72,10 +71,7 @@ export async function GET(request: NextRequest) {
     const departments = await prisma.employee.groupBy({
       by: ['department'],
       _count: {
-        department: true
-      },
-      _avg: {
-        id: true // Placeholder for rating calculation
+        id: true
       }
     })
 
@@ -97,7 +93,7 @@ export async function GET(request: NextRequest) {
         return {
           name: dept.department,
           avgRating: Math.round(avgRating * 10) / 10,
-          employees: dept._count.department,
+          employees: dept._count.id,
           trend
         }
       })
@@ -145,7 +141,7 @@ export async function GET(request: NextRequest) {
       department: review.employee.department,
       rating: review.overallRating || 0,
       position: review.employee.position || 'Employee',
-      issue: review.improvementAreas || 'Performance concerns'
+      issue: 'Performance concerns'
     }))
 
     // Get skill gaps (simplified)
