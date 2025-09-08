@@ -57,23 +57,6 @@ export async function GET() {
           fuelAllowance: true,
           airtimeAllowance: true,
           otherBenefits: true,
-          position: true,
-          phoneNumber: true,
-          hireDate: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-          // Supervisor and role fields
-          supervisorId: true,
-          isSupervisor: true,
-          isReviewer: true,
-          // Benefits fields
-          medicalAid: true,
-          funeralCover: true,
-          vehicleBenefit: true,
-          fuelAllowance: true,
-          airtimeAllowance: true,
-          otherBenefits: true,
           // Archive fields
           archivedAt: true,
           archiveReason: true,

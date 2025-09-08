@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Import and run the migration
-    const { runProductionMigration } = require('@/scripts/production-migration')
+    const { runProductionMigration } = require('../../../../scripts/production-migration')
     
     console.log('🚀 Admin initiated production migration:', session.user.email)
     
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check migration status
-    const { checkAndMigrateProduction } = require('@/scripts/production-migration')
+    const { checkAndMigrateProduction } = require('../../../../scripts/production-migration')
     
     // Just check, don't migrate
     const status = await checkAndMigrateProduction()
