@@ -31,6 +31,38 @@ interface NewAppraisalForm {
   customerFeedbackRequired: boolean
 }
 
+// Default performance areas
+const defaultPerformanceAreas = [
+  { area: "Job Knowledge & Technical Skills", weight: 20, description: "Understanding of role requirements and technical competencies" },
+  { area: "Quality of Work", weight: 20, description: "Accuracy, thoroughness, and attention to detail" },
+  { area: "Communication Skills", weight: 15, description: "Verbal and written communication effectiveness" },
+  { area: "Team Collaboration", weight: 15, description: "Ability to work effectively with others" },
+  { area: "Initiative & Innovation", weight: 15, description: "Proactive approach and creative problem-solving" },
+  { area: "Leadership & Management", weight: 15, description: "Leadership abilities and people management skills" }
+]
+
+export default function NewAppraisalPage() {
+  const router = useRouter()
+  
+  // State for form data
+  const [formData, setFormData] = useState<NewAppraisalForm>({
+    employeeId: "",
+    period: "",
+    appraisalType: "annual",
+    dueDate: "",
+    supervisor: "",
+    reviewer: "",
+    objectives: [""],
+    performanceAreas: defaultPerformanceAreas,
+    instructions: "",
+    selfAssessmentRequired: true,
+    peerFeedbackRequired: false,
+    customerFeedbackRequired: false
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
+  
+  // State for data fetching
   const [employees, setEmployees] = useState<Array<{id: string, name: string, department: string, position: string}>>([])
   const [supervisors, setSupervisors] = useState<Array<{id: string, name: string, department: string}>>([])
   const [loading, setLoading] = useState(true)
@@ -75,35 +107,6 @@ interface NewAppraisalForm {
       setLoading(false)
     }
   }
-
-// Default performance areas
-const defaultPerformanceAreas = [
-  { area: "Job Knowledge & Technical Skills", weight: 20, description: "Understanding of role requirements and technical competencies" },
-  { area: "Quality of Work", weight: 20, description: "Accuracy, thoroughness, and attention to detail" },
-  { area: "Communication Skills", weight: 15, description: "Verbal and written communication effectiveness" },
-  { area: "Team Collaboration", weight: 15, description: "Ability to work effectively with others" },
-  { area: "Initiative & Innovation", weight: 15, description: "Proactive approach and creative problem-solving" },
-  { area: "Leadership & Management", weight: 15, description: "Leadership abilities and people management skills" }
-]
-
-export default function NewAppraisalPage() {
-  const router = useRouter()
-  const [formData, setFormData] = useState<NewAppraisalForm>({
-    employeeId: "",
-    period: "",
-    appraisalType: "annual",
-    dueDate: "",
-    supervisor: "",
-    reviewer: "",
-    objectives: [""],
-    performanceAreas: defaultPerformanceAreas,
-    instructions: "",
-    selfAssessmentRequired: true,
-    peerFeedbackRequired: false,
-    customerFeedbackRequired: false
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [currentStep, setCurrentStep] = useState(1)
 
   const metadata = {
     title: "Create New Appraisal",
