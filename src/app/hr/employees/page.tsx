@@ -41,6 +41,7 @@ export default function EmployeesPage() {
   
   // API state
   const [employees, setEmployees] = useState<any[]>([])
+  const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>("")  // Fetch employees from API
   useEffect(() => {
@@ -64,11 +65,41 @@ export default function EmployeesPage() {
         setLoading(false)
       }
     }
+
+    const fetchDepartments = async () => {
+      try {
+        const response = await fetch('/api/hr/department')
+        const result = await response.json()
+        if (result.success) {
+          setDepartments(result.data)
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error)
+      }
+    }
     
     if (session) {
       fetchEmployees()
+      fetchDepartments()
     }
   }, [session])
+
+  // Helper function to sort departments hierarchically
+  const sortDepartmentsHierarchically = (departments: any[]) => {
+    const mainDepts = departments.filter(dept => !dept.parentId).sort((a, b) => a.name.localeCompare(b.name))
+    const result: any[] = []
+    
+    const addDepartmentWithSubunits = (dept: any) => {
+      result.push(dept)
+      const subunits = departments
+        .filter(sub => sub.parentId === dept.id)
+        .sort((a, b) => a.name.localeCompare(b.name))
+      subunits.forEach(addDepartmentWithSubunits)
+    }
+    
+    mainDepts.forEach(addDepartmentWithSubunits)
+    return result
+  }
 
   const metadata = {
     title: "Employee Directory",
@@ -293,12 +324,12 @@ export default function EmployeesPage() {
                 className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Departments</option>
-                <option value="Operations">Operations</option>
-                <option value="Healthcare">Healthcare</option>
-                <option value="Education">Education</option>
-                <option value="Finance">Finance</option>
-                <option value="HR">HR</option>
-                <option value="IT">IT</option>
+                {sortDepartmentsHierarchically(departments).map((dept) => (
+                  <option key={dept.id} value={dept.name}>
+                    {'  '.repeat(dept.level)}{dept.name}
+                    {dept.code && ` (${dept.code})`}
+                  </option>
+                ))}
               </select>
               
               <select

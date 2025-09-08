@@ -40,6 +40,15 @@ export async function GET() {
         lastName: true,
         email: true,
         department: true,
+        departmentId: true,
+        departmentRef: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            level: true
+          }
+        },
         position: true,
         phoneNumber: true,
         hireDate: true,
@@ -56,7 +65,9 @@ export async function GET() {
       employeeId: emp.employeeId,
       name: `${emp.firstName} ${emp.lastName}`,
       email: emp.email,
-      department: emp.department,
+      department: emp.departmentRef?.name || emp.department || 'N/A',
+      departmentCode: emp.departmentRef?.code,
+      departmentLevel: emp.departmentRef?.level,
       position: emp.position,
       phone: emp.phoneNumber,
       hireDate: emp.hireDate ? emp.hireDate.toISOString().split('T')[0] : 'N/A',
@@ -100,8 +111,18 @@ export async function POST(request: Request) {
 
     // Validate required fields
     const validationError = validateRequiredFields(formData, [
-      'email', 'position', 'department'
+      'email', 'position'
     ])
+    
+    // Check that either department or departmentId is provided
+    if (!formData.department && !formData.departmentId) {
+      const { response, status } = createErrorResponse(
+        'Department is required',
+        HttpStatus.BAD_REQUEST,
+        { code: ErrorCodes.VALIDATION_ERROR }
+      )
+      return NextResponse.json(response, { status })
+    }
     
     if (validationError) {
       const { response, status } = createErrorResponse(
@@ -136,6 +157,16 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status })
     }
 
+    // If departmentId is provided, fetch the department name for backward compatibility
+    let departmentName = formData.department
+    if (formData.departmentId && !formData.department) {
+      const department = await prisma.department.findUnique({
+        where: { id: formData.departmentId },
+        select: { name: true }
+      })
+      departmentName = department?.name || ''
+    }
+
     // Generate employee ID
     const employeeCount = await prisma.employee.count()
     const employeeId = `EMP${(employeeCount + 1).toString().padStart(4, '0')}`
@@ -148,7 +179,8 @@ export async function POST(request: Request) {
       lastName: sanitizeInput(formData.lastName),
       email: formData.email.toLowerCase().trim(),
       phoneNumber: formData.phoneNumber ? sanitizeInput(formData.phoneNumber) : null,
-      department: sanitizeInput(formData.department),
+      department: sanitizeInput(departmentName || ''), // Keep for backward compatibility
+      departmentId: formData.departmentId || null, // Use departmentId for proper relation
       position: sanitizeInput(formData.position),
       startDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
       hireDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),

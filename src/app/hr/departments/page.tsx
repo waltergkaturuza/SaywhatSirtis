@@ -52,6 +52,7 @@ export default function DepartmentsPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
+  const [showSubunitModal, setShowSubunitModal] = useState(false)
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null)
   
   // Form states
@@ -64,7 +65,18 @@ export default function DepartmentsPage() {
     location: '',
     status: 'ACTIVE'
   })
+  const [subunitFormData, setSubunitFormData] = useState({
+    parentId: '',
+    name: '',
+    description: '',
+    code: '',
+    manager: '',
+    budget: '',
+    location: '',
+    status: 'ACTIVE' as 'ACTIVE' | 'INACTIVE' | 'RESTRUCTURING'
+  })
   const [formLoading, setFormLoading] = useState(false)
+  const [subunitLoading, setSubunitLoading] = useState(false)
 
   // Metadata for ModulePage
   const metadata = {
@@ -78,24 +90,46 @@ export default function DepartmentsPage() {
 
   // Actions for the page
   const actions = (
-    <Button 
-      onClick={() => {
-        setFormData({
-          name: '',
-          description: '',
-          code: '',
-          manager: '',
-          budget: '',
-          location: '',
-          status: 'ACTIVE'
-        })
-        setShowAddModal(true)
-      }}
-      className="bg-orange-600 hover:bg-orange-700 text-white"
-    >
-      <PlusIcon className="w-4 h-4 mr-2" />
-      Add Department
-    </Button>
+    <div className="flex space-x-2">
+      <Button 
+        onClick={() => {
+          setFormData({
+            name: '',
+            description: '',
+            code: '',
+            manager: '',
+            budget: '',
+            location: '',
+            status: 'ACTIVE'
+          })
+          setShowAddModal(true)
+        }}
+        className="bg-orange-600 hover:bg-orange-700 text-white"
+      >
+        <PlusIcon className="w-4 h-4 mr-2" />
+        Add Department
+      </Button>
+      <Button 
+        variant="outline"
+        onClick={() => {
+          setSubunitFormData({
+            parentId: '',
+            name: '',
+            description: '',
+            code: '',
+            manager: '',
+            budget: '',
+            location: '',
+            status: 'ACTIVE'
+          })
+          setShowSubunitModal(true)
+        }}
+        className="border-orange-600 text-orange-600 hover:bg-orange-50"
+      >
+        <BuildingOfficeIcon className="w-4 h-4 mr-2" />
+        Add Subunit
+      </Button>
+    </div>
   )
 
   useEffect(() => {
@@ -221,6 +255,67 @@ export default function DepartmentsPage() {
     } catch (err) {
       console.error('Error deleting department:', err)
       setError('Failed to delete department')
+    }
+  }
+
+  const handleCreateSubunit = (department: Department) => {
+    setSelectedDepartment(department)
+    setSubunitFormData({
+      parentId: '',
+      name: '',
+      description: '',
+      code: '',
+      manager: '',
+      budget: '',
+      location: '',
+      status: 'ACTIVE'
+    })
+    setShowSubunitModal(true)
+  }
+
+  const submitSubunit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedDepartment) return
+
+    try {
+      setSubunitLoading(true)
+      setError('')
+
+      const response = await fetch('/api/hr/department/subunits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...subunitFormData,
+          parentId: selectedDepartment.id,
+          budget: subunitFormData.budget ? parseFloat(subunitFormData.budget) : null
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setShowSubunitModal(false)
+        await fetchDepartments()
+        setSubunitFormData({
+          parentId: '',
+          name: '',
+          description: '',
+          code: '',
+          manager: '',
+          budget: '',
+          location: '',
+          status: 'ACTIVE'
+        })
+      } else {
+        setError(result.error || 'Failed to create subunit')
+      }
+    } catch (err) {
+      console.error('Error creating subunit:', err)
+      setError('Failed to create subunit')
+    } finally {
+      setSubunitLoading(false)
     }
   }
 
@@ -485,6 +580,14 @@ export default function DepartmentsPage() {
                       >
                         <TrashIcon className="h-4 w-4 mr-1" />
                         Delete
+                      </button>
+                      <button
+                        onClick={() => handleCreateSubunit(department)}
+                        className="flex-1 inline-flex justify-center items-center px-3 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50"
+                        title="Add subunit to this department"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-1" />
+                        Add Subunit
                       </button>
                     </div>
                   </div>
@@ -811,6 +914,123 @@ export default function DepartmentsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Subunit Modal */}
+      <Dialog open={showSubunitModal} onOpenChange={setShowSubunitModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Create Subunit{selectedDepartment ? ` for ${selectedDepartment.name}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={submitSubunit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Name *</label>
+              <input
+                type="text"
+                required
+                value={subunitFormData.name}
+                onChange={(e) => setSubunitFormData({...subunitFormData, name: e.target.value})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="Enter subunit name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                value={subunitFormData.description}
+                onChange={(e) => setSubunitFormData({...subunitFormData, description: e.target.value})}
+                rows={3}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="Enter description"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Code</label>
+              <input
+                type="text"
+                value={subunitFormData.code}
+                onChange={(e) => setSubunitFormData({...subunitFormData, code: e.target.value})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="Enter department code"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Manager/Leader</label>
+              <input
+                type="text"
+                value={subunitFormData.manager}
+                onChange={(e) => setSubunitFormData({...subunitFormData, manager: e.target.value})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="Enter manager name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Budget</label>
+              <input
+                type="number"
+                step="0.01"
+                value={subunitFormData.budget}
+                onChange={(e) => setSubunitFormData({...subunitFormData, budget: e.target.value})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="Enter budget amount"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Location</label>
+              <input
+                type="text"
+                value={subunitFormData.location}
+                onChange={(e) => setSubunitFormData({...subunitFormData, location: e.target.value})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+                placeholder="Enter location"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <select
+                value={subunitFormData.status}
+                onChange={(e) => setSubunitFormData({...subunitFormData, status: e.target.value as 'ACTIVE' | 'INACTIVE' | 'RESTRUCTURING'})}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500"
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="RESTRUCTURING">Restructuring</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowSubunitModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={subunitLoading}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
+              >
+                {subunitLoading ? 'Creating...' : 'Create Subunit'}
+              </button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </ModulePage>

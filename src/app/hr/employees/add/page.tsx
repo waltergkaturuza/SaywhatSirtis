@@ -41,6 +41,7 @@ interface EmployeeFormData {
   // Employment Information
   employeeId: string
   department: string
+  departmentId: string
   position: string
   reportingManager: string
   startDate: string
@@ -85,6 +86,13 @@ export default function AddEmployeePage() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
+  const [departments, setDepartments] = useState<Array<{
+    id: string
+    name: string
+    code?: string
+    level: number
+    parentId?: string
+  }>>([])
   const [formData, setFormData] = useState<EmployeeFormData>({
     firstName: "",
     lastName: "",
@@ -101,6 +109,7 @@ export default function AddEmployeePage() {
     emergencyContactRelationship: "",
     employeeId: "",
     department: "",
+    departmentId: "",
     position: "",
     reportingManager: "",
     startDate: "",
@@ -128,8 +137,39 @@ export default function AddEmployeePage() {
 
   const totalSteps = 6
 
+  // Fetch departments including subunits
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch('/api/hr/department')
+      const result = await response.json()
+      if (result.success) {
+        setDepartments(result.data)
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+    }
+  }
+
+  // Helper function to sort departments hierarchically
+  const sortDepartmentsHierarchically = (departments: any[]) => {
+    const mainDepts = departments.filter(dept => !dept.parentId).sort((a, b) => a.name.localeCompare(b.name))
+    const result: any[] = []
+    
+    const addDepartmentWithSubunits = (dept: any) => {
+      result.push(dept)
+      const subunits = departments
+        .filter(sub => sub.parentId === dept.id)
+        .sort((a, b) => a.name.localeCompare(b.name))
+      subunits.forEach(addDepartmentWithSubunits)
+    }
+    
+    mainDepts.forEach(addDepartmentWithSubunits)
+    return result
+  }
+
   useEffect(() => {
     setMounted(true)
+    fetchDepartments()
   }, [])
 
   const handleInputChange = (field: keyof EmployeeFormData, value: any) => {
@@ -435,19 +475,22 @@ export default function AddEmployeePage() {
                       Department *
                     </label>
                     <select
-                      value={formData.department}
-                      onChange={(e) => handleInputChange("department", e.target.value)}
+                      value={formData.departmentId}
+                      onChange={(e) => {
+                        const selectedDept = departments.find(d => d.id === e.target.value)
+                        handleInputChange("departmentId", e.target.value)
+                        handleInputChange("department", selectedDept?.name || "")
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       required
                     >
                       <option value="">Select Department</option>
-                      <option value="human-resources">Human Resources</option>
-                      <option value="it">Information Technology</option>
-                      <option value="programs">Programs & Development</option>
-                      <option value="finance">Finance & Administration</option>
-                      <option value="communications">Communications</option>
-                      <option value="operations">Operations</option>
-                      <option value="research">Research & Development</option>
+                      {sortDepartmentsHierarchically(departments).map((dept) => (
+                        <option key={dept.id} value={dept.id}>
+                          {'  '.repeat(dept.level)}{dept.name}
+                          {dept.code && ` (${dept.code})`}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    // Get all departments with employee counts
+    // Get all departments with employee counts and hierarchical structure
     const departments = await prisma.department.findMany({
       include: {
         _count: {
@@ -31,13 +31,42 @@ export async function GET(request: NextRequest) {
               where: {
                 status: 'ACTIVE'
               }
+            },
+            subunits: true
+          }
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        },
+        subunits: {
+          include: {
+            _count: {
+              select: {
+                employees: {
+                  where: {
+                    status: 'ACTIVE'
+                  }
+                }
+              }
             }
+          },
+          orderBy: {
+            name: 'asc'
           }
         }
       },
-      orderBy: {
-        name: 'asc'
-      }
+      orderBy: [
+        {
+          level: 'asc'
+        },
+        {
+          name: 'asc'
+        }
+      ]
     });
 
     // Transform the data to match the expected format
@@ -50,7 +79,20 @@ export async function GET(request: NextRequest) {
       budget: dept.budget,
       location: dept.location,
       status: dept.status,
+      level: dept.level,
+      parentId: dept.parentId,
+      parent: dept.parent,
+      subunits: dept.subunits.map((sub: any) => ({
+        id: sub.id,
+        name: sub.name,
+        code: sub.code,
+        manager: sub.manager,
+        employeeCount: sub._count.employees,
+        status: sub.status,
+        level: sub.level
+      })),
       employeeCount: dept._count.employees,
+      subunitCount: dept._count.subunits,
       createdAt: dept.createdAt.toISOString(),
       updatedAt: dept.updatedAt.toISOString()
     }));
@@ -93,7 +135,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    const { name, description, code, manager, budget, location, status } = await request.json();
+    const { name, description, code, manager, budget, location, status, parentId } = await request.json();
 
     if (!name?.trim()) {
       return NextResponse.json(
@@ -103,6 +145,40 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // Validate parent department if parentId is provided
+    let parentDept = null;
+    let level = 0;
+    
+    if (parentId) {
+      parentDept = await prisma.department.findUnique({
+        where: { id: parentId }
+      });
+      
+      if (!parentDept) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Parent department not found' 
+          },
+          { status: 404 }
+        );
+      }
+      
+      // Set level based on parent level
+      level = parentDept.level + 1;
+      
+      // Prevent circular references
+      if (parentDept.parentId === parentId) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Cannot create circular department hierarchy' 
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // Check if department name already exists
@@ -146,7 +222,9 @@ export async function POST(request: NextRequest) {
         manager: manager?.trim() || null,
         budget: budget ? parseFloat(budget) : null,
         location: location?.trim() || null,
-        status: status || 'ACTIVE'
+        status: status || 'ACTIVE',
+        parentId: parentId || null,
+        level: level
       },
       include: {
         _count: {
@@ -155,7 +233,15 @@ export async function POST(request: NextRequest) {
               where: {
                 status: 'ACTIVE'
               }
-            }
+            },
+            subunits: true
+          }
+        },
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            code: true
           }
         }
       }
@@ -173,7 +259,11 @@ export async function POST(request: NextRequest) {
         budget: newDepartment.budget,
         location: newDepartment.location,
         status: newDepartment.status,
+        level: newDepartment.level,
+        parentId: newDepartment.parentId,
+        parent: newDepartment.parent,
         employeeCount: newDepartment._count.employees,
+        subunitCount: newDepartment._count.subunits,
         createdAt: newDepartment.createdAt.toISOString(),
         updatedAt: newDepartment.updatedAt.toISOString()
       }
@@ -211,7 +301,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    const { id, name, description, code, manager, budget, location, status } = await request.json();
+    const { id, name, description, code, manager, budget, location, status, parentId } = await request.json();
 
     if (!id) {
       return NextResponse.json(

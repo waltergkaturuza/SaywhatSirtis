@@ -178,20 +178,31 @@ model CallRecord {
 }
 
 model Department {
-  id          String     @id @default(cuid())
-  name        String     @unique
+  id          String       @id @default(cuid())
+  name        String       @unique
   description String?
   budget      Float?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  code        String?    @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  code        String?      @unique
   location    String?
   manager     String?
-  status      String     @default("ACTIVE")
+  status      String       @default("ACTIVE")
+  
+  // Hierarchical structure
+  parentId    String?
+  parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  subunits    Department[] @relation("DepartmentHierarchy")
+  
+  // Department level (0 = main department, 1+ = subunit levels)
+  level       Int          @default(0)
+  
   employees   Employee[]
 
   @@index([name])
   @@index([status])
+  @@index([parentId])
+  @@index([level])
   @@map("departments")
 }
 
