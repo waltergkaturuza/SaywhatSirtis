@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
-import { executeQuery } from "@/lib/prisma"
+import { safeQuery as executeQuery } from "@/lib/prisma"
 import { z } from "zod"
 
 // Map category to valid enum value

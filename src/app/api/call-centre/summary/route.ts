@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    const dateFilter = startDate && endDate ? {
+    const dateFilter: any = startDate && endDate ? {
       createdAt: {
         gte: new Date(startDate),
         lte: new Date(endDate)
@@ -38,8 +38,8 @@ export async function GET(request: NextRequest) {
     let totalCalls = 0
     let resolvedCalls = 0
     let pendingCalls = 0
-    let priorityStats: Array<{ priority: string; _count: { id: number } }> = []
-    let categoryStats: Array<{ category: string; _count: { id: number } }> = []
+    let priorityStats: Array<{ priority: string | null; _count: { id: number } }> = []
+    let categoryStats: Array<{ category: string | null; _count: { id: number } }> = []
     let officerPerformance: Array<{ officer: string; totalCalls: number; assignedOfficerId: string | null }> = []
     let recentCalls: any[] = []
 
@@ -70,26 +70,34 @@ export async function GET(request: NextRequest) {
       )
 
       // Get calls by priority
-      priorityStats = await withRetry(() =>
-        prisma.callRecord.groupBy({
+      try {
+        const priorityResults = await prisma.callRecord.groupBy({
           by: ['priority'],
           where: dateFilter,
           _count: {
             id: true
           }
         })
-      )
+        priorityStats = priorityResults
+      } catch (error) {
+        console.warn('Error fetching priority stats:', error)
+        priorityStats = []
+      }
 
       // Get calls by category
-      categoryStats = await withRetry(() =>
-        prisma.callRecord.groupBy({
+      try {
+        const categoryResults = await prisma.callRecord.groupBy({
           by: ['category'],
           where: dateFilter,
           _count: {
             id: true
           }
         })
-      )
+        categoryStats = categoryResults
+      } catch (error) {
+        console.warn('Error fetching category stats:', error)
+        categoryStats = []
+      }
 
       // Get calls grouped by assigned officer
       const callsGroupedByOfficer = await withRetry(() =>

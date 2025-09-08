@@ -19,33 +19,29 @@ export async function GET(request: NextRequest) {
 
     let calls: any[] = []
 
+    // Build filter for follow-up calls
+    const where: any = {
+      followUpRequired: true
+    }
+
+    if (status === 'pending') {
+      where.followUpDate = {
+        gte: new Date()
+      }
+    } else if (status === 'overdue') {
+      where.followUpDate = {
+        lt: new Date()
+      }
+    }
+
+    if (assignedTo) {
+      where.assignedOfficer = assignedTo
+    }
+
     try {
-      // Build filter for follow-up calls
-      const where: any = {
-        followUpRequired: true
-      }
-
-      if (status === 'pending') {
-        where.followUpDate = {
-          gte: new Date()
-        }
-      } else if (status === 'overdue') {
-        where.followUpDate = {
-          lt: new Date()
-        }
-      }
-
-      if (assignedTo) {
-        where.assignedOfficer = assignedTo
-      }
-
-      // Get call records that need follow-up with retry logic
       calls = await withRetry(() =>
         prisma.callRecord.findMany({
           where,
-          include: {
-            // Include any related data if needed
-          },
           orderBy: {
             followUpDate: 'asc'
           }
@@ -57,9 +53,9 @@ export async function GET(request: NextRequest) {
       // Return empty array if tables don't exist
       calls = []
     }
-      }
 
-      // Fetch calls with follow-up requirements
+    // Fetch calls with follow-up requirements
+    try {
       calls = await prisma.callRecord.findMany({
         where,
         select: {
@@ -83,6 +79,7 @@ export async function GET(request: NextRequest) {
       })
     } catch (error) {
       console.error('Error fetching tasks:', error)
+      calls = []
     }
 
     // Transform the data for frontend consumption
