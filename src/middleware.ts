@@ -163,8 +163,9 @@ export async function middleware(request: NextRequest) {
     // Ignore token errors for public routes
   }
   
-  // Check rate limit for API routes
-  if (request.nextUrl.pathname.startsWith('/api/')) {
+  // Check rate limit for API routes (exclude health check endpoints)
+  if (request.nextUrl.pathname.startsWith('/api/') && 
+      !request.nextUrl.pathname.startsWith('/api/test/')) {
     const clientId = userId || getClientIP(request)
     const rateLimit = checkRateLimit(clientId)
     

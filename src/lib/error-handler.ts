@@ -108,20 +108,30 @@ export async function withRetry<T>(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       return await operation()
-    } catch (error) {
+    } catch (error: any) {
       lastError = error
       
-      // Don't retry certain errors
+      // Don't retry validation errors or certain business logic errors
       if (error instanceof Prisma.PrismaClientValidationError ||
           (error instanceof Prisma.PrismaClientKnownRequestError && 
            ['P2002', 'P2025', 'P2003'].includes(error.code))) {
         throw error
       }
       
-      if (attempt < maxRetries) {
+      // Retry on connection and prepared statement errors
+      const isRetryable = 
+        error?.code === '26000' || // prepared statement errors
+        error?.code === '57P01' || // connection errors
+        error?.message?.includes('prepared statement') ||
+        error?.message?.includes('connection') ||
+        error?.message?.includes('ConnectorError')
+      
+      if (attempt < maxRetries && isRetryable) {
         console.warn(`Operation failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`)
         await new Promise(resolve => setTimeout(resolve, delay))
         delay *= 1.5 // Exponential backoff
+      } else if (attempt >= maxRetries || !isRetryable) {
+        throw error
       }
     }
   }
