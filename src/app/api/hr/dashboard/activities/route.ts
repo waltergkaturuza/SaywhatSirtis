@@ -33,12 +33,22 @@ export async function GET(request: NextRequest) {
     }> = []
 
     try {
-      // Get recent employee onboarding
+      // Get recent employee onboarding (safe query without new fields)
       const recentEmployees = await prisma.employee.findMany({
         where: {
           createdAt: {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
           }
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          position: true,
+          status: true,
+          department: true,
+          createdAt: true
         },
         orderBy: { createdAt: 'desc' },
         take: 5
