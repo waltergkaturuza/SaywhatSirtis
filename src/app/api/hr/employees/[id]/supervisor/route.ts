@@ -14,7 +14,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: employeeId } = await params
+    // Check permissions
     const hasPermission = session.user?.permissions?.includes('hr.edit') ||
                          session.user?.permissions?.includes('hr.full_access') ||
                          session.user?.roles?.includes('admin') ||
@@ -24,7 +24,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
+    const { id: employeeId } = await params
     const body = await request.json()
+    const { isSupervisor } = body
 
     // Validate employee exists
     const existingEmployee = await prisma.employee.findUnique({
@@ -35,56 +37,39 @@ export async function PATCH(
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
     }
 
-    // Update employee status to ARCHIVED and revoke access
+    // Update supervisor status
     const updatedEmployee = await prisma.employee.update({
       where: { id: employeeId },
       data: {
-        status: 'ARCHIVED',
-        archivedAt: new Date(),
-        archiveReason: body.reason || 'Other',
-        accessRevoked: true, // Automatically revoke access when archiving
-        updatedAt: new Date()
-      },
-      include: {
-        departmentRef: {
-          select: {
-            name: true
-          }
-        }
+        isSupervisor: isSupervisor
       }
     })
 
-    // Create audit log entry for archiving
-    try {
-      await prisma.auditLog.create({
-        data: {
-          action: 'ARCHIVE_EMPLOYEE',
-          resource: 'Employee',
-          resourceId: employeeId,
-          userId: session.user.id,
-          details: {
-            employeeName: `${existingEmployee.firstName} ${existingEmployee.lastName}`,
-            previousStatus: existingEmployee.status,
-            newStatus: 'ARCHIVED',
-            reason: 'Employee archived via HR dashboard'
-          }
-        }
-      })
-    } catch (auditError) {
-      // Log audit error but don't fail the archive operation
-      console.error('Failed to create audit log:', auditError)
-    }
+    // Create audit log entry
+    await prisma.auditLog.create({
+      data: {
+        action: isSupervisor ? 'PROMOTE_SUPERVISOR' : 'DEMOTE_SUPERVISOR',
+        resource: 'Employee',
+        resourceId: employeeId,
+        userId: session.user.id,
+        details: `Employee ${existingEmployee.email} ${isSupervisor ? 'promoted to' : 'removed from'} supervisor role by ${session.user.email}`,
+        timestamp: new Date(),
+        ipAddress: request.headers.get('x-forwarded-for') || 
+                  request.headers.get('x-real-ip') || 
+                  'unknown'
+      }
+    })
 
     return NextResponse.json({
       success: true,
-      message: 'Employee archived successfully',
-      employee: updatedEmployee
+      message: `Employee ${isSupervisor ? 'promoted to' : 'removed from'} supervisor role`,
+      data: updatedEmployee
     })
 
   } catch (error) {
-    console.error('Error archiving employee:', error)
+    console.error('Error updating supervisor status:', error)
     return NextResponse.json(
-      { error: 'Failed to archive employee' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }

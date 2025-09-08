@@ -43,10 +43,12 @@ interface EmployeeFormData {
   department: string
   departmentId: string
   position: string
-  reportingManager: string
+  supervisorId: string
   startDate: string
   employmentType: string
   workLocation: string
+  isSupervisor: boolean
+  isReviewer: boolean
   
   // Compensation
   baseSalary: string
@@ -54,6 +56,14 @@ interface EmployeeFormData {
   payGrade: string
   payFrequency: string
   benefits: string[]
+  
+  // Additional Benefits
+  medicalAid: boolean
+  funeralCover: boolean
+  vehicleBenefit: boolean
+  fuelAllowance: boolean
+  airtimeAllowance: boolean
+  otherBenefits: string[]
   
   // Education & Skills
   education: string
@@ -93,6 +103,13 @@ export default function AddEmployeePage() {
     level: number
     parentId?: string
   }>>([])
+  const [supervisors, setSupervisors] = useState<Array<{
+    id: string
+    firstName: string
+    lastName: string
+    position: string
+    department: string
+  }>>([])
   const [formData, setFormData] = useState<EmployeeFormData>({
     firstName: "",
     lastName: "",
@@ -111,15 +128,23 @@ export default function AddEmployeePage() {
     department: "",
     departmentId: "",
     position: "",
-    reportingManager: "",
+    supervisorId: "",
     startDate: "",
     employmentType: "",
     workLocation: "",
+    isSupervisor: false,
+    isReviewer: false,
     baseSalary: "",
     currency: "USD",
     payGrade: "",
     payFrequency: "monthly",
     benefits: [],
+    medicalAid: false,
+    funeralCover: false,
+    vehicleBenefit: false,
+    fuelAllowance: false,
+    airtimeAllowance: false,
+    otherBenefits: [],
     education: "",
     skills: [],
     certifications: [],
@@ -154,6 +179,23 @@ export default function AddEmployeePage() {
     }
   }
 
+  // Fetch supervisors
+  const fetchSupervisors = async () => {
+    try {
+      const response = await fetch('/api/hr/employees/supervisors')
+      const result = await response.json()
+      if (result.success) {
+        setSupervisors(result.data || [])
+      } else {
+        console.error('Failed to fetch supervisors:', result.error)
+        setSupervisors([])
+      }
+    } catch (error) {
+      console.error('Error fetching supervisors:', error)
+      setSupervisors([])
+    }
+  }
+
   // Helper function to sort departments hierarchically
   const sortDepartmentsHierarchically = (departments: any[]) => {
     const mainDepts = departments.filter(dept => !dept.parentId).sort((a, b) => a.name.localeCompare(b.name))
@@ -174,6 +216,7 @@ export default function AddEmployeePage() {
   useEffect(() => {
     setMounted(true)
     fetchDepartments()
+    fetchSupervisors()
   }, [])
 
   const handleInputChange = (field: keyof EmployeeFormData, value: any) => {
@@ -515,14 +558,48 @@ export default function AddEmployeePage() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Reporting Manager
+                      Supervisor
                     </label>
-                    <input
-                      type="text"
-                      value={formData.reportingManager}
-                      onChange={(e) => handleInputChange("reportingManager", e.target.value)}
+                    <select
+                      value={formData.supervisorId}
+                      onChange={(e) => handleInputChange("supervisorId", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select Supervisor</option>
+                      {supervisors.map((supervisor) => (
+                        <option key={supervisor.id} value={supervisor.id}>
+                          {supervisor.firstName} {supervisor.lastName} - {supervisor.position}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="isSupervisor"
+                      checked={formData.isSupervisor}
+                      onChange={(e) => handleInputChange("isSupervisor", e.target.checked)}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
+                    <label htmlFor="isSupervisor" className="text-sm font-medium text-gray-700">
+                      This employee is a supervisor
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="isReviewer"
+                      checked={formData.isReviewer}
+                      onChange={(e) => handleInputChange("isReviewer", e.target.checked)}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <label htmlFor="isReviewer" className="text-sm font-medium text-gray-700">
+                      This employee can conduct performance reviews
+                    </label>
                   </div>
                 </div>
 
@@ -677,6 +754,74 @@ export default function AddEmployeePage() {
                         <span className="ml-2 text-sm text-gray-700">{benefit}</span>
                       </label>
                     ))}
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-md">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">Specific Benefits</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.medicalAid}
+                        onChange={(e) => handleInputChange("medicalAid", e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Medical Aid</span>
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.funeralCover}
+                        onChange={(e) => handleInputChange("funeralCover", e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Funeral Cover</span>
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.vehicleBenefit}
+                        onChange={(e) => handleInputChange("vehicleBenefit", e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Vehicle Benefit</span>
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.fuelAllowance}
+                        onChange={(e) => handleInputChange("fuelAllowance", e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Fuel Allowance</span>
+                    </label>
+                    
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.airtimeAllowance}
+                        onChange={(e) => handleInputChange("airtimeAllowance", e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Airtime Allowance</span>
+                    </label>
+                  </div>
+                  
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Other Benefits (comma-separated)
+                    </label>
+                    <textarea
+                      value={formData.otherBenefits.join(", ")}
+                      onChange={(e) => handleInputChange("otherBenefits", e.target.value.split(", ").filter(benefit => benefit.trim()))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      rows={2}
+                      placeholder="e.g., Housing Allowance, Transport Subsidy, etc."
+                    />
                   </div>
                 </div>
               </div>

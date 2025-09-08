@@ -232,6 +232,27 @@ model Employee {
   salary              Float?
   currency            String?              @default("USD")
   status              String               @default("ACTIVE")
+  
+  // Supervisor and Role fields
+  supervisorId        String?
+  supervisor          Employee?            @relation("EmployeeSupervisor", fields: [supervisorId], references: [id])
+  subordinates        Employee[]           @relation("EmployeeSupervisor")
+  isSupervisor        Boolean              @default(false)
+  isReviewer          Boolean              @default(false)
+  
+  // Benefits fields
+  medicalAid          Boolean              @default(false)
+  funeralCover        Boolean              @default(false)
+  vehicleBenefit      Boolean              @default(false)
+  fuelAllowance       Boolean              @default(false)
+  airtimeAllowance    Boolean              @default(false)
+  otherBenefits       String[]             @default([])
+  
+  // Archive fields
+  archivedAt          DateTime?
+  archiveReason       String?
+  accessRevoked       Boolean              @default(false)
+  
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   hireDate            DateTime?
@@ -245,6 +266,10 @@ model Employee {
   @@index([department])
   @@index([status])
   @@index([email])
+  @@index([supervisorId])
+  @@index([isSupervisor])
+  @@index([isReviewer])
+  @@index([archivedAt])
   @@map("employees")
 }
 

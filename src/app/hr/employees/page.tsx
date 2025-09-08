@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ARCHIVE_REASON_OPTIONS } from "@/types/employee"
 import {
   UserGroupIcon,
   UserPlusIcon,
@@ -39,6 +40,9 @@ export default function EmployeesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showArchiveModal, setShowArchiveModal] = useState(false)
+  const [archiveReason, setArchiveReason] = useState("")
+  const [archiveNotes, setArchiveNotes] = useState("")
   
   // API state
   const [employees, setEmployees] = useState<any[]>([])
@@ -271,30 +275,43 @@ export default function EmployeesPage() {
     setShowEditModal(true)
   }
 
-  const handleArchiveEmployee = async (employeeId: number) => {
-    if (confirm('Are you sure you want to archive this employee? They will be moved to archived employees but their history will be preserved.')) {
-      try {
-        // Call API to archive employee (change status to ARCHIVED)
-        const response = await fetch(`/api/hr/employees/${employeeId}/archive`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ status: 'ARCHIVED' })
-        })
+  const handleArchiveEmployee = async (employee: any) => {
+    setSelectedEmployee(employee)
+    setArchiveReason("")
+    setArchiveNotes("")
+    setShowArchiveModal(true)
+  }
 
-        if (response.ok) {
-          // Refresh the employee list to remove archived employee from active view
-          fetchEmployees()
-          console.log('Employee archived successfully:', employeeId)
-        } else {
-          const error = await response.json()
-          alert(`Failed to archive employee: ${error.message || 'Unknown error'}`)
-        }
-      } catch (error) {
-        console.error('Error archiving employee:', error)
-        alert('Failed to archive employee. Please try again.')
+  const confirmArchiveEmployee = async () => {
+    if (!archiveReason) {
+      alert('Please select a reason for archiving.')
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/hr/employees/${selectedEmployee.id}/archive`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          reason: archiveReason,
+          notes: archiveNotes
+        })
+      })
+
+      if (response.ok) {
+        fetchEmployees()
+        setShowArchiveModal(false)
+        setSelectedEmployee(null)
+        console.log('Employee archived successfully:', selectedEmployee.id)
+      } else {
+        const error = await response.json()
+        alert(`Failed to archive employee: ${error.message || 'Unknown error'}`)
       }
+    } catch (error) {
+      console.error('Error archiving employee:', error)
+      alert('Failed to archive employee. Please try again.')
     }
   }
 
@@ -496,7 +513,7 @@ export default function EmployeesPage() {
                           className="text-green-600 hover:text-green-900 p-1 h-8 w-8"
                         />
                         <button 
-                          onClick={() => handleArchiveEmployee(employee.id)}
+                          onClick={() => handleArchiveEmployee(employee)}
                           className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50"
                           title="Archive Employee"
                         >
@@ -808,6 +825,75 @@ export default function EmployeesPage() {
                   }}
                 >
                   Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive Employee Modal */}
+      <Dialog open={showArchiveModal} onOpenChange={setShowArchiveModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Archive Employee</DialogTitle>
+          </DialogHeader>
+          
+          {selectedEmployee && (
+            <div className="space-y-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>Warning:</strong> Archiving {selectedEmployee.firstName} {selectedEmployee.lastName} will:
+                </p>
+                <ul className="text-sm text-yellow-700 mt-2 list-disc list-inside">
+                  <li>Move them to archived employees</li>
+                  <li>Automatically revoke system access</li>
+                  <li>Preserve all historical data</li>
+                  <li>Allow future restoration if needed</li>
+                </ul>
+              </div>
+
+              <div>
+                <Label htmlFor="archiveReason">Reason for Archiving *</Label>
+                <Select value={archiveReason} onValueChange={setArchiveReason}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select reason..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ARCHIVE_REASON_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="archiveNotes">Additional Notes (Optional)</Label>
+                <textarea
+                  id="archiveNotes"
+                  value={archiveNotes}
+                  onChange={(e) => setArchiveNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  rows={3}
+                  placeholder="Any additional information about the archiving..."
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowArchiveModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmArchiveEmployee}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  <ArchiveBoxIcon className="h-4 w-4 mr-2" />
+                  Archive Employee
                 </Button>
               </div>
             </div>
