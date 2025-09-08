@@ -29,6 +29,7 @@ interface DownloadButtonProps {
   size?: 'sm' | 'default' | 'lg'
   className?: string
   disabled?: boolean
+  iconOnly?: boolean
   onDownloadStart?: () => void
   onDownloadComplete?: (success: boolean) => void
   onDownloadError?: (error: string) => void
@@ -46,6 +47,7 @@ export function DownloadButton({
   size = 'default',
   className,
   disabled = false,
+  iconOnly = false,
   onDownloadStart,
   onDownloadComplete,
   onDownloadError
@@ -175,17 +177,26 @@ export function DownloadButton({
       className={className}
       onClick={handleDownload}
       disabled={isDisabled}
+      title={iconOnly ? `Download ${getFormatLabel()}` : undefined}
     >
       {isDownloading ? (
-        <>
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          Downloading...
-        </>
+        iconOnly ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Downloading...
+          </>
+        )
       ) : (
-        <>
-          <Download className="h-4 w-4 mr-2" />
-          Download {getFormatLabel()}
-        </>
+        iconOnly ? (
+          <Download className="h-4 w-4" />
+        ) : (
+          <>
+            <Download className="h-4 w-4 mr-2" />
+            Download {getFormatLabel()}
+          </>
+        )
       )}
     </Button>
   )

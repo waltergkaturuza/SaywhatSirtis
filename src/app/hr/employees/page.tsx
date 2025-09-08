@@ -461,6 +461,7 @@ export default function EmployeesPage() {
                           headers={['Name', 'Email', 'Phone', 'Department', 'Position', 'Employee ID', 'Status']}
                           variant="ghost"
                           size="sm"
+                          iconOnly={true}
                           className="text-green-600 hover:text-green-900 p-1 h-8 w-8"
                         />
                         <button 
@@ -656,6 +657,7 @@ export default function EmployeesPage() {
                   title={`${selectedEmployee.name} - Employee Profile`}
                   headers={['Name', 'Email', 'Phone', 'Department', 'Position', 'Status']}
                   variant="outline"
+                  iconOnly={false}
                 />
                 <Button
                   onClick={() => {
