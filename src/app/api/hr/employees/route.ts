@@ -29,7 +29,7 @@ export async function GET() {
     }
 
     // Get all active employees
-    const employees = await prisma.employee.findMany({
+    const employees = await (prisma.employee.findMany as any)({
       where: { 
         status: 'ACTIVE'
       },
@@ -54,13 +54,28 @@ export async function GET() {
         hireDate: true,
         status: true,
         createdAt: true,
-        updatedAt: true
+        updatedAt: true,
+        // Supervisor and role fields
+        supervisorId: true,
+        isSupervisor: true,
+        isReviewer: true,
+        // Benefits fields
+        medicalAid: true,
+        funeralCover: true,
+        vehicleBenefit: true,
+        fuelAllowance: true,
+        airtimeAllowance: true,
+        otherBenefits: true,
+        // Archive fields
+        archivedAt: true,
+        archiveReason: true,
+        accessRevoked: true
       },
       orderBy: { firstName: 'asc' }
     })
 
     // Transform data for frontend
-    const transformedEmployees = employees.map(emp => ({
+    const transformedEmployees = employees.map((emp: any) => ({
       id: emp.id,
       employeeId: emp.employeeId,
       name: `${emp.firstName} ${emp.lastName}`,
@@ -73,7 +88,22 @@ export async function GET() {
       hireDate: emp.hireDate ? emp.hireDate.toISOString().split('T')[0] : 'N/A',
       status: emp.status,
       createdAt: emp.createdAt,
-      updatedAt: emp.updatedAt
+      updatedAt: emp.updatedAt,
+      // Supervisor and role fields
+      supervisorId: emp.supervisorId,
+      isSupervisor: emp.isSupervisor,
+      isReviewer: emp.isReviewer,
+      // Benefits fields
+      medicalAid: emp.medicalAid,
+      funeralCover: emp.funeralCover,
+      vehicleBenefit: emp.vehicleBenefit,
+      fuelAllowance: emp.fuelAllowance,
+      airtimeAllowance: emp.airtimeAllowance,
+      otherBenefits: emp.otherBenefits,
+      // Archive fields
+      archivedAt: emp.archivedAt,
+      archiveReason: emp.archiveReason,
+      accessRevoked: emp.accessRevoked
     }))
 
     const response = createSuccessResponse(transformedEmployees, {
@@ -185,11 +215,22 @@ export async function POST(request: Request) {
       startDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
       hireDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
       salary: formData.salary ? parseFloat(formData.salary) : null,
-      status: 'ACTIVE' as const
+      status: 'ACTIVE' as const,
+      // Supervisor and role fields
+      supervisorId: formData.supervisorId || null,
+      isSupervisor: formData.isSupervisor || false,
+      isReviewer: formData.isReviewer || false,
+      // Benefits fields
+      medicalAid: formData.medicalAid || false,
+      funeralCover: formData.funeralCover || false,
+      vehicleBenefit: formData.vehicleBenefit || false,
+      fuelAllowance: formData.fuelAllowance || false,
+      airtimeAllowance: formData.airtimeAllowance || false,
+      otherBenefits: formData.otherBenefits || []
     }
 
     // Create new employee
-    const newEmployee = await prisma.employee.create({
+    const newEmployee = await (prisma.employee.create as any)({
       data: sanitizedData
     })
 

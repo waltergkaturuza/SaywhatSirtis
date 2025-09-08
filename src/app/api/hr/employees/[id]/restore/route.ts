@@ -42,11 +42,11 @@ export async function PATCH(
     const restoredEmployee = await prisma.employee.update({
       where: { id: employeeId },
       data: {
-        status: 'ACTIVE'
-        // TODO: Add these fields after schema migration
-        // archivedAt: null,
-        // archiveReason: null
-      }
+        status: 'ACTIVE',
+        archivedAt: null,
+        archiveReason: null,
+        accessRevoked: false
+      } as any // Type assertion to bypass TypeScript cache issue
     })
 
     // Create audit log entry

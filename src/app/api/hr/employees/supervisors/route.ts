@@ -23,12 +23,11 @@ export async function GET() {
     }
 
     // Fetch employees who are supervisors or can be assigned as supervisors
-    const supervisors = await prisma.employee.findMany({
+    const supervisors = await (prisma.employee.findMany as any)({
       where: {
         status: 'ACTIVE',
         OR: [
-          // TODO: Add isSupervisor filter after schema migration
-          // { isSupervisor: true },
+          { isSupervisor: true },
           { 
             position: {
               contains: 'manager',
@@ -67,14 +66,12 @@ export async function GET() {
         lastName: true,
         position: true,
         department: true,
-        email: true
-        // TODO: Add these fields after schema migration
-        // isSupervisor: true,
-        // isReviewer: true
+        email: true,
+        isSupervisor: true,
+        isReviewer: true
       },
       orderBy: [
-        // TODO: Add isSupervisor ordering after schema migration
-        // { isSupervisor: 'desc' },
+        { isSupervisor: 'desc' },
         { firstName: 'asc' },
         { lastName: 'asc' }
       ]

@@ -233,25 +233,25 @@ model Employee {
   currency            String?              @default("USD")
   status              String               @default("ACTIVE")
   
-  // Supervisor and Role fields
-  supervisorId        String?
+  // Supervisor and Role fields (using snake_case to match database)
+  supervisorId        String?              @map("supervisor_id")
   supervisor          Employee?            @relation("EmployeeSupervisor", fields: [supervisorId], references: [id])
   subordinates        Employee[]           @relation("EmployeeSupervisor")
-  isSupervisor        Boolean              @default(false)
-  isReviewer          Boolean              @default(false)
+  isSupervisor        Boolean              @default(false) @map("is_supervisor")
+  isReviewer          Boolean              @default(false) @map("is_reviewer")
   
-  // Benefits fields
-  medicalAid          Boolean              @default(false)
-  funeralCover        Boolean              @default(false)
-  vehicleBenefit      Boolean              @default(false)
-  fuelAllowance       Boolean              @default(false)
-  airtimeAllowance    Boolean              @default(false)
-  otherBenefits       String[]             @default([])
+  // Benefits fields (using snake_case to match database)
+  medicalAid          Boolean              @default(false) @map("medical_aid")
+  funeralCover        Boolean              @default(false) @map("funeral_cover")
+  vehicleBenefit      Boolean              @default(false) @map("vehicle_benefit")
+  fuelAllowance       Boolean              @default(false) @map("fuel_allowance")
+  airtimeAllowance    Boolean              @default(false) @map("airtime_allowance")
+  otherBenefits       String[]             @default([]) @map("other_benefits")
   
-  // Archive fields
-  archivedAt          DateTime?
-  archiveReason       String?
-  accessRevoked       Boolean              @default(false)
+  // Archive fields (using snake_case to match database)
+  archivedAt          DateTime?            @map("archived_at")
+  archiveReason       String?              @map("archive_reason")
+  accessRevoked       Boolean              @default(false) @map("access_revoked")
   
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt

@@ -43,6 +43,9 @@ export default function EmployeesPage() {
   const [showArchiveModal, setShowArchiveModal] = useState(false)
   const [archiveReason, setArchiveReason] = useState("")
   const [archiveNotes, setArchiveNotes] = useState("")
+  const [supervisors, setSupervisors] = useState<any[]>([])
+  const [editFormData, setEditFormData] = useState<any>({})
+  const [formLoading, setFormLoading] = useState(false)
   
   // API state
   const [employees, setEmployees] = useState<any[]>([])
@@ -89,10 +92,27 @@ export default function EmployeesPage() {
         setDepartments([]) // Set empty array on network error
       }
     }
+
+    const fetchSupervisors = async () => {
+      try {
+        const response = await fetch('/api/hr/employees/supervisors')
+        const result = await response.json()
+        if (result.success) {
+          setSupervisors(result.data || [])
+        } else {
+          console.error('Failed to fetch supervisors:', result.error)
+          setSupervisors([])
+        }
+      } catch (error) {
+        console.error('Error fetching supervisors:', error)
+        setSupervisors([])
+      }
+    }
     
     if (session) {
       fetchEmployees()
       fetchDepartments()
+      fetchSupervisors()
     }
   }, [session])
 
@@ -270,9 +290,70 @@ export default function EmployeesPage() {
     setShowViewModal(true)
   }
 
-  const handleEditEmployee = (employee: any) => {
+  const handleEditEmployee = async (employee: any) => {
     setSelectedEmployee(employee)
-    setShowEditModal(true)
+    setFormLoading(true)
+    
+    try {
+      // Fetch full employee details
+      const response = await fetch(`/api/hr/employees/${employee.id}`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setEditFormData(result.data)
+      } else {
+        console.error('Failed to fetch employee details:', result.error)
+        // Use basic employee data as fallback
+        setEditFormData(employee)
+      }
+    } catch (error) {
+      console.error('Error fetching employee details:', error)
+      setEditFormData(employee)
+    } finally {
+      setFormLoading(false)
+      setShowEditModal(true)
+    }
+  }
+
+  const handleSaveEmployee = async () => {
+    if (!editFormData.id) return
+
+    setFormLoading(true)
+    try {
+      const response = await fetch(`/api/hr/employees/${editFormData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editFormData)
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Refresh employee list
+        fetchEmployees()
+        setShowEditModal(false)
+        setEditFormData({})
+        // You can add a toast notification here
+        console.log('Employee updated successfully')
+      } else {
+        console.error('Failed to update employee:', result.error)
+        alert('Failed to update employee: ' + (result.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Error updating employee:', error)
+      alert('Error updating employee. Please try again.')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleEditFormChange = (field: string, value: any) => {
+    setEditFormData((prev: any) => ({
+      ...prev,
+      [field]: value
+    }))
   }
 
   const handleArchiveEmployee = async (employee: any) => {
@@ -723,108 +804,390 @@ export default function EmployeesPage() {
 
       {/* Edit Employee Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Employee</DialogTitle>
           </DialogHeader>
-          {selectedEmployee && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
+          {formLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              <span className="ml-2">Loading employee details...</span>
+            </div>
+          ) : editFormData.id && (
+            <div className="space-y-6">
+              {/* Personal Information Section */}
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input
+                      id="firstName"
+                      value={editFormData.firstName || ''}
+                      onChange={(e) => handleEditFormChange('firstName', e.target.value)}
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Input
+                      id="lastName"
+                      value={editFormData.lastName || ''}
+                      onChange={(e) => handleEditFormChange('lastName', e.target.value)}
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="middleName">Middle Name</Label>
+                    <Input
+                      id="middleName"
+                      value={editFormData.middleName || ''}
+                      onChange={(e) => handleEditFormChange('middleName', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={editFormData.email || ''}
+                      onChange={(e) => handleEditFormChange('email', e.target.value)}
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phoneNumber">Phone Number</Label>
+                    <Input
+                      id="phoneNumber"
+                      value={editFormData.phoneNumber || ''}
+                      onChange={(e) => handleEditFormChange('phoneNumber', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="alternativePhone">Alternative Phone</Label>
+                    <Input
+                      id="alternativePhone"
+                      value={editFormData.alternativePhone || ''}
+                      onChange={(e) => handleEditFormChange('alternativePhone', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input
+                      id="address"
+                      value={editFormData.address || ''}
+                      onChange={(e) => handleEditFormChange('address', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                    <Input
+                      id="dateOfBirth"
+                      type="date"
+                      value={editFormData.dateOfBirth ? new Date(editFormData.dateOfBirth).toISOString().split('T')[0] : ''}
+                      onChange={(e) => handleEditFormChange('dateOfBirth', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select value={editFormData.gender || ''} onValueChange={(value) => handleEditFormChange('gender', value)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                        <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="nationality">Nationality</Label>
+                    <Input
+                      id="nationality"
+                      value={editFormData.nationality || ''}
+                      onChange={(e) => handleEditFormChange('nationality', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="nationalId">National ID</Label>
+                    <Input
+                      id="nationalId"
+                      value={editFormData.nationalId || ''}
+                      onChange={(e) => handleEditFormChange('nationalId', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency Contact Section */}
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="emergencyContact">Emergency Contact Name</Label>
+                    <Input
+                      id="emergencyContact"
+                      value={editFormData.emergencyContact || ''}
+                      onChange={(e) => handleEditFormChange('emergencyContact', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="emergencyPhone">Emergency Contact Phone</Label>
+                    <Input
+                      id="emergencyPhone"
+                      value={editFormData.emergencyPhone || ''}
+                      onChange={(e) => handleEditFormChange('emergencyPhone', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Work Information Section */}
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Work Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="employeeId">Employee ID</Label>
+                    <Input
+                      id="employeeId"
+                      value={editFormData.employeeId || ''}
+                      className="mt-1"
+                      disabled
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="position">Position *</Label>
+                    <Input
+                      id="position"
+                      value={editFormData.position || ''}
+                      onChange={(e) => handleEditFormChange('position', e.target.value)}
+                      className="mt-1"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="department">Department</Label>
+                    <Select value={editFormData.departmentId || ''} onValueChange={(value) => {
+                      const selectedDept = departments.find(d => d.id === value)
+                      handleEditFormChange('departmentId', value)
+                      handleEditFormChange('department', selectedDept?.name || '')
+                    }}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortDepartmentsHierarchically(departments).map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {'  '.repeat(dept.level || 0)}
+                            {dept.name} ({dept.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="employmentType">Employment Type</Label>
+                    <Select value={editFormData.employmentType || 'FULL_TIME'} onValueChange={(value) => handleEditFormChange('employmentType', value)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="FULL_TIME">Full Time</SelectItem>
+                        <SelectItem value="PART_TIME">Part Time</SelectItem>
+                        <SelectItem value="CONTRACT">Contract</SelectItem>
+                        <SelectItem value="INTERN">Intern</SelectItem>
+                        <SelectItem value="CONSULTANT">Consultant</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="salary">Salary</Label>
+                    <Input
+                      id="salary"
+                      type="number"
+                      value={editFormData.salary || ''}
+                      onChange={(e) => handleEditFormChange('salary', e.target.value)}
+                      className="mt-1"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="currency">Currency</Label>
+                    <Select value={editFormData.currency || 'USD'} onValueChange={(value) => handleEditFormChange('currency', value)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="ZWL">ZWL</SelectItem>
+                        <SelectItem value="ZAR">ZAR</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="GBP">GBP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={editFormData.status || 'ACTIVE'} onValueChange={(value) => handleEditFormChange('status', value)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="ON_LEAVE">On Leave</SelectItem>
+                        <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                        <SelectItem value="TERMINATED">Terminated</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="supervisor">Supervisor</Label>
+                    <Select value={editFormData.supervisorId || ''} onValueChange={(value) => handleEditFormChange('supervisorId', value || null)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select supervisor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No Supervisor</SelectItem>
+                        {supervisors.map((supervisor) => (
+                          <SelectItem key={supervisor.id} value={supervisor.id}>
+                            {supervisor.firstName} {supervisor.lastName} - {supervisor.position}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Roles Section */}
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Roles & Permissions</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isSupervisor"
+                      checked={editFormData.isSupervisor || false}
+                      onChange={(e) => handleEditFormChange('isSupervisor', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="isSupervisor">Is Supervisor</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isReviewer"
+                      checked={editFormData.isReviewer || false}
+                      onChange={(e) => handleEditFormChange('isReviewer', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="isReviewer">Is Reviewer</Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Benefits Section */}
+              <div className="border-b pb-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Benefits</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="medicalAid"
+                      checked={editFormData.medicalAid || false}
+                      onChange={(e) => handleEditFormChange('medicalAid', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="medicalAid">Medical Aid</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="funeralCover"
+                      checked={editFormData.funeralCover || false}
+                      onChange={(e) => handleEditFormChange('funeralCover', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="funeralCover">Funeral Cover</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="vehicleBenefit"
+                      checked={editFormData.vehicleBenefit || false}
+                      onChange={(e) => handleEditFormChange('vehicleBenefit', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="vehicleBenefit">Vehicle Benefit</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="fuelAllowance"
+                      checked={editFormData.fuelAllowance || false}
+                      onChange={(e) => handleEditFormChange('fuelAllowance', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="fuelAllowance">Fuel Allowance</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="airtimeAllowance"
+                      checked={editFormData.airtimeAllowance || false}
+                      onChange={(e) => handleEditFormChange('airtimeAllowance', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="airtimeAllowance">Airtime Allowance</Label>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Label htmlFor="otherBenefits">Other Benefits (separate with commas)</Label>
                   <Input
-                    id="name"
-                    defaultValue={selectedEmployee.name}
+                    id="otherBenefits"
+                    value={Array.isArray(editFormData.otherBenefits) ? editFormData.otherBenefits.join(', ') : ''}
+                    onChange={(e) => {
+                      const benefits = e.target.value.split(',').map(b => b.trim()).filter(b => b)
+                      handleEditFormChange('otherBenefits', benefits)
+                    }}
+                    placeholder="e.g., Housing Allowance, Education Fund, Transport Subsidy"
                     className="mt-1"
                   />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    defaultValue={selectedEmployee.email}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    defaultValue={selectedEmployee.phone}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="employeeId">Employee ID</Label>
-                  <Input
-                    id="employeeId"
-                    defaultValue={selectedEmployee.employeeId}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="department">Department</Label>
-                  <Select defaultValue={selectedEmployee.department}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Operations">Operations</SelectItem>
-                      <SelectItem value="Healthcare">Healthcare</SelectItem>
-                      <SelectItem value="Education">Education</SelectItem>
-                      <SelectItem value="Finance">Finance</SelectItem>
-                      <SelectItem value="HR">HR</SelectItem>
-                      <SelectItem value="IT">IT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="position">Position</Label>
-                  <Input
-                    id="position"
-                    defaultValue={selectedEmployee.position}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    defaultValue={selectedEmployee.location}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select defaultValue={selectedEmployee.status}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="on-leave">On Leave</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
               
               <div className="flex justify-end space-x-3 pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setEditFormData({})
+                  }}
+                  disabled={formLoading}
                 >
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => {
-                    // Handle save employee changes
-                    console.log('Saving employee changes')
-                    setShowEditModal(false)
-                  }}
+                  onClick={handleSaveEmployee}
+                  disabled={formLoading}
+                  className="bg-indigo-600 hover:bg-indigo-700"
                 >
-                  Save Changes
+                  {formLoading ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
             </div>

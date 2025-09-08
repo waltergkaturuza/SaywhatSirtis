@@ -40,12 +40,11 @@ export async function PATCH(
       where: { id: employeeId },
       data: {
         status: 'ARCHIVED',
-        // TODO: Add these fields after schema migration
-        // archivedAt: new Date(),
-        // archiveReason: body.reason || 'Other',
-        // accessRevoked: true, // Automatically revoke access when archiving
+        archivedAt: new Date(),
+        archiveReason: body.reason || 'Other',
+        accessRevoked: true, // Automatically revoke access when archiving
         updatedAt: new Date()
-      },
+      } as any, // Type assertion to bypass TypeScript cache issue
       include: {
         departmentRef: {
           select: {
