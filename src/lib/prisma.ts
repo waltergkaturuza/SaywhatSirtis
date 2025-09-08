@@ -45,6 +45,12 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.prisma = prisma
 }
 
+// Safe query wrapper using the singleton client with retry logic
+export async function safeQuery<T>(callback: (prisma: PrismaClient) => Promise<T>): Promise<T> {
+  const { withRetry } = await import('./error-handler')
+  return withRetry(() => callback(prisma))
+}
+
 // Ensure proper cleanup on hot reload
 if (process.env.NODE_ENV === 'development' && (module as any).hot) {
   (module as any).hot.dispose(() => {
