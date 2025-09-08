@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -17,7 +17,7 @@ export async function PATCH(
       )
     }
 
-    const employeeId = params.id
+    const { id: employeeId } = await params
 
     // Check if employee exists and is archived
     const existingEmployee = await prisma.employee.findUnique({
