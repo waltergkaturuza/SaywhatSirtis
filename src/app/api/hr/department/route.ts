@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
-// GET /api/hr/department - Fetch all departments
-export async function GET() {
+// GET /api/hr/department - Get all departments
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -13,7 +13,7 @@ export async function GET() {
     }
 
     // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.view') ||
+    const hasPermission = session.user?.permissions?.includes('hr.read') ||
                          session.user?.permissions?.includes('hr.full_access') ||
                          session.user?.roles?.includes('admin') ||
                          session.user?.roles?.includes('hr_manager');
@@ -22,21 +22,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    // Fetch departments with employee count
+    // Get all departments with employee counts
     const departments = await prisma.department.findMany({
       include: {
-        employees: {
-          where: {
-            status: 'ACTIVE'
-          },
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            position: true,
-            email: true
-          }
-        },
         _count: {
           select: {
             employees: {
@@ -52,8 +40,8 @@ export async function GET() {
       }
     });
 
-    // Transform data for frontend
-    const transformedDepartments = departments.map(dept => ({
+    // Transform the data to match the expected format
+    const transformedDepartments = departments.map((dept: any) => ({
       id: dept.id,
       name: dept.name,
       description: dept.description,
@@ -63,16 +51,16 @@ export async function GET() {
       location: dept.location,
       status: dept.status,
       employeeCount: dept._count.employees,
-      employees: dept.employees,
       createdAt: dept.createdAt.toISOString(),
       updatedAt: dept.updatedAt.toISOString()
     }));
-    
+
     return NextResponse.json({
       success: true,
       data: transformedDepartments,
-      total: transformedDepartments.length
+      message: `Found ${transformedDepartments.length} departments`
     });
+
   } catch (error) {
     console.error('Error fetching departments:', error);
     return NextResponse.json(
@@ -107,8 +95,7 @@ export async function POST(request: NextRequest) {
 
     const { name, description, code, manager, budget, location, status } = await request.json();
 
-    // Validation
-    if (!name || name.trim() === '') {
+    if (!name?.trim()) {
       return NextResponse.json(
         { 
           success: false, 
@@ -133,8 +120,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if code already exists (if provided)
-    if (code && code.trim() !== '') {
+    // Check if department code already exists (if provided)
+    if (code?.trim()) {
       const existingCode = await prisma.department.findUnique({
         where: { code: code.trim().toUpperCase() }
       });
@@ -150,12 +137,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create department
+    // Create the department
     const newDepartment = await prisma.department.create({
       data: {
         name: name.trim(),
-        description: description?.trim() || null,
-        code: code?.trim().toUpperCase() || null,
+        description: description?.trim() || `${name.trim()} Department`,
+        code: code?.trim().toUpperCase() || name.trim().substring(0, 3).toUpperCase(),
         manager: manager?.trim() || null,
         budget: budget ? parseFloat(budget) : null,
         location: location?.trim() || null,
@@ -190,7 +177,7 @@ export async function POST(request: NextRequest) {
         createdAt: newDepartment.createdAt.toISOString(),
         updatedAt: newDepartment.updatedAt.toISOString()
       }
-    }, { status: 201 });
+    });
 
   } catch (error) {
     console.error('Error creating department:', error);
@@ -360,23 +347,38 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const departmentName = searchParams.get('name');
+    const departmentId = searchParams.get('id');
     const reassignTo = searchParams.get('reassignTo');
 
-    if (!departmentName) {
+    if (!departmentId) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Department name is required' 
+          error: 'Department ID is required' 
         },
         { status: 400 }
+      );
+    }
+
+    // Check if department exists
+    const department = await prisma.department.findUnique({
+      where: { id: departmentId }
+    });
+
+    if (!department) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Department not found' 
+        },
+        { status: 404 }
       );
     }
 
     // Count employees in this department
     const employeeCount = await prisma.employee.count({
       where: {
-        department: departmentName
+        department: department.name
       }
     });
 
@@ -394,7 +396,7 @@ export async function DELETE(request: NextRequest) {
       // Reassign employees to new department
       await prisma.employee.updateMany({
         where: {
-          department: departmentName
+          department: department.name
         },
         data: {
           department: reassignTo
@@ -402,11 +404,16 @@ export async function DELETE(request: NextRequest) {
       });
     }
 
+    // Delete the department
+    await prisma.department.delete({
+      where: { id: departmentId }
+    });
+
     return NextResponse.json({
       success: true,
       message: employeeCount > 0 
-        ? `Reassigned ${employeeCount} employees to ${reassignTo}` 
-        : 'Department deleted (no employees to reassign)'
+        ? `Department deleted and ${employeeCount} employees reassigned to ${reassignTo}` 
+        : 'Department deleted successfully'
     });
 
   } catch (error) {
