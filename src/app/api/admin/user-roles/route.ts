@@ -38,18 +38,11 @@ export async function GET(request: NextRequest) {
           include: {
             role: {
               include: {
-                rolePermissions: {
+                permissions: {
                   include: {
                     permission: true
                   }
                 }
-              }
-            },
-            assignedBy: {
-              select: {
-                id: true,
-                name: true,
-                email: true
               }
             }
           }
@@ -102,7 +95,8 @@ export async function GET(request: NextRequest) {
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true
             }
           },
@@ -111,14 +105,7 @@ export async function GET(request: NextRequest) {
               id: true,
               name: true,
               displayName: true,
-              securityClearanceLevel: true
-            }
-          },
-          assignedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true
+              level: true
             }
           }
         },
@@ -253,14 +240,16 @@ export async function POST(request: NextRequest) {
         data: {
           userId,
           roleId,
-          assignedById: session?.user?.id || 'system',
-          expiresAt: expiresAt ? new Date(expiresAt) : null
+          assignmentType: 'direct',
+          assignedBy: session?.user?.id || 'system',
+          validUntil: expiresAt ? new Date(expiresAt) : null
         },
         include: {
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true
             }
           },
@@ -269,7 +258,7 @@ export async function POST(request: NextRequest) {
               id: true,
               name: true,
               displayName: true,
-              securityClearanceLevel: true
+              level: true
             }
           }
         }
@@ -288,8 +277,8 @@ export async function POST(request: NextRequest) {
           userId,
           roleId,
           assignedAt: new Date(),
-          assignedById: session?.user?.id || 'system',
-          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          assignedBy: session?.user?.id || 'system',
+          validUntil: expiresAt ? new Date(expiresAt) : null,
           isActive: true,
           user: {
             id: userId,
@@ -358,8 +347,8 @@ export async function DELETE(request: NextRequest) {
         where: { id: assignmentId },
         data: {
           isActive: false,
-          removedAt: new Date(),
-          removedById: session?.user?.id || 'system'
+          revokedAt: new Date(),
+          revokedBy: session?.user?.id || 'system'
         }
       })
 
