@@ -71,32 +71,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching employees by department:', error)
     
-    // Return fallback data on error
-    const fallbackEmployees = [
-      {
-        id: 'emp-1',
-        employeeId: 'EMP001',
-        name: 'John Doe',
-        email: 'john.doe@saywhat.org',
-        department: departmentName || 'General',
-        position: 'Manager',
-        fullName: 'John Doe (Manager)'
-      },
-      {
-        id: 'emp-2', 
-        employeeId: 'EMP002',
-        name: 'Jane Smith',
-        email: 'jane.smith@saywhat.org',
-        department: departmentName || 'General',
-        position: 'Specialist',
-        fullName: 'Jane Smith (Specialist)'
-      }
-    ]
-
+    // Return empty data on error - no fallback mock data
     return NextResponse.json({
-      success: true,
-      employees: fallbackEmployees,
-      count: fallbackEmployees.length
-    })
+      success: false,
+      employees: [],
+      count: 0,
+      error: 'Failed to fetch employees from database'
+    }, { status: 500 })
   }
 }

@@ -15,7 +15,11 @@ export async function POST(request: NextRequest) {
 
     // Import and run the migration
     try {
-      const { runProductionMigration } = require('../../../../../../scripts/production-migration')
+      // Use dynamic import to avoid build-time path resolution issues
+      const migrationPath = process.env.NODE_ENV === 'production' 
+        ? '/opt/render/project/src/scripts/production-migration'
+        : require.resolve('../../../../../../scripts/production-migration')
+      const { runProductionMigration } = require(migrationPath)
       await runProductionMigration()
     } catch (importError) {
       console.log('⚠️ Migration script not found, running database sync instead')
