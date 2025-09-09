@@ -115,13 +115,15 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Transform the data to match the frontend interface - use safe optional access for new fields
+    // Transform the data to match the frontend interface - prioritize new enhanced fields
     const transformedCalls = calls.map(call => ({
       id: call.id,
       callNumber: call.id,
       caseNumber: call.caseNumber,
-      callerName: call.callerName,
-      callerPhone: call.callerPhone,
+      
+      // Caller details - prioritize enhanced fields from the new form
+      callerName: (call as any).callerFullName || call.callerName || 'Unknown',
+      callerPhone: (call as any).callerPhoneNumber || call.callerPhone || null,
       callerEmail: (call as any).callerEmail || null,
       callerAge: (call as any).callerAge || null,
       callerGender: (call as any).callerGender || null,
@@ -130,7 +132,7 @@ export async function GET(request: NextRequest) {
       callerKeyPopulation: (call as any).callerKeyPopulation || null,
       
       // Client details
-      clientName: (call as any).clientName || null,
+      clientName: (call as any).clientName || (call as any).clientFullName || null,
       clientAge: (call as any).clientAge || null,
       clientGender: (call as any).clientGender || null,
       clientProvince: (call as any).clientProvince || null,
@@ -138,27 +140,27 @@ export async function GET(request: NextRequest) {
       clientEmploymentStatus: (call as any).clientEmploymentStatus || null,
       clientEducationLevel: (call as any).clientEducationLevel || null,
       
-      // Call details
-      communicationMode: (call as any).communicationMode || call.callType || 'INBOUND',
-      callLanguage: (call as any).callLanguage || null,
-      callValidity: (call as any).callValidity || 'Valid',
-      newOrRepeatCall: (call as any).newOrRepeatCall || null,
-      howHeardAboutUs: (call as any).howHeardAboutUs || null,
-      callDurationMinutes: (call as any).callDurationMinutes || null,
+      // Call details - use enhanced form fields
+      communicationMode: (call as any).modeOfCommunication || call.callType || 'inbound',
+      callLanguage: (call as any).language || 'English',
+      callValidity: (call as any).callValidity || 'valid',
+      newOrRepeatCall: (call as any).newOrRepeatCall || 'new',
+      howHeardAboutUs: (call as any).howDidYouHearAboutUs || null,
+      callDurationMinutes: (call as any).callDuration || null,
       
       // Location details
       district: (call as any).district || call.district || null,
       ward: (call as any).ward || call.ward || null,
       
-      // Service and case info
-      purpose: call.subject || 'General Inquiry',
-      description: call.description,
-      summary: call.summary,
-      priority: call.priority,
-      category: call.category,
-      validity: (call as any).callValidity || 'Valid',
-      officer: call.assignedOfficer || 'Unassigned',
-      assignedOfficer: call.assignedOfficer,
+      // Service and case info - use enhanced form fields
+      purpose: (call as any).purpose || call.subject || 'General Inquiry',
+      description: (call as any).issueDescription || call.description || 'No description',
+      summary: (call as any).summary || call.summary || null,
+      priority: (call as any).priority || 'MEDIUM',
+      category: (call as any).category || 'INQUIRY',
+      validity: (call as any).callValidity || 'valid',
+      officer: call.assignedOfficer || (call as any).officerName || 'Unassigned',
+      assignedOfficer: call.assignedOfficer || (call as any).officerName,
       
       // Timing
       dateTime: call.createdAt.toISOString(),

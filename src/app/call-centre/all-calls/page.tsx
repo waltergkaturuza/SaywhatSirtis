@@ -25,9 +25,12 @@ interface CallRecord {
   caseNumber: string
   callerName?: string
   callerPhone?: string
+  callerEmail?: string
   callerProvince?: string
   callerAge?: string
   callerGender?: string
+  district?: string
+  ward?: string
   clientName?: string
   clientAge?: string
   clientSex?: string
@@ -38,6 +41,8 @@ interface CallRecord {
   dateTime: string
   duration?: string
   status: string
+  priority?: string
+  category?: string
   referredTo?: string
   voucherIssued: string
   voucherValue?: string
@@ -453,8 +458,14 @@ export default function AllCallsPage() {
                           <div className="text-sm">
                             <div className="font-medium text-gray-900">{call.callerName || 'Unknown'}</div>
                             <div className="text-gray-500">{call.callerPhone || 'N/A'}</div>
-                            <div className="text-gray-500">{call.callerProvince || 'N/A'}</div>
-                            <div className="text-gray-500">{call.callerGender || 'N/A'}, {call.callerAge || 'N/A'}</div>
+                            {call.callerEmail && (
+                              <div className="text-gray-500">{call.callerEmail}</div>
+                            )}
+                            <div className="text-gray-500">
+                              {call.callerProvince || 'N/A'}
+                              {call.district && call.callerProvince && ', '}
+                              {call.district || ''}
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -463,10 +474,28 @@ export default function AllCallsPage() {
                             <div>
                               <div className="font-medium text-gray-900">{call.communicationMode}</div>
                               <div className="text-gray-500">{call.purpose}</div>
-                              <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                call.validity === 'Valid' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100'
-                              }`}>
-                                {call.validity || 'N/A'}
+                              <div className="flex space-x-2 mt-1">
+                                <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  call.validity === 'valid' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100'
+                                }`}>
+                                  {call.validity || 'N/A'}
+                                </div>
+                                {call.priority && (
+                                  <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    call.priority === 'HIGH' || call.priority === 'URGENT' 
+                                      ? 'text-red-800 bg-red-100' 
+                                      : call.priority === 'MEDIUM' 
+                                      ? 'text-yellow-800 bg-yellow-100' 
+                                      : 'text-blue-800 bg-blue-100'
+                                  }`}>
+                                    {call.priority}
+                                  </div>
+                                )}
+                                {call.category && (
+                                  <div className="inline-flex px-2 py-1 text-xs font-semibold rounded-full text-purple-800 bg-purple-100">
+                                    {call.category}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
