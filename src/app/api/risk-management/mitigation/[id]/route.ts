@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -26,7 +26,7 @@ export async function PUT(
       }, { status: 403 })
     }
 
-    const planId = params.id
+    const planId = (await params).id
     const body = await request.json()
 
     // Add update timestamp
@@ -52,7 +52,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -73,7 +73,7 @@ export async function DELETE(
       }, { status: 403 })
     }
 
-    const planId = params.id
+    const planId = (await params).id
 
     // In production, this would delete from database
     console.log(`Deleting mitigation plan ${planId}`)
