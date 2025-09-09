@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     // Import and run the migration
     try {
-      const { runProductionMigration } = require('../../../../../scripts/production-migration')
+      const { runProductionMigration } = require('../../../../../../scripts/production-migration')
       await runProductionMigration()
     } catch (importError) {
       console.log('⚠️ Migration script not found, running database sync instead')
