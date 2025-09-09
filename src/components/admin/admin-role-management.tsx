@@ -253,62 +253,59 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
     try {
       setLoading(true)
       
-      // Generate mock roles based on department + supervisory level combinations
-      const mockRoles: Role[] = []
+      // Fetch roles from our RBAC API (using test endpoint for now)
+      const rolesResponse = await fetch('/api/admin/roles-test')
+      const rolesData = await rolesResponse.json()
       
-      // Generate some sample departmental roles
-      const roleCombinations = [
-        { dept: 'HR' as DepartmentKey, level: 'Manager' as SupervisoryLevelKey },
-        { dept: 'HR' as DepartmentKey, level: 'Staff' as SupervisoryLevelKey },
-        { dept: 'Finance' as DepartmentKey, level: 'Director' as SupervisoryLevelKey },
-        { dept: 'Finance' as DepartmentKey, level: 'Manager' as SupervisoryLevelKey },
-        { dept: 'Operations' as DepartmentKey, level: 'Supervisor' as SupervisoryLevelKey },
-        { dept: 'IT' as DepartmentKey, level: 'Manager' as SupervisoryLevelKey },
-        { dept: 'Call Centre' as DepartmentKey, level: 'Supervisor' as SupervisoryLevelKey },
-        { dept: 'Management' as DepartmentKey, level: 'Director' as SupervisoryLevelKey },
-      ]
-      
-      roleCombinations.forEach(({ dept, level }, index) => {
-        const permissions = getRolePermissions(dept, level)
-        const roleName = generateRoleName(dept, level)
-        
-        mockRoles.push({
-          id: (index + 1).toString(),
-          name: roleName,
-          description: `Auto-generated role for ${departments[dept].name} at ${supervisoryLevels[level].name}`,
-          department: dept,
-          supervisoryLevel: level,
-          permissions: permissions,
-          userCount: Math.floor(Math.random() * 10) + 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isSystem: false,
+      if (rolesResponse.ok) {
+        // Transform RBAC roles to match our interface
+        const transformedRoles: Role[] = rolesData.roles.map((role: any) => ({
+          id: role.id,
+          name: role.displayName || role.name,
+          description: role.description || '',
+          department: role.category === 'system' ? 'IT' : (role.category === 'department' ? 'Management' : 'Operations'),
+          supervisoryLevel: role.level === 4 ? 'Director' : role.level === 3 ? 'Manager' : role.level === 2 ? 'Supervisor' : 'Staff',
+          permissions: (role.permissions || []).map((perm: any) => ({
+            id: perm.permission?.id || perm.id,
+            name: perm.permission?.displayName || perm.displayName || perm.name,
+            description: perm.permission?.description || perm.description || '',
+            category: perm.permission?.module || perm.module || 'general',
+            module: perm.permission?.module || perm.module || 'general',
+            actions: [perm.permission?.action || perm.action || 'view']
+          })),
+          userCount: role.userCount || 0,
+          createdAt: role.createdAt || new Date().toISOString(),
+          updatedAt: role.updatedAt || new Date().toISOString(),
+          isSystem: role.isSystemRole || false,
           isGenerated: true
-        })
-      })
-      
-      // Add a system admin role
-      mockRoles.push({
-        id: '999',
-        name: 'System Administrator',
-        description: 'Full system access with all permissions',
-        department: 'IT',
-        supervisoryLevel: 'Director',
-        permissions: Object.values(modulePermissions).flat().map(perm => ({
-          id: perm.id,
-          name: perm.name,
-          description: perm.description,
-          category: 'System Administration',
-          module: 'IT',
-          actions: perm.actions
-        })),
-        userCount: 2,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isSystem: true,
-        isGenerated: false
-      })
+        }))
+        
+        setRoles(transformedRoles)
+        console.log('Fetched roles from RBAC API:', transformedRoles)
+      } else {
+        throw new Error(rolesData.message || 'Failed to fetch roles')
+      }
 
+      // Fetch permissions from our RBAC API (using test endpoint for now)
+      const permissionsResponse = await fetch('/api/admin/permissions-test')
+      const permissionsData = await permissionsResponse.json()
+      
+      if (permissionsResponse.ok) {
+        // Transform RBAC permissions to match our interface
+        const transformedPermissions: Permission[] = permissionsData.permissions.map((perm: any) => ({
+          id: perm.id,
+          name: perm.displayName || perm.name,
+          description: perm.description || '',
+          category: perm.module || 'general',
+          module: perm.module || 'general',
+          actions: [perm.action || 'view']
+        }))
+        
+        setPermissions(transformedPermissions)
+        console.log('Fetched permissions from RBAC API:', transformedPermissions)
+      }
+      
+      // For now, keep mock users and groups until we build those APIs
       const mockUsers: User[] = [
         {
           id: '1',
@@ -349,7 +346,7 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
           email: 'alice.brown@saywhat.com',
           department: 'IT',
           supervisoryLevel: 'Manager',
-          customRoles: ['999'], // Has system admin role
+          customRoles: ['role_system_administrator'], // Has system admin role
           groups: [],
           isActive: true,
           createdAt: new Date().toISOString()
@@ -374,7 +371,7 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
           description: 'Human Resources management group',
           permissions: getRolePermissions('HR', 'Manager'),
           users: ['1'],
-          roles: ['1'],
+          roles: ['role_basic_1'],
           createdAt: new Date().toISOString()
         },
         {
@@ -383,7 +380,7 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
           description: 'Financial leadership and oversight group',
           permissions: getRolePermissions('Finance', 'Director'),
           users: ['2'],
-          roles: ['3'],
+          roles: ['role_administrator'],
           createdAt: new Date().toISOString()
         },
         {
@@ -392,27 +389,23 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
           description: 'Operations management group',
           permissions: getRolePermissions('Operations', 'Supervisor'),
           users: ['3'],
-          roles: ['5'],
+          roles: ['role_advance_1'],
           createdAt: new Date().toISOString()
         }
       ]
       
-      setRoles(mockRoles)
       setUsers(mockUsers)
       setGroups(mockGroups)
       
-      // Flatten permissions from module permissions
-      const allPermissions = Object.entries(modulePermissions).flatMap(([module, perms]) =>
-        perms.map(p => ({ 
-          ...p, 
-          category: module, 
-          module: module.toLowerCase().replace(/\s+/g, '_'),
-          actions: p.actions
-        }))
-      )
-      setPermissions(allPermissions)
     } catch (err) {
+      console.error('Error fetching RBAC data:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch data')
+      
+      // Fallback to minimal mock data if API fails
+      setRoles([])
+      setUsers([])
+      setGroups([])
+      setPermissions([])
     } finally {
       setLoading(false)
     }
@@ -424,46 +417,57 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
 
   const handleCreateRole = async (roleData: any) => {
     try {
-      let newRole: Role
-      
-      if (roleData.department && roleData.supervisoryLevel) {
-        // Auto-generate role based on department + supervisory level
-        const permissions = getRolePermissions(roleData.department as DepartmentKey, roleData.supervisoryLevel as SupervisoryLevelKey)
-        const roleName = generateRoleName(roleData.department as DepartmentKey, roleData.supervisoryLevel as SupervisoryLevelKey)
-        
-        newRole = {
-          id: Date.now().toString(),
-          name: roleName,
-          description: roleData.description || `Auto-generated role for ${departments[roleData.department as DepartmentKey].name} at ${supervisoryLevels[roleData.supervisoryLevel as SupervisoryLevelKey].name}`,
-          department: roleData.department,
-          supervisoryLevel: roleData.supervisoryLevel,
-          permissions: permissions,
-          userCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isSystem: false,
-          isGenerated: true
-        }
-      } else {
-        // Custom role
-        newRole = {
-          id: Date.now().toString(),
-          name: roleData.name,
-          description: roleData.description,
+      // Prepare role data for our RBAC API
+      const newRoleData = {
+        name: roleData.name,
+        displayName: roleData.name,
+        description: roleData.description || '',
+        category: roleData.department ? 'department' : 'user',
+        level: roleData.supervisoryLevel === 'Director' ? 4 : 
+               roleData.supervisoryLevel === 'Manager' ? 3 : 
+               roleData.supervisoryLevel === 'Supervisor' ? 2 : 1,
+        department: roleData.department || null
+      }
+
+      // Call our RBAC API to create the role (using test endpoint for now)
+      const response = await fetch('/api/admin/roles-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newRoleData)
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        // Transform the created role to match our interface
+        const createdRole: Role = {
+          id: result.role.id,
+          name: result.role.displayName || result.role.name,
+          description: result.role.description || '',
           department: roleData.department || 'Management',
           supervisoryLevel: roleData.supervisoryLevel || 'Staff',
           permissions: roleData.permissions || [],
           userCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isSystem: false,
-          isGenerated: false
+          createdAt: result.role.createdAt || new Date().toISOString(),
+          updatedAt: result.role.updatedAt || new Date().toISOString(),
+          isSystem: result.role.isSystemRole || false,
+          isGenerated: !!roleData.department && !!roleData.supervisoryLevel
         }
+        
+        setRoles(prev => [...prev, createdRole])
+        setShowCreateModal(false)
+        
+        // Refresh data to get updated roles
+        await fetchData()
+        
+        console.log('Role created successfully:', result.role)
+      } else {
+        throw new Error(result.error || 'Failed to create role')
       }
-      
-      setRoles(prev => [...prev, newRole])
-      setShowCreateModal(false)
     } catch (err) {
+      console.error('Error creating role:', err)
       setError(err instanceof Error ? err.message : 'Failed to create role')
     }
   }

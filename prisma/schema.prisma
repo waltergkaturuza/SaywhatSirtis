@@ -33,6 +33,7 @@ model User {
   createdProjects  Project[]  @relation("ProjectCreator")
   managedProjects  Project[]  @relation("ProjectManager")
   sessions         Session[]
+  roleAssignments  UserRoleAssignment[]
 
   @@map("users")
 }
@@ -732,4 +733,201 @@ enum NotificationType {
   WARNING
   ERROR
   SUCCESS
+}
+
+// =================================================================
+// RBAC SYSTEM MODELS
+// =================================================================
+
+model SystemRole {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  displayName   String    @map("display_name")
+  description   String?
+  
+  // Role Hierarchy
+  level         Int       @default(1) // 1=Basic, 2=Advanced, 3=Admin, 4=System Admin
+  parentRoleId  String?   @map("parent_role_id")
+  parentRole    SystemRole? @relation("RoleHierarchy", fields: [parentRoleId], references: [id])
+  childRoles    SystemRole[] @relation("RoleHierarchy")
+  
+  // Role Categorization
+  category      String    // 'user', 'department', 'system'
+  department    String?
+  
+  // Role Properties
+  isSystemRole  Boolean   @default(false) @map("is_system_role")
+  isActive      Boolean   @default(true) @map("is_active")
+  maxUsers      Int?      @map("max_users")
+  
+  // Relationships
+  permissions   RolePermission[]
+  userAssignments UserRoleAssignment[]
+  groupMemberships RoleGroupMembership[]
+  
+  // Audit Fields
+  createdBy     String?   @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedBy     String?   @map("updated_by")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([level])
+  @@index([category])
+  @@index([department])
+  @@index([isActive])
+  @@map("system_roles")
+}
+
+model SystemPermission {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  displayName     String    @map("display_name")
+  description     String?
+  
+  // Permission Categorization
+  module          String    // 'hr', 'callcenter', 'programs', etc.
+  category        String    // 'access', 'crud', 'admin'
+  action          String    // 'view', 'create', 'edit', 'delete'
+  
+  // Permission Scope
+  scope           String    @default("own") // 'own', 'team', 'department', 'organization'
+  securityLevel   Int       @default(1) @map("security_level") // 1=Public, 2=Confidential, 3=Secret, 4=TopSecret
+  
+  // Permission Properties
+  isSystemPermission Boolean @default(false) @map("is_system_permission")
+  isActive           Boolean @default(true) @map("is_active")
+  requiresApproval   Boolean @default(false) @map("requires_approval")
+  
+  // Relationships
+  rolePermissions RolePermission[]
+  
+  // Audit Fields
+  createdBy       String?   @map("created_by")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedBy       String?   @map("updated_by")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([module])
+  @@index([category])
+  @@index([action])
+  @@index([scope])
+  @@index([securityLevel])
+  @@map("system_permissions")
+}
+
+model RolePermission {
+  id           String    @id @default(cuid())
+  roleId       String    @map("role_id")
+  permissionId String    @map("permission_id")
+  
+  // Permission Customization
+  isGranted    Boolean   @default(true) @map("is_granted")
+  isInherited  Boolean   @default(false) @map("is_inherited")
+  conditions   Json?     // Custom conditions for this permission
+  
+  // Relationships
+  role         SystemRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   SystemPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  // Audit Fields
+  grantedBy    String?   @map("granted_by")
+  grantedAt    DateTime  @default(now()) @map("granted_at")
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@index([isGranted])
+  @@map("role_permissions")
+}
+
+model RoleGroup {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  displayName     String    @map("display_name")
+  description     String?
+  
+  // Group Properties
+  groupType       String    @default("custom") @map("group_type") // 'predefined', 'custom', 'department'
+  department      String?
+  isActive        Boolean   @default(true) @map("is_active")
+  
+  // Group Settings
+  autoAssignRules Json?     @map("auto_assign_rules")
+  maxMembers      Int?      @map("max_members")
+  
+  // Relationships
+  roleMemberships RoleGroupMembership[]
+  userAssignments UserRoleAssignment[]
+  
+  // Audit Fields
+  createdBy       String?   @map("created_by")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedBy       String?   @map("updated_by")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([groupType])
+  @@index([department])
+  @@index([isActive])
+  @@map("role_groups")
+}
+
+model RoleGroupMembership {
+  id        String    @id @default(cuid())
+  groupId   String    @map("group_id")
+  roleId    String    @map("role_id")
+  
+  // Membership Properties
+  isPrimary Boolean   @default(false) @map("is_primary")
+  priority  Int       @default(1)
+  
+  // Relationships
+  group     RoleGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  role      SystemRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  // Audit Fields
+  addedBy   String?   @map("added_by")
+  addedAt   DateTime  @default(now()) @map("added_at")
+
+  @@unique([groupId, roleId])
+  @@index([groupId])
+  @@index([roleId])
+  @@map("role_group_memberships")
+}
+
+model UserRoleAssignment {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  roleId         String?   @map("role_id")
+  groupId        String?   @map("group_id")
+  
+  // Assignment Properties
+  assignmentType String    @map("assignment_type") // 'direct', 'group', 'inherited'
+  isActive       Boolean   @default(true) @map("is_active")
+  isTemporary    Boolean   @default(false) @map("is_temporary")
+  
+  // Temporary Assignment
+  validFrom      DateTime  @default(now()) @map("valid_from")
+  validUntil     DateTime? @map("valid_until")
+  
+  // Assignment Context
+  context        Json?     // Additional context for the assignment
+  
+  // Relationships
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           SystemRole? @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  group          RoleGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  
+  // Audit Fields
+  assignedBy     String?   @map("assigned_by")
+  assignedAt     DateTime  @default(now()) @map("assigned_at")
+  revokedBy      String?   @map("revoked_by")
+  revokedAt      DateTime? @map("revoked_at")
+
+  @@index([userId])
+  @@index([roleId])
+  @@index([groupId])
+  @@index([isActive])
+  @@index([assignmentType])
+  @@index([validFrom, validUntil])
+  @@map("user_role_assignments")
 }
