@@ -124,11 +124,105 @@ export default function NewCallEntryPage() {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    alert(`Call entry saved successfully! ${caseGenerated ? `Case number: ${generatedCaseNumber}` : ''}`)
-    setIsSubmitting(false)
+    try {
+      // Prepare data for API call using correct field names
+      const callData = {
+        callerName: formData.callerFullName,
+        callerPhone: formData.callerPhoneNumber,
+        callerEmail: '', // Not captured in current form
+        callType: formData.modeOfCommunication.toUpperCase(),
+        priority: 'MEDIUM', // Default priority
+        subject: formData.purpose || 'General Inquiry',
+        description: formData.issueDescription || formData.summary,
+        assignedTo: formData.officerName,
+        // Store additional fields in notes
+        notes: `Officer: ${formData.officerName}, Call Number: ${formData.callNumber}, 
+Gender: ${formData.callerGender}, Province: ${formData.callerProvince}, 
+Address: ${formData.callerAddress}, Key Population: ${formData.callerKeyPopulation}, 
+Client: ${formData.clientFullName}, Client Age: ${formData.clientAge}, 
+Communication: ${formData.modeOfCommunication}, Language: ${formData.language}, 
+Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes}`
+      }
+
+      const response = await fetch('/api/call-centre/calls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(callData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save call')
+      }
+
+      const savedCall = await response.json()
+      
+      alert(`Call entry saved successfully! Case number: ${savedCall.caseNumber}`)
+      
+      // Reset form to initial state
+      const newCallCounter = callCounter + 1
+      setCallCounter(newCallCounter)
+      const newCallNumber = `${String(newCallCounter).padStart(5, '0')}/${currentYear}`
+      
+      setFormData({
+        // Auto-generated fields
+        officerName: officerName,
+        date: currentDateTime.toISOString().split('T')[0],
+        time: currentDateTime.toTimeString().split(' ')[0].slice(0, 5),
+        callNumber: newCallNumber,
+        caseNumber: newCallNumber,
+        // Form fields
+        callerPhoneNumber: '',
+        modeOfCommunication: 'inbound',
+        howDidYouHearAboutUs: '',
+        callValidity: 'valid',
+        newOrRepeatCall: 'new',
+        language: 'English',
+        // Caller's Details
+        callerFullName: '',
+        callerAge: '-14',
+        callerKeyPopulation: 'N/A',
+        callerProvince: '',
+        callerCity: '',
+        // Client's Details
+        clientFullName: '',
+        clientAge: '-14',
+        clientKeyPopulation: 'N/A',
+        clientProvince: '',
+        clientCity: '',
+        clientEmploymentStatus: 'unemployed',
+        clientEducationLevel: 'primary',
+        purpose: 'HIV/AIDS',
+        issueDescription: '',
+        summary: '',
+        // Additional Information
+        voucherIssued: 'no',
+        voucherValue: '',
+        additionalNotes: '',
+        // Follow-up information
+        followUpRequired: false,
+        followUpDate: '',
+        followUpNotes: '',
+        // Legacy fields
+        callerGender: 'N/A',
+        callerAddress: '',
+        callDescription: '',
+        isCase: 'NO',
+        perpetrator: '',
+        servicesRecommended: '',
+        referral: '',
+        comment: ''
+      })
+      setCaseGenerated(false)
+      setGeneratedCaseNumber('')
+      
+    } catch (error) {
+      console.error('Error saving call:', error)
+      alert('Error saving call. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const metadata = {
@@ -412,7 +506,7 @@ export default function NewCallEntryPage() {
                 </label>
                 <select
                   value={formData.callerKeyPopulation}
-                  onChange={(e) => handleInputChange('keyPopulation', e.target.value)}
+                  onChange={(e) => handleInputChange('callerKeyPopulation', e.target.value)}
                   className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                   required
                 >
@@ -429,7 +523,7 @@ export default function NewCallEntryPage() {
                 </label>
                 <select
                   value={formData.callerGender}
-                  onChange={(e) => handleInputChange('gender', e.target.value)}
+                  onChange={(e) => handleInputChange('callerGender', e.target.value)}
                   className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                   required
                 >
@@ -445,7 +539,7 @@ export default function NewCallEntryPage() {
                 </label>
                 <select
                   value={formData.callerProvince}
-                  onChange={(e) => handleInputChange('province', e.target.value)}
+                  onChange={(e) => handleInputChange('callerProvince', e.target.value)}
                   className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                   required
                 >
@@ -470,7 +564,7 @@ export default function NewCallEntryPage() {
                 <input
                   type="text"
                   value={formData.callerAddress}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  onChange={(e) => handleInputChange('callerAddress', e.target.value)}
                   className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                   placeholder="Enter address"
                 />
