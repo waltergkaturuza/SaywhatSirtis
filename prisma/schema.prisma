@@ -931,3 +931,31 @@ model UserRoleAssignment {
   @@index([validFrom, validUntil])
   @@map("user_role_assignments")
 }
+
+// Risk Management Models
+model Risk {
+  id                String    @id @default(cuid())
+  title             String
+  description       String
+  category          String    // 'Operational', 'Strategic', 'Financial', 'Compliance', 'Reputational', 'Environmental', 'Cybersecurity', 'HR/Personnel'
+  department        String
+  probability       String    // 'Low', 'Medium', 'High'
+  impact            String    // 'Low', 'Medium', 'High'
+  riskScore         Int       // Calculated from probability * impact
+  status            String    @default("Open") // 'Open', 'Mitigated', 'Escalated', 'Closed'
+  dateIdentified    DateTime  @default(now()) @map("date_identified")
+  owner             String
+  mitigationPlan    String?   @map("mitigation_plan")
+  documents         String[]  @default([])
+  lastReviewed      DateTime? @map("last_reviewed")
+  createdBy         String    @map("created_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([department])
+  @@index([status])
+  @@index([riskScore])
+  @@index([dateIdentified])
+  @@map("risks")
+}
