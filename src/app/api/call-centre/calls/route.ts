@@ -25,30 +25,76 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Transform the data to match the frontend interface
+    // Transform the data to match the frontend interface - use safe optional access for new fields
     const transformedCalls = calls.map(call => ({
       id: call.id,
-      callNumber: call.id, // Use ID as call number for now
-      caseNumber: call.id,
+      callNumber: call.id,
+      caseNumber: call.caseNumber,
       callerName: call.callerName,
       callerPhone: call.callerPhone,
-      callerProvince: null, // Not available in current schema
-      callerAge: null, // Not available in current schema
-      callerGender: null, // Not available in current schema
-      clientName: call.callerName, // Same as caller for now
-      clientAge: null, // Not available in current schema
-      clientSex: null, // Not available in current schema
-      communicationMode: call.callType || 'INBOUND',
-      purpose: call.summary || 'General Inquiry',
-      validity: 'Valid', // Default for now
+      callerEmail: (call as any).callerEmail || null,
+      callerAge: (call as any).callerAge || null,
+      callerGender: (call as any).callerGender || null,
+      callerProvince: (call as any).callerProvince || null,
+      callerAddress: (call as any).callerAddress || null,
+      callerKeyPopulation: (call as any).callerKeyPopulation || null,
+      
+      // Client details
+      clientName: (call as any).clientName || null,
+      clientAge: (call as any).clientAge || null,
+      clientGender: (call as any).clientGender || null,
+      clientProvince: (call as any).clientProvince || null,
+      clientKeyPopulation: (call as any).clientKeyPopulation || null,
+      clientEmploymentStatus: (call as any).clientEmploymentStatus || null,
+      clientEducationLevel: (call as any).clientEducationLevel || null,
+      
+      // Call details
+      communicationMode: (call as any).communicationMode || call.callType || 'INBOUND',
+      callLanguage: (call as any).callLanguage || null,
+      callValidity: (call as any).callValidity || 'Valid',
+      newOrRepeatCall: (call as any).newOrRepeatCall || null,
+      howHeardAboutUs: (call as any).howHeardAboutUs || null,
+      callDurationMinutes: (call as any).callDurationMinutes || null,
+      
+      // Location details
+      district: (call as any).district || call.district || null,
+      ward: (call as any).ward || call.ward || null,
+      
+      // Service and case info
+      purpose: call.subject || 'General Inquiry',
+      description: call.description,
+      summary: call.summary,
+      priority: call.priority,
+      category: call.category,
+      validity: (call as any).callValidity || 'Valid',
       officer: call.assignedOfficer || 'Unassigned',
+      assignedOfficer: call.assignedOfficer,
+      
+      // Timing
       dateTime: call.createdAt.toISOString(),
-      duration: null, // Not available in current schema
+      callStartTime: call.callStartTime?.toISOString(),
+      callEndTime: call.callEndTime?.toISOString(),
+      duration: (call as any).callDurationMinutes ? `${(call as any).callDurationMinutes} min` : null,
+      
+      // Status and resolution
       status: call.status,
-      referredTo: call.resolution || null,
-      voucherIssued: 'NO', // Default for now
-      voucherValue: null, // Not available in current schema
-      notes: call.notes
+      resolution: (call as any).resolution || call.resolution || null,
+      referredTo: (call as any).referralDetails || call.resolution || null,
+      
+      // Service details
+      voucherIssued: (call as any).voucherIssued ? 'YES' : 'NO',
+      voucherValue: (call as any).voucherValue || null,
+      servicesRecommended: (call as any).servicesRecommended || null,
+      
+      // Additional tracking
+      perpetratorInfo: (call as any).perpetratorInfo || null,
+      isCase: (call as any).isCase || false,
+      followUpRequired: call.followUpRequired,
+      followUpDate: call.followUpDate?.toISOString(),
+      
+      // Notes and feedback
+      notes: call.notes,
+      satisfactionRating: (call as any).satisfactionRating || call.satisfactionRating || null
     }));
 
     return NextResponse.json({
@@ -73,6 +119,7 @@ export async function POST(request: NextRequest) {
     // Check permissions
     const hasPermission = session.user?.permissions?.includes('calls.create') ||
                          session.user?.permissions?.includes('calls.full_access') ||
+                         session.user?.permissions?.includes('callcentre.access') ||
                          session.user?.roles?.includes('admin') ||
                          session.user?.roles?.includes('manager')
 
@@ -82,39 +129,142 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
+      // Basic call info
       callerName,
       callerPhone,
       callerEmail,
       callType,
       priority,
+      category,
       subject,
       description,
-      assignedTo
+      summary,
+      assignedOfficer,
+      
+      // Caller details
+      callerAge,
+      callerGender,
+      callerProvince,
+      callerAddress,
+      callerKeyPopulation,
+      
+      // Client details
+      clientName,
+      clientAge,
+      clientGender,
+      clientProvince,
+      clientKeyPopulation,
+      clientEmploymentStatus,
+      clientEducationLevel,
+      
+      // Call details
+      communicationMode,
+      callLanguage,
+      callValidity,
+      newOrRepeatCall,
+      howHeardAboutUs,
+      callDurationMinutes,
+      
+      // Location details
+      district,
+      ward,
+      
+      // Service details
+      voucherIssued,
+      voucherValue,
+      servicesRecommended,
+      referralDetails,
+      
+      // Resolution and feedback
+      resolution,
+      satisfactionRating,
+      
+      // Additional tracking
+      perpetratorInfo,
+      isCase,
+      notes,
+      followUpRequired,
+      followUpDate
     } = body
 
-    // Create new call record
+    // Generate unique case number
+    const timestamp = Date.now()
+    const caseNumber = `CASE-${new Date().getFullYear()}-${String(timestamp).slice(-6)}`
+
+    // Create new call record with all fields (using type assertion for new fields)
+    const callData: any = {
+      caseNumber,
+      callerName: callerName || 'Unknown',
+      callerPhone,
+      callerEmail,
+      callType: callType || 'INBOUND',
+      category: category || 'INQUIRY',
+      priority: priority || 'MEDIUM',
+      subject: subject || 'Call inquiry',
+      description: description || '',
+      summary: summary || subject || 'Call inquiry',
+      assignedOfficer: assignedOfficer || session.user?.name || 'Unassigned',
+      status: 'OPEN',
+      
+      // Caller details
+      callerAge,
+      callerGender,
+      callerProvince,
+      callerAddress,
+      callerKeyPopulation,
+      
+      // Client details
+      clientName,
+      clientAge,
+      clientGender,
+      clientProvince,
+      clientKeyPopulation,
+      clientEmploymentStatus,
+      clientEducationLevel,
+      
+      // Call details
+      communicationMode,
+      callLanguage: callLanguage || 'English',
+      callValidity: callValidity || 'valid',
+      newOrRepeatCall: newOrRepeatCall || 'new',
+      howHeardAboutUs,
+      callDurationMinutes: callDurationMinutes ? parseInt(callDurationMinutes) : null,
+      
+      // Location details
+      district,
+      ward,
+      
+      // Service details
+      voucherIssued: voucherIssued === 'yes' || voucherIssued === true,
+      voucherValue: voucherValue ? parseFloat(voucherValue) : null,
+      servicesRecommended,
+      referralDetails,
+      
+      // Resolution and feedback
+      resolution,
+      satisfactionRating: satisfactionRating ? parseInt(satisfactionRating) : null,
+      
+      // Additional tracking
+      perpetratorInfo,
+      isCase: isCase === 'YES' || isCase === true,
+      notes: notes || '',
+      followUpRequired: followUpRequired === true,
+      followUpDate: followUpDate ? new Date(followUpDate) : null,
+      
+      // Timing
+      callStartTime: new Date()
+    }
+
     const call = await prisma.callRecord.create({
-      data: {
-        caseNumber: `CASE-${Date.now()}`, // Generate unique case number
-        callerName,
-        callerPhone,
-        callerEmail,
-        callType: callType || 'INBOUND',
-        category: 'INQUIRY', // Default category
-        priority: priority || 'MEDIUM',
-        subject: subject || 'Call inquiry', // Required field
-        description: description || '', // Description field
-        summary: subject || 'Call inquiry', // Summary based on subject
-        notes: description || '',
-        assignedOfficer: assignedTo,
-        status: 'OPEN',
-        callStartTime: new Date()
-      }
+      data: callData
     })
 
     return NextResponse.json(call, { status: 201 })
   } catch (error) {
     console.error('Error creating call:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    }, { status: 500 })
   }
 }

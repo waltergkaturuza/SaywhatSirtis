@@ -40,11 +40,14 @@ export default function NewCallEntryPage() {
     caseNumber: callNumber, // Case number same as call number
     // Form fields
     callerPhoneNumber: '',
+    callerEmail: '', // Added missing field
     modeOfCommunication: 'inbound',
     howDidYouHearAboutUs: '',
     callValidity: 'valid',
     newOrRepeatCall: 'new',
     language: 'English',
+    priority: 'MEDIUM', // Added missing field
+    category: 'INQUIRY', // Added missing field
     // Caller's Details (person making the call)
     callerFullName: '',
     callerAge: '-14',
@@ -54,6 +57,7 @@ export default function NewCallEntryPage() {
     // Client's Details (person who needs help - may be different from caller)
     clientFullName: '',
     clientAge: '-14',
+    clientGender: 'N/A', // Added missing field
     clientKeyPopulation: 'N/A',
     clientProvince: '',
     clientCity: '',
@@ -70,6 +74,12 @@ export default function NewCallEntryPage() {
     followUpRequired: false,
     followUpDate: '',
     followUpNotes: '',
+    // Location fields
+    district: '', // Added missing field
+    ward: '', // Added missing field
+    // Resolution and feedback
+    resolution: '', // Added missing field
+    satisfactionRating: '', // Added missing field
     // Legacy fields to maintain compatibility
     callerGender: 'N/A',
     callerAddress: '',
@@ -78,7 +88,10 @@ export default function NewCallEntryPage() {
     perpetrator: '',
     servicesRecommended: '',
     referral: '',
-    comment: ''
+    comment: '',
+    // Additional fields for API compatibility
+    callDurationMinutes: '',
+    assignedOfficer: ''
   })
   
   // Check user permissions
@@ -125,23 +138,64 @@ export default function NewCallEntryPage() {
     setIsSubmitting(true)
     
     try {
-      // Prepare data for API call using correct field names
+      // Prepare comprehensive data for API call with proper field mapping
       const callData = {
+        // Basic call information
         callerName: formData.callerFullName,
         callerPhone: formData.callerPhoneNumber,
-        callerEmail: '', // Not captured in current form
+        callerEmail: formData.callerEmail,
         callType: formData.modeOfCommunication.toUpperCase(),
-        priority: 'MEDIUM', // Default priority
+        priority: formData.priority,
+        category: formData.category,
         subject: formData.purpose || 'General Inquiry',
         description: formData.issueDescription || formData.summary,
-        assignedTo: formData.officerName,
-        // Store additional fields in notes
-        notes: `Officer: ${formData.officerName}, Call Number: ${formData.callNumber}, 
-Gender: ${formData.callerGender}, Province: ${formData.callerProvince}, 
-Address: ${formData.callerAddress}, Key Population: ${formData.callerKeyPopulation}, 
-Client: ${formData.clientFullName}, Client Age: ${formData.clientAge}, 
-Communication: ${formData.modeOfCommunication}, Language: ${formData.language}, 
-Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes}`
+        summary: formData.summary || formData.issueDescription,
+        assignedOfficer: formData.assignedOfficer || formData.officerName,
+        
+        // Caller details (person making the call)
+        callerAge: formData.callerAge,
+        callerGender: formData.callerGender,
+        callerProvince: formData.callerProvince,
+        callerAddress: formData.callerAddress,
+        callerKeyPopulation: formData.callerKeyPopulation,
+        
+        // Client details (person who needs help)
+        clientName: formData.clientFullName,
+        clientAge: formData.clientAge,
+        clientGender: formData.clientGender,
+        clientProvince: formData.clientProvince,
+        clientKeyPopulation: formData.clientKeyPopulation,
+        clientEmploymentStatus: formData.clientEmploymentStatus,
+        clientEducationLevel: formData.clientEducationLevel,
+        
+        // Call details
+        communicationMode: formData.modeOfCommunication,
+        callLanguage: formData.language,
+        callValidity: formData.callValidity,
+        newOrRepeatCall: formData.newOrRepeatCall,
+        howHeardAboutUs: formData.howDidYouHearAboutUs,
+        callDurationMinutes: formData.callDurationMinutes,
+        
+        // Location details
+        district: formData.district,
+        ward: formData.ward,
+        
+        // Service details
+        voucherIssued: formData.voucherIssued,
+        voucherValue: formData.voucherValue || null,
+        servicesRecommended: formData.servicesRecommended,
+        referralDetails: formData.referral,
+        
+        // Resolution and feedback
+        resolution: formData.resolution,
+        satisfactionRating: formData.satisfactionRating ? parseInt(formData.satisfactionRating) : null,
+        
+        // Additional tracking
+        perpetratorInfo: formData.perpetrator,
+        isCase: formData.isCase,
+        notes: formData.additionalNotes || formData.comment,
+        followUpRequired: formData.followUpRequired,
+        followUpDate: formData.followUpDate || null
       }
 
       const response = await fetch('/api/call-centre/calls', {
@@ -153,7 +207,8 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save call')
+        const errorData = await response.json()
+        throw new Error(errorData.details || errorData.error || 'Failed to save call')
       }
 
       const savedCall = await response.json()
@@ -174,11 +229,14 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
         caseNumber: newCallNumber,
         // Form fields
         callerPhoneNumber: '',
+        callerEmail: '',
         modeOfCommunication: 'inbound',
         howDidYouHearAboutUs: '',
         callValidity: 'valid',
         newOrRepeatCall: 'new',
         language: 'English',
+        priority: 'MEDIUM',
+        category: 'INQUIRY',
         // Caller's Details
         callerFullName: '',
         callerAge: '-14',
@@ -188,6 +246,7 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
         // Client's Details
         clientFullName: '',
         clientAge: '-14',
+        clientGender: 'N/A',
         clientKeyPopulation: 'N/A',
         clientProvince: '',
         clientCity: '',
@@ -204,6 +263,12 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
         followUpRequired: false,
         followUpDate: '',
         followUpNotes: '',
+        // Location fields
+        district: '',
+        ward: '',
+        // Resolution and feedback
+        resolution: '',
+        satisfactionRating: '',
         // Legacy fields
         callerGender: 'N/A',
         callerAddress: '',
@@ -212,14 +277,17 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
         perpetrator: '',
         servicesRecommended: '',
         referral: '',
-        comment: ''
+        comment: '',
+        // Additional fields for API compatibility
+        callDurationMinutes: '',
+        assignedOfficer: ''
       })
       setCaseGenerated(false)
       setGeneratedCaseNumber('')
       
     } catch (error) {
       console.error('Error saving call:', error)
-      alert('Error saving call. Please try again.')
+      alert(`Error saving call: ${error instanceof Error ? error.message : 'Please try again.'}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -381,6 +449,19 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
                   className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                   placeholder="e.g., 0771234567"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                  Caller's Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.callerEmail}
+                  onChange={(e) => handleInputChange('callerEmail', e.target.value)}
+                  className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                  placeholder="e.g., caller@example.com"
                 />
               </div>
 
@@ -591,6 +672,73 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                    Call Duration (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.callDurationMinutes || ''}
+                    onChange={(e) => handleInputChange('callDurationMinutes', e.target.value)}
+                    className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                    placeholder="Enter duration in minutes"
+                    min="0"
+                    max="999"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                    Assigned Officer
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.assignedOfficer || formData.officerName}
+                    onChange={(e) => handleInputChange('assignedOfficer', e.target.value)}
+                    className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                    placeholder="Officer handling this call"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                    Priority Level <span className="text-saywhat-orange">*</span>
+                  </label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => handleInputChange('priority', e.target.value)}
+                    className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                    required
+                  >
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="URGENT">Urgent</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                    Category <span className="text-saywhat-orange">*</span>
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => handleInputChange('category', e.target.value)}
+                    className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                    required
+                  >
+                    <option value="INQUIRY">General Inquiry</option>
+                    <option value="COMPLAINT">Complaint</option>
+                    <option value="EMERGENCY">Emergency</option>
+                    <option value="FOLLOW_UP">Follow Up</option>
+                    <option value="REFERRAL">Referral</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Purpose <span className="text-saywhat-orange">*</span>
@@ -708,6 +856,22 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
 
               <div>
                 <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                  Client's Gender <span className="text-saywhat-orange">*</span>
+                </label>
+                <select
+                  value={formData.clientGender}
+                  onChange={(e) => handleInputChange('clientGender', e.target.value)}
+                  className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                  required
+                >
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="N/A">Prefer not to say</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Client's Key Population
                 </label>
                 <select
@@ -809,6 +973,35 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
           <div className="bg-white rounded-lg border border-saywhat-light-grey p-6">
             <h2 className="text-xl font-semibold text-saywhat-dark mb-6">Additional Information</h2>
             
+            {/* Location Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                  District
+                </label>
+                <input
+                  type="text"
+                  value={formData.district}
+                  onChange={(e) => handleInputChange('district', e.target.value)}
+                  className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                  placeholder="Enter district"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                  Ward
+                </label>
+                <input
+                  type="text"
+                  value={formData.ward}
+                  onChange={(e) => handleInputChange('ward', e.target.value)}
+                  className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                  placeholder="Enter ward"
+                />
+              </div>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Voucher Information */}
               <div>
@@ -882,6 +1075,38 @@ Validity: ${formData.callValidity}, Additional Notes: ${formData.additionalNotes
                   className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                   placeholder="Any additional information or special circumstances"
                 />
+              </div>
+
+              {/* Resolution and Satisfaction */}
+              <div>
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                  Resolution Summary
+                </label>
+                <textarea
+                  value={formData.resolution}
+                  onChange={(e) => handleInputChange('resolution', e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                  placeholder="How was the issue resolved or what action was taken?"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                  Satisfaction Rating (1-5)
+                </label>
+                <select
+                  value={formData.satisfactionRating}
+                  onChange={(e) => handleInputChange('satisfactionRating', e.target.value)}
+                  className="w-full px-3 py-2 border border-saywhat-gray rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                >
+                  <option value="">Not rated</option>
+                  <option value="1">1 - Very Dissatisfied</option>
+                  <option value="2">2 - Dissatisfied</option>
+                  <option value="3">3 - Neutral</option>
+                  <option value="4">4 - Satisfied</option>
+                  <option value="5">5 - Very Satisfied</option>
+                </select>
               </div>
             </div>
 

@@ -165,6 +165,43 @@ model CallRecord {
   ward               String?
   followUpRequired   Boolean   @default(false)
   followUpDate       DateTime?
+  
+  // Caller details (person making the call)
+  callerAge          String?
+  callerGender       String?
+  callerProvince     String?
+  callerAddress      String?
+  callerKeyPopulation String?
+  
+  // Client details (person who needs help - may be different from caller)
+  clientName         String?
+  clientAge          String?
+  clientGender       String?
+  clientProvince     String?
+  clientKeyPopulation String?
+  clientEmploymentStatus String?
+  clientEducationLevel String?
+  
+  // Call details
+  communicationMode  String?
+  callLanguage       String?
+  callValidity       String?
+  newOrRepeatCall    String?
+  howHeardAboutUs    String?
+  
+  // Service details
+  voucherIssued      Boolean   @default(false)
+  voucherValue       Float?
+  servicesRecommended String?
+  referralDetails    String?
+  
+  // Call timing
+  callDurationMinutes Int?
+  
+  // Additional tracking
+  perpetratorInfo    String?
+  isCase             Boolean   @default(false)
+  
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -174,6 +211,11 @@ model CallRecord {
   @@index([priority])
   @@index([assignedOfficer])
   @@index([callStartTime])
+  @@index([callerProvince])
+  @@index([clientProvince])
+  @@index([communicationMode])
+  @@index([callValidity])
+  @@index([voucherIssued])
   @@map("call_records")
 }
 
