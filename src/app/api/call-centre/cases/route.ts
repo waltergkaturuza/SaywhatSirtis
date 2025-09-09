@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
       // Transform to detailed case format
       const caseData = {
         id: call.id,
-        caseNumber: `CASE-${call.id.substring(0, 8)}`,
-        callNumber: call.id,
+        caseNumber: call.caseNumber || `CASE-${call.id.substring(0, 8)}`,
+        callNumber: call.caseNumber || call.id,
         
         // Basic information
         clientName: call.callerName || 'Unknown',
@@ -98,8 +98,8 @@ export async function GET(request: NextRequest) {
       
       return {
         id: call.id,
-        caseNumber: `CASE-${call.id.substring(0, 8)}`,
-        callNumber: call.id,
+        caseNumber: call.caseNumber || `CASE-${call.id.substring(0, 8)}`,
+        callNumber: call.caseNumber || call.id,
         clientName: call.callerName || 'Unknown',
         phone: call.callerPhone || '',
         purpose: (call as any).purpose || call.subject || 'General Inquiry',
@@ -154,18 +154,50 @@ export async function PUT(request: NextRequest) {
 
     const data = await request.json()
 
-    // Update the call record with case updates
+    // Prepare update data with comprehensive field mapping
+    const updateData: any = {
+      updatedAt: new Date()
+    }
+
+    // Basic case information
+    if (data.status !== undefined) updateData.status = data.status
+    if (data.officer !== undefined) updateData.assignedOfficer = data.officer
+    if (data.assignedOfficer !== undefined) updateData.assignedOfficer = data.assignedOfficer
+    if (data.priority !== undefined) updateData.priority = data.priority
+    if (data.category !== undefined) updateData.category = data.category
+    if (data.caseType !== undefined) updateData.category = data.caseType
+
+    // Client information updates
+    if (data.clientName !== undefined) updateData.clientName = data.clientName
+    if (data.clientPhone !== undefined) updateData.clientPhone = data.clientPhone
+    if (data.clientAge !== undefined) updateData.clientAge = data.clientAge
+    if (data.clientGender !== undefined) updateData.clientGender = data.clientGender
+    if (data.clientProvince !== undefined) updateData.clientProvince = data.clientProvince
+    if (data.clientAddress !== undefined) updateData.clientAddress = data.clientAddress
+
+    // Call/Case details
+    if (data.callPurpose !== undefined) updateData.subject = data.callPurpose
+    if (data.description !== undefined) updateData.description = data.description
+    if (data.summary !== undefined) updateData.summary = data.summary
+
+    // Follow-up and resolution
+    if (data.followUpDate !== undefined) {
+      updateData.followUpDate = data.followUpDate ? new Date(data.followUpDate) : null
+    }
+    if (data.followUpRequired !== undefined) updateData.followUpRequired = data.followUpRequired
+    if (data.notes !== undefined) updateData.notes = data.notes
+    if (data.resolution !== undefined) updateData.resolution = data.resolution
+
+    // Additional tracking fields
+    if (data.actionsTaken !== undefined) updateData.actionsTaken = data.actionsTaken
+    if (data.nextAction !== undefined) updateData.nextAction = data.nextAction
+    if (data.referrals !== undefined) updateData.referralDetails = data.referrals
+    if (data.outcome !== undefined) updateData.callOutcome = data.outcome
+
+    // Update the call record with comprehensive case updates
     const updatedCall = await prisma.callRecord.update({
       where: { id: caseId },
-      data: {
-        status: data.status,
-        assignedOfficer: data.officer,
-        followUpDate: data.followUpDate ? new Date(data.followUpDate) : undefined,
-        followUpRequired: data.followUpRequired || false,
-        notes: data.notes,
-        resolution: data.resolution,
-        updatedAt: new Date()
-      }
+      data: updateData
     })
 
     return NextResponse.json({

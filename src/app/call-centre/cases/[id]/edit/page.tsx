@@ -26,6 +26,7 @@ export default function EditCasePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [caseData, setCaseData] = useState<any>(null)
+  const [availableOfficers, setAvailableOfficers] = useState<string[]>([])
 
   // Check user permissions after all hooks
   const userPermissions = session?.user?.permissions || []
@@ -33,92 +34,108 @@ export default function EditCasePage() {
                              userPermissions.includes('programs.head') ||
                              userPermissions.includes('callcentre.officer')
 
-  // Simulate loading case data
+  // Load available officers from API
+  useEffect(() => {
+    const loadOfficers = async () => {
+      try {
+        const response = await fetch('/api/call-centre/calls')
+        if (response.ok) {
+          const data = await response.json()
+          const officers = [...new Set(data.calls?.map((call: any) => call.assignedOfficer || call.officer).filter(Boolean) as string[])]
+          setAvailableOfficers(['System Administrator', 'Unassigned', ...officers])
+        }
+      } catch (error) {
+        console.error('Error loading officers:', error)
+        setAvailableOfficers(['System Administrator', 'Unassigned'])
+      }
+    }
+    loadOfficers()
+  }, [])
+
+  // Load real case data from API
   useEffect(() => {
     const loadCaseData = async () => {
+      if (!caseId) return
+      
       setIsLoading(true)
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock case data based on the case ID
-      const mockCaseData = {
-        id: caseId,
-        caseNumber: caseId,
-        status: 'Open',
-        priority: 'Medium',
-        createdDate: '2025-01-15',
-        lastUpdated: '2025-01-16',
-        assignedOfficer: 'Mary Chikuni',
-        clientName: 'John Mukamuri',
-        clientPhone: '0771234567',
-        clientAge: '22',
-        clientGender: 'Male',
-        clientProvince: 'Harare',
-        clientAddress: '123 Main Street, Harare',
-        callPurpose: 'Youth Employment Inquiry',
-        caseType: 'Employment Support',
-        description: 'Client inquiring about youth employment opportunities and skills training programs. Requires follow-up on available positions.',
-        actionsTaken: 'Provided initial information about youth employment programs. Scheduled follow-up call.',
-        nextAction: 'Follow up with client regarding skills assessment and job placement opportunities.',
-        referrals: 'Skills Development Team',
-        notes: 'Client is enthusiastic about training opportunities. Has basic computer skills.',
-        followUpDate: '2025-01-20',
-        resolution: '',
-        outcome: ''
+      try {
+        const response = await fetch(`/api/call-centre/calls?id=${caseId}`)
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch case data')
+        }
+        
+        const data = await response.json()
+        
+        // Transform API response to match form structure
+        const transformedData = {
+          id: data.id,
+          caseNumber: data.caseNumber || data.id,
+          status: data.status || 'Open',
+          priority: data.priority || 'Medium',
+          createdDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString() : '',
+          lastUpdated: data.updatedAt ? new Date(data.updatedAt).toLocaleDateString() : '',
+          assignedOfficer: data.assignedOfficer || data.officer || '',
+          
+          // Caller/Client information
+          clientName: data.clientName || data.callerName || '',
+          clientPhone: data.clientPhone || data.callerPhone || '',
+          clientAge: data.clientAge || data.callerAge || '',
+          clientGender: data.clientGender || data.callerGender || '',
+          clientProvince: data.clientProvince || data.callerProvince || '',
+          clientAddress: data.clientAddress || data.callerAddress || '',
+          
+          // Call details
+          callPurpose: data.purpose || data.subject || '',
+          caseType: data.category || '',
+          description: data.description || data.issueDescription || '',
+          
+          // Action and follow-up
+          actionsTaken: data.actionsTaken || '',
+          nextAction: data.nextAction || '',
+          referrals: data.referredTo || data.referralDetails || '',
+          notes: data.notes || data.additionalNotes || '',
+          followUpDate: data.followUpDate ? new Date(data.followUpDate).toISOString().split('T')[0] : '',
+          resolution: data.resolution || '',
+          outcome: data.callOutcome || ''
+        }
+        
+        setCaseData(transformedData)
+      } catch (error) {
+        console.error('Error loading case data:', error)
+        // Set default empty data structure if fetch fails
+        setCaseData({
+          id: caseId,
+          caseNumber: caseId,
+          status: 'Open',
+          priority: 'Medium',
+          createdDate: '',
+          lastUpdated: '',
+          assignedOfficer: '',
+          clientName: '',
+          clientPhone: '',
+          clientAge: '',
+          clientGender: '',
+          clientProvince: '',
+          clientAddress: '',
+          callPurpose: '',
+          caseType: '',
+          description: '',
+          actionsTaken: '',
+          nextAction: '',
+          referrals: '',
+          notes: '',
+          followUpDate: '',
+          resolution: '',
+          outcome: ''
+        })
+      } finally {
+        setIsLoading(false)
       }
-      
-      setCaseData(mockCaseData)
-      setIsLoading(false)
     }
 
-    if (caseId) {
-      loadCaseData()
-    }
-  }, [caseId])
-
-  // Simulate loading case data
-  useEffect(() => {
-    const loadCaseData = async () => {
-      setIsLoading(true)
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock case data based on the case ID
-      const mockCaseData = {
-        id: caseId,
-        caseNumber: caseId,
-        status: 'Open',
-        priority: 'Medium',
-        createdDate: '2025-01-15',
-        lastUpdated: '2025-01-16',
-        assignedOfficer: 'Mary Chikuni',
-        clientName: 'John Mukamuri',
-        clientPhone: '0771234567',
-        clientAge: '22',
-        clientGender: 'Male',
-        clientProvince: 'Harare',
-        clientAddress: '123 Main Street, Harare',
-        callPurpose: 'Youth Employment Inquiry',
-        caseType: 'Employment Support',
-        description: 'Client inquiring about youth employment opportunities and skills training programs. Requires follow-up on available positions.',
-        actionsTaken: 'Provided initial information about youth employment programs. Scheduled follow-up call.',
-        nextAction: 'Follow up with client regarding skills assessment and job placement opportunities.',
-        referrals: 'Skills Development Team',
-        notes: 'Client is enthusiastic about training opportunities. Has basic computer skills.',
-        followUpDate: '2025-01-20',
-        resolution: '',
-        outcome: ''
-      }
-      
-      setCaseData(mockCaseData)
-      setIsLoading(false)
-    }
-
-    if (caseId) {
-      loadCaseData()
-    }
+    loadCaseData()
   }, [caseId])
 
   if (!canAccessCallCentre) {
@@ -145,31 +162,127 @@ export default function EditCasePage() {
   const handleSave = async () => {
     setIsSaving(true)
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    alert('Case updated successfully!')
-    setIsSaving(false)
+    try {
+      // Prepare comprehensive data for API update
+      const updateData = {
+        // Basic case information
+        status: caseData.status,
+        assignedOfficer: caseData.assignedOfficer,
+        priority: caseData.priority,
+        caseType: caseData.caseType,
+        
+        // Client information
+        clientName: caseData.clientName,
+        clientPhone: caseData.clientPhone,
+        clientAge: caseData.clientAge,
+        clientGender: caseData.clientGender,
+        clientProvince: caseData.clientProvince,
+        clientAddress: caseData.clientAddress,
+        
+        // Call/Case details
+        callPurpose: caseData.callPurpose,
+        description: caseData.description,
+        
+        // Actions and follow-up
+        actionsTaken: caseData.actionsTaken,
+        nextAction: caseData.nextAction,
+        referrals: caseData.referrals,
+        notes: caseData.notes,
+        followUpDate: caseData.followUpDate || null,
+        followUpRequired: Boolean(caseData.followUpDate),
+        resolution: caseData.resolution,
+        outcome: caseData.outcome
+      }
+      
+      const response = await fetch(`/api/call-centre/cases?id=${caseId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to update case')
+      }
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        alert('Case updated successfully!')
+        // Update local state with latest data
+        setCaseData((prev: any) => ({
+          ...prev,
+          lastUpdated: new Date().toLocaleDateString()
+        }))
+      } else {
+        throw new Error(result.error || 'Failed to update case')
+      }
+      
+    } catch (error) {
+      console.error('Error updating case:', error)
+      alert('Failed to update case. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleClose = async () => {
     if (confirm('Are you sure you want to close this case?')) {
       setIsSaving(true)
       
-      // Update case status
-      setCaseData((prev: any) => ({
-        ...prev,
-        status: 'Closed',
-        resolution: 'Case resolved successfully',
-        outcome: 'Client enrolled in youth employment program'
-      }))
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      alert('Case closed successfully!')
-      setIsSaving(false)
-      router.push('/call-centre/case-management')
+      try {
+        // Prepare data for closing the case with current form data
+        const closeData = {
+          status: 'Closed',
+          assignedOfficer: caseData.assignedOfficer,
+          priority: caseData.priority,
+          caseType: caseData.caseType,
+          clientName: caseData.clientName,
+          clientPhone: caseData.clientPhone,
+          clientAge: caseData.clientAge,
+          clientGender: caseData.clientGender,
+          clientProvince: caseData.clientProvince,
+          clientAddress: caseData.clientAddress,
+          callPurpose: caseData.callPurpose,
+          description: caseData.description,
+          actionsTaken: caseData.actionsTaken,
+          nextAction: caseData.nextAction,
+          referrals: caseData.referrals,
+          notes: caseData.notes,
+          followUpDate: null,
+          followUpRequired: false,
+          resolution: caseData.resolution || 'Case closed successfully',
+          outcome: caseData.outcome || 'Case resolved'
+        }
+        
+        const response = await fetch(`/api/call-centre/cases?id=${caseId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(closeData)
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to close case')
+        }
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          alert('Case closed successfully!')
+          router.push('/call-centre/case-management')
+        } else {
+          throw new Error(result.error || 'Failed to close case')
+        }
+        
+      } catch (error) {
+        console.error('Error closing case:', error)
+        alert('Failed to close case. Please try again.')
+      } finally {
+        setIsSaving(false)
+      }
     }
   }
 
@@ -329,10 +442,11 @@ export default function EditCasePage() {
                     onChange={(e) => handleInputChange('assignedOfficer', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="Mary Chikuni">Mary Chikuni</option>
-                    <option value="David Nyathi">David Nyathi</option>
-                    <option value="Alice Mandaza">Alice Mandaza</option>
-                    <option value="Peter Masvingo">Peter Masvingo</option>
+                    {availableOfficers.map((officer) => (
+                      <option key={officer} value={officer}>
+                        {officer}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { ModulePage } from "@/components/layout/enhanced-layout";
+import { useRouter } from "next/navigation";
 import { 
   MagnifyingGlassIcon,
   PhoneIcon,
@@ -29,11 +30,14 @@ interface CallRecord {
   callerProvince?: string
   callerAge?: string
   callerGender?: string
+  callerAddress?: string
   district?: string
   ward?: string
   clientName?: string
   clientAge?: string
-  clientSex?: string
+  clientGender?: string
+  clientProvince?: string
+  clientAddress?: string
   communicationMode: string
   purpose: string
   validity: string
@@ -65,6 +69,7 @@ const communicationModes = {
 
 export default function AllCallsPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [filteredCalls, setFilteredCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +97,41 @@ export default function AllCallsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle delete call (move to trash)
+  const handleDeleteCall = async (callId: string) => {
+    if (!confirm('Are you sure you want to delete this call record? It will be moved to trash.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/call-centre/calls/delete?id=${callId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete call record');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('Call record moved to trash successfully!');
+        // Refresh the calls list
+        fetchCalls();
+      } else {
+        throw new Error(result.error || 'Failed to delete call record');
+      }
+    } catch (error) {
+      console.error('Error deleting call:', error);
+      alert('Failed to delete call record. Please try again.');
+    }
+  };
+
+  // Handle edit call
+  const handleEditCall = (callId: string) => {
+    router.push(`/call-centre/cases/${callId}/edit`);
   };
 
   // Status color mapping
@@ -191,12 +231,6 @@ export default function AllCallsPage() {
       </ModulePage>
     );
   }
-
-  const handleDeleteCall = (callId: string) => {
-    if (confirm("Are you sure you want to delete this call record?")) {
-      setCalls(calls.filter(call => call.id !== callId));
-    }
-  };
 
   const clearFilters = () => {
     setFilters({
@@ -395,6 +429,9 @@ export default function AllCallsPage() {
                     Caller Information
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client Details
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Communication
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -411,7 +448,7 @@ export default function AllCallsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
                         <span className="ml-3 text-gray-500">Loading call records...</span>
@@ -420,7 +457,7 @@ export default function AllCallsPage() {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="text-red-500">
                         <ExclamationTriangleIcon className="mx-auto h-12 w-12 mb-4" />
                         <p>{error}</p>
@@ -435,7 +472,7 @@ export default function AllCallsPage() {
                   </tr>
                 ) : filteredCalls.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                       No call records found
                     </td>
                   </tr>
@@ -465,6 +502,19 @@ export default function AllCallsPage() {
                               {call.callerProvince || 'N/A'}
                               {call.district && call.callerProvince && ', '}
                               {call.district || ''}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">{call.clientName || 'N/A'}</div>
+                            <div className="text-gray-500">
+                              Age: {call.clientAge || 'N/A'}, Gender: {call.clientGender || 'N/A'}
+                            </div>
+                            <div className="text-gray-500">
+                              {call.clientProvince || 'N/A'}
+                              {call.clientAddress && call.clientProvince && ', '}
+                              {call.clientAddress || ''}
                             </div>
                           </div>
                         </td>
@@ -530,12 +580,17 @@ export default function AllCallsPage() {
                             </button>
                             {canEdit && (
                               <>
-                                <button className="text-indigo-600 hover:text-indigo-900">
+                                <button 
+                                  onClick={() => handleEditCall(call.id)}
+                                  className="text-indigo-600 hover:text-indigo-900"
+                                  title="Edit Call Record"
+                                >
                                   <PencilIcon className="h-5 w-5" />
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteCall(call.id)}
                                   className="text-red-600 hover:text-red-900"
+                                  title="Delete Call Record (Move to Trash)"
                                 >
                                   <TrashIcon className="h-5 w-5" />
                                 </button>
@@ -673,7 +728,7 @@ export default function AllCallsPage() {
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Sex:</span>
-                    <span className="ml-2 text-saywhat-dark">{selectedCall.clientSex}</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.clientGender}</span>
                   </div>
                 </div>
               </div>

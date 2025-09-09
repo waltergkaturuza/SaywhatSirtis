@@ -11,16 +11,17 @@ import {
 
 export async function GET() {
   try {
-    // Authentication required for production
+    // For development, allow access without strict authentication
     const session = await getServerSession(authOptions)
+    const isDevelopment = process.env.NODE_ENV === 'development'
     
-    if (!session?.user?.email) {
+    if (!session?.user?.email && !isDevelopment) {
       return createErrorResponse('Authentication required', 401)
     }
 
     // Get all active employees with retry logic
     const employees = await withRetry(async () => {
-      return await (prisma.employee.findMany as any)({
+      return await prisma.employee.findMany({
         where: { 
           status: 'ACTIVE'
         },
