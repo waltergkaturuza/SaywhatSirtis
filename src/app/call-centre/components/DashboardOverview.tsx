@@ -97,14 +97,10 @@ const DashboardOverview = () => {
 
         if (tasksResponse.ok) {
           const tasksData = await tasksResponse.json()
-          // Ensure tasksData is an array
-          setTasks(Array.isArray(tasksData) ? tasksData : [])
+          setTasks(tasksData)
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
-        // Set safe defaults on error
-        setTasks([])
-        setDashboardData(null)
       } finally {
         setLoading(false)
       }

@@ -3,7 +3,6 @@
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { ModulePage } from "@/components/layout/enhanced-layout";
-import { useRouter } from "next/navigation";
 import { 
   MagnifyingGlassIcon,
   PhoneIcon,
@@ -26,18 +25,12 @@ interface CallRecord {
   caseNumber: string
   callerName?: string
   callerPhone?: string
-  callerEmail?: string
   callerProvince?: string
   callerAge?: string
   callerGender?: string
-  callerAddress?: string
-  district?: string
-  ward?: string
   clientName?: string
   clientAge?: string
-  clientGender?: string
-  clientProvince?: string
-  clientAddress?: string
+  clientSex?: string
   communicationMode: string
   purpose: string
   validity: string
@@ -45,8 +38,6 @@ interface CallRecord {
   dateTime: string
   duration?: string
   status: string
-  priority?: string
-  category?: string
   referredTo?: string
   voucherIssued: string
   voucherValue?: string
@@ -69,7 +60,6 @@ const communicationModes = {
 
 export default function AllCallsPage() {
   const { data: session } = useSession();
-  const router = useRouter();
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [filteredCalls, setFilteredCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,41 +87,6 @@ export default function AllCallsPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Handle delete call (move to trash)
-  const handleDeleteCall = async (callId: string) => {
-    if (!confirm('Are you sure you want to delete this call record? It will be moved to trash.')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/call-centre/calls/delete?id=${callId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete call record');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        alert('Call record moved to trash successfully!');
-        // Refresh the calls list
-        fetchCalls();
-      } else {
-        throw new Error(result.error || 'Failed to delete call record');
-      }
-    } catch (error) {
-      console.error('Error deleting call:', error);
-      alert('Failed to delete call record. Please try again.');
-    }
-  };
-
-  // Handle edit call
-  const handleEditCall = (callId: string) => {
-    router.push(`/call-centre/cases/${callId}/edit`);
   };
 
   // Status color mapping
@@ -231,6 +186,12 @@ export default function AllCallsPage() {
       </ModulePage>
     );
   }
+
+  const handleDeleteCall = (callId: string) => {
+    if (confirm("Are you sure you want to delete this call record?")) {
+      setCalls(calls.filter(call => call.id !== callId));
+    }
+  };
 
   const clearFilters = () => {
     setFilters({
@@ -429,9 +390,6 @@ export default function AllCallsPage() {
                     Caller Information
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Client Details
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Communication
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -448,7 +406,7 @@ export default function AllCallsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={6} className="px-6 py-12 text-center">
                       <div className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
                         <span className="ml-3 text-gray-500">Loading call records...</span>
@@ -457,7 +415,7 @@ export default function AllCallsPage() {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
+                    <td colSpan={6} className="px-6 py-12 text-center">
                       <div className="text-red-500">
                         <ExclamationTriangleIcon className="mx-auto h-12 w-12 mb-4" />
                         <p>{error}</p>
@@ -472,7 +430,7 @@ export default function AllCallsPage() {
                   </tr>
                 ) : filteredCalls.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                       No call records found
                     </td>
                   </tr>
@@ -495,27 +453,8 @@ export default function AllCallsPage() {
                           <div className="text-sm">
                             <div className="font-medium text-gray-900">{call.callerName || 'Unknown'}</div>
                             <div className="text-gray-500">{call.callerPhone || 'N/A'}</div>
-                            {call.callerEmail && (
-                              <div className="text-gray-500">{call.callerEmail}</div>
-                            )}
-                            <div className="text-gray-500">
-                              {call.callerProvince || 'N/A'}
-                              {call.district && call.callerProvince && ', '}
-                              {call.district || ''}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm">
-                            <div className="font-medium text-gray-900">{call.clientName || 'N/A'}</div>
-                            <div className="text-gray-500">
-                              Age: {call.clientAge || 'N/A'}, Gender: {call.clientGender || 'N/A'}
-                            </div>
-                            <div className="text-gray-500">
-                              {call.clientProvince || 'N/A'}
-                              {call.clientAddress && call.clientProvince && ', '}
-                              {call.clientAddress || ''}
-                            </div>
+                            <div className="text-gray-500">{call.callerProvince || 'N/A'}</div>
+                            <div className="text-gray-500">{call.callerGender || 'N/A'}, {call.callerAge || 'N/A'}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -524,28 +463,10 @@ export default function AllCallsPage() {
                             <div>
                               <div className="font-medium text-gray-900">{call.communicationMode}</div>
                               <div className="text-gray-500">{call.purpose}</div>
-                              <div className="flex space-x-2 mt-1">
-                                <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                  call.validity === 'valid' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100'
-                                }`}>
-                                  {call.validity || 'N/A'}
-                                </div>
-                                {call.priority && (
-                                  <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                    call.priority === 'HIGH' || call.priority === 'URGENT' 
-                                      ? 'text-red-800 bg-red-100' 
-                                      : call.priority === 'MEDIUM' 
-                                      ? 'text-yellow-800 bg-yellow-100' 
-                                      : 'text-blue-800 bg-blue-100'
-                                  }`}>
-                                    {call.priority}
-                                  </div>
-                                )}
-                                {call.category && (
-                                  <div className="inline-flex px-2 py-1 text-xs font-semibold rounded-full text-purple-800 bg-purple-100">
-                                    {call.category}
-                                  </div>
-                                )}
+                              <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                call.validity === 'Valid' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100'
+                              }`}>
+                                {call.validity || 'N/A'}
                               </div>
                             </div>
                           </div>
@@ -580,17 +501,12 @@ export default function AllCallsPage() {
                             </button>
                             {canEdit && (
                               <>
-                                <button 
-                                  onClick={() => handleEditCall(call.id)}
-                                  className="text-indigo-600 hover:text-indigo-900"
-                                  title="Edit Call Record"
-                                >
+                                <button className="text-indigo-600 hover:text-indigo-900">
                                   <PencilIcon className="h-5 w-5" />
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteCall(call.id)}
                                   className="text-red-600 hover:text-red-900"
-                                  title="Delete Call Record (Move to Trash)"
                                 >
                                   <TrashIcon className="h-5 w-5" />
                                 </button>
@@ -728,7 +644,7 @@ export default function AllCallsPage() {
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Sex:</span>
-                    <span className="ml-2 text-saywhat-dark">{selectedCall.clientGender}</span>
+                    <span className="ml-2 text-saywhat-dark">{selectedCall.clientSex}</span>
                   </div>
                 </div>
               </div>

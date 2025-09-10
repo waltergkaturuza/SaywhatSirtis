@@ -29,23 +29,18 @@ interface CollapsibleMainSidebarProps {
 // Navigation items based on SIRTIS requirements
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, requiredPermissions: [] },
-  { name: "Risk Management", href: "/risk-management", icon: ExclamationTriangleIcon, requiredPermissions: [] },
+  { name: "Risk Management", href: "/risk-management", icon: ExclamationTriangleIcon, requiredPermissions: ["risk.view"] },
   { name: "Programs", href: "/programs", icon: DocumentTextIcon, requiredPermissions: ["programs.view"] },
   { name: "Call Centre", href: "/call-centre", icon: PhoneIcon, requiredPermissions: ["callcentre.access"] },
   { name: "My HR", href: "/hr", icon: UserGroupIcon, requiredPermissions: ["hr.view"] },
   { name: "Inventory", href: "/inventory", icon: ArchiveBoxIcon, requiredPermissions: ["inventory.view"] },
   { name: "Documents", href: "/documents", icon: FolderIcon, requiredPermissions: ["documents.view"] },
+  { name: "Analytics", href: "/analytics", icon: ChartBarIcon, requiredPermissions: ["analytics.view"] },
   { name: "Admin", href: "/admin", icon: Cog6ToothIcon, requiredPermissions: ["admin.access"] },
 ]
 
-function hasPermission(userPermissions: string[], requiredPermissions: string[], userRoles: string[] = []) {
+function hasPermission(userPermissions: string[], requiredPermissions: string[]) {
   if (requiredPermissions.length === 0) return true
-  
-  // Admin and manager roles have access to all features
-  if (userRoles.includes('admin') || userRoles.includes('manager')) {
-    return true
-  }
-  
   return requiredPermissions.some(permission => userPermissions.includes(permission))
 }
 
@@ -58,7 +53,6 @@ export default function CollapsibleMainSidebar({
   const pathname = usePathname()
 
   const userPermissions = session?.user?.permissions || []
-  const userRoles = session?.user?.roles || []
 
   const handleToggle = () => {
     const newState = !isCollapsed
@@ -68,7 +62,7 @@ export default function CollapsibleMainSidebar({
 
   // Filter navigation items based on user permissions
   const filteredNavigation = navigation.filter(item => 
-    hasPermission(userPermissions, item.requiredPermissions, userRoles)
+    hasPermission(userPermissions, item.requiredPermissions)
   )
 
   return (

@@ -83,8 +83,7 @@ export default function Chatbot() {
       })
 
       if (!response.ok) {
-        // Silently fall back to demo response instead of throwing error
-        throw new Error(`API temporarily unavailable`)
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
       const data = await response.json()
@@ -100,7 +99,9 @@ export default function Chatbot() {
         }]
       })
     } catch (error) {
-      // Silently handle errors and use fallback response
+      console.error('Error getting AI response:', error)
+      
+      // Fallback to local demo response
       const context = getCurrentContext()
       const fallbackResponse = getContextualDemoResponse(currentInput, context.currentPage)
       
@@ -108,7 +109,7 @@ export default function Chatbot() {
         const withoutLoading = prev.filter(msg => !msg.isLoading)
         return [...withoutLoading, {
           id: Date.now() + 2,
-          text: fallbackResponse + " (Note: AI assistant is in demo mode)",
+          text: fallbackResponse,
           isBot: true,
           timestamp: new Date().toLocaleTimeString()
         }]
@@ -120,22 +121,6 @@ export default function Chatbot() {
 
   const getContextualDemoResponse = (message: string, currentPage: string): string => {
     const lowerMessage = message.toLowerCase()
-    
-    // Risk Management specific responses
-    if (currentPage === 'risk-management') {
-      if (lowerMessage.includes('risk') || lowerMessage.includes('management')) {
-        return "I can help you with risk assessment, mitigation planning, and compliance monitoring. Would you like me to analyze current risk levels or suggest mitigation strategies?"
-      }
-      if (lowerMessage.includes('create') || lowerMessage.includes('register') || lowerMessage.includes('add')) {
-        return "To register a new risk, click the 'Register New Risk' button. I can help you categorize risks, assess probability and impact, or identify potential mitigation measures."
-      }
-      if (lowerMessage.includes('matrix') || lowerMessage.includes('score')) {
-        return "The Risk Matrix visualizes risks by probability vs impact. High-probability, high-impact risks (score 9) require immediate attention. Would you like me to explain risk scoring methodology?"
-      }
-      if (lowerMessage.includes('report') || lowerMessage.includes('analytics')) {
-        return "I can generate risk reports including trend analysis, compliance summaries, and executive dashboards. Which type of risk reporting would be most helpful?"
-      }
-    }
     
     // Context-aware responses based on current page
     if (currentPage === 'hr' || currentPage === 'dashboard') {
@@ -166,7 +151,6 @@ export default function Chatbot() {
     if (lowerMessage.includes('help') || lowerMessage.includes('what can you do')) {
       return `I'm your SIRTIS AI assistant! I can help you with:
       
-• Risk Management and compliance monitoring
 • HR management and employee analytics
 • Project tracking and KPI monitoring  
 • Inventory and asset management

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { handlePrismaError, withRetry, createErrorResponse, createSuccessResponse } from '@/lib/error-handler'
 
 export async function PATCH(
   request: NextRequest,
@@ -12,7 +11,7 @@ export async function PATCH(
     const session = await getServerSession(authOptions)
     
     if (!session?.user) {
-      return createErrorResponse('Unauthorized', 401)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id: employeeId } = await params
@@ -22,79 +21,71 @@ export async function PATCH(
                          session.user?.roles?.includes('hr_manager')
 
     if (!hasPermission) {
-      return createErrorResponse('Insufficient permissions', 403)
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    let body: any = {}
-    try {
-      body = await request.json()
-    } catch (parseError) {
-      return createErrorResponse('Invalid JSON in request body', 400)
-    }
+    const body = await request.json()
 
-    // Validate employee exists with retry logic
-    const existingEmployee = await withRetry(async () => {
-      return await prisma.employee.findUnique({
-        where: { id: employeeId }
-      })
+    // Validate employee exists
+    const existingEmployee = await prisma.employee.findUnique({
+      where: { id: employeeId }
     })
 
     if (!existingEmployee) {
-      return createErrorResponse('Employee not found', 404)
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
     }
 
-    if (existingEmployee.status === 'ARCHIVED') {
-      return createErrorResponse('Employee is already archived', 400)
-    }
+    // Update employee status to ARCHIVED and revoke access
+    const updatedEmployee = await prisma.employee.update({
+      where: { id: employeeId },
+      data: {
+        status: 'ARCHIVED',
+        archivedAt: new Date(),
+        archiveReason: body.reason || 'Other',
+        accessRevoked: true, // Automatically revoke access when archiving
+        updatedAt: new Date()
+      } as any, // Type assertion to bypass TypeScript cache issue
+      include: {
+        departmentRef: {
+          select: {
+            name: true
+          }
+        }
+      }
+    })
 
-    // Update employee status to ARCHIVED with retry logic
-    const updatedEmployee = await withRetry(async () => {
-      return await (prisma.employee.update as any)({
-        where: { id: employeeId },
+    // Create audit log entry for archiving
+    try {
+      await prisma.auditLog.create({
         data: {
-          status: 'ARCHIVED',
-          archivedAt: new Date(),
-          archiveReason: body.reason || 'Other',
-          accessRevoked: true,
-          updatedAt: new Date()
-        },
-        include: {
-          departmentRef: {
-            select: {
-              name: true
-            }
+          action: 'ARCHIVE_EMPLOYEE',
+          resource: 'Employee',
+          resourceId: employeeId,
+          userId: session.user.id,
+          details: {
+            employeeName: `${existingEmployee.firstName} ${existingEmployee.lastName}`,
+            previousStatus: existingEmployee.status,
+            newStatus: 'ARCHIVED',
+            reason: 'Employee archived via HR dashboard'
           }
         }
       })
-    })
-
-    // Create audit log entry (non-blocking)
-    try {
-      await withRetry(async () => {
-        return await prisma.auditLog.create({
-          data: {
-            action: 'ARCHIVE_EMPLOYEE',
-            resource: 'Employee',
-            resourceId: employeeId,
-            userId: session.user.id,
-            details: `Employee ${existingEmployee.firstName} ${existingEmployee.lastName} archived with reason: ${body.reason || 'Other'}`,
-            timestamp: new Date(),
-            ipAddress: request.headers.get('x-forwarded-for') || 
-                      request.headers.get('x-real-ip') || 
-                      'unknown'
-          }
-        })
-      })
     } catch (auditError) {
-      console.error('Failed to create audit log for archive operation:', auditError)
-      // Don't fail the operation if audit logging fails
+      // Log audit error but don't fail the archive operation
+      console.error('Failed to create audit log:', auditError)
     }
 
-    return createSuccessResponse(updatedEmployee, 'Employee archived successfully')
+    return NextResponse.json({
+      success: true,
+      message: 'Employee archived successfully',
+      employee: updatedEmployee
+    })
 
   } catch (error) {
-    console.error('Error in archive employee route:', error)
-    const { error: apiError, status } = handlePrismaError(error)
-    return createErrorResponse(apiError, status)
+    console.error('Error archiving employee:', error)
+    return NextResponse.json(
+      { error: 'Failed to archive employee' },
+      { status: 500 }
+    )
   }
 }

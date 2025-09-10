@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -100,25 +100,17 @@ export function DepartmentForm({
     }
   }
 
-  // Fetch manager options from backend
-  const [managers, setManagers] = useState<string[]>([])
-  
-  useEffect(() => {
-    fetchManagers()
-  }, [])
-
-  const fetchManagers = async () => {
-    try {
-      const response = await fetch('/api/hr/employees/managers')
-      if (response.ok) {
-        const data = await response.json()
-        setManagers(data.managers || [])
-      }
-    } catch (error) {
-      console.error('Error fetching managers:', error)
-      setManagers([]) // Empty state instead of mock data
-    }
-  }
+  // Mock manager options - replace with actual API call
+  const managerOptions = [
+    'Sarah Johnson',
+    'Mike Chen',
+    'Lisa Rodriguez',
+    'David Wilson',
+    'Emma Thompson',
+    'John Davis',
+    'Maria Garcia',
+    'Robert Brown'
+  ]
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -175,7 +167,7 @@ export function DepartmentForm({
                 <SelectValue placeholder="Select a manager" />
               </SelectTrigger>
               <SelectContent>
-                {managers.map((manager) => (
+                {managerOptions.map((manager) => (
                   <SelectItem key={manager} value={manager}>
                     {manager}
                   </SelectItem>

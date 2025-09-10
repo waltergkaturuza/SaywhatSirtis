@@ -5,26 +5,20 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    // For development, allow access without strict authentication
     const session = await getServerSession(authOptions)
     
-    // In development, we'll be more permissive
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    
-    if (!session && !isDevelopment) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permissions (skip in development for testing)
-    if (session) {
-      const hasPermission = session.user?.permissions?.includes('hr.view') ||
-                           session.user?.permissions?.includes('hr.full_access') ||
-                           session.user?.roles?.includes('admin') ||
-                           session.user?.roles?.includes('hr_manager')
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.view') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager')
 
-      if (!hasPermission && !isDevelopment) {
-        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
-      }
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
     try {

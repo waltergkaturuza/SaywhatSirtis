@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
-import { generateUniqueCaseNumber, generateCallCode, formatZimbabwePhone } from '@/lib/call-centre-utils'
 
 const prisma = new PrismaClient();
 
@@ -19,96 +18,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const callId = searchParams.get('id')
-
-    // If ID is provided, fetch single call
-    if (callId) {
-      const call = await prisma.callRecord.findUnique({
-        where: { id: callId }
-      })
-
-      if (!call) {
-        return NextResponse.json({ error: 'Call not found' }, { status: 404 })
-      }
-
-      // Transform single call data
-      const transformedCall = {
-        id: call.id,
-        callNumber: call.id,
-        caseNumber: call.caseNumber,
-        
-        // Basic call info
-        date: call.createdAt.toISOString().split('T')[0],
-        time: call.createdAt.toTimeString().split(' ')[0].slice(0, 5),
-        officerName: call.assignedOfficer || 'Admin User',
-        
-        // Caller details
-        callerFullName: call.callerName,
-        callerPhoneNumber: call.callerPhone,
-        callerEmail: (call as any).callerEmail || null,
-        callerAge: (call as any).callerAge || null,
-        callerGender: (call as any).callerGender || null,
-        callerProvince: (call as any).callerProvince || null,
-        callerAddress: (call as any).callerAddress || null,
-        callerKeyPopulation: (call as any).callerKeyPopulation || null,
-        
-        // Client details
-        clientFullName: (call as any).clientName || (call as any).clientFullName || null,
-        clientAge: (call as any).clientAge || null,
-        clientGender: (call as any).clientGender || null,
-        clientProvince: (call as any).clientProvince || null,
-        clientKeyPopulation: (call as any).clientKeyPopulation || null,
-        clientEmploymentStatus: (call as any).clientEmploymentStatus || null,
-        clientEducationLevel: (call as any).clientEducationLevel || null,
-        
-        // Call details
-        modeOfCommunication: (call as any).modeOfCommunication || call.callType || 'inbound',
-        language: (call as any).language || 'English',
-        callValidity: (call as any).callValidity || 'valid',
-        newOrRepeatCall: (call as any).newOrRepeatCall || 'new',
-        howDidYouHearAboutUs: (call as any).howDidYouHearAboutUs || null,
-        
-        // Priority and category
-        priority: (call as any).priority || call.priority || 'MEDIUM',
-        category: (call as any).category || call.category || 'INQUIRY',
-        
-        // Location
-        district: (call as any).district || call.district || null,
-        ward: (call as any).ward || call.ward || null,
-        
-        // Content
-        purpose: (call as any).purpose || call.subject || 'General Inquiry',
-        issueDescription: (call as any).issueDescription || call.description || null,
-        summary: (call as any).summary || call.summary || null,
-        
-        // Resolution and service
-        resolution: (call as any).resolution || call.resolution || null,
-        servicesRecommended: (call as any).servicesRecommended || null,
-        referral: (call as any).referralDetails || (call as any).referral || null,
-        
-        // Voucher info
-        voucherIssued: (call as any).voucherIssued || 'no',
-        voucherValue: (call as any).voucherValue || null,
-        
-        // Follow-up
-        followUpRequired: call.followUpRequired || false,
-        followUpDate: call.followUpDate?.toISOString() || null,
-        followUpNotes: (call as any).followUpNotes || null,
-        
-        // Additional info
-        additionalNotes: (call as any).additionalNotes || call.notes || null,
-        satisfactionRating: (call as any).satisfactionRating || null,
-        callOutcome: (call as any).callOutcome || call.status || 'In Progress',
-        
-        // Timestamps
-        createdAt: call.createdAt.toISOString(),
-        updatedAt: call.updatedAt?.toISOString() || call.createdAt.toISOString()
-      }
-
-      return NextResponse.json(transformedCall)
-    }
-
     // Get all calls without pagination for now
     const calls = await prisma.callRecord.findMany({
       orderBy: {
@@ -116,86 +25,31 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Transform the data to match the frontend interface - prioritize new enhanced fields
-    const transformedCalls = calls.map(call => {
-      // Extract call code from notes if available
-      const callCodeMatch = call.notes?.match(/Call Code: (CALL-\d{4}-\d{2}-\d{2}-\d{6})/)
-      const callCode = callCodeMatch ? callCodeMatch[1] : `CALL-${call.id.slice(-12)}`
-      
-      return {
-        id: call.id,
-        callNumber: callCode, // Use call code instead of just ID
-        caseNumber: call.caseNumber,
-        
-        // Caller details - prioritize enhanced fields from the new form
-        callerName: (call as any).callerFullName || call.callerName || 'Unknown',
-        callerPhone: (call as any).callerPhoneNumber || call.callerPhone || null,
-        callerEmail: (call as any).callerEmail || null,
-        callerAge: (call as any).callerAge || null,
-        callerGender: (call as any).callerGender || null,
-        callerProvince: (call as any).callerProvince || null,
-        callerAddress: (call as any).callerAddress || null,
-        callerKeyPopulation: (call as any).callerKeyPopulation || null,
-        
-        // Client details
-        clientName: (call as any).clientName || (call as any).clientFullName || null,
-        clientAge: (call as any).clientAge || null,
-        clientGender: (call as any).clientGender || null,
-        clientProvince: (call as any).clientProvince || null,
-        clientAddress: (call as any).clientAddress || null,
-        clientKeyPopulation: (call as any).clientKeyPopulation || null,
-        clientEmploymentStatus: (call as any).clientEmploymentStatus || null,
-        clientEducationLevel: (call as any).clientEducationLevel || null,
-        
-        // Call details - use enhanced form fields
-        communicationMode: (call as any).modeOfCommunication || call.callType || 'inbound',
-        callLanguage: (call as any).language || 'English',
-        callValidity: (call as any).callValidity || 'valid',
-        newOrRepeatCall: (call as any).newOrRepeatCall || 'new',
-        howHeardAboutUs: (call as any).howDidYouHearAboutUs || null,
-        callDurationMinutes: (call as any).callDuration || null,
-        
-        // Location details
-        district: (call as any).district || call.district || null,
-        ward: (call as any).ward || call.ward || null,
-        
-        // Service and case info - use enhanced form fields
-        purpose: (call as any).purpose || call.subject || 'General Inquiry',
-        description: (call as any).issueDescription || call.description || 'No description',
-        summary: (call as any).summary || call.summary || null,
-        priority: (call as any).priority || 'MEDIUM',
-        category: (call as any).category || 'INQUIRY',
-        validity: (call as any).callValidity || 'valid',
-        officer: call.assignedOfficer || (call as any).officerName || 'Unassigned',
-        assignedOfficer: call.assignedOfficer || (call as any).officerName,
-        
-        // Timing
-        dateTime: call.createdAt.toISOString(),
-        callStartTime: call.callStartTime?.toISOString(),
-        callEndTime: call.callEndTime?.toISOString(),
-        duration: (call as any).callDurationMinutes ? `${(call as any).callDurationMinutes} min` : null,
-        
-        // Status and resolution
-        status: call.status,
-        resolution: (call as any).resolution || call.resolution || null,
-        referredTo: (call as any).referralDetails || call.resolution || null,
-        
-        // Service details
-        voucherIssued: (call as any).voucherIssued ? 'YES' : 'NO',
-        voucherValue: (call as any).voucherValue || null,
-        servicesRecommended: (call as any).servicesRecommended || null,
-        
-        // Additional tracking
-        perpetratorInfo: (call as any).perpetratorInfo || null,
-        isCase: (call as any).isCase || false,
-        followUpRequired: call.followUpRequired,
-        followUpDate: call.followUpDate?.toISOString(),
-        
-        // Notes and feedback
-        notes: call.notes,
-        satisfactionRating: (call as any).satisfactionRating || call.satisfactionRating || null
-      }
-    });
+    // Transform the data to match the frontend interface
+    const transformedCalls = calls.map(call => ({
+      id: call.id,
+      callNumber: call.id, // Use ID as call number for now
+      caseNumber: call.id,
+      callerName: call.callerName,
+      callerPhone: call.callerPhone,
+      callerProvince: null, // Not available in current schema
+      callerAge: null, // Not available in current schema
+      callerGender: null, // Not available in current schema
+      clientName: call.callerName, // Same as caller for now
+      clientAge: null, // Not available in current schema
+      clientSex: null, // Not available in current schema
+      communicationMode: call.callType || 'INBOUND',
+      purpose: call.summary || 'General Inquiry',
+      validity: 'Valid', // Default for now
+      officer: call.assignedOfficer || 'Unassigned',
+      dateTime: call.createdAt.toISOString(),
+      duration: null, // Not available in current schema
+      status: call.status,
+      referredTo: call.resolution || null,
+      voucherIssued: 'NO', // Default for now
+      voucherValue: null, // Not available in current schema
+      notes: call.notes
+    }));
 
     return NextResponse.json({
       success: true,
@@ -219,7 +73,6 @@ export async function POST(request: NextRequest) {
     // Check permissions
     const hasPermission = session.user?.permissions?.includes('calls.create') ||
                          session.user?.permissions?.includes('calls.full_access') ||
-                         session.user?.permissions?.includes('callcentre.access') ||
                          session.user?.roles?.includes('admin') ||
                          session.user?.roles?.includes('manager')
 
@@ -229,145 +82,39 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      // Basic call info
       callerName,
       callerPhone,
       callerEmail,
       callType,
       priority,
-      category,
       subject,
       description,
-      summary,
-      assignedOfficer,
-      
-      // Caller details
-      callerAge,
-      callerGender,
-      callerProvince,
-      callerAddress,
-      callerKeyPopulation,
-      
-      // Client details
-      clientName,
-      clientAge,
-      clientGender,
-      clientProvince,
-      clientKeyPopulation,
-      clientEmploymentStatus,
-      clientEducationLevel,
-      
-      // Call details
-      communicationMode,
-      callLanguage,
-      callValidity,
-      newOrRepeatCall,
-      howHeardAboutUs,
-      callDurationMinutes,
-      
-      // Location details
-      district,
-      ward,
-      
-      // Service details
-      voucherIssued,
-      voucherValue,
-      servicesRecommended,
-      referralDetails,
-      
-      // Resolution and feedback
-      resolution,
-      satisfactionRating,
-      
-      // Additional tracking
-      perpetratorInfo,
-      isCase,
-      notes,
-      followUpRequired,
-      followUpDate
+      assignedTo
     } = body
 
-    // Generate unique case number and call code in proper format
-    const caseNumber = await generateUniqueCaseNumber(prisma)
-    const callCode = await generateCallCode()
-
-    // Format phone number if provided
-    const formattedCallerPhone = callerPhone ? formatZimbabwePhone(callerPhone) : null
-
-    // Create new call record with all fields (using type assertion for new fields)
-    const callData: any = {
-      caseNumber,
-      callerName: callerName || 'Unknown',
-      callerPhone: formattedCallerPhone,
-      callerEmail,
-      callType: callType || 'INBOUND',
-      category: category || 'INQUIRY',
-      priority: priority || 'MEDIUM',
-      subject: subject || 'Call inquiry',
-      description: description || '',
-      summary: summary || subject || 'Call inquiry',
-      assignedOfficer: assignedOfficer || session.user?.name || 'Unassigned',
-      status: 'OPEN',
-      
-      // Caller details
-      callerAge,
-      callerGender,
-      callerProvince,
-      callerAddress,
-      callerKeyPopulation,
-      
-      // Client details
-      clientName,
-      clientAge,
-      clientGender,
-      clientProvince,
-      clientKeyPopulation,
-      clientEmploymentStatus,
-      clientEducationLevel,
-      
-      // Call details
-      communicationMode,
-      callLanguage: callLanguage || 'English',
-      callValidity: callValidity || 'valid',
-      newOrRepeatCall: newOrRepeatCall || 'new',
-      howHeardAboutUs,
-      callDurationMinutes: callDurationMinutes ? parseInt(callDurationMinutes) : null,
-      
-      // Location details
-      district,
-      ward,
-      
-      // Service details
-      voucherIssued: voucherIssued === 'yes' || voucherIssued === true,
-      voucherValue: voucherValue ? parseFloat(voucherValue) : null,
-      servicesRecommended,
-      referralDetails,
-      
-      // Resolution and feedback
-      resolution,
-      satisfactionRating: satisfactionRating ? parseInt(satisfactionRating) : null,
-      
-      // Additional tracking
-      perpetratorInfo,
-      isCase: isCase === 'YES' || isCase === true,
-      notes: `Call Code: ${callCode}\n${notes || ''}`,
-      followUpRequired: followUpRequired === true,
-      followUpDate: followUpDate ? new Date(followUpDate) : null,
-      
-      // Timing
-      callStartTime: new Date()
-    }
-
+    // Create new call record
     const call = await prisma.callRecord.create({
-      data: callData
+      data: {
+        caseNumber: `CASE-${Date.now()}`, // Generate unique case number
+        callerName,
+        callerPhone,
+        callerEmail,
+        callType: callType || 'INBOUND',
+        category: 'INQUIRY', // Default category
+        priority: priority || 'MEDIUM',
+        subject: subject || 'Call inquiry', // Required field
+        description: description || '', // Description field
+        summary: subject || 'Call inquiry', // Summary based on subject
+        notes: description || '',
+        assignedOfficer: assignedTo,
+        status: 'OPEN',
+        callStartTime: new Date()
+      }
     })
 
     return NextResponse.json(call, { status: 201 })
   } catch (error) {
     console.error('Error creating call:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
