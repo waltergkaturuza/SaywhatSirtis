@@ -30,15 +30,6 @@ interface Department {
   location?: string
   status: string
   employeeCount: number
-  level?: number
-  parentId?: string | null
-  parent?: {
-    id: string
-    name: string
-    code: string
-  } | null
-  subunits?: Department[]
-  subunitCount?: number
   employees?: Array<{
     id: string
     employeeId: string
@@ -400,7 +391,7 @@ export default function DepartmentsPage() {
         )}
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -412,7 +403,7 @@ export default function DepartmentsPage() {
                     Total Departments
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    {departments.filter(d => d.level === 0 || !d.parentId).length}
+                    {departments.length}
                   </dd>
                 </dl>
               </div>
@@ -427,10 +418,10 @@ export default function DepartmentsPage() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Subunits
+                    Total Employees
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    {departments.filter(d => d.level && d.level > 0 && d.parentId).length}
+                    {departments.reduce((sum, dept) => sum + dept.employeeCount, 0)}
                   </dd>
                 </dl>
               </div>
@@ -448,7 +439,7 @@ export default function DepartmentsPage() {
                     Active Departments
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    {departments.filter(d => d.status === 'ACTIVE' && (d.level === 0 || !d.parentId)).length}
+                    {departments.filter(d => d.status === 'ACTIVE').length}
                   </dd>
                 </dl>
               </div>
@@ -458,15 +449,15 @@ export default function DepartmentsPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <UserGroupIcon className="h-8 w-8 text-purple-600" />
+                <CurrencyDollarIcon className="h-8 w-8 text-purple-600" />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Employees
+                    Total Budget
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
-                    {departments.reduce((sum, dept) => sum + dept.employeeCount, 0)}
+                    ${departments.reduce((sum, dept) => sum + (dept.budget || 0), 0).toLocaleString()}
                   </dd>
                 </dl>
               </div>
@@ -516,31 +507,16 @@ export default function DepartmentsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {departments.map((department) => (
-                  <div 
-                    key={department.id} 
-                    className={`border rounded-lg p-6 hover:shadow-md transition-shadow ${
-                      department.parentId ? 'border-l-4 border-l-blue-500 bg-blue-50' : 'border-l-4 border-l-orange-500'
-                    }`}
-                  >
+                  <div key={department.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className="flex-shrink-0">
-                          <BuildingOfficeIcon className={`h-8 w-8 ${department.parentId ? 'text-blue-600' : 'text-orange-600'}`} />
+                          <BuildingOfficeIcon className="h-8 w-8 text-orange-600" />
                         </div>
                         <div>
-                          <div className="flex items-center space-x-2">
-                            <h4 className="text-lg font-medium text-gray-900">{department.name}</h4>
-                            {department.parentId && (
-                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                Subunit
-                              </span>
-                            )}
-                          </div>
+                          <h4 className="text-lg font-medium text-gray-900">{department.name}</h4>
                           {department.code && (
                             <p className="text-sm text-gray-500">Code: {department.code}</p>
-                          )}
-                          {department.parent && (
-                            <p className="text-xs text-blue-600">Under: {department.parent.name}</p>
                           )}
                         </div>
                       </div>
@@ -558,13 +534,6 @@ export default function DepartmentsPage() {
                         <UserGroupIcon className="h-4 w-4 mr-2" />
                         {department.employeeCount} employees
                       </div>
-                      
-                      {!department.parentId && department.subunitCount && department.subunitCount > 0 && (
-                        <div className="flex items-center text-sm text-blue-600">
-                          <BuildingOfficeIcon className="h-4 w-4 mr-2" />
-                          {department.subunitCount} subunit{department.subunitCount !== 1 ? 's' : ''}
-                        </div>
-                      )}
                       
                       {department.manager && (
                         <div className="flex items-center text-sm text-gray-500">

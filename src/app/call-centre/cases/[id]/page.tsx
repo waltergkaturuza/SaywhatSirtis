@@ -15,27 +15,36 @@ export default function CaseViewPage() {
   useEffect(() => {
     if (params.id) {
       setLoading(true)
-      fetchCaseData()
+      // Mock case data
+      const mockData = {
+        id: params.id,
+        caseNumber: params.id,
+        status: 'Open',
+        priority: 'Medium',
+        createdDate: '2025-01-15',
+        lastUpdated: '2025-01-16',
+        assignedOfficer: 'Mary Chikuni',
+        clientName: 'John Mukamuri',
+        clientPhone: '0771234567',
+        clientAge: '22',
+        clientGender: 'Male',
+        clientProvince: 'Harare',
+        clientAddress: '123 Main Street, Harare',
+        callPurpose: 'Youth Employment Inquiry',
+        caseType: 'Employment Support',
+        description: 'Client inquiring about youth employment opportunities and skills training programs. Requires follow-up on available positions.',
+        actionsTaken: 'Provided initial information about youth employment programs. Scheduled follow-up call.',
+        nextAction: 'Follow up with client regarding skills assessment and job placement opportunities.',
+        referrals: 'Skills Development Team',
+        notes: 'Client is enthusiastic about training opportunities. Has basic computer skills.',
+        followUpDate: '2025-01-20'
+      }
+      setTimeout(() => {
+        setCaseData(mockData)
+        setLoading(false)
+      }, 500)
     }
   }, [params.id])
-
-  const fetchCaseData = async () => {
-    try {
-      const response = await fetch(`/api/call-centre/calls?id=${params.id}`)
-      if (response.ok) {
-        const data = await response.json()
-        setCaseData(data)
-      } else {
-        console.error('Failed to fetch case data')
-        setCaseData(null)
-      }
-    } catch (error) {
-      console.error('Error fetching case data:', error)
-      setCaseData(null)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -77,29 +86,29 @@ export default function CaseViewPage() {
                   <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Case: {caseData.callNumber}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">Case: {caseData.caseNumber}</h1>
                   <p className="text-sm text-gray-600">View case details and information</p>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                caseData.callOutcome === 'Resolved' 
+                caseData.status === 'Open' 
                   ? 'bg-green-100 text-green-800'
-                  : caseData.callOutcome === 'Closed'
+                  : caseData.status === 'Closed'
                   ? 'bg-gray-100 text-gray-800'
                   : 'bg-yellow-100 text-yellow-800'
               }`}>
-                {caseData.callOutcome || 'In Progress'}
+                {caseData.status}
               </span>
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                caseData.priority === 'HIGH' || caseData.priority === 'URGENT'
+                caseData.priority === 'High' 
                   ? 'bg-red-100 text-red-800'
-                  : caseData.priority === 'MEDIUM'
+                  : caseData.priority === 'Medium'
                   ? 'bg-yellow-100 text-yellow-800'
                   : 'bg-blue-100 text-blue-800'
               }`}>
-                {caseData.priority || 'MEDIUM'} Priority
+                {caseData.priority} Priority
               </span>
               <Link
                 href={`/call-centre/cases/${params.id}/edit`}
@@ -124,28 +133,20 @@ export default function CaseViewPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Call Number</label>
-                  <p className="text-gray-900">{caseData.callNumber}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Case Number</label>
+                  <p className="text-gray-900">{caseData.caseNumber}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <p className="text-gray-900">{caseData.category || 'Not specified'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Case Type</label>
+                  <p className="text-gray-900">{caseData.caseType}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Officer</label>
-                  <p className="text-gray-900">{caseData.officerName || caseData.staffName || 'Not assigned'}</p>
+                  <p className="text-gray-900">{caseData.assignedOfficer}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
-                  <p className="text-gray-900">{caseData.followUpDate ? new Date(caseData.followUpDate).toLocaleDateString() : 'Not scheduled'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Call Purpose</label>
-                  <p className="text-gray-900">{caseData.purpose || 'Not specified'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Communication Mode</label>
-                  <p className="text-gray-900">{caseData.modeOfCommunication || 'Phone'}</p>
+                  <p className="text-gray-900">{new Date(caseData.followUpDate).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
@@ -156,40 +157,28 @@ export default function CaseViewPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Caller Name</label>
-                  <p className="text-gray-900">{caseData.callerFullName || 'Not provided'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+                  <p className="text-gray-900">{caseData.clientName}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  <p className="text-gray-900">{caseData.callerPhoneNumber || 'Not provided'}</p>
+                  <p className="text-gray-900">{caseData.clientPhone}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <p className="text-gray-900">{caseData.callerEmail || 'Not provided'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Age Group</label>
-                  <p className="text-gray-900">{caseData.callerAge || 'Not specified'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                  <p className="text-gray-900">{caseData.clientAge}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                  <p className="text-gray-900">{caseData.callerGender || caseData.clientGender || 'Not specified'}</p>
+                  <p className="text-gray-900">{caseData.clientGender}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
-                  <p className="text-gray-900">{caseData.callerProvince || caseData.clientProvince || 'Not specified'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
-                  <p className="text-gray-900">{caseData.district || 'Not specified'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ward</label>
-                  <p className="text-gray-900">{caseData.ward || 'Not specified'}</p>
+                  <p className="text-gray-900">{caseData.clientProvince}</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <p className="text-gray-900">{caseData.callerAddress || 'Not provided'}</p>
+                  <p className="text-gray-900">{caseData.clientAddress}</p>
                 </div>
               </div>
             </div>
@@ -200,62 +189,29 @@ export default function CaseViewPage() {
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Issue Description</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.issueDescription || caseData.description || 'No description provided'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.description}</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Summary</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.summary || 'No summary provided'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Actions Taken</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.actionsTaken}</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Resolution</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.resolution || 'Not yet resolved'}</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Services Recommended</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.servicesRecommended || 'No services recommended'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Next Action Required</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.nextAction}</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Referrals</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.referral || 'No referrals made'}</p>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.referrals}</p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Additional Notes</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.additionalNotes || 'No additional notes'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.notes}</p>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Follow-up Notes</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.followUpNotes || 'No follow-up notes'}</p>
-                </div>
-
-                {caseData.satisfactionRating && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Satisfaction Rating</label>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.satisfactionRating}/5</span>
-                      <div className="flex space-x-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <svg
-                            key={star}
-                            className={`h-5 w-5 ${
-                              star <= parseInt(caseData.satisfactionRating) ? 'text-yellow-400' : 'text-gray-300'
-                            }`}
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -268,30 +224,16 @@ export default function CaseViewPage() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Created:</span>
-                  <span className="font-medium">{caseData.date ? new Date(caseData.date).toLocaleDateString() : 'Not available'}</span>
+                  <span className="font-medium">{new Date(caseData.createdDate).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Time:</span>
-                  <span className="font-medium">{caseData.time || 'Not available'}</span>
+                  <span className="text-gray-600">Last Updated:</span>
+                  <span className="font-medium">{new Date(caseData.lastUpdated).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Call Type:</span>
-                  <span className="font-medium">{caseData.newOrRepeatCall || 'New'}</span>
+                  <span className="text-gray-600">Call Purpose:</span>
+                  <span className="font-medium">{caseData.callPurpose}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Language:</span>
-                  <span className="font-medium">{caseData.language || 'English'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Key Population:</span>
-                  <span className="font-medium">{caseData.callerKeyPopulation || 'N/A'}</span>
-                </div>
-                {caseData.voucherIssued === 'yes' && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Voucher:</span>
-                    <span className="font-medium">{caseData.voucherValue || 'Issued'}</span>
-                  </div>
-                )}
               </div>
             </div>
 

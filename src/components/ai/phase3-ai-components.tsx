@@ -200,7 +200,11 @@ export function AIDocumentAnalysis({ onAnalyze, className = '' }: AIDocumentAnal
     try {
       const content = await file.text()
       const aiService = getAIService(defaultAIConfig)
-      const analysis = await aiService.analyzeDocument(content, file.type)
+      const analysis = await aiService.analyzeDocument(content, {
+        filename: file.name,
+        mimeType: file.type,
+        size: file.size
+      })
       setResults(analysis)
       onAnalyze(file)
     } catch (error) {

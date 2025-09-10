@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { withRetry } from '@/lib/error-handler'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,6 +11,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Test database connection first
+    try {
+      await prisma.$queryRaw`SELECT 1`
+      console.log('Database connection test successful for tasks')
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError)
+      return NextResponse.json({ 
+        error: 'Database connection failed',
+        message: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 500 })
+    }
+
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -19,43 +30,27 @@ export async function GET(request: NextRequest) {
 
     let calls: any[] = []
 
-    // Build filter for follow-up calls
-    const where: any = {
-      followUpRequired: true
-    }
-
-    if (status === 'pending') {
-      where.followUpDate = {
-        gte: new Date()
-      }
-    } else if (status === 'overdue') {
-      where.followUpDate = {
-        lt: new Date()
-      }
-    }
-
-    if (assignedTo) {
-      where.assignedOfficer = assignedTo
-    }
-
     try {
-      calls = await withRetry(() =>
-        prisma.callRecord.findMany({
-          where,
-          orderBy: {
-            followUpDate: 'asc'
-          }
-        })
-      )
+      // Build filter for follow-up calls
+      const where: any = {
+        followUpRequired: true
+      }
 
-    } catch (error: any) {
-      console.warn('Call centre tables may not exist yet:', error.message)
-      // Return empty array if tables don't exist
-      calls = []
-    }
+      if (status === 'pending') {
+        where.followUpDate = {
+          gte: new Date()
+        }
+      } else if (status === 'overdue') {
+        where.followUpDate = {
+          lt: new Date()
+        }
+      }
 
-    // Fetch calls with follow-up requirements
-    try {
+      if (assignedTo) {
+        where.assignedOfficer = assignedTo
+      }
+
+      // Fetch calls with follow-up requirements
       calls = await prisma.callRecord.findMany({
         where,
         select: {
@@ -79,7 +74,6 @@ export async function GET(request: NextRequest) {
       })
     } catch (error) {
       console.error('Error fetching tasks:', error)
-      calls = []
     }
 
     // Transform the data for frontend consumption

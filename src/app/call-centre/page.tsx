@@ -46,7 +46,7 @@ export default function CallCentrePage() {
 
   if (!mounted) {
     return <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-saywhat-orange"></div>
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
     </div>
   }
 
@@ -54,9 +54,9 @@ export default function CallCentrePage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-saywhat-orange" />
-          <h3 className="mt-2 text-sm font-medium text-saywhat-dark">Access Restricted</h3>
-          <p className="mt-1 text-sm text-saywhat-gray">
+          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Access Restricted</h3>
+          <p className="mt-1 text-sm text-gray-500">
             This module is restricted to Call Centre officers and Head of Programs only.
           </p>
         </div>
@@ -116,14 +116,14 @@ export default function CallCentrePage() {
         <div className="flex space-x-3">
           <Link
             href="/call-centre/new-call"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-saywhat-orange hover:bg-saywhat-orange/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-saywhat-orange"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <PlusIcon className="h-4 w-4 mr-2" />
             New Call
           </Link>
           <Link
             href="/call-centre/analytics"
-            className="inline-flex items-center px-4 py-2 border border-saywhat-gray text-sm font-medium rounded-md text-saywhat-dark bg-white hover:bg-saywhat-light-grey focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-saywhat-orange"
+            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <ChartBarIcon className="h-4 w-4 mr-2" />
             Analytics
@@ -132,7 +132,7 @@ export default function CallCentrePage() {
       }
     >
       {/* Navigation Tabs */}
-      <div className="border-b border-saywhat-gray mb-6">
+      <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex space-x-8">
           {navigation.map((item) => (
             <Link
@@ -140,8 +140,8 @@ export default function CallCentrePage() {
               href={item.href}
               className={`group py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                 activeView === item.value
-                  ? 'border-saywhat-orange text-saywhat-orange'
-                  : 'border-transparent text-saywhat-gray hover:text-saywhat-dark hover:border-saywhat-gray'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
               onClick={() => setActiveView(item.value)}
             >

@@ -396,14 +396,14 @@ export default function CaseManagementPage() {
 
                     <div className="flex items-center space-x-2">
                       <Link
-                        href={`/call-centre/cases/${caseItem.id}`}
+                        href={`/call-centre/cases/${caseItem.caseNumber}`}
                         className="p-2 text-gray-400 hover:text-gray-600"
                         title="View Case Details"
                       >
                         <EyeIcon className="h-5 w-5" />
                       </Link>
                       <Link
-                        href={`/call-centre/cases/${caseItem.id}/edit`}
+                        href={`/call-centre/cases/${caseItem.caseNumber}/edit`}
                         className="p-2 text-gray-400 hover:text-blue-600"
                         title="Edit Case"
                       >
