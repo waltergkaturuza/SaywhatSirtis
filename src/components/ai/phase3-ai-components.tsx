@@ -100,7 +100,7 @@ export function PredictiveAnalytics({ employeeData, className = '' }: Predictive
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {predictions.map((prediction) => {
           const employee = employeeData.find(emp => emp.id === prediction.employeeId)
-          const risk = getRiskLevel(prediction.predictedScore)
+          const risk = getRiskLevel(prediction.predictedRating * 20) // Convert 5-point scale to 100-point scale
           
           return (
             <div key={prediction.employeeId} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -117,14 +117,14 @@ export function PredictiveAnalytics({ employeeData, className = '' }: Predictive
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Predicted Score:</span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
-                    {prediction.predictedScore}/100
+                    {prediction.predictedRating}/5
                   </span>
                 </div>
                 
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Confidence:</span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">
-                    {Math.round(prediction.confidence * 100)}%
+                    {Math.round(prediction.confidenceScore * 100)}%
                   </span>
                 </div>
                 
@@ -133,9 +133,9 @@ export function PredictiveAnalytics({ employeeData, className = '' }: Predictive
                     Key Factors:
                   </span>
                   <div className="space-y-1">
-                    {prediction.factors.slice(0, 2).map((factor, index) => (
+                    {prediction.riskFactors.slice(0, 2).map((factor, index) => (
                       <div key={index} className="text-xs text-gray-600 dark:text-gray-400">
-                        • {factor.factor}
+                        • {factor}
                       </div>
                     ))}
                   </div>

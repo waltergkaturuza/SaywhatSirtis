@@ -4,9 +4,10 @@ import { authOptions } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     
     if (!session) {
@@ -26,7 +27,7 @@ export async function PUT(
       }, { status: 403 })
     }
 
-    const riskId = params.id
+    const riskId = id
     const body = await request.json()
 
     // In production, this would update the database
@@ -61,9 +62,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     
     if (!session) {
@@ -82,7 +84,7 @@ export async function DELETE(
       }, { status: 403 })
     }
 
-    const riskId = params.id
+    const riskId = id
 
     // In production, this would delete from database
     console.log(`Deleting risk ${riskId}`)

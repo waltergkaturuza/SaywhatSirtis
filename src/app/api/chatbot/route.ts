@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { AIService } from '@/lib/ai-service'
+import { aiService } from '@/lib/ai-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const aiService = new AIService(aiConfig)
+      // Use the exported AI service instance
       
       // Enhance context with session data
       const enhancedContext = {
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         recentActions: context?.recentActions || []
       }
 
-      const response = await aiService.getChatbotResponse(message, enhancedContext)
+      const response = await aiService.chat(message, enhancedContext)
       
       return NextResponse.json({ response })
     } catch (aiError) {
