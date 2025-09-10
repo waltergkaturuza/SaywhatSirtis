@@ -9,7 +9,6 @@
     "lint": "next lint",
     "test": "echo 'No tests specified. Running lint and build checks...' && npm run lint && npm run build",
     "test:ci": "npm run lint && npm run build",
-    "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "render:build": "npm install --legacy-peer-deps && npx prisma generate && npm run build",
     "render:start": "next start -p $PORT",
