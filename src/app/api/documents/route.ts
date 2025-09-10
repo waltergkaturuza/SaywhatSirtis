@@ -99,14 +99,45 @@ export async function GET(request: NextRequest) {
           uploadDate: doc.createdAt.toISOString().split('T')[0],
           uploadedBy: uploaderInfo?.name || 'Unknown',
           url: doc.url,
-          tags: doc.tags,
+          tags: doc.tags || [],
+          downloadsCount: 0, // Not implemented in schema yet
+          accessLevel: doc.accessLevel,
           canEdit: doc.uploadedBy === session.user?.id,
           canDelete: doc.uploadedBy === session.user?.id || session.user?.roles?.includes('admin')
         }
       })
     )
 
-    return NextResponse.json(documentsWithUploaders)
+    // Calculate statistics
+    const stats = {
+      totalDocuments: documentsWithUploaders.length,
+      totalSize: `${(documentsWithUploaders.reduce((total, doc) => {
+        const sizeMatch = doc.size.match(/(\d+\.?\d*)/);
+        return total + (sizeMatch ? parseFloat(sizeMatch[1]) : 0);
+      }, 0)).toFixed(1)} MB`,
+      categoryCounts: documentsWithUploaders.reduce((acc, doc) => {
+        const category = doc.category || 'Uncategorized';
+        acc[category] = (acc[category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      classificationCounts: documentsWithUploaders.reduce((acc, doc) => {
+        const classification = doc.accessLevel || 'internal';
+        acc[classification] = (acc[classification] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      recentUploads: documentsWithUploaders.filter(doc => {
+        const uploadDate = new Date(doc.uploadDate);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return uploadDate >= thirtyDaysAgo;
+      }).length,
+      totalDownloads: documentsWithUploaders.reduce((total, doc) => total + (doc.downloadsCount || 0), 0)
+    };
+
+    return NextResponse.json({
+      documents: documentsWithUploaders,
+      stats
+    })
 
   } catch (error) {
     console.error('Error fetching documents:', error)

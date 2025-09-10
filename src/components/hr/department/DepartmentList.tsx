@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,50 +32,33 @@ interface DepartmentListProps {
 
 export function DepartmentList({ onEdit, onDelete, onAdd }: DepartmentListProps) {
   const [searchTerm, setSearchTerm] = useState('')
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  // Mock data - replace with actual API call
-  const departments: Department[] = [
-    {
-      id: '1',
-      name: 'Human Resources',
-      description: 'Manages employee relations, recruitment, and HR policies',
-      manager: 'Sarah Johnson',
-      employeeCount: 12,
-      budget: 500000,
-      status: 'active',
-      createdAt: '2023-01-15'
-    },
-    {
-      id: '2',
-      name: 'Engineering',
-      description: 'Software development and technical infrastructure',
-      manager: 'Mike Chen',
-      employeeCount: 45,
-      budget: 2500000,
-      status: 'active',
-      createdAt: '2023-01-15'
-    },
-    {
-      id: '3',
-      name: 'Operations',
-      description: 'Day-to-day operations and process management',
-      manager: 'Lisa Rodriguez',
-      employeeCount: 28,
-      budget: 1200000,
-      status: 'active',
-      createdAt: '2023-01-15'
-    },
-    {
-      id: '4',
-      name: 'Communications',
-      description: 'Internal and external communications, marketing',
-      manager: 'David Wilson',
-      employeeCount: 15,
-      budget: 800000,
-      status: 'active',
-      createdAt: '2023-01-15'
+  useEffect(() => {
+    fetchDepartments()
+  }, [])
+
+  const fetchDepartments = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/hr/department/list')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch departments')
+      }
+      
+      const data = await response.json()
+      setDepartments(data)
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+      setError('Failed to load departments')
+      setDepartments([]) // Empty state instead of mock data
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
 
   const filteredDepartments = departments.filter(dept =>
     dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
