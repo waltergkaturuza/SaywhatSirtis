@@ -34,6 +34,14 @@ model User {
   managedProjects  Project[]  @relation("ProjectManager")
   sessions         Session[]
 
+  // AI Relations
+  analyzedDocuments    DocumentAnalysis[]         @relation("AnalyzedBy")
+  classifiedDocuments  DocumentClassificationAI[] @relation("ClassifiedBy")
+  contentCreations     DocumentContent[]          @relation("ContentCreator")
+  searchLogs           SearchLog[]                @relation("SearchLogs")
+  batchAnalyses        BatchAnalysis[]            @relation("BatchAnalyses")
+  documentActivities   DocumentActivity[]         @relation("UserActivities")
+
   @@map("users")
 }
 
@@ -198,6 +206,7 @@ model Department {
   level       Int          @default(0)
   
   employees   Employee[]
+  documents   Document[]
 
   @@index([name])
   @@index([status])
@@ -553,6 +562,12 @@ model Document {
   comments             DocumentComment[]
   auditLogs            DocumentAuditLog[]
   workflowTasks        DocumentWorkflowTask[]
+  
+  // AI Relations
+  analysis             DocumentAnalysis?
+  aiClassification     DocumentClassificationAI? @relation("AIClassification")
+  content              DocumentContent[]      @relation("DocumentContent")
+  activities           DocumentActivity[]     @relation("DocumentActivities")
 
   @@index([filename])
   @@index([category])
@@ -569,7 +584,6 @@ model Document {
   @@index([isArchived])
   @@index([createdAt])
   @@index([lastAccessedAt])
-  @@fulltext([filename, description, extractedText, ocrText])
   @@map("documents")
 }
 
@@ -754,6 +768,117 @@ model DocumentTemplate {
   @@index([category])
   @@index([isActive])
   @@map("document_templates")
+}
+
+// AI-Enhanced Document Models
+model DocumentAnalysis {
+  id                     String   @id @default(cuid())
+  documentId             String   @unique
+  sentiment              Json     // {score: number, label: string, confidence: number}
+  readability            Json     // {score: number, level: string, suggestions: string[]}
+  quality                Json     // {score: number, issues: string[], strengths: string[]}
+  keyPhrases             String[]
+  summary                String?
+  topics                 String[]
+  language               String?
+  wordCount              Int?
+  estimatedReadingTime   Int?     // in minutes
+  analyzedAt             DateTime @default(now())
+  analyzedBy             String?
+  
+  document               Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  analyzedByUser         User?    @relation("AnalyzedBy", fields: [analyzedBy], references: [id])
+  
+  @@index([analyzedAt])
+  @@index([language])
+  @@map("document_analysis")
+}
+
+model DocumentClassificationAI {
+  id                String   @id @default(cuid())
+  documentId        String   @unique
+  category          String
+  confidence        Float
+  tags              String[]
+  securityLevel     String?
+  reasons           String[]
+  suggestedActions  String[]
+  classifiedAt      DateTime @default(now())
+  classifiedBy      String?
+  
+  document          Document @relation("AIClassification", fields: [documentId], references: [id], onDelete: Cascade)
+  classifiedByUser  User?    @relation("ClassifiedBy", fields: [classifiedBy], references: [id])
+  
+  @@index([category])
+  @@index([classifiedAt])
+  @@map("document_classification_ai")
+}
+
+model DocumentContent {
+  id          String   @id @default(cuid())
+  documentId  String
+  content     String   // Full document content for AI processing
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  createdBy   String?
+  
+  document    Document @relation("DocumentContent", fields: [documentId], references: [id], onDelete: Cascade)
+  creator     User?    @relation("ContentCreator", fields: [createdBy], references: [id])
+  
+  @@unique([documentId, version])
+  @@index([documentId])
+  @@map("document_content")
+}
+
+model SearchLog {
+  id           String   @id @default(cuid())
+  userId       String
+  query        String
+  resultsCount Int
+  searchTime   Int      // milliseconds
+  filters      Json?
+  searchType   String   // 'BASIC', 'AI_INTELLIGENT', 'SEMANTIC'
+  createdAt    DateTime @default(now())
+  
+  user         User     @relation("SearchLogs", fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([searchType])
+  @@map("search_logs")
+}
+
+model BatchAnalysis {
+  id          String   @id @default(cuid())
+  userId      String
+  documentIds String[]
+  analysisType String
+  results     Json
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation("BatchAnalyses", fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@map("batch_analyses")
+}
+
+model DocumentActivity {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String
+  action     String   // 'VIEW', 'EDIT', 'DOWNLOAD', 'SHARE', 'AI_ANALYSIS', 'AI_CLASSIFICATION', 'AI_GENERATION'
+  details    Json?
+  createdAt  DateTime @default(now())
+  
+  document   Document @relation("DocumentActivities", fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation("UserActivities", fields: [userId], references: [id])
+  
+  @@index([documentId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("document_activities")
 }
 
 // Enhanced Enums for Document Repository
@@ -1013,17 +1138,6 @@ enum CallStatus {
   CLOSED
   ESCALATED
   SPAM
-}
-
-enum DocumentCategory {
-  PROJECT
-  HR
-  FINANCE
-  LEGAL
-  TRAINING
-  POLICY
-  REPORT
-  OTHER
 }
 
 enum EmployeeStatus {
