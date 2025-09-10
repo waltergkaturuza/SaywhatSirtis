@@ -20,7 +20,8 @@ import {
   StarIcon,
   BeakerIcon,
   BoltIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  ExclamationTriangleIcon
 } from "@heroicons/react/24/outline"
 
 interface SidebarProps {
@@ -31,6 +32,7 @@ interface SidebarProps {
 // Navigation items based on SIRTIS requirements
 const navigation = [
   { name: "Home Dashboard", href: "/", icon: HomeIcon, requiredPermissions: [] },
+  { name: "Risk Management", href: "/risk-management", icon: ExclamationTriangleIcon, requiredPermissions: ["risk.view"] },
   { name: "Programs", href: "/programs", icon: DocumentTextIcon, requiredPermissions: ["programs.view"] },
   { name: "Call Centre", href: "/call-centre", icon: PhoneIcon, requiredPermissions: ["callcentre.access"] },
   { name: "My HR", href: "/hr", icon: UserGroupIcon, requiredPermissions: ["hr.view"] },
