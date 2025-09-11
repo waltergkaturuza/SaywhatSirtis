@@ -120,64 +120,230 @@ const documentTabs = [
   }
 ];
 
-const fileTypes = [
-  { id: 'documents', name: 'Documents', icon: DocumentTextIcon, extensions: ['pdf', 'doc', 'docx'], count: 156 },
-  { id: 'spreadsheets', name: 'Spreadsheets', icon: TableCellsIcon, extensions: ['xls', 'xlsx', 'csv'], count: 89 },
-  { id: 'presentations', name: 'Presentations', icon: PresentationChartBarIcon, extensions: ['ppt', 'pptx'], count: 45 },
-  { id: 'images', name: 'Images', icon: PhotoIcon, extensions: ['jpg', 'jpeg', 'png', 'gif'], count: 234 },
-  { id: 'videos', name: 'Videos', icon: FilmIcon, extensions: ['mp4', 'avi', 'mov'], count: 67 }
-];
+interface Document {
+  id: string;
+  title: string;
+  fileName: string;
+  description?: string;
+  classification: string;
+  category?: string;
+  type: string;
+  size: string;
+  uploadDate: string;
+  uploadedBy: string;
+  department?: string;
+  modifiedAt: string;
+  modifiedBy: string;
+  url?: string;
+  mimeType?: string;
+}
 
-const departments = [
-  { id: 'hr', name: 'Human Resources', code: 'HR', fileCount: 234 },
-  { id: 'finance', name: 'Finance', code: 'FIN', fileCount: 189 },
-  { id: 'operations', name: 'Operations', code: 'OPS', fileCount: 156 },
-  { id: 'marketing', name: 'Marketing', code: 'MKT', fileCount: 298 },
-  { id: 'it', name: 'Information Technology', code: 'IT', fileCount: 145 },
-  { id: 'legal', name: 'Legal', code: 'LEG', fileCount: 78 }
-];
+interface FileTypeStats {
+  id: string;
+  name: string;
+  icon: any;
+  extensions: string[];
+  count: number;
+}
 
-const recentFiles = [
-  { 
-    id: '1', 
-    name: 'Q3 Financial Report.pdf', 
-    type: 'pdf', 
-    size: '2.4 MB', 
-    modifiedBy: 'John Doe',
-    modifiedAt: '2 hours ago',
-    department: 'Finance',
-    classification: 'CONFIDENTIAL'
-  },
-  { 
-    id: '2', 
-    name: 'Employee Handbook v2.docx', 
-    type: 'docx', 
-    size: '1.8 MB', 
-    modifiedBy: 'Sarah Smith',
-    modifiedAt: '4 hours ago',
-    department: 'HR',
-    classification: 'PUBLIC'
-  },
-  { 
-    id: '3', 
-    name: 'Marketing Strategy 2025.pptx', 
-    type: 'pptx', 
-    size: '5.2 MB', 
-    modifiedBy: 'Mike Johnson',
-    modifiedAt: '1 day ago',
-    department: 'Marketing',
-    classification: 'RESTRICTED'
-  }
-];
+interface Department {
+  id: string;
+  name: string;
+  code: string;
+  fileCount: number;
+}
+
+interface DashboardStats {
+  totalDocuments: number;
+  storageUsed: string;
+  viewsThisMonth: number;
+  sharedWithMe: number;
+}
 
 export default function DocumentRepositoryPage() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [fileTypes, setFileTypes] = useState<FileTypeStats[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    totalDocuments: 0,
+    storageUsed: '0 MB',
+    viewsThisMonth: 0,
+    sharedWithMe: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   
   const isAdmin = session?.user?.roles?.includes('admin') || 
                  session?.user?.permissions?.includes('documents.admin');
+
+  // Load documents and statistics from API
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/documents');
+      if (!response.ok) throw new Error('Failed to fetch documents');
+      
+      const data = await response.json();
+      setDocuments(data.documents || []);
+      
+      // Calculate file type statistics
+      const typeStats = calculateFileTypeStats(data.documents || []);
+      setFileTypes(typeStats);
+      
+      // Load dashboard statistics
+      await loadDashboardStats();
+      
+    } catch (err) {
+      setError('Failed to load documents');
+      console.error('Error loading documents:', err);
+    } finally {
+      setLoading(false);
+    }
+
+    // Load departments after documents are set
+    if (documents.length > 0) {
+      await loadDepartments();
+    }
+  };
+
+  const loadDashboardStats = async () => {
+    try {
+      const response = await fetch('/api/documents/analytics');
+      if (!response.ok) throw new Error('Failed to fetch analytics');
+      
+      const stats = await response.json();
+      setDashboardStats(stats);
+      
+    } catch (err) {
+      console.error('Error loading dashboard stats:', err);
+    }
+  };
+
+  const loadDepartments = async () => {
+    try {
+      const response = await fetch('/api/hr/departments');
+      if (!response.ok) throw new Error('Failed to fetch departments');
+      
+      const depts = await response.json();
+      
+      // Calculate file counts for each department from documents
+      const deptFileCount = new Map();
+      documents.forEach(doc => {
+        if (doc.department) {
+          deptFileCount.set(doc.department, (deptFileCount.get(doc.department) || 0) + 1);
+        }
+      });
+
+      const departmentStats = depts.map((dept: any) => ({
+        id: dept.id,
+        name: dept.name,
+        code: dept.code || dept.name.substring(0, 3).toUpperCase(),
+        fileCount: deptFileCount.get(dept.name) || 0
+      }));
+
+      setDepartments(departmentStats);
+      
+    } catch (err) {
+      console.error('Error loading departments:', err);
+      // Fallback to empty array if departments API fails
+      setDepartments([]);
+    }
+  };
+
+  const calculateFileTypeStats = (docs: Document[]): FileTypeStats[] => {
+    const typeMap = new Map<string, { count: number; extensions: Set<string> }>();
+    
+    docs.forEach(doc => {
+      const type = doc.type?.toLowerCase() || 'unknown';
+      const category = getDocumentCategory(type);
+      
+      if (!typeMap.has(category.id)) {
+        typeMap.set(category.id, { count: 0, extensions: new Set() });
+      }
+      
+      const entry = typeMap.get(category.id)!;
+      entry.count++;
+      entry.extensions.add(type);
+    });
+
+    return [
+      { 
+        id: 'documents', 
+        name: 'Documents', 
+        icon: DocumentTextIcon, 
+        extensions: ['pdf', 'doc', 'docx'], 
+        count: typeMap.get('documents')?.count || 0 
+      },
+      { 
+        id: 'spreadsheets', 
+        name: 'Spreadsheets', 
+        icon: TableCellsIcon, 
+        extensions: ['xls', 'xlsx', 'csv'], 
+        count: typeMap.get('spreadsheets')?.count || 0 
+      },
+      { 
+        id: 'presentations', 
+        name: 'Presentations', 
+        icon: PresentationChartBarIcon, 
+        extensions: ['ppt', 'pptx'], 
+        count: typeMap.get('presentations')?.count || 0 
+      },
+      { 
+        id: 'images', 
+        name: 'Images', 
+        icon: PhotoIcon, 
+        extensions: ['jpg', 'jpeg', 'png', 'gif'], 
+        count: typeMap.get('images')?.count || 0 
+      },
+      { 
+        id: 'videos', 
+        name: 'Videos', 
+        icon: FilmIcon, 
+        extensions: ['mp4', 'avi', 'mov'], 
+        count: typeMap.get('videos')?.count || 0 
+      }
+    ];
+  };
+
+  const getDocumentCategory = (type: string): { id: string; name: string } => {
+    if (['pdf', 'doc', 'docx', 'txt'].includes(type)) return { id: 'documents', name: 'Documents' };
+    if (['xls', 'xlsx', 'csv'].includes(type)) return { id: 'spreadsheets', name: 'Spreadsheets' };
+    if (['ppt', 'pptx'].includes(type)) return { id: 'presentations', name: 'Presentations' };
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(type)) return { id: 'images', name: 'Images' };
+    if (['mp4', 'avi', 'mov', 'wmv'].includes(type)) return { id: 'videos', name: 'Videos' };
+    return { id: 'other', name: 'Other' };
+  };
+
+  const handleDownload = async (docId: string, filename: string) => {
+    try {
+      const response = await fetch(`/api/documents/${docId}/download`);
+      if (!response.ok) throw new Error('Download failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Failed to download document');
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    if (session) {
+      loadDocuments();
+    }
+  }, [session]);
 
   const visibleTabs = documentTabs.filter(tab => 
     !tab.adminOnly || isAdmin
@@ -248,6 +414,25 @@ export default function DocumentRepositoryPage() {
 
   const renderDashboard = () => (
     <div className="space-y-6">
+      {loading && (
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saywhat-orange"></div>
+          <span className="ml-2 text-sm text-gray-500">Loading documents...</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-sm text-red-600">{error}</p>
+          <button 
+            onClick={loadDocuments}
+            className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-5">
@@ -258,7 +443,7 @@ export default function DocumentRepositoryPage() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Total Documents</dt>
-                  <dd className="text-lg font-medium text-gray-900">1,247</dd>
+                  <dd className="text-lg font-medium text-gray-900">{dashboardStats.totalDocuments.toLocaleString()}</dd>
                 </dl>
               </div>
             </div>
@@ -274,7 +459,7 @@ export default function DocumentRepositoryPage() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Storage Used</dt>
-                  <dd className="text-lg font-medium text-gray-900">15.6 GB</dd>
+                  <dd className="text-lg font-medium text-gray-900">{dashboardStats.storageUsed}</dd>
                 </dl>
               </div>
             </div>
@@ -290,7 +475,7 @@ export default function DocumentRepositoryPage() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Views This Month</dt>
-                  <dd className="text-lg font-medium text-gray-900">3,456</dd>
+                  <dd className="text-lg font-medium text-gray-900">{dashboardStats.viewsThisMonth.toLocaleString()}</dd>
                 </dl>
               </div>
             </div>
@@ -319,35 +504,62 @@ export default function DocumentRepositoryPage() {
           <h3 className="text-lg font-medium text-gray-900">Recent Files</h3>
         </div>
         <div className="divide-y divide-gray-200">
-          {recentFiles.map((file) => {
-            const FileIcon = getFileIcon(file.type);
-            return (
-              <div key={file.id} className="px-6 py-4 hover:bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <FileIcon className="h-8 w-8 text-gray-400" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {file.size} • Modified by {file.modifiedBy} • {file.modifiedAt}
-                      </p>
+          {documents.length === 0 && !loading ? (
+            <div className="px-6 py-8 text-center">
+              <DocumentIcon className="mx-auto h-12 w-12 text-gray-300" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No documents</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Get started by uploading your first document.
+              </p>
+              <div className="mt-6">
+                <button
+                  onClick={() => setActiveTab('upload')}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-saywhat-orange hover:bg-saywhat-orange/90"
+                >
+                  <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
+                  Upload Document
+                </button>
+              </div>
+            </div>
+          ) : (
+            documents.slice(0, 5).map((doc) => {
+              const FileIcon = getFileIcon(doc.type);
+              return (
+                <div key={doc.id} className="px-6 py-4 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <FileIcon className="h-8 w-8 text-gray-400" />
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-900">{doc.title}</p>
+                        <p className="text-sm text-gray-500">
+                          {doc.size} • Uploaded by {doc.uploadedBy} • {doc.uploadDate}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getClassificationColor(doc.classification)}`}>
+                        {doc.classification}
+                      </span>
+                      <button 
+                        onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                        className="text-gray-400 hover:text-gray-500"
+                        title="View document"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleDownload(doc.id, doc.title)}
+                        className="text-gray-400 hover:text-gray-500"
+                        title="Download document"
+                      >
+                        <ArrowDownTrayIcon className="h-5 w-5" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getClassificationColor(file.classification)}`}>
-                      {file.classification}
-                    </span>
-                    <button className="text-gray-400 hover:text-gray-500">
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
-                    <button className="text-gray-400 hover:text-gray-500">
-                      <ArrowDownTrayIcon className="h-5 w-5" />
-                    </button>
-                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
     </div>
@@ -355,11 +567,71 @@ export default function DocumentRepositoryPage() {
 
   const renderBrowse = () => (
     <div className="bg-white shadow rounded-lg">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900">Browse Files</h3>
+      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-900">All Documents</h3>
+        <button
+          onClick={() => window.location.href = '/documents/upload'}
+          className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-saywhat-orange hover:bg-saywhat-orange/90"
+        >
+          <PlusIcon className="-ml-0.5 mr-2 h-4 w-4" />
+          Upload
+        </button>
       </div>
-      <div className="p-6">
-        <p className="text-gray-500">File browser with folder hierarchy will be implemented here.</p>
+      <div className="divide-y divide-gray-200">
+        {loading && (
+          <div className="p-6 text-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-saywhat-orange mx-auto"></div>
+            <p className="mt-2 text-sm text-gray-500">Loading documents...</p>
+          </div>
+        )}
+        {documents.length === 0 && !loading ? (
+          <div className="p-6 text-center">
+            <DocumentIcon className="mx-auto h-12 w-12 text-gray-300" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No documents found</h3>
+            <p className="mt-1 text-sm text-gray-500">Upload your first document to get started.</p>
+          </div>
+        ) : (
+          documents.map((doc) => {
+            const FileIcon = getFileIcon(doc.type);
+            return (
+              <div key={doc.id} className="px-6 py-4 hover:bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FileIcon className="h-8 w-8 text-gray-400" />
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-900">{doc.title}</p>
+                      <p className="text-sm text-gray-500">
+                        {doc.size} • {doc.uploadDate} • {doc.department || 'No department'}
+                      </p>
+                      {doc.description && (
+                        <p className="text-xs text-gray-400 mt-1">{doc.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getClassificationColor(doc.classification)}`}>
+                      {doc.classification}
+                    </span>
+                    <button 
+                      onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                      className="text-gray-400 hover:text-gray-500"
+                      title="View document"
+                    >
+                      <EyeIcon className="h-5 w-5" />
+                    </button>
+                    <button 
+                      onClick={() => handleDownload(doc.id, doc.title)}
+                      className="text-gray-400 hover:text-gray-500"
+                      title="Download document"
+                    >
+                      <ArrowDownTrayIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
