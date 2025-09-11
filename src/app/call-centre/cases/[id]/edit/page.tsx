@@ -26,6 +26,8 @@ export default function EditCasePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [caseData, setCaseData] = useState<any>(null)
+  const [error, setError] = useState<string>('')
+  const [saveError, setSaveError] = useState<string>('')
 
   // Check user permissions after all hooks
   const userPermissions = session?.user?.permissions || []
@@ -33,93 +35,71 @@ export default function EditCasePage() {
                              userPermissions.includes('programs.head') ||
                              userPermissions.includes('callcentre.officer')
 
-  // Simulate loading case data
+  // Load case data from API
   useEffect(() => {
     const loadCaseData = async () => {
-      setIsLoading(true)
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock case data based on the case ID
-      const mockCaseData = {
-        id: caseId,
-        caseNumber: caseId,
-        status: 'Open',
-        priority: 'Medium',
-        createdDate: '2025-01-15',
-        lastUpdated: '2025-01-16',
-        assignedOfficer: 'Mary Chikuni',
-        clientName: 'John Mukamuri',
-        clientPhone: '0771234567',
-        clientAge: '22',
-        clientGender: 'Male',
-        clientProvince: 'Harare',
-        clientAddress: '123 Main Street, Harare',
-        callPurpose: 'Youth Employment Inquiry',
-        caseType: 'Employment Support',
-        description: 'Client inquiring about youth employment opportunities and skills training programs. Requires follow-up on available positions.',
-        actionsTaken: 'Provided initial information about youth employment programs. Scheduled follow-up call.',
-        nextAction: 'Follow up with client regarding skills assessment and job placement opportunities.',
-        referrals: 'Skills Development Team',
-        notes: 'Client is enthusiastic about training opportunities. Has basic computer skills.',
-        followUpDate: '2025-01-20',
-        resolution: '',
-        outcome: ''
+      if (!caseId) return
+
+      try {
+        setIsLoading(true)
+        setError('')
+
+        const response = await fetch(`/api/call-centre/cases/${caseId}`)
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch case data')
+        }
+
+        if (data.success && data.case) {
+          setCaseData(data.case)
+        } else {
+          throw new Error('Case data not found')
+        }
+      } catch (err) {
+        console.error('Error fetching case:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load case data')
+      } finally {
+        setIsLoading(false)
       }
-      
-      setCaseData(mockCaseData)
-      setIsLoading(false)
     }
 
-    if (caseId) {
-      loadCaseData()
-    }
+    loadCaseData()
   }, [caseId])
 
-  // Simulate loading case data
-  useEffect(() => {
-    const loadCaseData = async () => {
-      setIsLoading(true)
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Mock case data based on the case ID
-      const mockCaseData = {
-        id: caseId,
-        caseNumber: caseId,
-        status: 'Open',
-        priority: 'Medium',
-        createdDate: '2025-01-15',
-        lastUpdated: '2025-01-16',
-        assignedOfficer: 'Mary Chikuni',
-        clientName: 'John Mukamuri',
-        clientPhone: '0771234567',
-        clientAge: '22',
-        clientGender: 'Male',
-        clientProvince: 'Harare',
-        clientAddress: '123 Main Street, Harare',
-        callPurpose: 'Youth Employment Inquiry',
-        caseType: 'Employment Support',
-        description: 'Client inquiring about youth employment opportunities and skills training programs. Requires follow-up on available positions.',
-        actionsTaken: 'Provided initial information about youth employment programs. Scheduled follow-up call.',
-        nextAction: 'Follow up with client regarding skills assessment and job placement opportunities.',
-        referrals: 'Skills Development Team',
-        notes: 'Client is enthusiastic about training opportunities. Has basic computer skills.',
-        followUpDate: '2025-01-20',
-        resolution: '',
-        outcome: ''
-      }
-      
-      setCaseData(mockCaseData)
-      setIsLoading(false)
-    }
+  // Handle save case
+  const handleSaveCase = async (updatedData: any) => {
+    try {
+      setIsSaving(true)
+      setSaveError('')
 
-    if (caseId) {
-      loadCaseData()
+      const response = await fetch(`/api/call-centre/cases/${caseId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save case')
+      }
+
+      if (data.success) {
+        // Redirect back to case view
+        router.push(`/call-centre/cases/${caseId}`)
+      } else {
+        throw new Error('Failed to save case')
+      }
+    } catch (err) {
+      console.error('Error saving case:', err)
+      setSaveError(err instanceof Error ? err.message : 'Failed to save case')
+    } finally {
+      setIsSaving(false)
     }
-  }, [caseId])
+  }
 
   if (!canAccessCallCentre) {
     return (
@@ -143,36 +123,27 @@ export default function EditCasePage() {
   }
 
   const handleSave = async () => {
-    setIsSaving(true)
+    if (!caseData) return
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    alert('Case updated successfully!')
-    setIsSaving(false)
+    await handleSaveCase(caseData)
   }
 
   const handleClose = async () => {
+    if (!caseData) return
+    
     if (confirm('Are you sure you want to close this case?')) {
-      setIsSaving(true)
-      
-      // Update case status
-      setCaseData((prev: any) => ({
-        ...prev,
+      const updatedData = {
+        ...caseData,
         status: 'Closed',
-        resolution: 'Case resolved successfully',
-        outcome: 'Client enrolled in youth employment program'
-      }))
+        resolution: caseData.resolution || 'Case resolved successfully',
+        outcome: 'Resolved'
+      }
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      alert('Case closed successfully!')
-      setIsSaving(false)
-      router.push('/call-centre/case-management')
+      await handleSaveCase(updatedData)
     }
   }
 
+  // Add loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -184,21 +155,65 @@ export default function EditCasePage() {
     )
   }
 
-  if (!caseData) {
+  // Add error state
+  if (error || !caseData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Case Not Found</h3>
+          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            {error || 'Case Not Found'}
+          </h3>
           <p className="mt-1 text-sm text-gray-500">
-            The case with ID "{caseId}" could not be found.
+            {error || 'The case could not be found.'}
           </p>
-          <Link
-            href="/call-centre/case-management"
-            className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-          >
-            Back to Case Management
-          </Link>
+          <div className="mt-6">
+            <Link
+              href="/call-centre/case-management"
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-2" />
+              Back to Cases
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Add loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading case details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Add error state
+  if (error || !caseData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            {error || 'Case Not Found'}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {error || 'The case could not be found.'}
+          </p>
+          <div className="mt-6">
+            <Link
+              href="/call-centre/case-management"
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-2" />
+              Back to Cases
+            </Link>
+          </div>
         </div>
       </div>
     )

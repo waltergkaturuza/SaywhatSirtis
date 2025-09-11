@@ -11,39 +11,37 @@ export default function CaseViewPage() {
   const params = useParams()
   const [caseData, setCaseData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string>('')
 
   useEffect(() => {
-    if (params.id) {
-      setLoading(true)
-      // Mock case data
-      const mockData = {
-        id: params.id,
-        caseNumber: params.id,
-        status: 'Open',
-        priority: 'Medium',
-        createdDate: '2025-01-15',
-        lastUpdated: '2025-01-16',
-        assignedOfficer: 'Mary Chikuni',
-        clientName: 'John Mukamuri',
-        clientPhone: '0771234567',
-        clientAge: '22',
-        clientGender: 'Male',
-        clientProvince: 'Harare',
-        clientAddress: '123 Main Street, Harare',
-        callPurpose: 'Youth Employment Inquiry',
-        caseType: 'Employment Support',
-        description: 'Client inquiring about youth employment opportunities and skills training programs. Requires follow-up on available positions.',
-        actionsTaken: 'Provided initial information about youth employment programs. Scheduled follow-up call.',
-        nextAction: 'Follow up with client regarding skills assessment and job placement opportunities.',
-        referrals: 'Skills Development Team',
-        notes: 'Client is enthusiastic about training opportunities. Has basic computer skills.',
-        followUpDate: '2025-01-20'
-      }
-      setTimeout(() => {
-        setCaseData(mockData)
+    const fetchCaseData = async () => {
+      if (!params.id) return
+
+      try {
+        setLoading(true)
+        setError('')
+
+        const response = await fetch(`/api/call-centre/cases/${params.id}`)
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch case data')
+        }
+
+        if (data.success && data.case) {
+          setCaseData(data.case)
+        } else {
+          throw new Error('Case data not found')
+        }
+      } catch (err) {
+        console.error('Error fetching case:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load case data')
+      } finally {
         setLoading(false)
-      }, 500)
+      }
     }
+
+    fetchCaseData()
   }, [params.id])
 
   if (loading) {
@@ -57,14 +55,25 @@ export default function CaseViewPage() {
     )
   }
 
-  if (!caseData) {
+  if (error || !caseData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Case Not Found</h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            {error || 'Case Not Found'}
+          </h3>
           <p className="mt-1 text-sm text-gray-500">
-            The case could not be found.
+            {error || 'The case could not be found.'}
           </p>
+          <div className="mt-6">
+            <Link
+              href="/call-centre/case-management"
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-2" />
+              Back to Cases
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -146,7 +155,9 @@ export default function CaseViewPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
-                  <p className="text-gray-900">{new Date(caseData.followUpDate).toLocaleDateString()}</p>
+                  <p className="text-gray-900">
+                    {caseData.followUpDate ? new Date(caseData.followUpDate).toLocaleDateString() : 'Not scheduled'}
+                  </p>
                 </div>
               </div>
             </div>

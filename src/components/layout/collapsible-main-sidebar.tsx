@@ -28,7 +28,7 @@ interface CollapsibleMainSidebarProps {
 // Navigation items based on SIRTIS requirements
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, requiredPermissions: [] },
-  { name: "Risk Management", href: "/risk-management", icon: ExclamationTriangleIcon, requiredPermissions: ["risk.view"] },
+  { name: "Risk Management", href: "/risk-management", icon: ExclamationTriangleIcon, requiredPermissions: [] },
   { name: "Programs", href: "/programs", icon: DocumentTextIcon, requiredPermissions: ["programs.view"] },
   { name: "Call Centre", href: "/call-centre", icon: PhoneIcon, requiredPermissions: ["callcentre.access"] },
   { name: "My HR", href: "/hr", icon: UserGroupIcon, requiredPermissions: ["hr.view"] },
