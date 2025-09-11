@@ -23,26 +23,39 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
-// Risk data types
+// Import Prisma types for consistency
+import type { RiskCategory, RiskProbability, RiskImpact, RiskStatus, MitigationStatus } from '@prisma/client'
+
+// Risk data types - Aligned with database schema
 interface Risk {
   id: string
   riskId: string
   title: string
   description: string
-  category: string
-  department: string
-  probability: 'LOW' | 'MEDIUM' | 'HIGH'
-  impact: 'LOW' | 'MEDIUM' | 'HIGH'
+  category: RiskCategory
+  department: string | null
+  probability: RiskProbability
+  impact: RiskImpact
   riskScore: number
-  status: 'OPEN' | 'MITIGATED' | 'ESCALATED' | 'CLOSED'
-  dateIdentified: string
+  status: RiskStatus
+  dateIdentified: Date | string
+  lastAssessed?: Date | string | null
+  tags: string[]
   owner: {
-    firstName: string
-    lastName: string
+    id: string
+    firstName: string | null
+    lastName: string | null
     email: string
-  }
+  } | null
+  createdBy?: {
+    id: string
+    firstName: string | null
+    lastName: string | null
+    email: string
+  } | null
   mitigations: {
-    status: string
+    id: string
+    status: MitigationStatus
     implementationProgress: number
   }[]
   _count: {
@@ -50,6 +63,8 @@ interface Risk {
     assessments: number
     documents: number
   }
+  createdAt: Date | string
+  updatedAt: Date | string
 }
 
 export default function RiskManagementPage() {
@@ -59,6 +74,7 @@ export default function RiskManagementPage() {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
 
   // Risk categories
   const riskCategories = [
@@ -81,114 +97,122 @@ export default function RiskManagementPage() {
     try {
       setLoading(true)
       
-      // For now, use mock data until database is connected
-      const mockRisks: Risk[] = [
-        {
-          id: '1',
-          riskId: 'RISK-2025-001',
-          title: 'Staff Turnover in Programs Department',
-          description: 'High turnover rate affecting program continuity and institutional knowledge',
-          category: 'HR_PERSONNEL',
-          department: 'Programs',
-          probability: 'HIGH',
-          impact: 'HIGH',
-          riskScore: 9,
-          status: 'OPEN',
-          dateIdentified: '2025-01-15',
-          owner: { firstName: 'John', lastName: 'Doe', email: 'john.doe@saywhat.org' },
-          mitigations: [{ status: 'IN_PROGRESS', implementationProgress: 45 }],
-          _count: { mitigations: 2, assessments: 1, documents: 3 }
-        },
-        {
-          id: '2',
-          riskId: 'RISK-2025-002',
-          title: 'Donor Funding Shortfall',
-          description: 'Potential 30% reduction in donor funding for next fiscal year',
-          category: 'FINANCIAL',
-          department: 'Finance',
-          probability: 'MEDIUM',
-          impact: 'HIGH',
-          riskScore: 6,
-          status: 'OPEN',
-          dateIdentified: '2025-02-01',
-          owner: { firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@saywhat.org' },
-          mitigations: [{ status: 'PLANNED', implementationProgress: 10 }],
-          _count: { mitigations: 1, assessments: 2, documents: 1 }
-        },
-        {
-          id: '3',
-          riskId: 'RISK-2025-003',
-          title: 'Data Security Breach',
-          description: 'Vulnerable systems could lead to beneficiary data exposure',
-          category: 'CYBERSECURITY',
-          department: 'IT',
-          probability: 'LOW',
-          impact: 'HIGH',
-          riskScore: 3,
-          status: 'MITIGATED',
-          dateIdentified: '2025-01-20',
-          owner: { firstName: 'Mike', lastName: 'Johnson', email: 'mike.johnson@saywhat.org' },
-          mitigations: [{ status: 'COMPLETED', implementationProgress: 100 }],
-          _count: { mitigations: 3, assessments: 1, documents: 5 }
-        },
-        {
-          id: '4',
-          riskId: 'RISK-2025-004',
-          title: 'Program Delivery Delays',
-          description: 'Weather conditions affecting field operations and program delivery timelines',
-          category: 'OPERATIONAL',
-          department: 'Programs',
-          probability: 'MEDIUM',
-          impact: 'MEDIUM',
-          riskScore: 4,
-          status: 'OPEN',
-          dateIdentified: '2025-02-10',
-          owner: { firstName: 'Sarah', lastName: 'Wilson', email: 'sarah.wilson@saywhat.org' },
-          mitigations: [{ status: 'PLANNED', implementationProgress: 0 }],
-          _count: { mitigations: 1, assessments: 0, documents: 2 }
-        },
-        {
-          id: '5',
-          riskId: 'RISK-2025-005',
-          title: 'Compliance Audit Findings',
-          description: 'Non-compliance with new donor reporting requirements',
-          category: 'COMPLIANCE',
-          department: 'Finance',
-          probability: 'HIGH',
-          impact: 'MEDIUM',
-          riskScore: 6,
-          status: 'ESCALATED',
-          dateIdentified: '2025-01-05',
-          owner: { firstName: 'David', lastName: 'Brown', email: 'david.brown@saywhat.org' },
-          mitigations: [{ status: 'IN_PROGRESS', implementationProgress: 75 }],
-          _count: { mitigations: 2, assessments: 3, documents: 4 }
-        }
-      ]
+      // Build query parameters
+      const params = new URLSearchParams()
+      if (selectedCategory) params.append('category', selectedCategory)
+      if (selectedStatus) params.append('status', selectedStatus)
+      if (selectedDepartment) params.append('department', selectedDepartment)
+      if (searchTerm) params.append('search', searchTerm)
       
-      // Apply filters
-      let filteredRisks = mockRisks
-      if (selectedCategory) {
-        filteredRisks = filteredRisks.filter(risk => risk.category === selectedCategory)
-      }
-      if (selectedStatus) {
-        filteredRisks = filteredRisks.filter(risk => risk.status === selectedStatus)
-      }
-      if (selectedDepartment) {
-        filteredRisks = filteredRisks.filter(risk => risk.department === selectedDepartment)
-      }
-      if (searchTerm) {
-        filteredRisks = filteredRisks.filter(risk => 
-          risk.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          risk.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          risk.riskId.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+      // Fetch risks from API
+      const response = await fetch(`/api/risk-management/risks?${params.toString()}`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load risks: ${response.statusText}`)
       }
       
-      setRisks(filteredRisks)
+      const data = await response.json()
+      
+      if (data.success) {
+        setRisks(data.data.risks || [])
+      } else {
+        console.error('API Error:', data.error)
+        setRisks([])
+      }
     } catch (error) {
       console.error('Error loading risks:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Export risks to CSV
+  const handleExportRisks = async () => {
+    try {
+      setIsExporting(true)
+      
+      // Create CSV headers
+      const headers = [
+        'Risk ID',
+        'Title',
+        'Description',
+        'Category',
+        'Probability',
+        'Impact',
+        'Risk Score',
+        'Status',
+        'Date Identified',
+        'Owner',
+        'Mitigations Count'
+      ]
+      
+      // Create CSV rows
+      const rows = risks.map(risk => [
+        risk.riskId,
+        `"${risk.title}"`,
+        `"${risk.description.replace(/"/g, '""')}"`,
+        risk.category,
+        risk.probability,
+        risk.impact,
+        risk.riskScore,
+        risk.status,
+        new Date(risk.dateIdentified).toLocaleDateString(),
+        risk.owner ? `"${risk.owner.firstName} ${risk.owner.lastName}"` : 'Unassigned',
+        risk._count.mitigations
+      ])
+      
+      // Combine headers and rows
+      const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
+      
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', `risks-export-${new Date().toISOString().split('T')[0]}.csv`)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+      
+    } catch (error) {
+      console.error('Error exporting risks:', error)
+      alert('Failed to export risks. Please try again.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Handle document viewing
+  const handleViewDocuments = (riskId: string) => {
+    // Navigate to documents page for this risk
+    window.location.href = `/risk-management/risks/${riskId}/documents`
+  }
+
+  // Handle risk deletion
+  const handleDeleteRisk = async (riskId: string, riskTitle: string) => {
+    if (!confirm(`Are you sure you want to delete the risk "${riskTitle}"? This action cannot be undone.`)) {
+      return
+    }
+    
+    try {
+      const response = await fetch(`/api/risk-management/risks/${riskId}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        // Refresh the risks list
+        loadRisks()
+        alert('Risk deleted successfully')
+      } else {
+        const error = await response.json()
+        alert(`Failed to delete risk: ${error.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error deleting risk:', error)
+      alert('Failed to delete risk. Please try again.')
     }
   }
 
@@ -244,9 +268,13 @@ export default function RiskManagementPage() {
               <BarChart3 className="h-4 w-4 mr-2" />
               Risk Matrix
             </Link>
-            <button className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            <button 
+              onClick={handleExportRisks}
+              disabled={isExporting || loading}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Download className="h-4 w-4 mr-2" />
-              Export
+              {isExporting ? 'Exporting...' : 'Export'}
             </button>
           </div>
         </div>
@@ -460,8 +488,16 @@ export default function RiskManagementPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{risk.owner.firstName} {risk.owner.lastName}</div>
-                        <div className="text-sm text-gray-500">{risk.owner.email}</div>
+                        {risk.owner ? (
+                          <>
+                            <div className="text-sm text-gray-900">
+                              {risk.owner.firstName} {risk.owner.lastName}
+                            </div>
+                            <div className="text-sm text-gray-500">{risk.owner.email}</div>
+                          </>
+                        ) : (
+                          <div className="text-sm text-gray-500">Unassigned</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
@@ -488,10 +524,18 @@ export default function RiskManagementPage() {
                             <Edit className="h-4 w-4" />
                           </Link>
                           <button 
+                            onClick={() => handleViewDocuments(risk.id)}
                             className="text-gray-600 hover:text-gray-900"
-                            title="Documents"
+                            title="View Documents"
                           >
                             <FileText className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteRisk(risk.id, risk.title)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete Risk"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
