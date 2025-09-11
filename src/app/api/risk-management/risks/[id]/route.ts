@@ -6,8 +6,9 @@ import { authOptions } from '@/lib/auth'
 // GET /api/risk-management/risks/[id] - Get single risk
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
@@ -15,7 +16,7 @@ export async function GET(
     }
 
     const risk = await prisma.risk.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         owner: {
           select: {
@@ -74,8 +75,9 @@ export async function GET(
 // PUT /api/risk-management/risks/[id] - Update risk
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
@@ -117,7 +119,7 @@ export async function PUT(
     const riskScore = probabilityScore * impactScore
 
     const risk = await prisma.risk.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         title,
         description,
@@ -176,8 +178,9 @@ export async function PUT(
 // DELETE /api/risk-management/risks/[id] - Delete risk
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
@@ -186,7 +189,7 @@ export async function DELETE(
 
     // Check if risk exists
     const existingRisk = await prisma.risk.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         mitigations: true,
         assessments: true
@@ -201,15 +204,15 @@ export async function DELETE(
     await prisma.$transaction([
       // Delete risk assessments
       prisma.riskAssessment.deleteMany({
-        where: { riskId: params.id }
+        where: { riskId: id }
       }),
       // Delete risk mitigations
       prisma.riskMitigation.deleteMany({
-        where: { riskId: params.id }
+        where: { riskId: id }
       }),
       // Delete the risk itself
       prisma.risk.delete({
-        where: { id: params.id }
+        where: { id }
       })
     ])
 
