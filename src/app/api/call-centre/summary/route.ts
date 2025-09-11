@@ -33,24 +33,47 @@ export async function GET(request: NextRequest) {
       }
     } : {}
 
-    // Get total call statistics
-    const totalCalls = await prisma.callRecord.count({
-      where: dateFilter
-    })
+    // Test if CallRecord table exists first
+    let totalCalls, resolvedCalls, pendingCalls
+    
+    try {
+      // Get total call statistics
+      totalCalls = await prisma.callRecord.count({
+        where: dateFilter
+      })
 
-    const resolvedCalls = await prisma.callRecord.count({
-      where: {
-        ...dateFilter,
-        status: 'RESOLVED'
-      }
-    })
+      resolvedCalls = await prisma.callRecord.count({
+        where: {
+          ...dateFilter,
+          status: 'RESOLVED'
+        }
+      })
 
-    const pendingCalls = await prisma.callRecord.count({
-      where: {
-        ...dateFilter,
-        status: 'OPEN'
-      }
-    })
+      pendingCalls = await prisma.callRecord.count({
+        where: {
+          ...dateFilter,
+          status: 'OPEN'
+        }
+      })
+    } catch (dbError) {
+      // Database table doesn't exist or connection issue
+      console.error('Database error in call-centre summary:', dbError)
+      
+      // Return mock data when database is not available
+      return NextResponse.json({
+        overview: {
+          totalCalls: 0,
+          resolvedCalls: 0,
+          pendingCalls: 0,
+          resolutionRate: 0
+        },
+        priorityBreakdown: [],
+        categoryBreakdown: [],
+        officerPerformance: [],
+        recentActivity: [],
+        message: "Call centre data not available - database table may need migration"
+      })
+    }
 
     // Get calls by priority
     const priorityStats = await prisma.callRecord.groupBy({
@@ -59,7 +82,7 @@ export async function GET(request: NextRequest) {
       _count: {
         id: true
       }
-    })
+    }).catch(() => [])
 
     // Get calls by category
     const categoryStats = await prisma.callRecord.groupBy({
@@ -68,9 +91,7 @@ export async function GET(request: NextRequest) {
       _count: {
         id: true
       }
-    })
-
-    // Get calls grouped by assigned officer
+    }).catch(() => [])    // Get calls grouped by assigned officer
     const callsGroupedByOfficer = await prisma.callRecord.groupBy({
       by: ['assignedOfficer'],
       where: {
@@ -85,7 +106,7 @@ export async function GET(request: NextRequest) {
       _avg: {
         // We'll calculate response time if available
       }
-    })
+    }).catch(() => [])
 
     // Get officer details for those with calls
     const officerIds = callsGroupedByOfficer.map(group => group.assignedOfficer).filter(Boolean)
@@ -100,7 +121,7 @@ export async function GET(request: NextRequest) {
         firstName: true,
         lastName: true
       }
-    })
+    }).catch(() => [])
 
     const officerPerformance = callsGroupedByOfficer.map(group => {
       const officer = officers.find(o => o.id === group.assignedOfficer);
@@ -128,7 +149,7 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         assignedOfficer: true
       }
-    })
+    }).catch(() => [])
 
     // Format the response
     const summary = {
