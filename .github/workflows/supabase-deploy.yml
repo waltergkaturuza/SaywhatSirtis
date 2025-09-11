@@ -1,18 +1,18 @@
 name: Deploy SIRTIS to Supabase
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'prisma/**'
-      - 'src/**'
-      - '.github/workflows/supabase-deploy.yml'
+  # SAFETY: Removed automatic push triggers to prevent accidental data loss
+  # Only manual deployments are allowed to protect production data
   workflow_dispatch:
     inputs:
       force_deploy:
         description: 'Force deployment even without changes'
         required: false
         default: 'false'
+      skip_seed:
+        description: 'Skip database seeding (recommended for production)'
+        required: false
+        default: 'true'
 
 env:
   NODE_VERSION: '18'
