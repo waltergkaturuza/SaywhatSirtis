@@ -7,7 +7,8 @@ import Link from 'next/link'
 
 interface Document {
   id: string
-  fileName: string
+  filename: string
+  originalName: string
   fileSize: number
   mimeType: string
   uploadedAt: string
@@ -54,9 +55,14 @@ export default function RiskDocumentsPage() {
         }
       }
       
-      // Load documents (for now, we'll show placeholder data)
-      // In a real implementation, this would fetch from an API
-      setDocuments([])
+      // Load documents
+      const documentsResponse = await fetch(`/api/risk-management/risks/${riskId}/documents`)
+      if (documentsResponse.ok) {
+        const documentsData = await documentsResponse.json()
+        if (documentsData.success) {
+          setDocuments(documentsData.data)
+        }
+      }
       
     } catch (error) {
       console.error('Error loading risk and documents:', error)
@@ -72,18 +78,34 @@ export default function RiskDocumentsPage() {
     try {
       setUploading(true)
       
-      for (const file of files) {
-        // In a real implementation, this would upload to cloud storage
-        // For now, we'll just show a placeholder
-        console.log('Would upload file:', file.name)
-      }
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('riskId', riskId)
+        
+        const response = await fetch('/api/risk-management/documents/upload', {
+          method: 'POST',
+          body: formData
+        })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Upload failed')
+        }
+        
+        return response.json()
+      })
+      
+      await Promise.all(uploadPromises)
       
       // Reload documents after upload
       await loadRiskAndDocuments()
       
+      alert('Files uploaded successfully!')
+      
     } catch (error) {
       console.error('Error uploading files:', error)
-      alert('Failed to upload files. Please try again.')
+      alert(`Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setUploading(false)
       // Reset file input
@@ -107,6 +129,58 @@ export default function RiskDocumentsPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/risk-management/risks/${riskId}/documents?documentId=${documentId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Delete failed')
+      }
+
+      // Reload documents after deletion
+      await loadRiskAndDocuments()
+      
+      alert('Document deleted successfully!')
+
+    } catch (error) {
+      console.error('Error deleting document:', error)
+      alert(`Failed to delete document: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  const handleDownloadDocument = async (documentId: string, fileName: string) => {
+    try {
+      const response = await fetch(`/api/risk-management/documents/${documentId}/download`)
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Download failed')
+      }
+
+      // Create blob and download
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+    } catch (error) {
+      console.error('Error downloading document:', error)
+      alert(`Failed to download document: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
   if (loading) {
@@ -202,7 +276,7 @@ export default function RiskDocumentsPage() {
                     <div className="flex items-center space-x-4">
                       <File className="h-8 w-8 text-gray-400" />
                       <div>
-                        <p className="font-medium text-gray-900">{doc.fileName}</p>
+                        <p className="font-medium text-gray-900">{doc.originalName}</p>
                         <p className="text-sm text-gray-500">
                           {formatFileSize(doc.fileSize)} • Uploaded by {doc.uploadedBy.firstName} {doc.uploadedBy.lastName} • {formatDate(doc.uploadedAt)}
                         </p>
@@ -213,10 +287,18 @@ export default function RiskDocumentsPage() {
                       <button className="p-2 text-gray-400 hover:text-gray-600" title="Preview">
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button className="p-2 text-gray-400 hover:text-gray-600" title="Download">
+                      <button 
+                        onClick={() => handleDownloadDocument(doc.id, doc.originalName)}
+                        className="p-2 text-gray-400 hover:text-gray-600" 
+                        title="Download"
+                      >
                         <Download className="h-4 w-4" />
                       </button>
-                      <button className="p-2 text-red-400 hover:text-red-600" title="Delete">
+                      <button 
+                        onClick={() => handleDeleteDocument(doc.id)}
+                        className="p-2 text-red-400 hover:text-red-600" 
+                        title="Delete"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
