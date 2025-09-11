@@ -17,7 +17,6 @@ import {
   InformationCircleIcon,
   Cog6ToothIcon,
   CogIcon,
-  ChartBarIcon,
   ExclamationTriangleIcon
 } from "@heroicons/react/24/outline"
 
@@ -35,7 +34,6 @@ const navigation = [
   { name: "My HR", href: "/hr", icon: UserGroupIcon, requiredPermissions: ["hr.view"] },
   { name: "Inventory", href: "/inventory", icon: ArchiveBoxIcon, requiredPermissions: ["inventory.view"] },
   { name: "Documents", href: "/documents", icon: FolderIcon, requiredPermissions: ["documents.view"] },
-  { name: "Analytics", href: "/analytics", icon: ChartBarIcon, requiredPermissions: ["analytics.view"] },
   { name: "Admin", href: "/admin", icon: Cog6ToothIcon, requiredPermissions: ["admin.access"] },
 ]
 
