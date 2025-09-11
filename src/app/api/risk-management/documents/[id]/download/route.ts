@@ -35,7 +35,7 @@ export async function GET(
       const fileBuffer = await readFile(filePath)
       
       // Return file with appropriate headers
-      return new NextResponse(fileBuffer, {
+      return new NextResponse(new Uint8Array(fileBuffer), {
         headers: {
           'Content-Type': document.mimeType || 'application/octet-stream',
           'Content-Disposition': `attachment; filename="${document.originalName}"`,
