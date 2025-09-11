@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
+import { ensureArray, safeFilter } from '@/lib/array-utils'
 import {
   CalendarIcon,
   MapPinIcon,
@@ -335,10 +336,10 @@ const DashboardOverview = () => {
           {/* Pending Tasks List */}
           <div className="p-6">
             <h4 className="text-md font-medium text-saywhat-dark mb-4">
-              Pending Tasks ({(tasks || []).filter(t => t.status === 'pending').length})
+              Pending Tasks ({safeFilter(tasks, (t: Task) => t.status === 'pending').length})
             </h4>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {(tasks || []).filter(task => task.status === 'pending').map((task) => (
+              {safeFilter(tasks, (task: Task) => task.status === 'pending').map((task) => (
                 <div key={task.id} className={`p-4 rounded-lg border ${getPriorityColor(task.priority)}`}>
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
@@ -371,7 +372,7 @@ const DashboardOverview = () => {
                   </div>
                 </div>
               ))}
-              {(tasks || []).filter(task => task.status === 'pending').length === 0 && (
+              {safeFilter(tasks, (task: Task) => task.status === 'pending').length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <DocumentTextIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>No pending tasks</p>

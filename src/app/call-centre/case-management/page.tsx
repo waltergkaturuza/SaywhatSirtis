@@ -4,6 +4,7 @@ import { ModulePage } from "@/components/layout/enhanced-layout"
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
+import { ensureArray, safeFilter } from "@/lib/array-utils"
 import {
   ArrowLeftIcon,
   MagnifyingGlassIcon,
@@ -87,11 +88,12 @@ export default function CaseManagementPage() {
     )
   }
 
-  // Extract unique officers from cases for filter dropdown
-  const officers = [...new Set((cases || []).map(c => c.officer).filter(Boolean))]
+  // Extract unique officers from cases for filter dropdown and calculate statistics
+  const safeCases = ensureArray<CaseData>(cases)
+  const officers = [...new Set(safeCases.map(c => c.officer).filter(Boolean))]
 
   // Filter cases based on active tab and search
-  const filteredCases = (cases || []).filter(caseItem => {
+  const filteredCases = safeFilter(cases, (caseItem: CaseData) => {
     const matchesTab = activeTab === 'all' || 
                       (activeTab === 'open' && caseItem.status === 'open') ||
                       (activeTab === 'in-progress' && caseItem.status === 'in-progress') ||
@@ -111,12 +113,12 @@ export default function CaseManagementPage() {
 
   // Calculate statistics
   const stats = {
-    totalCases: (cases || []).length,
-    openCases: (cases || []).filter(c => c.status === 'open').length,
-    inProgressCases: (cases || []).filter(c => c.status === 'in-progress').length,
-    pendingCases: (cases || []).filter(c => c.status === 'pending').length,
-    closedCases: (cases || []).filter(c => c.status === 'closed').length,
-    overdueCases: (cases || []).filter(c => c.isOverdue).length
+    totalCases: safeCases.length,
+    openCases: safeFilter(cases, (c: CaseData) => c.status === 'open').length,
+    inProgressCases: safeFilter(cases, (c: CaseData) => c.status === 'in-progress').length,
+    pendingCases: safeFilter(cases, (c: CaseData) => c.status === 'pending').length,
+    closedCases: safeFilter(cases, (c: CaseData) => c.status === 'closed').length,
+    overdueCases: safeFilter(cases, (c: CaseData) => c.isOverdue).length
   }
 
   const getStatusColor = (status: string) => {
@@ -195,8 +197,8 @@ export default function CaseManagementPage() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Officer Workload</h3>
         <div className="space-y-2">
           {officers.map((officer) => {
-            const officerCases = (cases || []).filter(c => c.officer === officer && c.status !== 'closed')
-            const overdueCount = (cases || []).filter(c => c.officer === officer && c.isOverdue).length
+            const officerCases = safeFilter(cases, (c: CaseData) => c.officer === officer && c.status !== 'closed')
+            const overdueCount = safeFilter(cases, (c: CaseData) => c.officer === officer && c.isOverdue).length
             
             return (
               <div key={officer} className="p-2 border rounded">
