@@ -42,6 +42,17 @@ model User {
   batchAnalyses        BatchAnalysis[]            @relation("BatchAnalyses")
   documentActivities   DocumentActivity[]         @relation("UserActivities")
 
+  // Risk Management Relations
+  ownedRisks           Risk[]                     @relation("RiskOwner")
+  createdRisks         Risk[]                     @relation("RiskCreator")
+  ownedMitigations     RiskMitigation[]           @relation("MitigationOwner")
+  createdMitigations   RiskMitigation[]           @relation("MitigationCreator")
+  riskAssessments      RiskAssessment[]           @relation("RiskAssessor")
+  reviewedAssessments  RiskAssessment[]           @relation("AssessmentReviewer")
+  uploadedDocuments    RiskDocument[]             @relation("DocumentUploader")
+  riskAuditLogs        RiskAuditLog[]             @relation("RiskAuditor")
+  riskNotifications    RiskNotification[]         @relation("RiskNotifications")
+
   @@map("users")
 }
 
@@ -1167,4 +1178,200 @@ enum NotificationType {
   WARNING
   ERROR
   SUCCESS
+}
+
+// Risk Management Enums
+enum RiskCategory {
+  OPERATIONAL
+  STRATEGIC
+  FINANCIAL
+  COMPLIANCE
+  REPUTATIONAL
+  ENVIRONMENTAL
+  CYBERSECURITY
+  HR_PERSONNEL
+}
+
+enum RiskProbability {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RiskImpact {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RiskStatus {
+  OPEN
+  MITIGATED
+  ESCALATED
+  CLOSED
+}
+
+enum MitigationStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+// Risk Management Models
+model Risk {
+  id                String           @id @default(cuid())
+  riskId            String           @unique // Auto-generated risk identifier (e.g., RISK-2025-001)
+  title             String
+  description       String           @db.Text
+  category          RiskCategory
+  department        String?
+  probability       RiskProbability
+  impact            RiskImpact
+  riskScore         Int              // Auto-calculated: probability × impact (1-9 scale)
+  status            RiskStatus       @default(OPEN)
+  dateIdentified    DateTime         @default(now())
+  lastAssessed      DateTime?
+  ownerId           String?
+  owner             User?            @relation("RiskOwner", fields: [ownerId], references: [id])
+  tags              String[]         @default([]) // SDG, donor compliance, audit year tags
+  
+  // Relationships
+  mitigations       RiskMitigation[]
+  assessments       RiskAssessment[]
+  documents         RiskDocument[]
+  auditLogs         RiskAuditLog[]
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  createdById       String?
+  createdBy         User?            @relation("RiskCreator", fields: [createdById], references: [id])
+  
+  @@map("risks")
+}
+
+model RiskMitigation {
+  id                  String           @id @default(cuid())
+  riskId              String
+  risk                Risk             @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  
+  strategy            String           @db.Text
+  controlMeasure      String?          @db.Text
+  ownerId             String?
+  owner               User?            @relation("MitigationOwner", fields: [ownerId], references: [id])
+  deadline            DateTime?
+  implementationProgress Int           @default(0) // 0-100%
+  status              MitigationStatus @default(PLANNED)
+  
+  // Progress tracking
+  milestones          Json?            // Array of milestone objects
+  lastUpdated         DateTime         @updatedAt
+  completedAt         DateTime?
+  
+  // Notes and comments
+  notes               String?          @db.Text
+  
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  createdById         String?
+  createdBy           User?            @relation("MitigationCreator", fields: [createdById], references: [id])
+  
+  @@map("risk_mitigations")
+}
+
+model RiskAssessment {
+  id                String           @id @default(cuid())
+  riskId            String
+  risk              Risk             @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  
+  assessmentDate    DateTime         @default(now())
+  assessorId        String?
+  assessor          User?            @relation("RiskAssessor", fields: [assessorId], references: [id])
+  
+  // Assessment data
+  previousProbability RiskProbability?
+  previousImpact      RiskImpact?
+  newProbability      RiskProbability
+  newImpact           RiskImpact
+  newRiskScore        Int
+  
+  // Assessment details
+  reasoning         String?          @db.Text
+  evidence          String?          @db.Text
+  recommendations   String?          @db.Text
+  
+  // Workflow fields
+  status            String           @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED
+  reviewedAt        DateTime?
+  reviewerId        String?
+  reviewer          User?            @relation("AssessmentReviewer", fields: [reviewerId], references: [id])
+  reviewComments    String?          @db.Text
+  
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  @@map("risk_assessments")
+}
+
+model RiskDocument {
+  id              String   @id @default(cuid())
+  riskId          String
+  risk            Risk     @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  
+  filename        String
+  originalName    String
+  fileSize        Int
+  mimeType        String
+  filePath        String
+  
+  description     String?
+  documentType    String   @default("SUPPORTING") // SUPPORTING, ASSESSMENT, REPORT, EVIDENCE
+  
+  uploadedById    String?
+  uploadedBy      User?    @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  uploadedAt      DateTime @default(now())
+  
+  @@map("risk_documents")
+}
+
+model RiskAuditLog {
+  id              String   @id @default(cuid())
+  riskId          String
+  risk            Risk     @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  
+  action          String   // CREATE, UPDATE, DELETE, ASSESS, MITIGATE
+  field           String?  // Field that was changed
+  oldValue        String?  @db.Text
+  newValue        String?  @db.Text
+  
+  userId          String?
+  user            User?    @relation("RiskAuditor", fields: [userId], references: [id])
+  timestamp       DateTime @default(now())
+  
+  // Additional context
+  ipAddress       String?
+  userAgent       String?
+  description     String?  @db.Text
+  
+  @@map("risk_audit_logs")
+}
+
+// Add Risk Management relations to User model
+model RiskNotification {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation("RiskNotifications", fields: [userId], references: [id])
+  
+  type            String   // OVERDUE_MITIGATION, RISK_ESCALATED, ASSESSMENT_DUE
+  title           String
+  message         String   @db.Text
+  riskId          String?
+  
+  isRead          Boolean  @default(false)
+  readAt          DateTime?
+  
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime?
+  
+  @@map("risk_notifications")
 }
