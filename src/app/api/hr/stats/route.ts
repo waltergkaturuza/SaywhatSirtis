@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get HR statistics
-    const totalEmployees = await prisma.employee.count()
+    const totalEmployees = await prisma.user.count()
     
-    const activeEmployees = await prisma.employee.count({
+    const activeEmployees = await prisma.user.count({
       where: {
         status: 'ACTIVE'
       }
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     thisMonthStart.setDate(1)
     thisMonthStart.setHours(0, 0, 0, 0)
     
-    const newEmployeesThisMonth = await prisma.employee.count({
+    const newEmployeesThisMonth = await prisma.user.count({
       where: {
         createdAt: {
           gte: thisMonthStart
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Count departments
-    const departments = await prisma.employee.groupBy({
+    const departments = await prisma.user.groupBy({
       by: ['department'],
       _count: {
         department: true

@@ -20,7 +20,7 @@ export async function PUT(
     }
 
     // Find employee by email
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
 
@@ -151,7 +151,7 @@ export async function DELETE(
     }
 
     // Find employee by email
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
 

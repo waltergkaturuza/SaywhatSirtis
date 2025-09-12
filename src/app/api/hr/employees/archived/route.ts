@@ -22,7 +22,7 @@ export async function GET() {
     }
 
     // Get all archived employees (inactive employees)
-    const archivedEmployees = await prisma.employee.findMany({
+    const archivedEmployees = await prisma.user.findMany({
       where: { 
         status: 'INACTIVE'
       },
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if employee exists and is active
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.user.findUnique({
       where: { id: employeeId }
     })
 
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Archive the employee
-    const archivedEmployee = await prisma.employee.update({
+    const archivedEmployee = await prisma.user.update({
       where: { id: employeeId },
       data: {
         status: 'INACTIVE'
@@ -197,7 +197,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if employee exists and is archived
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.user.findUnique({
       where: { id: employeeId }
     })
 
@@ -216,7 +216,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Restore the employee
-    const restoredEmployee = await prisma.employee.update({
+    const restoredEmployee = await prisma.user.update({
       where: { id: employeeId },
       data: {
         status: 'ACTIVE'

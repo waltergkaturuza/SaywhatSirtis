@@ -29,7 +29,7 @@ export async function PATCH(
     const { isReviewer } = body
 
     // Validate employee exists
-    const existingEmployee = await prisma.employee.findUnique({
+    const existingEmployee = await prisma.user.findUnique({
       where: { id: employeeId }
     })
 
@@ -38,7 +38,7 @@ export async function PATCH(
     }
 
     // Update reviewer status
-    const updatedEmployee = await (prisma.employee.update as any)({
+    const updatedEmployee = await (prisma.user.update as any)({
       where: { id: employeeId },
       data: {
         isReviewer: isReviewer

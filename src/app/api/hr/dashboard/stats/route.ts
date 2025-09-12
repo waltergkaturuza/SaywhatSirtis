@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
         trainingCount,
         activeTrainings
       ] = await Promise.all([
-        prisma.employee.count().catch(e => { console.error('Employee count error:', e); return 0; }),
-        prisma.employee.count({
+        prisma.user.count().catch(e => { console.error('Employee count error:', e); return 0; }),
+        prisma.user.count({
           where: { status: 'ACTIVE' }
         }).catch(e => { console.error('Active employee count error:', e); return 0; }),
         prisma.department.count().catch(e => { console.error('Department count error:', e); return 0; }),
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       thisMonthStart.setDate(1)
       thisMonthStart.setHours(0, 0, 0, 0)
       
-      const newEmployeesThisMonth = await prisma.employee.count({
+      const newEmployeesThisMonth = await prisma.user.count({
         where: {
           createdAt: { gte: thisMonthStart }
         }
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
       const onboardingThreshold = new Date()
       onboardingThreshold.setDate(onboardingThreshold.getDate() - 30) // 30 days
       
-      const onboardingCount = await prisma.employee.count({
+      const onboardingCount = await prisma.user.count({
         where: {
           startDate: {
             gte: onboardingThreshold

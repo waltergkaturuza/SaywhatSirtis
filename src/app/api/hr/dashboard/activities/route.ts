@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     try {
       // Get recent employee onboarding
-      const recentEmployees = await prisma.employee.findMany({
+      const recentEmployees = await prisma.user.findMany({
         where: {
           createdAt: {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days

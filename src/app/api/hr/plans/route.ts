@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   try {
     // Basic HR plans endpoint - can be expanded based on requirements
-    const plans = await prisma.employee.findMany({
+    const plans = await prisma.user.findMany({
       select: {
         id: true,
         firstName: true,

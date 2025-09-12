@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if employee already exists
-        const existingEmployee = await prisma.employee.findFirst({
+        const existingEmployee = await prisma.user.findFirst({
           where: { email: employeeData.email }
         })
 
@@ -120,9 +120,9 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        await prisma.employee.create({
+        await prisma.user.create({
           data: {
-            userId: userData.id,
+            id: userData.id,
             firstName: employeeData.firstname,
             lastName: employeeData.lastname,
             email: employeeData.email,

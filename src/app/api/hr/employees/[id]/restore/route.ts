@@ -20,7 +20,7 @@ export async function PATCH(
     const { id: employeeId } = await params
 
     // Check if employee exists and is archived
-    const existingEmployee = await prisma.employee.findUnique({
+    const existingEmployee = await prisma.user.findUnique({
       where: { id: employeeId }
     })
 
@@ -39,7 +39,7 @@ export async function PATCH(
     }
 
     // Restore the employee
-    const restoredEmployee = await prisma.employee.update({
+    const restoredEmployee = await prisma.user.update({
       where: { id: employeeId },
       data: {
         status: 'ACTIVE',

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all employees
-    const employees = await prisma.employee.findMany({
+    const employees = await prisma.user.findMany({
       orderBy: {
         lastName: 'asc'
       }
@@ -29,8 +29,8 @@ export async function GET(request: NextRequest) {
 
     const employeesWithManagementInfo = employees.map(employee => ({
       id: employee.id,
-      name: `${employee.firstName} ${employee.lastName}`,
-      email: employee.email || `${employee.firstName.toLowerCase()}.${employee.lastName.toLowerCase()}@saywhat.org`,
+      name: `${employee.firstName || 'Unknown'} ${employee.lastName || 'User'}`,
+      email: employee.email || `${(employee.firstName || 'user').toLowerCase()}.${(employee.lastName || 'name').toLowerCase()}@saywhat.org`,
       phone: employee.phoneNumber || '+234-XXX-XXX-XXXX',
       staffId: `SW${employee.id.toString().padStart(3, '0')}`,
       position: employee.position || 'Employee',

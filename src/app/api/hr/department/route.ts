@@ -479,7 +479,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Count employees in this department
-    const employeeCount = await prisma.employee.count({
+    const employeeCount = await prisma.user.count({
       where: {
         department: department.name
       }
@@ -497,7 +497,7 @@ export async function DELETE(request: NextRequest) {
 
     if (employeeCount > 0 && reassignTo) {
       // Reassign employees to new department
-      await prisma.employee.updateMany({
+      await prisma.user.updateMany({
         where: {
           department: department.name
         },

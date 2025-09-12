@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const departmentFilter = department === 'all' ? {} : { department: department.toUpperCase() }
 
     // Fetch overall metrics
-    const totalEmployees = await prisma.employee.count({
+    const totalEmployees = await prisma.user.count({
       where: departmentFilter
     })
 
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     const improvementRate = Math.floor(Math.random() * 20) + 5 // Placeholder calculation
 
     // Get department statistics
-    const departments = await prisma.employee.groupBy({
+    const departments = await prisma.user.groupBy({
       by: ['department'],
       _count: {
         id: true

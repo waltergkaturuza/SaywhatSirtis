@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get employees with salary information
-    const employees = await prisma.employee.findMany({
+    const employees = await prisma.user.findMany({
       select: {
         id: true,
         firstName: true,
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update employee salary
-    const updatedEmployee = await prisma.employee.update({
+    const updatedEmployee = await prisma.user.update({
       where: { id: employeeId },
       data: { salary: basicSalary }
     })

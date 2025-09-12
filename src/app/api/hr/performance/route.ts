@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     // Get performance data for current user
-    const employee = await prisma.employee.findFirst({
+    const employee = await prisma.user.findFirst({
       where: { email: session.user.email },
       select: {
         id: true,

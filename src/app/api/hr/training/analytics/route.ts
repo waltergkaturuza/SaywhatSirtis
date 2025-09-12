@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
     // Get employee details for top performers
     const topPerformersWithDetails = await Promise.all(
       topPerformers.map(async (performer) => {
-        const employee = await prisma.employee.findUnique({
+        const employee = await prisma.user.findUnique({
           where: { id: performer.employeeId },
           select: {
             id: true,

@@ -27,7 +27,7 @@ export async function PATCH(
     const body = await request.json()
 
     // Validate employee exists
-    const existingEmployee = await prisma.employee.findUnique({
+    const existingEmployee = await prisma.user.findUnique({
       where: { id: employeeId }
     })
 
@@ -36,7 +36,7 @@ export async function PATCH(
     }
 
     // Update employee status to ARCHIVED and revoke access
-    const updatedEmployee = await prisma.employee.update({
+    const updatedEmployee = await prisma.user.update({
       where: { id: employeeId },
       data: {
         status: 'ARCHIVED',

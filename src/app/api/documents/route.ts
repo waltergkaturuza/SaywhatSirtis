@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         let uploaderInfo = null
         if (doc.uploadedBy) {
           try {
-            const uploader = await prisma.employee.findUnique({
+            const uploader = await prisma.user.findUnique({
               where: { id: doc.uploadedBy },
               select: {
                 firstName: true,

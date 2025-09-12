@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find employee by email
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate key responsibilities based on position
-    const defaultResponsibilities = getDefaultResponsibilities(employee.position);
+    const defaultResponsibilities = getDefaultResponsibilities(employee.position || 'General Employee');
     
     // Create performance plan
     const performancePlan = await prisma.performancePlan.create({
@@ -111,7 +111,7 @@ export async function GET() {
     }
 
     // Find employee by email
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
 

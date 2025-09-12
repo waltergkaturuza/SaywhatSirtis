@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get employees who can act as supervisors (managers and senior positions)
-    const supervisors = await prisma.employee.findMany({
+    const supervisors = await prisma.user.findMany({
       where: {
         OR: [
           { position: { contains: 'Manager' } },

@@ -13,26 +13,83 @@ model User {
   email            String     @unique
   username         String?    @unique
   role             UserRole   @default(USER)
-  department       String?
-  position         String?
   isActive         Boolean    @default(true)
   lastLogin        DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   emailVerified    DateTime?
-  firstName        String?
-  lastName         String?
-  roles            String[]   @default([])
-  phoneNumber      String?
-  profileImage     String?
-  bio              String?
-  location         String?
   twoFactorEnabled Boolean    @default(false)
+  
+  // Employee Information (every user is an employee)
+  employeeId          String?              @unique
+  firstName           String?
+  lastName            String?
+  middleName          String?
+  dateOfBirth         DateTime?
+  gender              String?
+  nationality         String?
+  nationalId          String?              @unique
+  passportNumber      String?
+  phoneNumber         String?
+  alternativePhone    String?
+  address             String?
+  emergencyContact    String?
+  emergencyPhone      String?
+  profileImage        String?
+  bio                 String?
+  location            String?
+  
+  // Employment Details
+  department          String?
+  position            String?
+  employmentType      String?              @default("FULL_TIME")
+  startDate           DateTime?
+  endDate             DateTime?
+  hireDate            DateTime?
+  salary              Float?
+  currency            String?              @default("USD")
+  status              String?              @default("ACTIVE")
+  
+  // Organizational Structure
+  supervisorId        String?              @map("supervisor_id")
+  supervisor          User?                @relation("UserSupervisor", fields: [supervisorId], references: [id])
+  subordinates        User[]               @relation("UserSupervisor")
+  isSupervisor        Boolean              @default(false) @map("is_supervisor")
+  isReviewer          Boolean              @default(false) @map("is_reviewer")
+  departmentId        String?
+  departmentRef       Department?          @relation(fields: [departmentId], references: [id])
+  
+  // Benefits (using snake_case to match database)
+  medicalAid          Boolean              @default(false) @map("medical_aid")
+  funeralCover        Boolean              @default(false) @map("funeral_cover")
+  vehicleBenefit      Boolean              @default(false) @map("vehicle_benefit")
+  fuelAllowance       Boolean              @default(false) @map("fuel_allowance")
+  airtimeAllowance    Boolean              @default(false) @map("airtime_allowance")
+  otherBenefits       String[]             @default([]) @map("other_benefits")
+  
+  // Archive fields (using snake_case to match database)
+  archivedAt          DateTime?            @map("archived_at")
+  archiveReason       String?              @map("archive_reason")
+  accessRevoked       Boolean              @default(false) @map("access_revoked")
+  
+  // System access
+  roles               String[]             @default([])
+  // System Relations
   accounts         Account[]
   auditLogs        AuditLog[]
   createdProjects  Project[]  @relation("ProjectCreator")
   managedProjects  Project[]  @relation("ProjectManager")
   sessions         Session[]
+
+  // HR & Employee Relations
+  performanceReviews      PerformanceReview[]
+  trainingAttendance      TrainingAttendance[]
+  trainingEnrollments     TrainingEnrollment[]
+  qualifications          Qualification[]
+  performancePlans        PerformancePlan[]      @relation("EmployeePerformancePlans")
+  employeeAppraisals      PerformanceAppraisal[] @relation("EmployeeAppraisals")
+  supervisorAppraisals    PerformanceAppraisal[] @relation("SupervisorAppraisals")
+  reviewerAppraisals      PerformanceAppraisal[] @relation("ReviewerAppraisals")
 
   // AI Relations
   analyzedDocuments    DocumentAnalysis[]         @relation("AnalyzedBy")
@@ -53,6 +110,15 @@ model User {
   riskAuditLogs        RiskAuditLog[]             @relation("RiskAuditor")
   riskNotifications    RiskNotification[]         @relation("RiskNotifications")
 
+  @@index([employeeId])
+  @@index([email])
+  @@index([department])
+  @@index([status])
+  @@index([supervisorId])
+  @@index([isSupervisor])
+  @@index([isReviewer])
+  @@index([archivedAt])
+  @@index([departmentId])
   @@map("users")
 }
 
@@ -216,7 +282,7 @@ model Department {
   // Department level (0 = main department, 1+ = subunit levels)
   level       Int          @default(0)
   
-  employees   Employee[]
+  employees   User[]
   documents   Document[]
 
   @@index([name])
@@ -226,79 +292,7 @@ model Department {
   @@map("departments")
 }
 
-model Employee {
-  id                  String               @id @default(cuid())
-  userId              String               @unique
-  employeeId          String               @unique
-  firstName           String
-  lastName            String
-  middleName          String?
-  dateOfBirth         DateTime?
-  gender              String?
-  nationality         String?
-  nationalId          String?              @unique
-  passportNumber      String?
-  email               String               @unique
-  phoneNumber         String?
-  alternativePhone    String?
-  address             String?
-  emergencyContact    String?
-  emergencyPhone      String?
-  department          String?
-  position            String
-  employmentType      String               @default("FULL_TIME")
-  startDate           DateTime
-  endDate             DateTime?
-  salary              Float?
-  currency            String?              @default("USD")
-  status              String               @default("ACTIVE")
-  
-  // Supervisor and Role fields (using snake_case to match database)
-  supervisorId        String?              @map("supervisor_id")
-  supervisor          Employee?            @relation("EmployeeSupervisor", fields: [supervisorId], references: [id])
-  subordinates        Employee[]           @relation("EmployeeSupervisor")
-  isSupervisor        Boolean              @default(false) @map("is_supervisor")
-  isReviewer          Boolean              @default(false) @map("is_reviewer")
-  
-  // Benefits fields (using snake_case to match database)
-  medicalAid          Boolean              @default(false) @map("medical_aid")
-  funeralCover        Boolean              @default(false) @map("funeral_cover")
-  vehicleBenefit      Boolean              @default(false) @map("vehicle_benefit")
-  fuelAllowance       Boolean              @default(false) @map("fuel_allowance")
-  airtimeAllowance    Boolean              @default(false) @map("airtime_allowance")
-  otherBenefits       String[]             @default([]) @map("other_benefits")
-  
-  // Archive fields (using snake_case to match database)
-  archivedAt          DateTime?            @map("archived_at")
-  archiveReason       String?              @map("archive_reason")
-  accessRevoked       Boolean              @default(false) @map("access_revoked")
-  
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  hireDate            DateTime?
-  departmentId        String?
-  departmentRef       Department?          @relation(fields: [departmentId], references: [id])
-  performanceReviews  PerformanceReview[]
-  trainingAttendance  TrainingAttendance[]
-  trainingEnrollments TrainingEnrollment[]
-  
-  // Enhanced Performance Management Relations
-  qualifications        Qualification[]
-  performancePlans      PerformancePlan[]      @relation("EmployeePerformancePlans")
-  employeeAppraisals    PerformanceAppraisal[] @relation("EmployeeAppraisals")
-  supervisorAppraisals  PerformanceAppraisal[] @relation("SupervisorAppraisals")
-  reviewerAppraisals    PerformanceAppraisal[] @relation("ReviewerAppraisals")
 
-  @@index([employeeId])
-  @@index([department])
-  @@index([status])
-  @@index([email])
-  @@index([supervisorId])
-  @@index([isSupervisor])
-  @@index([isReviewer])
-  @@index([archivedAt])
-  @@map("employees")
-}
 
 model PerformanceReview {
   id             String    @id @default(cuid())
@@ -312,7 +306,7 @@ model PerformanceReview {
   nextReviewDate DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee       User      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId])
   @@index([reviewDate])
@@ -365,7 +359,7 @@ model TrainingEnrollment {
   updatedAt      DateTime             @updatedAt
   status         String               @default("ENROLLED")
   certificate    TrainingCertificate?
-  employee       Employee             @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee       User                 @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   program        TrainingProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@unique([programId, employeeId])
@@ -407,7 +401,7 @@ model TrainingAttendance {
   notes        String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
-  employee     Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee     User            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   session      TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, employeeId])
@@ -1403,7 +1397,7 @@ model Qualification {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   
-  employee            Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee            User @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   
   @@index([employeeId])
   @@index([type])
@@ -1423,7 +1417,7 @@ model PerformancePlan {
   createdAt             DateTime                   @default(now())
   updatedAt             DateTime                   @updatedAt
   
-  employee              Employee                   @relation("EmployeePerformancePlans", fields: [employeeId], references: [id], onDelete: Cascade)
+  employee              User                       @relation("EmployeePerformancePlans", fields: [employeeId], references: [id], onDelete: Cascade)
   keyResponsibilities   KeyResponsibility[]
   developmentActivities DevelopmentActivity[]
   appraisals            PerformanceAppraisal[]
@@ -1522,10 +1516,10 @@ model PerformanceAppraisal {
   createdAt                       DateTime                    @default(now())
   updatedAt                       DateTime                    @updatedAt
   
-  employee                        Employee                    @relation("EmployeeAppraisals", fields: [employeeId], references: [id], onDelete: Cascade)
+  employee                        User                        @relation("EmployeeAppraisals", fields: [employeeId], references: [id], onDelete: Cascade)
   plan                            PerformancePlan             @relation(fields: [planId], references: [id])
-  supervisor                      Employee?                   @relation("SupervisorAppraisals", fields: [supervisorId], references: [id])
-  reviewer                        Employee?                   @relation("ReviewerAppraisals", fields: [reviewerId], references: [id])
+  supervisor                      User?                       @relation("SupervisorAppraisals", fields: [supervisorId], references: [id])
+  reviewer                        User?                       @relation("ReviewerAppraisals", fields: [reviewerId], references: [id])
   
   responsibilityAssessments       ResponsibilityAssessment[]
   valueAssessments                ValueAssessment[]

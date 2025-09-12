@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     // Get uploader info for response
     let uploaderName = 'Unknown'
     if (session.user?.id) {
-      const uploader = await prisma.employee.findUnique({
+      const uploader = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: {
           firstName: true,

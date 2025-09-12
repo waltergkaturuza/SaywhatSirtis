@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get employee salary summary from Employee model
-    const employees = await prisma.employee.findMany({
+    const employees = await prisma.user.findMany({
       where: { status: "ACTIVE" },
       select: {
         department: true,

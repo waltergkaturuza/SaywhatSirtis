@@ -29,7 +29,7 @@ export async function GET() {
     }
 
     // Get all active employees
-    const employees = await (prisma.employee.findMany as any)({
+    const employees = await (prisma.user.findMany as any)({
       where: { 
         status: 'ACTIVE'
       },
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
     }
 
     // Check if employee email already exists
-    const existingEmployee = await prisma.employee.findUnique({
+    const existingEmployee = await prisma.user.findUnique({
       where: { email: formData.email }
     })
 
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
     }
 
     // Generate employee ID
-    const employeeCount = await prisma.employee.count()
+    const employeeCount = await prisma.user.count()
     const employeeId = `EMP${(employeeCount + 1).toString().padStart(4, '0')}`
 
     // Sanitize input data
@@ -230,7 +230,7 @@ export async function POST(request: Request) {
     }
 
     // Create new employee
-    const newEmployee = await (prisma.employee.create as any)({
+    const newEmployee = await (prisma.user.create as any)({
       data: sanitizedData
     })
 

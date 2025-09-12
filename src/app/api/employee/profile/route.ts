@@ -16,7 +16,7 @@ export async function GET() {
     }
 
     // Find employee by email
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
         supervisor: {
@@ -62,7 +62,7 @@ export async function GET() {
       emergencyPhone: employee.emergencyPhone,
       position: employee.position,
       department: employee.departmentRef?.name || employee.department || 'Unassigned',
-      startDate: employee.startDate.toISOString(),
+      startDate: employee.startDate?.toISOString() || null,
       profilePicture: null, // Profile pictures are stored in User model
       supervisor: employee.supervisor ? {
         id: employee.supervisor.id,
@@ -116,7 +116,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Find employee by email
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
 
@@ -128,7 +128,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update employee profile
-    const updatedEmployee = await prisma.employee.update({
+    const updatedEmployee = await prisma.user.update({
       where: { id: employee.id },
       data: updateData,
       include: {
@@ -188,7 +188,7 @@ export async function PUT(request: NextRequest) {
       emergencyPhone: updatedEmployee.emergencyPhone,
       position: updatedEmployee.position,
       department: updatedEmployee.departmentRef?.name || updatedEmployee.department || 'Unassigned',
-      startDate: updatedEmployee.startDate.toISOString(),
+      startDate: updatedEmployee.startDate?.toISOString() || null,
       profilePicture: null, // Profile pictures are stored in User model
       supervisor: updatedEmployee.supervisor ? {
         id: updatedEmployee.supervisor.id,

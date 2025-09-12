@@ -28,7 +28,7 @@ export async function GET(
     }
 
     // Fetch employee with all details including relationships
-    const employee = await (prisma.employee.findUnique as any)({
+    const employee = await (prisma.user.findUnique as any)({
       where: { id: employeeId },
       include: {
         departmentRef: {
@@ -166,7 +166,7 @@ export async function PUT(
     }
 
     // Validate employee exists
-    const existingEmployee = await prisma.employee.findUnique({
+    const existingEmployee = await prisma.user.findUnique({
       where: { id: employeeId }
     })
 
@@ -221,7 +221,7 @@ export async function PUT(
     }
 
     // Update employee
-    const updatedEmployee = await (prisma.employee.update as any)({
+    const updatedEmployee = await (prisma.user.update as any)({
       where: { id: employeeId },
       data: updateData,
       include: {
