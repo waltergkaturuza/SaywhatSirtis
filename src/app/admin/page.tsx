@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { EnhancedLayout } from "@/components/layout/enhanced-layout"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { UserManagement } from "@/components/admin/user-management"
+import Link from "next/link"
 import {
   Cog6ToothIcon,
   UsersIcon,
@@ -24,7 +25,10 @@ import {
   TrashIcon,
   PencilIcon,
   PlusIcon,
-  EyeIcon
+  EyeIcon,
+  HomeIcon,
+  ArrowLeftIcon,
+  ChevronRightIcon
 } from "@heroicons/react/24/outline"
 
 interface SystemStats {
@@ -262,11 +266,43 @@ export default function SystemAdminPage() {
 
   return (
     <EnhancedLayout>
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
+      <div className="w-full">
+        {/* Navigation & Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">System Administration</h1>
-          <p className="text-gray-600">Comprehensive system management and monitoring</p>
+          {/* Navigation Controls */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4">
+              <Link
+                href="/"
+                className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200 shadow-sm"
+              >
+                <HomeIcon className="h-5 w-5 mr-2" />
+                Home
+              </Link>
+              <button
+                onClick={() => window.history.back()}
+                className="inline-flex items-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors duration-200 shadow-sm"
+              >
+                <ArrowLeftIcon className="h-5 w-5 mr-2" />
+                Back
+              </button>
+            </div>
+            
+            {/* Breadcrumb */}
+            <div className="flex items-center text-sm text-gray-500">
+              <Link href="/" className="hover:text-gray-700 transition-colors">
+                Home
+              </Link>
+              <ChevronRightIcon className="h-4 w-4 mx-2" />
+              <span className="font-medium text-orange-600">System Administration</span>
+            </div>
+          </div>
+          
+          {/* Header */}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">System Administration</h1>
+            <p className="text-gray-600">Comprehensive system management and monitoring</p>
+          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -278,10 +314,10 @@ export default function SystemAdminPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors duration-200 ${
                     activeTab === tab.id
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-orange-500 text-orange-600 bg-orange-50'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-orange-300 hover:bg-gray-50'
                   }`}
                 >
                   <Icon className="h-5 w-5 mr-2" />

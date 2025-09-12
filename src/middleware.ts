@@ -21,7 +21,7 @@ const requestLog: Array<{
  */
 const RATE_LIMIT_CONFIG = {
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 100, // Max requests per window
+  maxRequests: process.env.NODE_ENV === 'development' ? 1000 : 100, // Higher limit for development
   message: 'Too many requests, please try again later',
   skipSuccessfulRequests: false,
   skipFailedRequests: false
@@ -163,8 +163,8 @@ export async function middleware(request: NextRequest) {
     // Ignore token errors for public routes
   }
   
-  // Check rate limit for API routes
-  if (request.nextUrl.pathname.startsWith('/api/')) {
+  // Check rate limit for API routes (but skip auth routes to prevent login issues)
+  if (request.nextUrl.pathname.startsWith('/api/') && !request.nextUrl.pathname.startsWith('/api/auth/')) {
     const clientId = userId || getClientIP(request)
     const rateLimit = checkRateLimit(clientId)
     

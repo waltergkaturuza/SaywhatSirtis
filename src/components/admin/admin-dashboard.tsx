@@ -71,11 +71,45 @@ interface Alert {
   timestamp: string
 }
 
+interface DeploymentData {
+  current: {
+    platform: string
+    environment: string
+    region: string
+    url: string
+  }
+  database: {
+    provider: string
+    connectionString: string
+    sharedAccess: boolean
+  }
+  deployments: {
+    vercel: {
+      status: string
+      requestCount?: number
+      lastSeen?: number | null
+      responseTime?: number | null
+    }
+    render: {
+      status: string
+      requestCount?: number
+      lastSeen?: number | null
+      responseTime?: number | null
+    }
+    total: {
+      combinedRequests: number
+      sharedDatabase: boolean
+      dataConsistency: string
+    }
+  }
+}
+
 interface DashboardData {
   stats: DashboardStats
   serviceStatus: ServiceStatus
   securityEvents: SecurityEvent[]
   alerts: Alert[]
+  deploymentData?: DeploymentData
   timestamp: string
 }
 
@@ -447,10 +481,95 @@ export function AdminDashboard({ className = "" }: AdminDashboardProps) {
         </Card>
       </div>
 
+      {/* Multi-Deployment Status */}
+      {dashboardData.deploymentData && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Multi-Platform Deployment Status</CardTitle>
+            <CardDescription>Vercel & Render connecting to shared Supabase database</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Current Environment */}
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div>
+                  <h4 className="font-medium">Current Environment</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {dashboardData.deploymentData.current.platform} • {dashboardData.deploymentData.current.environment}
+                  </p>
+                </div>
+                <Badge variant="outline">
+                  {dashboardData.deploymentData.current.region}
+                </Badge>
+              </div>
+
+              {/* Database Connection */}
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div>
+                  <h4 className="font-medium">Shared Database</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {dashboardData.deploymentData.database.provider} • Shared Access: {dashboardData.deploymentData.database.sharedAccess ? 'Yes' : 'No'}
+                  </p>
+                </div>
+                <Badge variant="secondary">
+                  {dashboardData.deploymentData.database.connectionString}
+                </Badge>
+              </div>
+
+              {/* Platform Status */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">Vercel</h4>
+                    <Badge 
+                      variant={dashboardData.deploymentData.deployments.vercel.status === 'active' ? 'default' : 'secondary'}
+                    >
+                      {dashboardData.deploymentData.deployments.vercel.status}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>Requests: {dashboardData.deploymentData.deployments.vercel.requestCount || 0}</p>
+                    {dashboardData.deploymentData.deployments.vercel.responseTime && (
+                      <p>Response: {dashboardData.deploymentData.deployments.vercel.responseTime}ms</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-3 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">Render</h4>
+                    <Badge 
+                      variant={dashboardData.deploymentData.deployments.render.status === 'active' ? 'default' : 'secondary'}
+                    >
+                      {dashboardData.deploymentData.deployments.render.status}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>Requests: {dashboardData.deploymentData.deployments.render.requestCount || 0}</p>
+                    {dashboardData.deploymentData.deployments.render.responseTime && (
+                      <p>Response: {dashboardData.deploymentData.deployments.render.responseTime}ms</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Combined Stats */}
+              <div className="p-3 bg-green-50 border-green-200 border rounded-lg">
+                <h4 className="font-medium text-green-800">Data Synchronization</h4>
+                <p className="text-sm text-green-600">
+                  {dashboardData.deploymentData.deployments.total.dataConsistency} • 
+                  Combined requests: {dashboardData.deploymentData.deployments.total.combinedRequests}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Separator />
       
       <div className="text-sm text-muted-foreground">
-        Last updated: {new Date(dashboardData.timestamp).toLocaleString()} • Data from Vercel & Supabase
+        Last updated: {new Date(dashboardData.timestamp).toLocaleString()} • Data from Vercel, Render & Supabase
       </div>
     </div>
   )
