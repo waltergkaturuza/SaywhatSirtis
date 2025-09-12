@@ -22,22 +22,70 @@ import {
   CheckCircleIcon
 } from "@heroicons/react/24/outline"
 
+interface SystemStatus {
+  database: { status: string; message: string }
+  apiServices: { status: string; message: string }
+  fileStorage: { status: string; message: string }
+  emailService: { status: string; message: string }
+}
+
+interface LocaleOptions {
+  timezones: Array<{ value: string; label: string; offset: string; region: string }>
+  currencies: Array<{ value: string; label: string; symbol: string; region: string }>
+  languages: Array<{ value: string; label: string; native: string; region: string }>
+}
+
+interface User {
+  id: number
+  firstName: string
+  lastName: string
+  email: string
+  role: string
+  department?: string
+  position?: string
+  status: string
+  lastLogin?: string
+  createdAt: string
+  permissions: string[]
+}
+
+interface Role {
+  id: string
+  name: string
+  description: string
+  permissions: string[]
+  userCount: number
+  createdAt: string
+  updatedAt: string
+}
+
 export default function SettingsPage() {
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState("general")
+  const [loading, setLoading] = useState(false)
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
+  const [localeOptions, setLocaleOptions] = useState<LocaleOptions | null>(null)
+  const [users, setUsers] = useState<User[]>([])
+  const [roles, setRoles] = useState<Role[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [rolesLoading, setRolesLoading] = useState(false)
+  
+  // Form state management
+  const [organizationSettings, setOrganizationSettings] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    timezone: "Africa/Harare",
+    defaultLanguage: "en",
+    currency: "USD"
+  })
+
   const [notifications, setNotifications] = useState({
     email: true,
     sms: false,
     push: true,
     inApp: true
-  })
-
-  // Form state management
-  const [organizationSettings, setOrganizationSettings] = useState({
-    name: "SAYWHAT Organization",
-    email: "admin@saywhat.org",
-    phone: "+234 803 123 4567",
-    address: "123 Organization Street, Victoria Island, Lagos, Nigeria"
   })
 
   const [timeSettings, setTimeSettings] = useState({
@@ -46,11 +94,119 @@ export default function SettingsPage() {
   })
 
   const [saveMessage, setSaveMessage] = useState("")
+  const [errorMessage, setErrorMessage] = useState("")
 
-  const handleSaveSettings = () => {
-    // In production, this would save to backend
-    setSaveMessage("Settings saved successfully!")
-    setTimeout(() => setSaveMessage(""), 3000)
+  // Load organization settings and system data
+  useEffect(() => {
+    loadSettings()
+    loadLocaleData()
+    loadSystemStatus()
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers()
+      loadRoles()
+    }
+  }, [activeTab])
+
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/settings/organization')
+      if (response.ok) {
+        const { data } = await response.json()
+        setOrganizationSettings(data)
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error)
+    }
+  }
+
+  const loadUsers = async () => {
+    setUsersLoading(true)
+    try {
+      const response = await fetch('/api/admin/users')
+      if (response.ok) {
+        const { users: userData } = await response.json()
+        setUsers(userData || [])
+      }
+    } catch (error) {
+      console.error('Failed to load users:', error)
+      setUsers([])
+    } finally {
+      setUsersLoading(false)
+    }
+  }
+
+  const loadRoles = async () => {
+    setRolesLoading(true)
+    try {
+      const response = await fetch('/api/admin/roles')
+      if (response.ok) {
+        const { data } = await response.json()
+        setRoles(data?.roles || [])
+      }
+    } catch (error) {
+      console.error('Failed to load roles:', error)
+      setRoles([])
+    } finally {
+      setRolesLoading(false)
+    }
+  }
+
+  const loadLocaleData = async () => {
+    try {
+      const response = await fetch('/api/settings/locale-data')
+      if (response.ok) {
+        const { data } = await response.json()
+        setLocaleOptions(data)
+      }
+    } catch (error) {
+      console.error('Failed to load locale data:', error)
+    }
+  }
+
+  const loadSystemStatus = async () => {
+    try {
+      const response = await fetch('/api/admin/settings')
+      if (response.ok) {
+        const { data } = await response.json()
+        setSystemStatus(data.systemStatus)
+      }
+    } catch (error) {
+      console.error('Failed to load system status:', error)
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    setLoading(true)
+    setErrorMessage("")
+    setSaveMessage("")
+    
+    try {
+      const response = await fetch('/api/settings/organization', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(organizationSettings),
+      })
+
+      const result = await response.json()
+      
+      if (response.ok) {
+        setSaveMessage("Settings saved successfully!")
+        setTimeout(() => setSaveMessage(""), 3000)
+      } else {
+        setErrorMessage(result.error || "Failed to save settings")
+        setTimeout(() => setErrorMessage(""), 5000)
+      }
+    } catch (error) {
+      setErrorMessage("Network error. Please try again.")
+      setTimeout(() => setErrorMessage(""), 5000)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -70,6 +226,19 @@ export default function SettingsPage() {
     ]
   }
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return <CheckCircleIcon className="h-5 w-5 text-green-500" />
+      case 'warning':
+        return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
+      case 'error':
+        return <ExclamationTriangleIcon className="h-5 w-5 text-red-500" />
+      default:
+        return <ExclamationTriangleIcon className="h-5 w-5 text-gray-400" />
+    }
+  }
+
   const sidebar = (
     <div className="space-y-6">
       <div>
@@ -77,21 +246,32 @@ export default function SettingsPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600">Database</span>
-            <CheckCircleIcon className="h-5 w-5 text-green-500" />
+            {systemStatus ? getStatusIcon(systemStatus.database.status) : <div className="h-5 w-5 bg-gray-200 rounded animate-pulse" />}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600">API Services</span>
-            <CheckCircleIcon className="h-5 w-5 text-green-500" />
+            {systemStatus ? getStatusIcon(systemStatus.apiServices.status) : <div className="h-5 w-5 bg-gray-200 rounded animate-pulse" />}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600">File Storage</span>
-            <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
+            {systemStatus ? getStatusIcon(systemStatus.fileStorage.status) : <div className="h-5 w-5 bg-gray-200 rounded animate-pulse" />}
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-600">Email Service</span>
-            <CheckCircleIcon className="h-5 w-5 text-green-500" />
+            {systemStatus ? getStatusIcon(systemStatus.emailService.status) : <div className="h-5 w-5 bg-gray-200 rounded animate-pulse" />}
           </div>
         </div>
+        
+        {systemStatus && (
+          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+            <div className="text-xs text-gray-500 space-y-1">
+              <div>DB: {systemStatus.database.message}</div>
+              <div>API: {systemStatus.apiServices.message}</div>
+              <div>Storage: {systemStatus.fileStorage.message}</div>
+              <div>Email: {systemStatus.emailService.message}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div>
@@ -143,66 +323,7 @@ export default function SettingsPage() {
     { id: "reports", name: "Reports", icon: ChartBarIcon }
   ]
 
-  const users = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      email: "sarah.johnson@saywhat.org",
-      role: "Super Admin",
-      status: "active",
-      lastLogin: "2024-01-15T10:30:00Z",
-      permissions: ["all"]
-    },
-    {
-      id: 2,
-      name: "Michael Adebayo",
-      email: "michael.adebayo@saywhat.org",
-      role: "Program Manager",
-      status: "active",
-      lastLogin: "2024-01-14T16:45:00Z",
-      permissions: ["programs", "reports"]
-    },
-    {
-      id: 3,
-      name: "Amina Hassan",
-      email: "amina.hassan@saywhat.org",
-      role: "HR Manager",
-      status: "active",
-      lastLogin: "2024-01-13T09:15:00Z",
-      permissions: ["hr", "reports"]
-    }
-  ]
 
-  const roles = [
-    {
-      id: 1,
-      name: "Super Admin",
-      description: "Full system access and administration",
-      userCount: 2,
-      permissions: ["dashboard", "programs", "call-centre", "hr", "inventory", "documents", "settings"]
-    },
-    {
-      id: 2,
-      name: "Program Manager",
-      description: "Program management and reporting access",
-      userCount: 8,
-      permissions: ["dashboard", "programs", "reports"]
-    },
-    {
-      id: 3,
-      name: "HR Manager",
-      description: "Human resources management access",
-      userCount: 3,
-      permissions: ["dashboard", "hr", "reports"]
-    },
-    {
-      id: 4,
-      name: "Call Center Agent",
-      description: "Call center operations access",
-      userCount: 15,
-      permissions: ["dashboard", "call-centre"]
-    }
-  ]
 
   return (
     <ModulePage
@@ -255,31 +376,63 @@ export default function SettingsPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Time Zone
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                        <option>Africa/Lagos (WAT)</option>
-                        <option>UTC</option>
-                        <option>America/New_York</option>
+                      <select 
+                        value={organizationSettings.timezone}
+                        onChange={(e) => setOrganizationSettings(prev => ({
+                          ...prev,
+                          timezone: e.target.value
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
+                        {localeOptions?.timezones?.map(tz => (
+                          <option key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </option>
+                        )) || (
+                          <option value="Africa/Harare">Africa/Harare (CAT)</option>
+                        )}
                       </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Default Language
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                        <option>English</option>
-                        <option>Hausa</option>
-                        <option>Yoruba</option>
-                        <option>Igbo</option>
+                      <select 
+                        value={organizationSettings.defaultLanguage}
+                        onChange={(e) => setOrganizationSettings(prev => ({
+                          ...prev,
+                          defaultLanguage: e.target.value
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
+                        {localeOptions?.languages?.map(lang => (
+                          <option key={lang.value} value={lang.value}>
+                            {lang.label} ({lang.native})
+                          </option>
+                        )) || (
+                          <option value="en">English</option>
+                        )}
                       </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Currency
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
-                        <option>Nigerian Naira (₦)</option>
-                        <option>US Dollar ($)</option>
-                        <option>Euro (€)</option>
+                      <select 
+                        value={organizationSettings.currency}
+                        onChange={(e) => setOrganizationSettings(prev => ({
+                          ...prev,
+                          currency: e.target.value
+                        }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
+                        {localeOptions?.currencies?.map(cur => (
+                          <option key={cur.value} value={cur.value}>
+                            {cur.label} ({cur.symbol})
+                          </option>
+                        )) || (
+                          <option value="USD">US Dollar ($)</option>
+                        )}
                       </select>
                     </div>
                   </div>
@@ -333,18 +486,35 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Save Button and Message */}
+                {/* Save Button and Messages */}
                 <div className="flex items-center justify-between pt-6 border-t">
-                  <div>
+                  <div className="flex flex-col space-y-2">
                     {saveMessage && (
-                      <p className="text-sm text-green-600">{saveMessage}</p>
+                      <p className="text-sm text-green-600 flex items-center">
+                        <CheckCircleIcon className="h-4 w-4 mr-1" />
+                        {saveMessage}
+                      </p>
+                    )}
+                    {errorMessage && (
+                      <p className="text-sm text-red-600 flex items-center">
+                        <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                        {errorMessage}
+                      </p>
                     )}
                   </div>
                   <button
                     onClick={handleSaveSettings}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={loading}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                   >
-                    Save Settings
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Settings'
+                    )}
                   </button>
                 </div>
               </div>
@@ -361,44 +531,71 @@ export default function SettingsPage() {
                   </div>
                   
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Login</th>
-                          <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {users.map((user) => (
-                          <tr key={user.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                                <div className="text-sm text-gray-500">{user.email}</div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {user.role}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                {user.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(user.lastLogin).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button className="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                              <button className="text-red-600 hover:text-red-900">Disable</button>
-                            </td>
+                    {usersLoading ? (
+                      <div className="flex justify-center items-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <span className="ml-2 text-gray-600">Loading users...</span>
+                      </div>
+                    ) : (
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Login</th>
+                            <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {users.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                                No users found
+                              </td>
+                            </tr>
+                          ) : (
+                            users.map((user) => (
+                              <tr key={user.id}>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {`${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User'}
+                                    </div>
+                                    <div className="text-sm text-gray-500">{user.email}</div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {user.role || 'USER'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {user.department || 'Unassigned'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    user.status === 'active' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {user.status}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <button className="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                                  <button className="text-red-600 hover:text-red-900">
+                                    {user.status === 'active' ? 'Disable' : 'Enable'}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
 
@@ -410,28 +607,46 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {roles.map((role) => (
-                      <div key={role.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <h4 className="font-semibold text-gray-900">{role.name}</h4>
-                          <span className="text-sm text-gray-500">{role.userCount} users</span>
+                  {rolesLoading ? (
+                    <div className="flex justify-center items-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-gray-600">Loading roles...</span>
+                    </div>
+                  ) : roles.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No roles found</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {roles.map((role) => (
+                        <div key={role.id} className="border rounded-lg p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <h4 className="font-semibold text-gray-900 capitalize">
+                              {role.name.replace(/_/g, ' ')}
+                            </h4>
+                            <span className="text-sm text-gray-500">{role.userCount} users</span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-3">{role.description}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {role.permissions.slice(0, 6).map((permission) => (
+                              <span key={permission} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                {permission.replace(/_/g, ' ')}
+                              </span>
+                            ))}
+                            {role.permissions.length > 6 && (
+                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                +{role.permissions.length - 6} more
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-3 flex space-x-2">
+                            <button className="text-sm text-blue-600 hover:text-blue-900">Edit</button>
+                            <button className="text-sm text-red-600 hover:text-red-900">Delete</button>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">{role.description}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {role.permissions.map((permission) => (
-                            <span key={permission} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                              {permission}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="mt-3 flex space-x-2">
-                          <button className="text-sm text-blue-600 hover:text-blue-900">Edit</button>
-                          <button className="text-sm text-red-600 hover:text-red-900">Delete</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

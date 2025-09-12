@@ -1594,3 +1594,36 @@ model ValueAssessment {
   @@index([valueName])
   @@map("value_assessments")
 }
+
+// Organization Settings Model
+model OrganizationSettings {
+  id               String   @id @default(cuid())
+  name             String
+  email            String
+  phone            String
+  address          String?
+  timezone         String   @default("Africa/Harare")
+  defaultLanguage  String   @default("en")
+  currency         String   @default("USD")
+  logo             String?
+  website          String?
+  taxId            String?
+  registrationNo   String?
+  
+  // Business Hours
+  businessHoursStart  String?  @default("08:00")
+  businessHoursEnd    String?  @default("17:00")
+  workingDays         String[] @default(["monday", "tuesday", "wednesday", "thursday", "friday"])
+  
+  // System Settings
+  maintenanceMode     Boolean  @default(false)
+  allowRegistration   Boolean  @default(false)
+  emailNotifications  Boolean  @default(true)
+  smsNotifications    Boolean  @default(false)
+  pushNotifications   Boolean  @default(true)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@map("organization_settings")
+}
