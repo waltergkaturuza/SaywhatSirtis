@@ -29,7 +29,7 @@ export async function GET() {
     }
 
     // Get all active employees
-    const employees = await (prisma.user.findMany as any)({
+    const employees = await prisma.user.findMany({
       where: { 
         status: 'ACTIVE'
       },
@@ -203,7 +203,6 @@ export async function POST(request: Request) {
 
     // Sanitize input data
     const sanitizedData = {
-      userId: `user_${employeeId}`, // Temporary user ID for standalone employee
       employeeId,
       firstName: sanitizeInput(formData.firstName),
       lastName: sanitizeInput(formData.lastName),
@@ -230,7 +229,7 @@ export async function POST(request: Request) {
     }
 
     // Create new employee
-    const newEmployee = await (prisma.user.create as any)({
+    const newEmployee = await prisma.user.create({
       data: sanitizedData
     })
 

@@ -38,7 +38,7 @@ export async function PATCH(
     }
 
     // Update supervisor status
-    const updatedEmployee = await (prisma.user.update as any)({
+    const updatedEmployee = await prisma.user.update({
       where: { id: employeeId },
       data: {
         isSupervisor: isSupervisor

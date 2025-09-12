@@ -28,7 +28,7 @@ export async function GET(
     }
 
     // Fetch employee with all details including relationships
-    const employee = await (prisma.user.findUnique as any)({
+    const employee = await prisma.user.findUnique({
       where: { id: employeeId },
       include: {
         departmentRef: {
@@ -67,7 +67,6 @@ export async function GET(
     // Transform employee data for frontend
     const transformedEmployee = {
       id: employee.id,
-      userId: employee.userId,
       employeeId: employee.employeeId,
       firstName: employee.firstName,
       lastName: employee.lastName,
@@ -221,7 +220,7 @@ export async function PUT(
     }
 
     // Update employee
-    const updatedEmployee = await (prisma.user.update as any)({
+    const updatedEmployee = await prisma.user.update({
       where: { id: employeeId },
       data: updateData,
       include: {
