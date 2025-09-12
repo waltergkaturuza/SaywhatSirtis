@@ -231,19 +231,34 @@ async function getSystemStats() {
       
       // Get total documents
       safeQuery(async (prisma) => {
-        return await prisma.document?.count() || 0
+        return await prisma.document.count()
       }).catch(() => 0),
       
-      // Get total employees
+      // Get total employees (users with employment details)
       safeQuery(async (prisma) => {
-        return await prisma.employee?.count() || 0
+        return await prisma.user.count({
+          where: { 
+            OR: [
+              { firstName: { not: null } },
+              { department: { not: null } },
+              { position: { not: null } }
+            ]
+          }
+        })
       }).catch(() => 0),
       
-      // Get active employees
+      // Get active employees (active users with employment details)
       safeQuery(async (prisma) => {
-        return await prisma.employee?.count({
-          where: { status: 'ACTIVE' }
-        }) || 0
+        return await prisma.user.count({
+          where: { 
+            isActive: true,
+            OR: [
+              { firstName: { not: null } },
+              { department: { not: null } },
+              { position: { not: null } }
+            ]
+          }
+        })
       }).catch(() => 0),
       
       // Get API calls from audit logs (last 24 hours)
@@ -384,7 +399,7 @@ async function getStorageUsage(): Promise<string> {
     // In a real implementation, this would check actual storage
     // For now, calculate based on document count
     const docCount = await safeQuery(async (prisma) => {
-      return await prisma.document?.count() || 0
+      return await prisma.document.count()
     }).catch(() => 0)
     
     // Estimate storage: ~2MB per document average

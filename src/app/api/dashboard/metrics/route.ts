@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { safeQuery } from '@/lib/prisma'
+import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session) {
+    // Allow unauthenticated access in development for testing
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    if (!session && !isDevelopment) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -16,57 +20,69 @@ export async function GET(request: NextRequest) {
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const firstDayOfYear = new Date(now.getFullYear(), 0, 1)
 
-    // Get member count from User table (representing membership database)
-    const totalMembers = await prisma.user.count({
-      where: {
-        role: {
-          not: 'SYSTEM_ADMINISTRATOR' // Exclude admin users from member count
-        }
-      }
-    })
-
-    // Get call statistics
-    const [callsThisMonth, callsThisYear, callsToday] = await Promise.all([
-      prisma.callRecord.count({
+    // Get member count from User table with safe query execution
+    const totalMembers = await safeQuery(async (prisma) => {
+      return await prisma.user.count({
         where: {
-          createdAt: {
-            gte: firstDayOfMonth
-          }
-        }
-      }),
-      prisma.callRecord.count({
-        where: {
-          createdAt: {
-            gte: firstDayOfYear
-          }
-        }
-      }),
-      prisma.callRecord.count({
-        where: {
-          createdAt: {
-            gte: new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          }
+          isActive: true // Count active users as members
         }
       })
+    }).catch(() => 0)
+
+    // Get call statistics with safe query execution
+    const [callsThisMonth, callsThisYear, callsToday] = await Promise.all([
+      safeQuery(async (prisma) => {
+        return await prisma.callRecord.count({
+          where: {
+            createdAt: {
+              gte: firstDayOfMonth
+            }
+          }
+        })
+      }).catch(() => 0),
+      safeQuery(async (prisma) => {
+        return await prisma.callRecord.count({
+          where: {
+            createdAt: {
+              gte: firstDayOfYear
+            }
+          }
+        })
+      }).catch(() => 0),
+      safeQuery(async (prisma) => {
+        return await prisma.callRecord.count({
+          where: {
+            createdAt: {
+              gte: new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            }
+          }
+        })
+      }).catch(() => 0)
     ])
 
-    // Get program performance metrics
+    // Get program performance metrics with safe query execution
     const [activePrograms, totalPrograms, programsOnTrack] = await Promise.all([
-      prisma.project.count({
-        where: {
-          status: 'ACTIVE'
-        }
-      }),
-      prisma.project.count(),
-      prisma.project.count({
-        where: {
-          status: 'ACTIVE',
-          // Consider a program "on track" if it's active and not overdue
-          endDate: {
-            gte: now
+      safeQuery(async (prisma) => {
+        return await prisma.project.count({
+          where: {
+            status: 'ACTIVE'
           }
-        }
-      })
+        })
+      }).catch(() => 0),
+      safeQuery(async (prisma) => {
+        return await prisma.project.count()
+      }).catch(() => 0),
+      safeQuery(async (prisma) => {
+        return await prisma.project.count({
+          where: {
+            status: 'ACTIVE',
+            // Consider a program "on track" if it's active and not overdue
+            endDate: {
+              gte: now
+            }
+          }
+        })
+      }).catch(() => 0)
     ])
 
     // Calculate performance score based on programs
