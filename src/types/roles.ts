@@ -10,8 +10,14 @@ export enum UserRole {
 }
 
 export enum Department {
-  CALL_CENTER = 'CALL_CENTER',
+  EXECUTIVE_DIRECTORS_OFFICE = 'EXECUTIVE_DIRECTORS_OFFICE',
+  HUMAN_RESOURCE_MANAGEMENT = 'HUMAN_RESOURCE_MANAGEMENT',
+  FINANCE_AND_ADMINISTRATION = 'FINANCE_AND_ADMINISTRATION',
   PROGRAMS = 'PROGRAMS', 
+  GRANTS_AND_COMPLIANCE = 'GRANTS_AND_COMPLIANCE',
+  COMMUNICATIONS_AND_ADVOCACY = 'COMMUNICATIONS_AND_ADVOCACY',
+  // Legacy departments for backward compatibility
+  CALL_CENTER = 'CALL_CENTER',
   HR = 'HR',
   FINANCE = 'FINANCE',
   ADMIN = 'ADMIN',
@@ -132,10 +138,17 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
   }
 }
 
-// Department to default role mapping
+// Department to default role mapping based on SAYWHAT organizational structure
 export const DEPARTMENT_DEFAULT_ROLES: Record<Department, UserRole> = {
+  // Main SAYWHAT Departments
+  [Department.EXECUTIVE_DIRECTORS_OFFICE]: UserRole.SYSTEM_ADMINISTRATOR,
+  [Department.HUMAN_RESOURCE_MANAGEMENT]: UserRole.HR,
+  [Department.FINANCE_AND_ADMINISTRATION]: UserRole.ADVANCE_USER_2,
+  [Department.PROGRAMS]: UserRole.ADVANCE_USER_1, 
+  [Department.GRANTS_AND_COMPLIANCE]: UserRole.ADVANCE_USER_2,
+  [Department.COMMUNICATIONS_AND_ADVOCACY]: UserRole.ADVANCE_USER_1,
+  // Legacy departments for backward compatibility
   [Department.CALL_CENTER]: UserRole.BASIC_USER_1,
-  [Department.PROGRAMS]: UserRole.ADVANCE_USER_2, 
   [Department.HR]: UserRole.HR,
   [Department.FINANCE]: UserRole.ADVANCE_USER_1,
   [Department.ADMIN]: UserRole.SYSTEM_ADMINISTRATOR,

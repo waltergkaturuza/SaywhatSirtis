@@ -19,8 +19,11 @@ import {
   CloudArrowUpIcon,
   DocumentPlusIcon,
   MagnifyingGlassIcon,
-  TrashIcon
+  TrashIcon,
+  InformationCircleIcon,
+  ExclamationTriangleIcon
 } from "@heroicons/react/24/outline"
+import { UserRole, Department, getDefaultRoleForDepartment, getRoleDisplayName, ROLE_DEFINITIONS } from "@/types/roles"
 
 interface EmployeeFormData {
   // Personal Information
@@ -73,6 +76,7 @@ interface EmployeeFormData {
   
   // Access & Security
   accessLevel: string
+  userRole: UserRole
   systemAccess: string[]
   securityClearance: string
   
@@ -150,6 +154,7 @@ export default function AddEmployeePage() {
     certifications: [],
     trainingRequired: [],
     accessLevel: "basic",
+    userRole: UserRole.BASIC_USER_1,
     systemAccess: [],
     securityClearance: "none",
     contractSigned: false,
@@ -218,6 +223,43 @@ export default function AddEmployeePage() {
     fetchDepartments()
     fetchSupervisors()
   }, [])
+
+  // Update role when department changes
+  useEffect(() => {
+    if (formData.departmentId && departments.length > 0) {
+      const selectedDept = departments.find(d => d.id === formData.departmentId)
+      if (selectedDept) {
+        // Map department names to our Department enum
+        let departmentKey: Department;
+        const deptName = selectedDept.name.toLowerCase();
+        
+        if (deptName.includes('executive') && deptName.includes('director')) {
+          departmentKey = Department.EXECUTIVE_DIRECTORS_OFFICE;
+        } else if (deptName.includes('human') && deptName.includes('resource')) {
+          departmentKey = Department.HUMAN_RESOURCE_MANAGEMENT;
+        } else if (deptName.includes('finance') && deptName.includes('administration')) {
+          departmentKey = Department.FINANCE_AND_ADMINISTRATION;
+        } else if (deptName.includes('program')) {
+          departmentKey = Department.PROGRAMS;
+        } else if (deptName.includes('grant') && deptName.includes('compliance')) {
+          departmentKey = Department.GRANTS_AND_COMPLIANCE;
+        } else if (deptName.includes('communication') && deptName.includes('advocacy')) {
+          departmentKey = Department.COMMUNICATIONS_AND_ADVOCACY;
+        } else if (deptName.includes('call') || deptName.includes('center')) {
+          departmentKey = Department.CALL_CENTER;
+        } else if (deptName.includes('hr') || deptName.includes('human')) {
+          departmentKey = Department.HR;
+        } else if (deptName.includes('finance')) {
+          departmentKey = Department.FINANCE;
+        } else {
+          departmentKey = Department.PROGRAMS; // Default fallback
+        }
+        
+        const defaultRole = getDefaultRoleForDepartment(departmentKey);
+        handleInputChange('userRole', defaultRole);
+      }
+    }
+  }, [formData.departmentId, departments])
 
   const handleInputChange = (field: keyof EmployeeFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -908,82 +950,224 @@ export default function AddEmployeePage() {
             {/* Step 5: Access & Security */}
             {currentStep === 5 && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Access & Security</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                  <ShieldCheckIcon className="h-6 w-6 mr-2 text-indigo-600" />
+                  Access & Security
+                </h2>
                 
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Access Level *
-                    </label>
-                    <select
-                      value={formData.accessLevel}
-                      onChange={(e) => handleInputChange("accessLevel", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      required
-                    >
-                      <option value="basic">Basic User</option>
-                      <option value="advanced">Advanced User</option>
-                      <option value="admin">Administrator</option>
-                      <option value="super-admin">Super Administrator</option>
-                    </select>
-                  </div>
+                <div className="space-y-8">
+                  {/* Department Information Display */}
+                  {formData.departmentId && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center mb-2">
+                        <InformationCircleIcon className="h-5 w-5 text-blue-600 mr-2" />
+                        <h4 className="font-medium text-blue-900">Department Assignment</h4>
+                      </div>
+                      <p className="text-blue-800 text-sm">
+                        Selected Department: <span className="font-semibold">{formData.department}</span>
+                      </p>
+                      <p className="text-blue-700 text-xs mt-1">
+                        Default role will be automatically assigned based on department structure.
+                      </p>
+                    </div>
+                  )}
 
+                  {/* Role Assignment */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      System Access
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      User Role & Access Level *
                     </label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
-                      {["HR System", "Finance System", "Project Management", "Document Management", "Customer Database", "Analytics Dashboard"].map((system) => (
-                        <label key={system} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.systemAccess.includes(system)}
-                            onChange={(e) => {
-                              const currentAccess = formData.systemAccess;
-                              if (e.target.checked) {
-                                handleInputChange("systemAccess", [...currentAccess, system]);
-                              } else {
-                                handleInputChange("systemAccess", currentAccess.filter(s => s !== system));
-                              }
-                            }}
-                            className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">{system}</span>
-                        </label>
-                      ))}
+                    <div className="space-y-3">
+                      {Object.values(UserRole).map((role) => {
+                        const permissions = ROLE_DEFINITIONS[role];
+                        const isRecommended = formData.departmentId && 
+                          (() => {
+                            const selectedDept = departments.find(d => d.id === formData.departmentId);
+                            if (!selectedDept) return false;
+                            
+                            const deptName = selectedDept.name.toLowerCase();
+                            let departmentKey: Department;
+                            
+                            if (deptName.includes('executive') && deptName.includes('director')) {
+                              departmentKey = Department.EXECUTIVE_DIRECTORS_OFFICE;
+                            } else if (deptName.includes('human') && deptName.includes('resource')) {
+                              departmentKey = Department.HUMAN_RESOURCE_MANAGEMENT;
+                            } else if (deptName.includes('finance') && deptName.includes('administration')) {
+                              departmentKey = Department.FINANCE_AND_ADMINISTRATION;
+                            } else if (deptName.includes('program')) {
+                              departmentKey = Department.PROGRAMS;
+                            } else if (deptName.includes('grant') && deptName.includes('compliance')) {
+                              departmentKey = Department.GRANTS_AND_COMPLIANCE;
+                            } else if (deptName.includes('communication') && deptName.includes('advocacy')) {
+                              departmentKey = Department.COMMUNICATIONS_AND_ADVOCACY;
+                            } else {
+                              departmentKey = Department.PROGRAMS;
+                            }
+                            
+                            return getDefaultRoleForDepartment(departmentKey) === role;
+                          })();
+                        
+                        return (
+                          <div key={role} className={`border rounded-lg p-4 ${formData.userRole === role ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200'} ${isRecommended ? 'ring-2 ring-green-200' : ''}`}>
+                            <label className="flex items-start cursor-pointer">
+                              <input
+                                type="radio"
+                                name="userRole"
+                                value={role}
+                                checked={formData.userRole === role}
+                                onChange={(e) => handleInputChange("userRole", e.target.value as UserRole)}
+                                className="mt-1 mr-3 text-indigo-600 focus:ring-indigo-500"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center">
+                                  <span className="font-medium text-gray-900">
+                                    {getRoleDisplayName(role)}
+                                  </span>
+                                  {isRecommended && (
+                                    <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                      Recommended for {formData.department}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-1 text-sm text-gray-600">
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                                    <div className={`text-xs px-2 py-1 rounded ${permissions.callCenter === 'full' ? 'bg-green-100 text-green-800' : permissions.callCenter === 'edit' ? 'bg-yellow-100 text-yellow-800' : permissions.callCenter === 'view' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                      Call Center: {permissions.callCenter}
+                                    </div>
+                                    <div className={`text-xs px-2 py-1 rounded ${permissions.programs === 'full' ? 'bg-green-100 text-green-800' : permissions.programs === 'edit' ? 'bg-yellow-100 text-yellow-800' : permissions.programs === 'view' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                      Programs: {permissions.programs}
+                                    </div>
+                                    <div className={`text-xs px-2 py-1 rounded ${permissions.hr === 'full' ? 'bg-green-100 text-green-800' : permissions.hr === 'edit' ? 'bg-yellow-100 text-yellow-800' : permissions.hr === 'view' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                      HR: {permissions.hr}
+                                    </div>
+                                    <div className={`text-xs px-2 py-1 rounded ${permissions.documents === 'full' ? 'bg-green-100 text-green-800' : permissions.documents === 'edit' ? 'bg-yellow-100 text-yellow-800' : permissions.documents === 'view' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                      Documents: {permissions.documents}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
+                  {/* Department Structure Information */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                      <BuildingOfficeIcon className="h-5 w-5 mr-2 text-gray-600" />
+                      SAYWHAT Department Structure
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+                      <div>
+                        <h5 className="font-semibold text-gray-800 mb-2">Main Departments:</h5>
+                        <ul className="space-y-1">
+                          <li>• Executive Directors Office</li>
+                          <li className="ml-4 text-gray-600">→ Subunit: Research and Development</li>
+                          <li>• Human Resource Management</li>
+                          <li>• Finance and Administration</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <ul className="space-y-1">
+                          <li>• Programs</li>
+                          <li className="ml-4 text-gray-600">→ Subunits: MEAL and Call Center</li>
+                          <li>• Grants and Compliance</li>
+                          <li>• Communications and Advocacy</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Security Clearance */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Security Clearance
+                      Document Security Clearance Level *
                     </label>
                     <select
                       value={formData.securityClearance}
                       onChange={(e) => handleInputChange("securityClearance", e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="none">None Required</option>
-                      <option value="confidential">Confidential</option>
-                      <option value="secret">Secret</option>
-                      <option value="top-secret">Top Secret</option>
+                      <option value="public">Public (Public documents only)</option>
+                      <option value="confidential">Confidential (Public + Confidential)</option>
+                      <option value="secret">Secret (Public + Confidential + Secret)</option>
+                      <option value="top_secret">Top Secret (All document levels)</option>
                     </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Determines the highest level of classified documents this user can access.
+                    </p>
                   </div>
 
-                  <div className="bg-yellow-50 p-4 rounded-md">
-                    <h3 className="text-sm font-medium text-yellow-900 mb-2">Security Setup Tasks</h3>
+                  {/* System Access based on Role */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      System Module Access (Based on Role)
+                    </label>
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      {formData.userRole && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-gray-800">
+                            Access granted for {getRoleDisplayName(formData.userRole)}:
+                          </h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {Object.entries(ROLE_DEFINITIONS[formData.userRole]).map(([module, access]) => {
+                              if (typeof access !== 'string' || ['documentLevel', 'canViewOthersProfiles', 'canManageUsers', 'fullAccess'].includes(module)) return null;
+                              
+                              const getAccessIcon = (level: string) => {
+                                switch (level) {
+                                  case 'full': return '🟢';
+                                  case 'edit': return '🟡';
+                                  case 'view': return '🔵';
+                                  case 'none': return '🔴';
+                                  default: return '⚪';
+                                }
+                              };
+                              
+                              return (
+                                <div key={module} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                  <span className="text-sm capitalize">
+                                    {module.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                                  </span>
+                                  <span className="text-sm font-medium flex items-center">
+                                    {getAccessIcon(access)} {access}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Security Setup Tasks */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-yellow-900 mb-3 flex items-center">
+                      <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
+                      Required Security Setup Tasks
+                    </h4>
                     <div className="space-y-2">
-                      <div className="text-sm text-yellow-800">
-                        • Badge/ID card creation required
+                      <div className="flex items-center text-sm text-yellow-800">
+                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        Badge/ID card creation required
                       </div>
-                      <div className="text-sm text-yellow-800">
-                        • System accounts to be provisioned
+                      <div className="flex items-center text-sm text-yellow-800">
+                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        System accounts to be provisioned
                       </div>
-                      <div className="text-sm text-yellow-800">
-                        • Access permissions to be configured
+                      <div className="flex items-center text-sm text-yellow-800">
+                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        Access permissions to be configured automatically
                       </div>
-                      <div className="text-sm text-yellow-800">
-                        • Security training to be scheduled
+                      <div className="flex items-center text-sm text-yellow-800">
+                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        Security training to be scheduled
+                      </div>
+                      <div className="flex items-center text-sm text-yellow-800">
+                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        Department-based role assignment will be applied
                       </div>
                     </div>
                   </div>
