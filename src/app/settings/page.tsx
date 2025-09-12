@@ -1,6 +1,8 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
+import RoleManagementSystem from "@/components/admin/role-management-system"
+import RoleManagement from "@/components/admin/RoleManagement"
 import { useState, useEffect } from "react"
 import {
   Cog6ToothIcon,
@@ -19,7 +21,8 @@ import {
   DocumentTextIcon,
   ChartBarIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  AdjustmentsHorizontalIcon
 } from "@heroicons/react/24/outline"
 
 interface SystemStatus {
@@ -315,6 +318,7 @@ export default function SettingsPage() {
   const settingsTabs = [
     { id: "general", name: "General", icon: Cog6ToothIcon },
     { id: "users", name: "Users & Roles", icon: UserGroupIcon },
+    { id: "rbac", name: "Role Management", icon: AdjustmentsHorizontalIcon },
     { id: "security", name: "Security", icon: ShieldCheckIcon },
     { id: "notifications", name: "Notifications", icon: BellIcon },
     { id: "integrations", name: "Integrations", icon: GlobeAltIcon },
@@ -648,6 +652,30 @@ export default function SettingsPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {activeTab === "rbac" && (
+              <div className="space-y-6">
+                <div className="border-l-4 border-blue-500 pl-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Advanced Role-Based Access Control</h3>
+                  <p className="text-gray-600 mt-1">
+                    Comprehensive role management with drag-and-drop functionality, permission hierarchy, and real-time access control.
+                  </p>
+                </div>
+                <RoleManagementSystem />
+              </div>
+            )}
+
+            {activeTab === "rbac" && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Role-Based Access Control</h3>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Comprehensive role management system with department-based default roles and granular permissions.
+                  </p>
+                </div>
+                <RoleManagement />
               </div>
             )}
 

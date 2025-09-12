@@ -41,7 +41,7 @@ export async function GET() {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      role: user.role || 'USER',
+      role: user.role || 'BASIC_USER_1',
       department: user.department,
       position: user.position,
       lastLogin: user.lastLogin?.toISOString(),
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
 
           return NextResponse.json({
             success: true,
-            user: transformedUser,
+            user: { ...transformedUser, role: transformedUser.role.replace('USER', 'BASIC_USER_1') },
             message: `User ${updatedUser.isActive ? 'activated' : 'deactivated'} successfully`
           })
         } catch (error) {
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
               email: userData.email,
               firstName: userData.firstName,
               lastName: userData.lastName,
-              role: userData.role ? userData.role.toUpperCase() as any : 'USER',
+              role: userData.role ? userData.role.toUpperCase() as any : 'BASIC_USER_1',
               department: userData.department || '',
               position: userData.position || '',
               isActive: true
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
             firstName: newUser.firstName,
             lastName: newUser.lastName,
             email: newUser.email,
-            role: newUser.role || 'USER',
+            role: newUser.role || 'BASIC_USER_1',
             department: newUser.department,
             position: newUser.position,
             lastLogin: newUser.lastLogin?.toISOString(),
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
 
           return NextResponse.json({
             success: true,
-            user: transformedUser,
+            user: { ...transformedUser, role: transformedUser.role.replace('USER', 'BASIC_USER_1') },
             message: "User updated successfully"
           })
         } catch (error) {

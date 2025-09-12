@@ -12,7 +12,7 @@ model User {
   id               String     @id @default(cuid())
   email            String     @unique
   username         String?    @unique
-  role             UserRole   @default(USER)
+  role             UserRole   @default(BASIC_USER_1)
   isActive         Boolean    @default(true)
   lastLogin        DateTime?
   createdAt        DateTime   @default(now())
@@ -1075,13 +1075,12 @@ model Notification {
 }
 
 enum UserRole {
-  SUPER_ADMIN
-  ADMIN
-  HR_MANAGER
-  PROJECT_MANAGER
-  CALL_CENTRE_AGENT
-  EMPLOYEE
-  USER
+  BASIC_USER_1
+  BASIC_USER_2
+  ADVANCE_USER_1
+  ADVANCE_USER_2
+  HR
+  SYSTEM_ADMINISTRATOR
 }
 
 enum AuditLogSeverity {

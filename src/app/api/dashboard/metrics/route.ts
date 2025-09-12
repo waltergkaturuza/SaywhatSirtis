@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const totalMembers = await prisma.user.count({
       where: {
         role: {
-          not: 'ADMIN' // Exclude admin users from member count
+          not: 'SYSTEM_ADMINISTRATOR' // Exclude admin users from member count
         }
       }
     })

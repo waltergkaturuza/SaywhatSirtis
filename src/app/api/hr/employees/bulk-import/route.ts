@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
             lastName: employeeData.lastname || null,
             department: employeeData.department || null,
             position: employeeData.position || null,
-            role: 'USER'
+            role: 'BASIC_USER_1'
           }
         })
 
