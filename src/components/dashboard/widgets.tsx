@@ -1,9 +1,6 @@
 import { FC } from "react"
 import { cn } from "@/lib/utils"
 
-// Import the AttendanceWidget
-export { AttendanceWidget } from "./attendance-widget"
-
 interface BaseWidgetProps {
   className?: string
 }

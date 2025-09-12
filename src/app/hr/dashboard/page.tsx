@@ -31,8 +31,7 @@ interface DashboardStats {
   trainingCount: number
   activeTrainings: number
   averagePerformance: number
-  attendanceRate: number
-  attendanceIncrease: number
+  newHires: number
   pendingReviews: number
   onboardingCount: number
   departments: Array<{ name: string; count: number }>
@@ -290,14 +289,7 @@ export default function HRDashboard() {
       color: "purple",
       stats: loading ? "Loading..." : `${stats?.activeTrainings || 0} active programs`
     },
-    {
-      title: "Time & Attendance",
-      description: "Track attendance, punch in/out, time tracking, and attendance roster",
-      icon: ClockIcon,
-      href: "/hr/attendance",
-      color: "indigo",
-      stats: loading ? "Loading..." : `${stats?.attendanceRate || 0}% attendance rate`
-    },
+
     {
       title: "Departments",
       description: "Manage organizational structure and department information",
@@ -410,21 +402,21 @@ export default function HRDashboard() {
 
           <div className="bg-white rounded-lg border p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <ClockIcon className="w-6 h-6 text-purple-600" />
+              <div className="p-2 bg-green-100 rounded-lg">
+                <UserGroupIcon className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {loading ? '...' : `${stats?.attendanceRate || '96.2'}%`}
+                  {loading ? '...' : `${stats?.activeEmployees || '87'}`}
                 </h3>
-                <p className="text-sm text-gray-500">Attendance Rate</p>
+                <p className="text-sm text-gray-500">Active Employees</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">This month</span>
                 <span className="text-green-600 font-medium">
-                  {loading ? '...' : `+${stats?.attendanceIncrease || '0.8'}%`}
+                  {loading ? '...' : `+${stats?.newHires || '2'}`} new
                 </span>
               </div>
             </div>

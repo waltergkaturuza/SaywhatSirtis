@@ -45,13 +45,7 @@ const reportTypes = [
     color: "bg-orange-50 text-orange-600",
     href: "/hr/training/reports"
   },
-  {
-    title: "Attendance Reports",
-    description: "Time tracking, attendance patterns, and leave",
-    icon: CalendarDaysIcon,
-    color: "bg-indigo-50 text-indigo-600",
-    href: "/hr/attendance/reports"
-  },
+
   {
     title: "Custom Reports",
     description: "Build custom reports with filters and exports",

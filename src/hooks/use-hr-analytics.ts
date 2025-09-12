@@ -36,15 +36,13 @@ export const useHRAnalytics = ({
         departmentsData,
         turnoverData,
         performanceData,
-        salaryData,
-        attendanceData
+        salaryData
       ] = await Promise.all([
         fetchData(`/api/hr/analytics/metrics?period=${period}&department=${department}`),
         fetchData(`/api/hr/analytics/departments?period=${period}`),
         fetchData(`/api/hr/analytics/turnover?period=${period}`),
         fetchData(`/api/hr/analytics/performance?period=${period}&department=${department}`),
-        fetchData(`/api/hr/analytics/salary?department=${department}`),
-        fetchData(`/api/hr/analytics/attendance?period=${period}&department=${department}`)
+        fetchData(`/api/hr/analytics/salary?department=${department}`)
       ])
 
       setLastUpdated(new Date())
@@ -54,8 +52,7 @@ export const useHRAnalytics = ({
         departments: departmentsData,
         turnover: turnoverData,
         performance: performanceData,
-        salary: salaryData,
-        attendance: attendanceData
+        salary: salaryData
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch analytics data')

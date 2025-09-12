@@ -18,6 +18,55 @@ import {
 
 export default function DataSummaryPage() {
   const { data: session } = useSession()
+
+  // Mock data for summary
+  const summaryData = {
+    totalProjects: 45,
+    totalReach: 285000,
+    countries: 12,
+    averageProgress: 72,
+    totalBudget: 15750000
+  }
+
+  const genderBreakdown = [
+    { category: 'Male', count: 142500, percentage: 50 },
+    { category: 'Female', count: 142500, percentage: 50 }
+  ]
+
+  const ageBreakdown = [
+    { category: 'Children (0-17)', count: 85500, percentage: 30 },
+    { category: 'Youth (18-35)', count: 142500, percentage: 50 },
+    { category: 'Adults (36-60)', count: 57000, percentage: 20 }
+  ]
+
+  const countryData = [
+    {
+      country: 'Nigeria',
+      reach: 120000,
+      projects: 18,
+      budget: 8500000,
+      progress: 75,
+      provinces: ['Lagos', 'Kano', 'Rivers'],
+      topSectors: ['Healthcare', 'Education']
+    },
+    {
+      country: 'Ghana',
+      reach: 65000,
+      projects: 10,
+      budget: 4200000,
+      progress: 68,
+      provinces: ['Greater Accra', 'Ashanti'],
+      topSectors: ['Agriculture', 'Healthcare']
+    }
+  ]
+
+  const sectorData = [
+    { sector: 'Healthcare', projects: 15, budget: 5200000, reach: 125000 },
+    { sector: 'Education', projects: 12, budget: 3800000, reach: 95000 },
+    { sector: 'Agriculture', projects: 8, budget: 2900000, reach: 45000 },
+    { sector: 'Water & Sanitation', projects: 10, budget: 3850000, reach: 20000 }
+  ]
+
   const [searchParams, setSearchParams] = useState({
     projectName: "",
     country: "all",
@@ -180,85 +229,7 @@ export default function DataSummaryPage() {
     </div>
   )
 
-  // Sample summary data
-  const summaryData = {
-    totalProjects: 45,
-    totalReach: 161440,
-    totalBudget: 12850000,
-    averageProgress: 68,
-    completedProjects: 12,
-    ongoingProjects: 33,
-    countries: 5,
-    provinces: 23
-  }
-
-  const genderBreakdown = [
-    { category: "Male", count: 78720, percentage: 48.8 },
-    { category: "Female", count: 82720, percentage: 51.2 }
-  ]
-
-  const ageBreakdown = [
-    { category: "Children (0-17)", count: 48432, percentage: 30.0 },
-    { category: "Youth (18-35)", count: 64576, percentage: 40.0 },
-    { category: "Adults (36-60)", count: 40360, percentage: 25.0 },
-    { category: "Elderly (60+)", count: 8072, percentage: 5.0 }
-  ]
-
-  const countryData = [
-    {
-      country: "Nigeria",
-      projects: 18,
-      reach: 72650,
-      budget: 5200000,
-      progress: 75,
-      provinces: ["Lagos", "Kano", "Abuja", "Rivers", "Ogun"],
-      topSectors: ["Health", "Education", "Agriculture"]
-    },
-    {
-      country: "Ghana", 
-      projects: 12,
-      reach: 38500,
-      budget: 3100000,
-      progress: 68,
-      provinces: ["Greater Accra", "Ashanti", "Northern"],
-      topSectors: ["Education", "Water", "Health"]
-    },
-    {
-      country: "Kenya",
-      projects: 8,
-      reach: 28740,
-      budget: 2800000,
-      progress: 82,
-      provinces: ["Nairobi", "Mombasa", "Kisumu"],
-      topSectors: ["Water", "Agriculture", "Health"]
-    },
-    {
-      country: "Uganda",
-      projects: 5,
-      reach: 15250,
-      budget: 1200000,
-      progress: 60,
-      provinces: ["Kampala", "Entebbe"],
-      topSectors: ["Youth", "Agriculture", "Health"]
-    },
-    {
-      country: "Senegal",
-      projects: 2,
-      reach: 6300,
-      budget: 550000,
-      progress: 85,
-      provinces: ["Dakar"],
-      topSectors: ["Agriculture", "Water"]
-    }
-  ]
-
-  const sectorData = [
-    { sector: "Health", projects: 15, reach: 62500, budget: 4200000 },
-    { sector: "Education", projects: 12, reach: 45800, budget: 3800000 },
-    { sector: "Water & Sanitation", projects: 8, reach: 28900, budget: 2900000 },
-    { sector: "Agriculture", projects: 6, reach: 15240, budget: 1400000 },
-    { sector: "Youth Development", projects: 4, reach: 9000, budget: 550000 }
-  ]
+  
 
   return (
     <ModulePage

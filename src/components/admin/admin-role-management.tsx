@@ -111,7 +111,7 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
   const departments: Record<DepartmentKey, Department> = {
     'HR': {
       name: 'Human Resources',
-      modules: ['Employee Management', 'Performance', 'Time & Attendance']
+      modules: ['Employee Management', 'Performance', 'Training & Development']
     },
     'Finance': {
       name: 'Finance & Accounting',

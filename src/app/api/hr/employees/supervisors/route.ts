@@ -25,9 +25,8 @@ export async function GET() {
     // Fetch employees who are supervisors or can be assigned as supervisors
     const supervisors = await prisma.user.findMany({
       where: {
-        status: 'ACTIVE',
+        isActive: true,
         OR: [
-          { isSupervisor: true },
           { 
             position: {
               contains: 'manager',

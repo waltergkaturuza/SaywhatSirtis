@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       ] = await Promise.all([
         prisma.user.count().catch(e => { console.error('Employee count error:', e); return 0; }),
         prisma.user.count({
-          where: { status: 'ACTIVE' }
+          where: { isActive: true }
         }).catch(e => { console.error('Active employee count error:', e); return 0; }),
         prisma.department.count().catch(e => { console.error('Department count error:', e); return 0; }),
         prisma.event.count({
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
           _count: {
             select: {
               employees: {
-                where: { status: 'ACTIVE' }
+                where: { isActive: true }
               }
             }
           }
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
           startDate: {
             gte: onboardingThreshold
           },
-          status: 'ACTIVE'
+          isActive: true
         }
       })
 
@@ -126,8 +126,7 @@ export async function GET(request: NextRequest) {
         trainingCount,
         activeTrainings,
         averagePerformance,
-        attendanceRate: 0, // Will implement attendance tracking later
-        attendanceIncrease: 0,
+        newHires: newEmployeesThisMonth,
         pendingReviews,
         onboardingCount,
         departments

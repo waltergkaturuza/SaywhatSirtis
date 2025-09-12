@@ -52,8 +52,7 @@ import {
   NotificationsWidget, 
   QuickActionsWidget, 
   SystemStatusWidget, 
-  WeatherWidget,
-  AttendanceWidget
+  WeatherWidget
 } from "@/components/dashboard/widgets"
 import { ModuleConfig, DashboardWidget } from "@/types/navigation"
 
@@ -106,14 +105,7 @@ export const dashboardWidgets: DashboardWidget[] = [
     size: "sm",
     order: 6
   },
-  {
-    id: "hr-attendance",
-    title: "Time & Attendance",
-    component: AttendanceWidget,
-    size: "lg",
-    order: 7,
-    requiredPermissions: ["hr.attendance"]
-  }
+
 ]
 
 // Modules Configuration
@@ -345,40 +337,6 @@ export const modulesConfig: ModuleConfig[] = [
         href: "/hr/training",
         icon: BookOpenIcon,
         description: "Staff training and development programs"
-      },
-      {
-        id: "attendance",
-        name: "Time & Attendance",
-        href: "/hr/attendance",
-        icon: ClockIcon,
-        description: "Attendance tracking and punch in/out",
-        children: [
-          {
-            id: "attendance-dashboard",
-            name: "Attendance Dashboard",
-            href: "/hr/attendance",
-            icon: ClockIcon
-          },
-          {
-            id: "time-tracking",
-            name: "Time Tracking",
-            href: "/hr/time-tracking",
-            icon: DocumentChartBarIcon
-          },
-          {
-            id: "attendance-roster",
-            name: "Weekly Roster",
-            href: "/hr/attendance?view=roster",
-            icon: CalendarIcon
-          },
-          {
-            id: "attendance-reports",
-            name: "Attendance Reports",
-            href: "/hr/attendance?view=reports",
-            icon: DocumentIcon,
-            requiredPermissions: ["hr.attendance.reports"]
-          }
-        ]
       },
       {
         id: "notifications",

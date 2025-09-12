@@ -31,7 +31,7 @@ export async function GET() {
     // Get all active employees
     const employees = await prisma.user.findMany({
       where: { 
-        status: 'ACTIVE'
+        isActive: true
       },
       select: {
         id: true,
@@ -65,11 +65,7 @@ export async function GET() {
         vehicleBenefit: true,
         fuelAllowance: true,
         airtimeAllowance: true,
-        otherBenefits: true,
-        // Archive fields
-        archivedAt: true,
-        archiveReason: true,
-        accessRevoked: true
+        otherBenefits: true
       },
       orderBy: { firstName: 'asc' }
     })
@@ -86,7 +82,7 @@ export async function GET() {
       position: emp.position,
       phone: emp.phoneNumber,
       hireDate: emp.hireDate ? emp.hireDate.toISOString().split('T')[0] : 'N/A',
-      status: emp.status,
+      status: emp.status || 'ACTIVE',
       createdAt: emp.createdAt,
       updatedAt: emp.updatedAt,
       // Supervisor and role fields
@@ -99,11 +95,7 @@ export async function GET() {
       vehicleBenefit: emp.vehicleBenefit,
       fuelAllowance: emp.fuelAllowance,
       airtimeAllowance: emp.airtimeAllowance,
-      otherBenefits: emp.otherBenefits,
-      // Archive fields
-      archivedAt: emp.archivedAt,
-      archiveReason: emp.archiveReason,
-      accessRevoked: emp.accessRevoked
+      otherBenefits: emp.otherBenefits
     }))
 
     const response = createSuccessResponse(transformedEmployees, {
