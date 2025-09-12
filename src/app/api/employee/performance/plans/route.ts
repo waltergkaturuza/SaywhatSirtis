@@ -1,0 +1,178 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+
+// Performance Plan Creation
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Authentication required' }, 
+        { status: 401 }
+      );
+    }
+
+    // Find employee by email
+    const employee = await prisma.employee.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!employee) {
+      return NextResponse.json(
+        { error: 'Employee profile not found' }, 
+        { status: 404 }
+      );
+    }
+
+    const body = await request.json();
+    
+    // Validate required fields
+    if (!body.planYear) {
+      return NextResponse.json(
+        { error: 'Plan year is required' }, 
+        { status: 400 }
+      );
+    }
+
+    // Generate key responsibilities based on position
+    const defaultResponsibilities = getDefaultResponsibilities(employee.position);
+    
+    // Create performance plan
+    const performancePlan = await prisma.performancePlan.create({
+      data: {
+        employeeId: employee.id,
+        employeeName: `${employee.firstName} ${employee.lastName}`,
+        planYear: parseInt(body.planYear),
+        status: 'draft',
+        electronicSignature: body.electronicSignature || null,
+        signatureDate: body.electronicSignature ? new Date() : null,
+        keyResponsibilities: {
+          create: defaultResponsibilities.map((resp, index) => ({
+            title: `Key Responsibility ${index + 1}`,
+            description: resp.description,
+            weight: resp.weight
+          }))
+        },
+        developmentActivities: {
+          create: body.developmentActivities?.slice(0, 3).map((activity: any, index: number) => ({
+            title: activity.title || `Development Activity ${index + 1}`,
+            description: activity.description || activity.activity,
+            category: activity.category || 'professional'
+          })) || []
+        }
+      },
+      include: {
+        keyResponsibilities: true,
+        developmentActivities: true
+      }
+    });
+
+    // Create audit trail
+    await prisma.auditLog.create({
+      data: {
+        userId: employee.id,
+        action: 'CREATE',
+        resource: 'PerformancePlan',
+        resourceId: performancePlan.id,
+        details: {
+          module: 'Performance Management',
+          planYear: body.planYear,
+          responsibilitiesCount: defaultResponsibilities.length
+        },
+        ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown'
+      }
+    });
+
+    return NextResponse.json(performancePlan);
+
+  } catch (error) {
+    console.error('Error creating performance plan:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' }, 
+      { status: 500 }
+    );
+  }
+}
+
+// GET: Fetch employee's performance plans
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Authentication required' }, 
+        { status: 401 }
+      );
+    }
+
+    // Find employee by email
+    const employee = await prisma.employee.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!employee) {
+      return NextResponse.json(
+        { error: 'Employee profile not found' }, 
+        { status: 404 }
+      );
+    }
+
+    // Fetch performance plans
+    const performancePlans = await prisma.performancePlan.findMany({
+      where: { employeeId: employee.id },
+      include: {
+        keyResponsibilities: true,
+        developmentActivities: true
+      },
+      orderBy: { planYear: 'desc' }
+    });
+
+    return NextResponse.json(performancePlans);
+
+  } catch (error) {
+    console.error('Error fetching performance plans:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' }, 
+      { status: 500 }
+    );
+  }
+}
+
+// Helper function to get default responsibilities based on position
+function getDefaultResponsibilities(position: string): Array<{description: string, weight: number}> {
+  const commonResponsibilities = [
+    { description: 'Deliver high-quality work outputs within agreed timelines', weight: 25 },
+    { description: 'Collaborate effectively with team members and stakeholders', weight: 20 },
+    { description: 'Maintain professional standards and organizational values', weight: 15 },
+    { description: 'Continuously develop skills and knowledge relevant to role', weight: 15 },
+    { description: 'Support organizational objectives and initiatives', weight: 25 }
+  ];
+
+  // Customize based on position type
+  if (position?.toLowerCase().includes('manager') || position?.toLowerCase().includes('supervisor')) {
+    return [
+      { description: 'Lead and develop team members effectively', weight: 30 },
+      { description: 'Achieve departmental goals and objectives', weight: 25 },
+      { description: 'Manage resources efficiently and effectively', weight: 20 },
+      { description: 'Foster positive team culture and collaboration', weight: 15 },
+      { description: 'Drive continuous improvement initiatives', weight: 10 }
+    ];
+  }
+  
+  if (position?.toLowerCase().includes('senior')) {
+    return [
+      { description: 'Deliver complex technical/professional solutions', weight: 30 },
+      { description: 'Mentor junior staff and share knowledge', weight: 20 },
+      { description: 'Lead project initiatives and deliverables', weight: 25 },
+      { description: 'Maintain expert-level competency in field', weight: 15 },
+      { description: 'Support strategic decision-making processes', weight: 10 }
+    ];
+  }
+  
+  return commonResponsibilities;
+}
