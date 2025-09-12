@@ -18,55 +18,6 @@ import {
 
 export default function DataSummaryPage() {
   const { data: session } = useSession()
-
-  // Mock data for summary
-  const summaryData = {
-    totalProjects: 45,
-    totalReach: 285000,
-    countries: 12,
-    averageProgress: 72,
-    totalBudget: 15750000
-  }
-
-  const genderBreakdown = [
-    { category: 'Male', count: 142500, percentage: 50 },
-    { category: 'Female', count: 142500, percentage: 50 }
-  ]
-
-  const ageBreakdown = [
-    { category: 'Children (0-17)', count: 85500, percentage: 30 },
-    { category: 'Youth (18-35)', count: 142500, percentage: 50 },
-    { category: 'Adults (36-60)', count: 57000, percentage: 20 }
-  ]
-
-  const countryData = [
-    {
-      country: 'Nigeria',
-      reach: 120000,
-      projects: 18,
-      budget: 8500000,
-      progress: 75,
-      provinces: ['Lagos', 'Kano', 'Rivers'],
-      topSectors: ['Healthcare', 'Education']
-    },
-    {
-      country: 'Ghana',
-      reach: 65000,
-      projects: 10,
-      budget: 4200000,
-      progress: 68,
-      provinces: ['Greater Accra', 'Ashanti'],
-      topSectors: ['Agriculture', 'Healthcare']
-    }
-  ]
-
-  const sectorData = [
-    { sector: 'Healthcare', projects: 15, budget: 5200000, reach: 125000 },
-    { sector: 'Education', projects: 12, budget: 3800000, reach: 95000 },
-    { sector: 'Agriculture', projects: 8, budget: 2900000, reach: 45000 },
-    { sector: 'Water & Sanitation', projects: 10, budget: 3850000, reach: 20000 }
-  ]
-
   const [searchParams, setSearchParams] = useState({
     projectName: "",
     country: "all",

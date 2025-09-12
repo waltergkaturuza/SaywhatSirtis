@@ -29,18 +29,24 @@ export async function GET(request: NextRequest) {
         totalEmployees,
         activeEmployees,
         departmentCount,
+        subunitCount,
         trainingCount,
         activeTrainings
       ] = await Promise.all([
-        prisma.user.count().catch(e => { console.error('Employee count error:', e); return 0; }),
-        prisma.user.count({
-          where: { isActive: true }
+        prisma.employees.count().catch(e => { console.error('Employee count error:', e); return 0; }),
+        prisma.employees.count({
+          where: { status: 'ACTIVE' }
         }).catch(e => { console.error('Active employee count error:', e); return 0; }),
-        prisma.department.count().catch(e => { console.error('Department count error:', e); return 0; }),
-        prisma.event.count({
+        prisma.departments.count({
+          where: { parentId: null } // Only count main departments, not subunits
+        }).catch(e => { console.error('Department count error:', e); return 0; }),
+        prisma.departments.count({
+          where: { parentId: { not: null } } // Count only subunits
+        }).catch(e => { console.error('Subunit count error:', e); return 0; }),
+        prisma.events.count({
           where: { type: 'training' }
         }).catch(e => { console.error('Training count error:', e); return 0; }),
-        prisma.event.count({
+        prisma.events.count({
           where: {
             type: 'training',
             status: { in: ['approved', 'in-progress'] }
@@ -55,25 +61,25 @@ export async function GET(request: NextRequest) {
       thisMonthStart.setDate(1)
       thisMonthStart.setHours(0, 0, 0, 0)
       
-      const newEmployeesThisMonth = await prisma.user.count({
+      const newEmployeesThisMonth = await prisma.employees.count({
         where: {
           createdAt: { gte: thisMonthStart }
         }
       })
 
       // Get department breakdown
-      const departmentBreakdown = await prisma.department.findMany({
+      const departmentBreakdown = await prisma.departments.findMany({
         include: {
           _count: {
             select: {
               employees: {
-                where: { isActive: true }
+                where: { status: 'ACTIVE' }
               }
             }
           }
         },
         orderBy: { name: 'asc' }
-      })
+      }).catch(e => { console.error('Department breakdown error:', e); return []; })
 
       const departments = departmentBreakdown.map(dept => ({
         name: dept.name,
@@ -81,14 +87,14 @@ export async function GET(request: NextRequest) {
       }))
 
       // Calculate real performance metrics
-      const performanceReviews = await prisma.performanceReview.aggregate({
+      const performanceReviews = await prisma.performance_reviews.aggregate({
         _avg: {
           overallRating: true
         },
         where: {
           overallRating: { not: null }
         }
-      })
+      }).catch(e => { console.error('Performance reviews error:', e); return { _avg: { overallRating: null } }; })
 
       const averagePerformance = performanceReviews._avg.overallRating || 0
 
@@ -97,7 +103,7 @@ export async function GET(request: NextRequest) {
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
       
       // Get pending performance reviews
-      const pendingReviews = await prisma.performanceReview.count({
+      const pendingReviews = await prisma.performance_reviews.count({
         where: {
           nextReviewDate: {
             lte: new Date()
@@ -109,20 +115,21 @@ export async function GET(request: NextRequest) {
       const onboardingThreshold = new Date()
       onboardingThreshold.setDate(onboardingThreshold.getDate() - 30) // 30 days
       
-      const onboardingCount = await prisma.user.count({
+      const onboardingCount = await prisma.employees.count({
         where: {
-          startDate: {
+          createdAt: {
             gte: onboardingThreshold
           },
-          isActive: true
+          status: 'ACTIVE'
         }
-      })
+      }).catch(e => { console.error('Onboarding count error:', e); return 0; })
 
       return NextResponse.json({
         totalEmployees,
         activeEmployees,
         newEmployeesThisMonth,
         departmentCount,
+        subunitCount,
         trainingCount,
         activeTrainings,
         averagePerformance,

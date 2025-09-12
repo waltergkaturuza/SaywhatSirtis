@@ -28,79 +28,111 @@ export async function GET() {
       return NextResponse.json(response, { status })
     }
 
-    // Get all active employees
-    const employees = await prisma.user.findMany({
+    // Get all active users with their employee data (left join to include users without employee records)
+    const usersWithEmployees = await prisma.users.findMany({
       where: { 
         isActive: true
       },
       select: {
         id: true,
-        employeeId: true,
         firstName: true,
         lastName: true,
         email: true,
         department: true,
-        departmentId: true,
-        departmentRef: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-            level: true
-          }
-        },
         position: true,
         phoneNumber: true,
-        hireDate: true,
-        status: true,
         createdAt: true,
         updatedAt: true,
-        // Supervisor and role fields
-        supervisorId: true,
-        isSupervisor: true,
-        isReviewer: true,
-        // Benefits fields
-        medicalAid: true,
-        funeralCover: true,
-        vehicleBenefit: true,
-        fuelAllowance: true,
-        airtimeAllowance: true,
-        otherBenefits: true
+        roles: true,
+        location: true,
+        bio: true,
+        role: true
       },
       orderBy: { firstName: 'asc' }
     })
 
-    // Transform data for frontend
-    const transformedEmployees = employees.map((emp: any) => ({
-      id: emp.id,
-      employeeId: emp.employeeId,
-      name: `${emp.firstName} ${emp.lastName}`,
-      email: emp.email,
-      department: emp.departmentRef?.name || emp.department || 'N/A',
-      departmentCode: emp.departmentRef?.code,
-      departmentLevel: emp.departmentRef?.level,
-      position: emp.position,
-      phone: emp.phoneNumber,
-      hireDate: emp.hireDate ? emp.hireDate.toISOString().split('T')[0] : 'N/A',
-      status: emp.status || 'ACTIVE',
-      createdAt: emp.createdAt,
-      updatedAt: emp.updatedAt,
-      // Supervisor and role fields
-      supervisorId: emp.supervisorId,
-      isSupervisor: emp.isSupervisor,
-      isReviewer: emp.isReviewer,
-      // Benefits fields
-      medicalAid: emp.medicalAid,
-      funeralCover: emp.funeralCover,
-      vehicleBenefit: emp.vehicleBenefit,
-      fuelAllowance: emp.fuelAllowance,
-      airtimeAllowance: emp.airtimeAllowance,
-      otherBenefits: emp.otherBenefits
-    }))
+    // Get corresponding employee records
+    const employeeRecords = await prisma.employees.findMany({
+      where: {
+        userId: { in: usersWithEmployees.map(u => u.id) }
+      },
+      select: {
+        id: true,
+        userId: true,
+        employeeId: true,
+        salary: true,
+        hireDate: true,
+        startDate: true,
+        employmentType: true,
+        status: true,
+        supervisor_id: true,
+        is_supervisor: true,
+        is_reviewer: true,
+        medical_aid: true,
+        funeral_cover: true,
+        vehicle_benefit: true,
+        fuel_allowance: true,
+        airtime_allowance: true,
+        other_benefits: true,
+        departmentId: true
+      }
+    })
+
+    // Create a map for quick lookup
+    const employeeMap = new Map(employeeRecords.map(emp => [emp.userId, emp]))
+
+    // Transform data for frontend - merge user and employee data
+    const transformedEmployees = usersWithEmployees.map((user: any) => {
+      const employeeData = employeeMap.get(user.id)
+      
+      return {
+        // Basic user info
+        id: user.id,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+        email: user.email,
+        department: user.department || 'N/A',
+        position: user.position || 'N/A',
+        phone: user.phoneNumber || 'N/A',
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        roles: user.roles || [],
+        location: user.location,
+        bio: user.bio,
+        role: user.role,
+        
+        // Employee-specific data (if exists)
+        employeeId: employeeData?.employeeId || null,
+        salary: employeeData?.salary || null,
+        hireDate: employeeData?.hireDate ? employeeData.hireDate.toISOString().split('T')[0] : null,
+        startDate: employeeData?.startDate ? employeeData.startDate.toISOString().split('T')[0] : null,
+        employmentType: employeeData?.employmentType || 'FULL_TIME',
+        status: employeeData?.status || 'ACTIVE',
+        supervisorId: employeeData?.supervisor_id || null,
+        isSupervisor: employeeData?.is_supervisor || false,
+        isReviewer: employeeData?.is_reviewer || false,
+        
+        // Benefits
+        benefits: {
+          medicalAid: employeeData?.medical_aid || false,
+          funeralCover: employeeData?.funeral_cover || false,
+          vehicleBenefit: employeeData?.vehicle_benefit || false,
+          fuelAllowance: employeeData?.fuel_allowance || false,
+          airtimeAllowance: employeeData?.airtime_allowance || false,
+          other: employeeData?.other_benefits || []
+        },
+        
+        // Flag to indicate if user has employee record
+        hasEmployeeRecord: !!employeeData
+      }
+    })
 
     const response = createSuccessResponse(transformedEmployees, {
-      message: `Retrieved ${employees.length} employees`,
-      meta: { count: employees.length }
+      message: `Retrieved ${transformedEmployees.length} users/employees`,
+      meta: { 
+        totalUsers: usersWithEmployees.length,
+        usersWithEmployeeRecords: employeeRecords.length,
+        usersWithoutEmployeeRecords: usersWithEmployees.length - employeeRecords.length
+      }
     })
 
     return NextResponse.json(response)
@@ -182,7 +214,7 @@ export async function POST(request: Request) {
     // If departmentId is provided, fetch the department name for backward compatibility
     let departmentName = formData.department
     if (formData.departmentId && !formData.department) {
-      const department = await prisma.department.findUnique({
+      const department = await prisma.departments.findUnique({
         where: { id: formData.departmentId },
         select: { name: true }
       })

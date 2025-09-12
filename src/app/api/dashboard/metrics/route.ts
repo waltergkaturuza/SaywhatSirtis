@@ -20,9 +20,9 @@ export async function GET(request: NextRequest) {
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const firstDayOfYear = new Date(now.getFullYear(), 0, 1)
 
-    // Get member count from User table with safe query execution
+    // Get member count from users table with safe query execution
     const totalMembers = await safeQuery(async (prisma) => {
-      return await prisma.user.count({
+      return await prisma.users.count({
         where: {
           isActive: true // Count active users as members
         }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     // Get call statistics with safe query execution
     const [callsThisMonth, callsThisYear, callsToday] = await Promise.all([
       safeQuery(async (prisma) => {
-        return await prisma.callRecord.count({
+        return await prisma.call_records.count({
           where: {
             createdAt: {
               gte: firstDayOfMonth
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         })
       }).catch(() => 0),
       safeQuery(async (prisma) => {
-        return await prisma.callRecord.count({
+        return await prisma.call_records.count({
           where: {
             createdAt: {
               gte: firstDayOfYear
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         })
       }).catch(() => 0),
       safeQuery(async (prisma) => {
-        return await prisma.callRecord.count({
+        return await prisma.call_records.count({
           where: {
             createdAt: {
               gte: new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -63,17 +63,17 @@ export async function GET(request: NextRequest) {
     // Get program performance metrics with safe query execution
     const [activePrograms, totalPrograms, programsOnTrack] = await Promise.all([
       safeQuery(async (prisma) => {
-        return await prisma.project.count({
+        return await prisma.projects.count({
           where: {
             status: 'ACTIVE'
           }
         })
       }).catch(() => 0),
       safeQuery(async (prisma) => {
-        return await prisma.project.count()
+        return await prisma.projects.count()
       }).catch(() => 0),
       safeQuery(async (prisma) => {
-        return await prisma.project.count({
+        return await prisma.projects.count({
           where: {
             status: 'ACTIVE',
             // Consider a program "on track" if it's active and not overdue

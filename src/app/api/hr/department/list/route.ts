@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     // Get basic department list for dropdowns from database
-    const departments = await prisma.department.findMany({
+    const departments = await prisma.departments.findMany({
       select: {
         id: true,
         name: true,

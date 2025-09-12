@@ -80,9 +80,9 @@ function getContextualDemoResponse(message: string, currentPage: string): string
 
 I can help you with:
 • Employee performance analytics and predictions
+• Attendance tracking and patterns
 • Skills assessment and development recommendations
 • Payroll processing and compliance
-• Training and development programs
 
 *Currently showing demo data. For full AI analytics, contact your administrator to enable OpenAI integration.*`
     }
@@ -155,8 +155,8 @@ I'm your AI assistant for:
 
 **🧑‍💼 HR Management**
 • Employee performance analysis
+• Attendance and productivity tracking
 • Skills development recommendations
-• Training program management
 
 **📋 Project Management**
 • Timeline optimization and risk assessment

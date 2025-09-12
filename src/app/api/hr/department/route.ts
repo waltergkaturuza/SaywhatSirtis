@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 // GET /api/hr/department - Get all departments
 export async function GET(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     try {
       // Get all departments with employee counts and hierarchical structure
-      const departments = await prisma.department.findMany({
+      const departments = await prisma.departments.findMany({
         include: {
           _count: {
             select: {
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
     let level = 0;
     
     if (parentId) {
-      parentDept = await prisma.department.findUnique({
+      parentDept = await prisma.departments.findUnique({
         where: { id: parentId }
       });
       
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if department name already exists
-    const existingDept = await prisma.department.findUnique({
+    const existingDept = await prisma.departments.findUnique({
       where: { name: name.trim() }
     });
 
@@ -211,7 +212,7 @@ export async function POST(request: NextRequest) {
 
     // Check if department code already exists (if provided)
     if (code?.trim()) {
-      const existingCode = await prisma.department.findUnique({
+      const existingCode = await prisma.departments.findUnique({
         where: { code: code.trim().toUpperCase() }
       });
 
@@ -227,8 +228,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the department
-    const newDepartment = await prisma.department.create({
+    const newDepartment = await prisma.departments.create({
       data: {
+        id: randomUUID(),
         name: name.trim(),
         description: description?.trim() || `${name.trim()} Department`,
         code: code?.trim().toUpperCase() || name.trim().substring(0, 3).toUpperCase(),
@@ -237,7 +239,8 @@ export async function POST(request: NextRequest) {
         location: location?.trim() || null,
         status: status || 'ACTIVE',
         parentId: parentId || null,
-        level: level
+        level: level,
+        updatedAt: new Date()
       },
       include: {
         _count: {
@@ -327,7 +330,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if department exists
-    const existingDept = await prisma.department.findUnique({
+    const existingDept = await prisma.departments.findUnique({
       where: { id }
     });
 
@@ -343,7 +346,7 @@ export async function PUT(request: NextRequest) {
 
     // Check if new name conflicts (if name is being changed)
     if (name && name.trim() !== existingDept.name) {
-      const nameConflict = await prisma.department.findUnique({
+      const nameConflict = await prisma.departments.findUnique({
         where: { name: name.trim() }
       });
 
@@ -360,7 +363,7 @@ export async function PUT(request: NextRequest) {
 
     // Check if new code conflicts (if code is being changed)
     if (code && code.trim() !== existingDept.code) {
-      const codeConflict = await prisma.department.findUnique({
+      const codeConflict = await prisma.departments.findUnique({
         where: { code: code.trim().toUpperCase() }
       });
 
@@ -376,7 +379,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update department
-    const updatedDepartment = await prisma.department.update({
+    const updatedDepartment = await prisma.departments.update({
       where: { id },
       data: {
         name: name?.trim() || existingDept.name,
@@ -464,7 +467,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if department exists
-    const department = await prisma.department.findUnique({
+    const department = await prisma.departments.findUnique({
       where: { id: departmentId }
     });
 
@@ -508,7 +511,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete the department
-    await prisma.department.delete({
+    await prisma.departments.delete({
       where: { id: departmentId }
     });
 

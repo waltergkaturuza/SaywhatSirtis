@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
     }> = []
 
     try {
-      // Get recent employee onboarding
-      const recentEmployees = await prisma.user.findMany({
+      // Get recent user registrations/onboarding
+      const recentUsers = await prisma.users.findMany({
         where: {
           createdAt: {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
@@ -44,24 +44,24 @@ export async function GET(request: NextRequest) {
         take: 5
       })
 
-      recentEmployees.forEach(employee => {
+      recentUsers.forEach(user => {
         activities.push({
-          id: `emp-${employee.id}`,
-          type: 'employee_onboarding',
-          title: 'New Employee Onboarded',
-          description: `${employee.firstName} ${employee.lastName} joined the ${employee.department} department`,
-          timestamp: employee.createdAt.toISOString(),
-          user: `${employee.firstName} ${employee.lastName}`,
+          id: `user-${user.id}`,
+          type: 'user_registration',
+          title: 'New User Registered',
+          description: `${user.firstName || user.email} joined the ${user.department || 'organization'}`,
+          timestamp: user.createdAt.toISOString(),
+          user: `${user.firstName} ${user.lastName}` || user.email,
           status: 'completed'
         })
       })
     } catch (error) {
-      console.error('Error fetching recent employees:', error)
+      console.error('Error fetching recent users:', error)
     }
 
     try {
       // Get recent training completions
-      const recentTraining = await prisma.trainingEnrollment.findMany({
+      const recentTraining = await prisma.training_enrollments.findMany({
         where: {
           status: 'completed',
           updatedAt: {
@@ -69,8 +69,8 @@ export async function GET(request: NextRequest) {
           }
         },
         include: {
-          employee: true,
-          program: true
+          employees: true,
+          training_programs: true
         },
         orderBy: { updatedAt: 'desc' },
         take: 5
@@ -81,9 +81,9 @@ export async function GET(request: NextRequest) {
           id: `training-${training.id}`,
           type: 'training_completion',
           title: 'Training Completed',
-          description: `${training.employee.firstName} ${training.employee.lastName} completed "${training.program.title}"`,
+          description: `${training.employees.firstName} ${training.employees.lastName} completed "${training.training_programs.title}"`,
           timestamp: training.updatedAt.toISOString(),
-          user: `${training.employee.firstName} ${training.employee.lastName}`,
+          user: `${training.employees.firstName} ${training.employees.lastName}`,
           status: 'completed'
         })
       })
@@ -93,14 +93,14 @@ export async function GET(request: NextRequest) {
 
     try {
       // Get recent performance reviews
-      const recentReviews = await prisma.performanceReview.findMany({
+      const recentReviews = await prisma.performance_reviews.findMany({
         where: {
           createdAt: {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
           }
         },
         include: {
-          employee: true
+          employees: true
         },
         orderBy: { createdAt: 'desc' },
         take: 5
@@ -111,9 +111,9 @@ export async function GET(request: NextRequest) {
           id: `review-${review.id}`,
           type: 'performance_review',
           title: 'Performance Review Scheduled',
-          description: `Performance review scheduled for ${review.employee.firstName} ${review.employee.lastName}`,
+          description: `Performance review scheduled for ${review.employees.firstName} ${review.employees.lastName}`,
           timestamp: review.createdAt.toISOString(),
-          user: `${review.employee.firstName} ${review.employee.lastName}`,
+          user: `${review.employees.firstName} ${review.employees.lastName}`,
           status: 'pending'
         })
       })

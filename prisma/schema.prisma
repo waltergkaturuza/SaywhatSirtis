@@ -3,127 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-model User {
-  id               String     @id @default(cuid())
-  email            String     @unique
-  username         String?    @unique
-  role             UserRole   @default(BASIC_USER_1)
-  isActive         Boolean    @default(true)
-  lastLogin        DateTime?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  emailVerified    DateTime?
-  twoFactorEnabled Boolean    @default(false)
-  
-  // Employee Information (every user is an employee)
-  employeeId          String?              @unique
-  firstName           String?
-  lastName            String?
-  middleName          String?
-  dateOfBirth         DateTime?
-  gender              String?
-  nationality         String?
-  nationalId          String?              @unique
-  passportNumber      String?
-  phoneNumber         String?
-  alternativePhone    String?
-  address             String?
-  emergencyContact    String?
-  emergencyPhone      String?
-  profileImage        String?
-  bio                 String?
-  location            String?
-  
-  // Employment Details
-  department          String?
-  position            String?
-  employmentType      String?              @default("FULL_TIME")
-  startDate           DateTime?
-  endDate             DateTime?
-  hireDate            DateTime?
-  salary              Float?
-  currency            String?              @default("USD")
-  status              String?              @default("ACTIVE")
-  
-  // Organizational Structure
-  supervisorId        String?              @map("supervisor_id")
-  supervisor          User?                @relation("UserSupervisor", fields: [supervisorId], references: [id])
-  subordinates        User[]               @relation("UserSupervisor")
-  isSupervisor        Boolean              @default(false) @map("is_supervisor")
-  isReviewer          Boolean              @default(false) @map("is_reviewer")
-  departmentId        String?
-  departmentRef       Department?          @relation(fields: [departmentId], references: [id])
-  
-  // Benefits (using snake_case to match database)
-  medicalAid          Boolean              @default(false) @map("medical_aid")
-  funeralCover        Boolean              @default(false) @map("funeral_cover")
-  vehicleBenefit      Boolean              @default(false) @map("vehicle_benefit")
-  fuelAllowance       Boolean              @default(false) @map("fuel_allowance")
-  airtimeAllowance    Boolean              @default(false) @map("airtime_allowance")
-  otherBenefits       String[]             @default([]) @map("other_benefits")
-  
-  // Archive fields (using snake_case to match database)
-  archivedAt          DateTime?            @map("archived_at")
-  archiveReason       String?              @map("archive_reason")
-  accessRevoked       Boolean              @default(false) @map("access_revoked")
-  
-  // System access
-  roles               String[]             @default([])
-  // System Relations
-  accounts         Account[]
-  auditLogs        AuditLog[]
-  createdProjects  Project[]  @relation("ProjectCreator")
-  managedProjects  Project[]  @relation("ProjectManager")
-  sessions         Session[]
-
-  // HR & Employee Relations
-  performanceReviews      PerformanceReview[]
-  trainingAttendance      TrainingAttendance[]
-  trainingEnrollments     TrainingEnrollment[]
-  qualifications          Qualification[]
-  performancePlans        PerformancePlan[]      @relation("EmployeePerformancePlans")
-  employeeAppraisals      PerformanceAppraisal[] @relation("EmployeeAppraisals")
-  supervisorAppraisals    PerformanceAppraisal[] @relation("SupervisorAppraisals")
-  reviewerAppraisals      PerformanceAppraisal[] @relation("ReviewerAppraisals")
-
-  // AI Relations
-  analyzedDocuments    DocumentAnalysis[]         @relation("AnalyzedBy")
-  classifiedDocuments  DocumentClassificationAI[] @relation("ClassifiedBy")
-  contentCreations     DocumentContent[]          @relation("ContentCreator")
-  searchLogs           SearchLog[]                @relation("SearchLogs")
-  batchAnalyses        BatchAnalysis[]            @relation("BatchAnalyses")
-  documentActivities   DocumentActivity[]         @relation("UserActivities")
-
-  // Risk Management Relations
-  ownedRisks           Risk[]                     @relation("RiskOwner")
-  createdRisks         Risk[]                     @relation("RiskCreator")
-  ownedMitigations     RiskMitigation[]           @relation("MitigationOwner")
-  createdMitigations   RiskMitigation[]           @relation("MitigationCreator")
-  riskAssessments      RiskAssessment[]           @relation("RiskAssessor")
-  reviewedAssessments  RiskAssessment[]           @relation("AssessmentReviewer")
-  uploadedDocuments    RiskDocument[]             @relation("DocumentUploader")
-  riskAuditLogs        RiskAuditLog[]             @relation("RiskAuditor")
-  riskNotifications    RiskNotification[]         @relation("RiskNotifications")
-
-  @@index([employeeId])
-  @@index([email])
-  @@index([department])
-  @@index([status])
-  @@index([supervisorId])
-  @@index([isSupervisor])
-  @@index([isReviewer])
-  @@index([archivedAt])
-  @@index([departmentId])
-  @@map("users")
-}
-
-model Account {
-  id                String  @id @default(cuid())
+model accounts {
+  id                String  @id
   userId            String
   type              String
   provider          String
@@ -135,33 +20,72 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  users             users   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
-  @@map("accounts")
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model activities {
+  id          String    @id
+  title       String
+  description String?
+  status      String    @default("pending")
+  dueDate     DateTime?
+  completedAt DateTime?
+  projectId   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  projects    projects  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@map("sessions")
+  @@index([dueDate])
+  @@index([projectId])
+  @@index([status])
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+model asset_audits {
+  id        String   @id
+  assetId   String
+  auditDate DateTime
+  condition String
+  notes     String?
+  auditedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  assets    assets   @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
-  @@unique([identifier, token])
-  @@map("verificationtokens")
+  @@index([assetId])
+  @@index([auditDate])
 }
 
-model AuditLog {
-  id         String   @id @default(cuid())
+model assets {
+  id                  String                @id
+  assetTag            String                @unique
+  name                String
+  description         String?
+  category            String
+  brand               String?
+  model               String?
+  serialNumber        String?
+  purchaseDate        DateTime?
+  purchasePrice       Float?
+  currentValue        Float?
+  location            String?
+  condition           AssetCondition        @default(GOOD)
+  status              String                @default("ACTIVE")
+  warrantyExpiry      DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  asset_audits        asset_audits[]
+  maintenance_records maintenance_records[]
+
+  @@index([assetTag])
+  @@index([category])
+  @@index([location])
+  @@index([status])
+}
+
+model audit_logs {
+  id         String   @id
   userId     String?
   action     String
   resource   String
@@ -170,64 +94,29 @@ model AuditLog {
   ipAddress  String?
   userAgent  String?
   timestamp  DateTime @default(now())
-  user       User?    @relation(fields: [userId], references: [id])
+  users      users?   @relation(fields: [userId], references: [id])
 
-  @@index([userId])
   @@index([action])
   @@index([resource])
   @@index([timestamp])
-  @@map("audit_logs")
+  @@index([userId])
 }
 
-model Project {
-  id          String     @id @default(cuid())
-  name        String
-  description String?
-  objectives  Json?
-  timeframe   String?
-  startDate   DateTime?
-  endDate     DateTime?
-  country     String?
-  province    String?
-  budget      Float?
-  actualSpent Float?     @default(0)
-  status      String     @default("PLANNING")
-  priority    String     @default("MEDIUM")
-  progress    Int?       @default(0)
-  managerId   String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  currency    String?    @default("USD")
-  creatorId   String?
-  activities  Activity[]
-  documents   Document[]
-  creator     User?      @relation("ProjectCreator", fields: [creatorId], references: [id])
-  manager     User?      @relation("ProjectManager", fields: [managerId], references: [id])
+model batch_analyses {
+  id           String   @id
+  userId       String
+  documentIds  String[]
+  analysisType String
+  results      Json
+  createdAt    DateTime @default(now())
+  users        users    @relation(fields: [userId], references: [id])
 
-  @@index([status])
-  @@map("projects")
+  @@index([createdAt])
+  @@index([userId])
 }
 
-model Activity {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  status      String    @default("pending")
-  dueDate     DateTime?
-  completedAt DateTime?
-  projectId   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@index([status])
-  @@index([dueDate])
-  @@index([projectId])
-  @@map("activities")
-}
-
-model CallRecord {
-  id                 String    @id @default(cuid())
+model call_records {
+  id                 String    @id
   caseNumber         String    @unique
   callerName         String
   callerPhone        String?
@@ -251,51 +140,491 @@ model CallRecord {
   followUpRequired   Boolean   @default(false)
   followUpDate       DateTime?
   createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  updatedAt          DateTime
 
-  @@index([caseNumber])
-  @@index([status])
-  @@index([category])
-  @@index([priority])
   @@index([assignedOfficer])
   @@index([callStartTime])
-  @@map("call_records")
-}
-
-model Department {
-  id          String       @id @default(cuid())
-  name        String       @unique
-  description String?
-  budget      Float?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  code        String?      @unique
-  location    String?
-  manager     String?
-  status      String       @default("ACTIVE")
-  
-  // Hierarchical structure
-  parentId    String?
-  parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
-  subunits    Department[] @relation("DepartmentHierarchy")
-  
-  // Department level (0 = main department, 1+ = subunit levels)
-  level       Int          @default(0)
-  
-  employees   User[]
-  documents   Document[]
-
-  @@index([name])
+  @@index([caseNumber])
+  @@index([category])
+  @@index([priority])
   @@index([status])
-  @@index([parentId])
-  @@index([level])
-  @@map("departments")
 }
 
+model departments {
+  id                String        @id
+  name              String        @unique
+  description       String?
+  budget            Float?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime
+  code              String?       @unique
+  location          String?
+  manager           String?
+  status            String        @default("ACTIVE")
+  parentId          String?
+  level             Int           @default(0)
+  parent            departments?  @relation("departmentsTodepartments", fields: [parentId], references: [id])
+  subunits          departments[] @relation("departmentsTodepartments")
+  documents         documents[]
+  employees         employees[]
 
+  @@index([level])
+  @@index([name])
+  @@index([parentId])
+  @@index([status])
+}
 
-model PerformanceReview {
-  id             String    @id @default(cuid())
+model document_activities {
+  id         String    @id
+  documentId String
+  userId     String
+  action     String
+  details    Json?
+  createdAt  DateTime  @default(now())
+  documents  documents @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  users      users     @relation(fields: [userId], references: [id])
+
+  @@index([action])
+  @@index([createdAt])
+  @@index([documentId])
+  @@index([userId])
+}
+
+model document_analysis {
+  id                   String    @id
+  documentId           String    @unique
+  sentiment            Json
+  readability          Json
+  quality              Json
+  keyPhrases           String[]
+  summary              String?
+  topics               String[]
+  language             String?
+  wordCount            Int?
+  estimatedReadingTime Int?
+  analyzedAt           DateTime  @default(now())
+  analyzedBy           String?
+  users                users?    @relation(fields: [analyzedBy], references: [id])
+  documents            documents @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([analyzedAt])
+  @@index([language])
+}
+
+model document_audit_logs {
+  id         String              @id
+  documentId String
+  userId     String
+  userEmail  String?
+  action     DocumentAuditAction
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  sessionId  String?
+  timestamp  DateTime            @default(now())
+  documents  documents           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([action])
+  @@index([documentId])
+  @@index([timestamp])
+  @@index([userId])
+}
+
+model document_classification_ai {
+  id               String    @id
+  documentId       String    @unique
+  category         String
+  confidence       Float
+  tags             String[]
+  securityLevel    String?
+  reasons          String[]
+  suggestedActions String[]
+  classifiedAt     DateTime  @default(now())
+  classifiedBy     String?
+  users            users?    @relation(fields: [classifiedBy], references: [id])
+  documents        documents @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([category])
+  @@index([classifiedAt])
+}
+
+model document_comments {
+  id                      String              @id
+  documentId              String
+  userId                  String
+  content                 String
+  isResolved              Boolean             @default(false)
+  parentId                String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime
+  documents               documents           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document_comments       document_comments?  @relation("document_commentsTodocument_comments", fields: [parentId], references: [id])
+  other_document_comments document_comments[] @relation("document_commentsTodocument_comments")
+
+  @@index([documentId])
+  @@index([parentId])
+  @@index([userId])
+}
+
+model document_content {
+  id         String    @id
+  documentId String
+  content    String
+  version    Int       @default(1)
+  createdAt  DateTime  @default(now())
+  createdBy  String?
+  users      users?    @relation(fields: [createdBy], references: [id])
+  documents  documents @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, version])
+  @@index([documentId])
+}
+
+model document_favorites {
+  id         String    @id
+  documentId String
+  userId     String
+  addedAt    DateTime  @default(now())
+  documents  documents @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+  @@index([userId])
+}
+
+model document_folders {
+  id                     String                 @id
+  name                   String
+  description            String?
+  path                   String
+  parentId               String?
+  level                  Int                    @default(0)
+  isPublic               Boolean                @default(false)
+  ownerId                String
+  department             String?
+  projectId              String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime
+  document_folders       document_folders?      @relation("document_foldersTodocument_folders", fields: [parentId], references: [id])
+  other_document_folders document_folders[]     @relation("document_foldersTodocument_folders")
+  document_permissions   document_permissions[]
+
+  @@index([department])
+  @@index([name])
+  @@index([ownerId])
+  @@index([parentId])
+  @@index([projectId])
+}
+
+model document_permissions {
+  id               String                 @id
+  documentId       String?
+  folderId         String?
+  userId           String?
+  userEmail        String?
+  groupId          String?
+  permission       DocumentPermissionType
+  grantedBy        String
+  grantedAt        DateTime               @default(now())
+  expiresAt        DateTime?
+  isInherited      Boolean                @default(false)
+  documents        documents?             @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document_folders document_folders?      @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([folderId])
+  @@index([permission])
+  @@index([userEmail])
+  @@index([userId])
+}
+
+model document_shares {
+  id              String                 @id
+  documentId      String
+  sharedBy        String
+  sharedWith      String?
+  sharedWithEmail String?
+  permission      DocumentPermissionType
+  shareToken      String?                @unique
+  expiresAt       DateTime?
+  isActive        Boolean                @default(true)
+  accessCount     Int                    @default(0)
+  lastAccessedAt  DateTime?
+  message         String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime
+  documents       documents              @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([expiresAt])
+  @@index([shareToken])
+  @@index([sharedBy])
+  @@index([sharedWith])
+}
+
+model document_templates {
+  id          String   @id
+  name        String
+  description String?
+  category    String
+  template    Json
+  isActive    Boolean  @default(true)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model document_workflow_tasks {
+  id          String                   @id
+  documentId  String
+  taskType    DocumentWorkflowTaskType
+  assignedTo  String
+  assignedBy  String
+  title       String
+  description String?
+  status      TaskStatus               @default(PENDING)
+  priority    TaskPriority             @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+  comments    String?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime
+  documents   documents                @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([assignedTo])
+  @@index([documentId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([taskType])
+}
+
+model documents {
+  id                         String                      @id
+  filename                   String
+  originalName               String
+  path                       String
+  url                        String?
+  mimeType                   String
+  size                       Int
+  category                   DocumentCategory?
+  description                String?
+  summary                    String?
+  extractedText              String?
+  ocrText                    String?
+  searchKeywords             String[]                    @default([])
+  tags                       String[]                    @default([])
+  version                    String                      @default("1.0")
+  versionComment             String?
+  isLatestVersion            Boolean                     @default(true)
+  parentDocumentId           String?
+  classification             DocumentClassification      @default(PUBLIC)
+  accessLevel                String                      @default("internal")
+  isPublic                   Boolean                     @default(false)
+  isCheckedOut               Boolean                     @default(false)
+  checkedOutBy               String?
+  checkedOutAt               DateTime?
+  lockExpiresAt              DateTime?
+  author                     String?
+  department                 String?
+  departmentId               String?
+  projectId                  String?
+  customMetadata             Json?
+  approvalStatus             DocumentApprovalStatus      @default(DRAFT)
+  approvedBy                 String?
+  approvedAt                 DateTime?
+  reviewStatus               DocumentReviewStatus        @default(PENDING)
+  sentimentScore             Float?
+  readabilityScore           Float?
+  qualityScore               Float?
+  keyPhrases                 String[]                    @default([])
+  aiSummary                  String?
+  uploadedBy                 String?
+  viewCount                  Int                         @default(0)
+  downloadCount              Int                         @default(0)
+  lastAccessedAt             DateTime?
+  lastAccessedBy             String?
+  retentionPeriod            Int?
+  archiveDate                DateTime?
+  isArchived                 Boolean                     @default(false)
+  isDeleted                  Boolean                     @default(false)
+  deletedAt                  DateTime?
+  deletedBy                  String?
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime
+  document_activities        document_activities[]
+  document_analysis          document_analysis?
+  document_audit_logs        document_audit_logs[]
+  document_classification_ai document_classification_ai?
+  document_comments          document_comments[]
+  document_content           document_content[]
+  document_favorites         document_favorites[]
+  document_permissions       document_permissions[]
+  document_shares            document_shares[]
+  document_workflow_tasks    document_workflow_tasks[]
+  departments                departments?                @relation(fields: [departmentId], references: [id])
+  documents                  documents?                  @relation("documentsTodocuments", fields: [parentDocumentId], references: [id])
+  other_documents            documents[]                 @relation("documentsTodocuments")
+  projects                   projects?                   @relation(fields: [projectId], references: [id])
+
+  @@index([approvalStatus])
+  @@index([category])
+  @@index([checkedOutBy])
+  @@index([classification])
+  @@index([createdAt])
+  @@index([department])
+  @@index([filename])
+  @@index([isArchived])
+  @@index([isCheckedOut])
+  @@index([isDeleted])
+  @@index([isPublic])
+  @@index([lastAccessedAt])
+  @@index([projectId])
+  @@index([reviewStatus])
+  @@index([uploadedBy])
+}
+
+model employees {
+  id                   String                 @id
+  userId               String                 @unique
+  employeeId           String                 @unique
+  firstName            String
+  lastName             String
+  middleName           String?
+  dateOfBirth          DateTime?
+  gender               String?
+  nationality          String?
+  nationalId           String?                @unique
+  passportNumber       String?
+  email                String                 @unique
+  phoneNumber          String?
+  alternativePhone     String?
+  address              String?
+  emergencyContact     String?
+  emergencyPhone       String?
+  department           String?
+  position             String
+  employmentType       String                 @default("FULL_TIME")
+  startDate            DateTime
+  endDate              DateTime?
+  salary               Float?
+  currency             String?                @default("USD")
+  status               String                 @default("ACTIVE")
+  supervisor_id        String?
+  is_supervisor        Boolean                @default(false)
+  is_reviewer          Boolean                @default(false)
+  medical_aid          Boolean                @default(false)
+  funeral_cover        Boolean                @default(false)
+  vehicle_benefit      Boolean                @default(false)
+  fuel_allowance       Boolean                @default(false)
+  airtime_allowance    Boolean                @default(false)
+  other_benefits       String[]               @default([])
+  archived_at          DateTime?
+  archive_reason       String?
+  access_revoked       Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  hireDate             DateTime?
+  departmentId         String?
+  departments          departments?           @relation(fields: [departmentId], references: [id])
+  employees            employees?             @relation("employeesToemployees", fields: [supervisor_id], references: [id])
+  other_employees      employees[]            @relation("employeesToemployees")
+  performance_reviews  performance_reviews[]
+  training_attendance  training_attendance[]
+  training_enrollments training_enrollments[]
+
+  @@index([archived_at])
+  @@index([department])
+  @@index([email])
+  @@index([employeeId])
+  @@index([is_reviewer])
+  @@index([is_supervisor])
+  @@index([status])
+  @@index([supervisor_id])
+}
+
+model event_registrations {
+  id                  String   @id
+  eventId             String
+  participantName     String
+  participantEmail    String
+  participantPhone    String?
+  organization        String?
+  position            String?
+  specialRequirements String?
+  status              String   @default("pending")
+  registeredAt        DateTime @default(now())
+  updatedAt           DateTime
+  events              events   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, participantEmail])
+  @@index([eventId])
+  @@index([status])
+}
+
+model events {
+  id                   String                @id
+  title                String
+  description          String?
+  type                 String
+  status               String                @default("planning")
+  startDate            DateTime
+  endDate              DateTime?
+  location             String?
+  venue                String?
+  capacity             Int?
+  agenda               Json?
+  speakers             Json?
+  budget               Float?
+  actualCost           Float                 @default(0)
+  requiresRegistration Boolean               @default(false)
+  registrationDeadline DateTime?
+  partners             Json?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime
+  event_registrations  event_registrations[]
+
+  @@index([startDate])
+  @@index([status])
+  @@index([type])
+}
+
+model maintenance_records {
+  id              String    @id
+  assetId         String
+  description     String?
+  cost            Float?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime
+  nextDueDate     DateTime?
+  performedBy     String?
+  performedDate   DateTime
+  maintenanceType String
+  assets          assets    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([performedDate])
+}
+
+model notifications {
+  id        String           @id
+  userId    String?
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  actionUrl String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime
+
+  @@index([createdAt])
+  @@index([isRead])
+  @@index([userId])
+}
+
+model performance_reviews {
+  id             String    @id
   employeeId     String
   reviewPeriod   String
   reviewType     String
@@ -305,16 +634,251 @@ model PerformanceReview {
   reviewDate     DateTime
   nextReviewDate DateTime?
   createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  employee       User      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  updatedAt      DateTime
+  employees      employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId])
   @@index([reviewDate])
-  @@map("performance_reviews")
 }
 
-model TrainingProgram {
-  id                     String               @id @default(cuid())
+model projects {
+  id                              String       @id
+  name                            String
+  description                     String?
+  objectives                      Json?
+  timeframe                       String?
+  startDate                       DateTime?
+  endDate                         DateTime?
+  country                         String?
+  province                        String?
+  budget                          Float?
+  actualSpent                     Float?       @default(0)
+  status                          String       @default("PLANNING")
+  priority                        String       @default("MEDIUM")
+  progress                        Int?         @default(0)
+  managerId                       String?
+  createdAt                       DateTime     @default(now())
+  updatedAt                       DateTime
+  currency                        String?      @default("USD")
+  creatorId                       String?
+  activities                      activities[]
+  documents                       documents[]
+  users_projects_creatorIdTousers users?       @relation("projects_creatorIdTousers", fields: [creatorId], references: [id])
+  users_projects_managerIdTousers users?       @relation("projects_managerIdTousers", fields: [managerId], references: [id])
+
+  @@index([status])
+}
+
+model risk_assessments {
+  id                                       String           @id
+  riskId                                   String
+  assessmentDate                           DateTime         @default(now())
+  assessorId                               String?
+  previousProbability                      RiskProbability?
+  previousImpact                           RiskImpact?
+  newProbability                           RiskProbability
+  newImpact                                RiskImpact
+  newRiskScore                             Int
+  reasoning                                String?
+  evidence                                 String?
+  recommendations                          String?
+  status                                   String           @default("SUBMITTED")
+  reviewedAt                               DateTime?
+  reviewerId                               String?
+  reviewComments                           String?
+  createdAt                                DateTime         @default(now())
+  updatedAt                                DateTime
+  users_risk_assessments_assessorIdTousers users?           @relation("risk_assessments_assessorIdTousers", fields: [assessorId], references: [id])
+  users_risk_assessments_reviewerIdTousers users?           @relation("risk_assessments_reviewerIdTousers", fields: [reviewerId], references: [id])
+  risks                                    risks            @relation(fields: [riskId], references: [id], onDelete: Cascade)
+}
+
+model risk_audit_logs {
+  id          String   @id
+  riskId      String
+  action      String
+  field       String?
+  oldValue    String?
+  newValue    String?
+  userId      String?
+  timestamp   DateTime @default(now())
+  ipAddress   String?
+  userAgent   String?
+  description String?
+  risks       risks    @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  users       users?   @relation(fields: [userId], references: [id])
+}
+
+model risk_documents {
+  id           String   @id
+  riskId       String
+  filename     String
+  originalName String
+  fileSize     Int
+  mimeType     String
+  filePath     String
+  description  String?
+  documentType String   @default("SUPPORTING")
+  uploadedById String?
+  uploadedAt   DateTime @default(now())
+  risks        risks    @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  users        users?   @relation(fields: [uploadedById], references: [id])
+}
+
+model risk_mitigations {
+  id                                        String           @id
+  riskId                                    String
+  strategy                                  String
+  controlMeasure                            String?
+  ownerId                                   String?
+  deadline                                  DateTime?
+  implementationProgress                    Int              @default(0)
+  status                                    MitigationStatus @default(PLANNED)
+  milestones                                Json?
+  lastUpdated                               DateTime
+  completedAt                               DateTime?
+  notes                                     String?
+  createdAt                                 DateTime         @default(now())
+  updatedAt                                 DateTime
+  createdById                               String?
+  users_risk_mitigations_createdByIdTousers users?           @relation("risk_mitigations_createdByIdTousers", fields: [createdById], references: [id])
+  users_risk_mitigations_ownerIdTousers     users?           @relation("risk_mitigations_ownerIdTousers", fields: [ownerId], references: [id])
+  risks                                     risks            @relation(fields: [riskId], references: [id], onDelete: Cascade)
+}
+
+model risk_notifications {
+  id        String    @id
+  userId    String
+  type      String
+  title     String
+  message   String
+  riskId    String?
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  users     users     @relation(fields: [userId], references: [id])
+}
+
+model risks {
+  id                             String             @id
+  riskId                         String             @unique
+  title                          String
+  description                    String
+  category                       RiskCategory
+  department                     String?
+  probability                    RiskProbability
+  impact                         RiskImpact
+  riskScore                      Int
+  status                         RiskStatus         @default(OPEN)
+  dateIdentified                 DateTime           @default(now())
+  lastAssessed                   DateTime?
+  ownerId                        String?
+  tags                           String[]           @default([])
+  createdAt                      DateTime           @default(now())
+  updatedAt                      DateTime
+  createdById                    String?
+  risk_assessments               risk_assessments[]
+  risk_audit_logs                risk_audit_logs[]
+  risk_documents                 risk_documents[]
+  risk_mitigations               risk_mitigations[]
+  users_risks_createdByIdTousers users?             @relation("risks_createdByIdTousers", fields: [createdById], references: [id])
+  users_risks_ownerIdTousers     users?             @relation("risks_ownerIdTousers", fields: [ownerId], references: [id])
+}
+
+model search_logs {
+  id           String   @id
+  userId       String
+  query        String
+  resultsCount Int
+  searchTime   Int
+  filters      Json?
+  searchType   String
+  createdAt    DateTime @default(now())
+  users        users    @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([searchType])
+  @@index([userId])
+}
+
+model sessions {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  users        users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model system_config {
+  id          String   @id
+  key         String   @unique
+  value       Json
+  description String?
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+
+  @@index([category])
+}
+
+model training_attendance {
+  id                String            @id
+  sessionId         String
+  employeeId        String
+  status            String
+  checkInTime       DateTime?
+  checkOutTime      DateTime?
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  employees         employees         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  training_sessions training_sessions @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, employeeId])
+  @@index([employeeId])
+}
+
+model training_certificates {
+  id                   String               @id
+  enrollmentId         String               @unique
+  certificateNumber    String               @unique
+  issuedDate           DateTime
+  expiryDate           DateTime?
+  isValid              Boolean              @default(true)
+  downloadCount        Int                  @default(0)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime
+  training_enrollments training_enrollments @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([certificateNumber])
+  @@index([issuedDate])
+}
+
+model training_enrollments {
+  id                    String                 @id
+  employeeId            String
+  enrollmentDate        DateTime               @default(now())
+  completionDate        DateTime?
+  attendanceRate        Float?
+  createdAt             DateTime               @default(now())
+  feedback              String?
+  finalScore            Float?
+  programId             String
+  progress              Int                    @default(0)
+  updatedAt             DateTime
+  status                String                 @default("ENROLLED")
+  training_certificates training_certificates?
+  employees             employees              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  training_programs     training_programs      @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, employeeId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model training_programs {
+  id                     String                 @id
   title                  String
   description            String?
   category               String
@@ -322,578 +886,202 @@ model TrainingProgram {
   format                 String
   capacity               Int?
   instructor             String?
-  status                 String               @default("DRAFT")
+  status                 String                 @default("DRAFT")
   startDate              DateTime?
   endDate                DateTime?
   enrollmentDeadline     DateTime?
-  certificationAvailable Boolean              @default(false)
+  certificationAvailable Boolean                @default(false)
   prerequisites          String?
   learningObjectives     Json?
   materials              Json?
-  cost                   Float?               @default(0)
-  currency               String?              @default("USD")
+  cost                   Float?                 @default(0)
+  currency               String?                @default("USD")
   location               String?
   onlineLink             String?
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
-  enrollments            TrainingEnrollment[]
-  sessions               TrainingSession[]
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime
+  training_enrollments   training_enrollments[]
+  training_sessions      training_sessions[]
 
   @@index([category])
-  @@index([status])
   @@index([startDate])
-  @@map("training_programs")
-}
-
-model TrainingEnrollment {
-  id             String               @id @default(cuid())
-  employeeId     String
-  enrollmentDate DateTime             @default(now())
-  completionDate DateTime?
-  attendanceRate Float?
-  createdAt      DateTime             @default(now())
-  feedback       String?
-  finalScore     Float?
-  programId      String
-  progress       Int                  @default(0)
-  updatedAt      DateTime             @updatedAt
-  status         String               @default("ENROLLED")
-  certificate    TrainingCertificate?
-  employee       User                 @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  program        TrainingProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
-
-  @@unique([programId, employeeId])
-  @@index([employeeId])
   @@index([status])
-  @@map("training_enrollments")
 }
 
-model TrainingSession {
-  id           String               @id @default(cuid())
-  programId    String
-  title        String
-  description  String?
-  sessionDate  DateTime
-  startTime    String
-  endTime      String
-  instructor   String?
-  location     String?
-  onlineLink   String?
-  materials    Json?
-  maxAttendees Int?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  attendance   TrainingAttendance[]
-  program      TrainingProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
+model training_sessions {
+  id                  String                @id
+  programId           String
+  title               String
+  description         String?
+  sessionDate         DateTime
+  startTime           String
+  endTime             String
+  instructor          String?
+  location            String?
+  onlineLink          String?
+  materials           Json?
+  maxAttendees        Int?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  training_attendance training_attendance[]
+  training_programs   training_programs     @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@index([programId])
   @@index([sessionDate])
-  @@map("training_sessions")
 }
 
-model TrainingAttendance {
-  id           String          @id @default(cuid())
-  sessionId    String
-  employeeId   String
-  status       String
-  checkInTime  DateTime?
-  checkOutTime DateTime?
-  notes        String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  employee     User            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  session      TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@unique([sessionId, employeeId])
-  @@index([employeeId])
-  @@map("training_attendance")
+model users {
+  id                                                   String                       @id
+  email                                                String                       @unique
+  username                                             String?                      @unique
+  role                                                 UserRole                     @default(USER)
+  department                                           String?
+  position                                             String?
+  isActive                                             Boolean                      @default(true)
+  lastLogin                                            DateTime?
+  createdAt                                            DateTime                     @default(now())
+  updatedAt                                            DateTime
+  emailVerified                                        DateTime?
+  firstName                                            String?
+  lastName                                             String?
+  roles                                                String[]                     @default([])
+  phoneNumber                                          String?
+  profileImage                                         String?
+  bio                                                  String?
+  location                                             String?
+  twoFactorEnabled                                     Boolean                      @default(false)
+  accounts                                             accounts[]
+  audit_logs                                           audit_logs[]
+  batch_analyses                                       batch_analyses[]
+  document_activities                                  document_activities[]
+  document_analysis                                    document_analysis[]
+  document_classification_ai                           document_classification_ai[]
+  document_content                                     document_content[]
+  projects_projects_creatorIdTousers                   projects[]                   @relation("projects_creatorIdTousers")
+  projects_projects_managerIdTousers                   projects[]                   @relation("projects_managerIdTousers")
+  risk_assessments_risk_assessments_assessorIdTousers  risk_assessments[]           @relation("risk_assessments_assessorIdTousers")
+  risk_assessments_risk_assessments_reviewerIdTousers  risk_assessments[]           @relation("risk_assessments_reviewerIdTousers")
+  risk_audit_logs                                      risk_audit_logs[]
+  risk_documents                                       risk_documents[]
+  risk_mitigations_risk_mitigations_createdByIdTousers risk_mitigations[]           @relation("risk_mitigations_createdByIdTousers")
+  risk_mitigations_risk_mitigations_ownerIdTousers     risk_mitigations[]           @relation("risk_mitigations_ownerIdTousers")
+  risk_notifications                                   risk_notifications[]
+  risks_risks_createdByIdTousers                       risks[]                      @relation("risks_createdByIdTousers")
+  risks_risks_ownerIdTousers                           risks[]                      @relation("risks_ownerIdTousers")
+  search_logs                                          search_logs[]
+  sessions                                             sessions[]
 }
 
-model TrainingCertificate {
-  id                String             @id @default(cuid())
-  enrollmentId      String             @unique
-  certificateNumber String             @unique
-  issuedDate        DateTime
-  expiryDate        DateTime?
-  isValid           Boolean            @default(true)
-  downloadCount     Int                @default(0)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  enrollment        TrainingEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+model verificationtokens {
+  identifier String
+  token      String   @unique
+  expires    DateTime
 
-  @@index([certificateNumber])
-  @@index([issuedDate])
-  @@map("training_certificates")
+  @@unique([identifier, token])
 }
 
-model Asset {
-  id                 String              @id @default(cuid())
-  assetTag           String              @unique
-  name               String
-  description        String?
-  category           String
-  brand              String?
-  model              String?
-  serialNumber       String?
-  purchaseDate       DateTime?
-  purchasePrice      Float?
-  currentValue       Float?
-  location           String?
-  condition          AssetCondition      @default(GOOD)
-  status             String              @default("ACTIVE")
-  warrantyExpiry     DateTime?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  auditRecords       AssetAudit[]
-  maintenanceRecords MaintenanceRecord[]
-
-  @@index([assetTag])
-  @@index([category])
-  @@index([status])
-  @@index([location])
-  @@map("assets")
+enum ActivityStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
-model MaintenanceRecord {
-  id              String    @id @default(cuid())
-  assetId         String
-  description     String?
-  cost            Float?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  nextDueDate     DateTime?
-  performedBy     String?
-  performedDate   DateTime
-  maintenanceType String
-  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
-
-  @@index([assetId])
-  @@index([performedDate])
-  @@map("maintenance_records")
+enum AssetCategory {
+  COMPUTER
+  FURNITURE
+  VEHICLE
+  EQUIPMENT
+  OTHER
 }
 
-model AssetAudit {
-  id        String   @id @default(cuid())
-  assetId   String
-  auditDate DateTime
-  condition String
-  notes     String?
-  auditedBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-
-  @@index([assetId])
-  @@index([auditDate])
-  @@map("asset_audits")
+enum AssetCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
 }
 
-// Enhanced Document Repository Models with World-Class Features
-
-model Document {
-  id                   String                 @id @default(cuid())
-  filename             String
-  originalName         String
-  path                 String
-  url                  String?
-  mimeType             String
-  size                 Int
-  category             DocumentCategory?
-  description          String?
-  summary              String?
-  extractedText        String?                // For full-text search
-  ocrText              String?                // OCR extracted text from images/PDFs
-  searchKeywords       String[]               @default([])
-  tags                 String[]               @default([])
-  
-  // Version Control
-  version              String                 @default("1.0")
-  versionComment       String?
-  isLatestVersion      Boolean                @default(true)
-  parentDocumentId     String?                // For version history
-  parentDocument       Document?              @relation("DocumentVersions", fields: [parentDocumentId], references: [id])
-  versions             Document[]             @relation("DocumentVersions")
-  
-  // Security & Access Control
-  classification       DocumentClassification @default(PUBLIC)
-  accessLevel          String                 @default("internal")
-  isPublic             Boolean                @default(false)
-  
-  // Check-in/Check-out
-  isCheckedOut         Boolean                @default(false)
-  checkedOutBy         String?
-  checkedOutAt         DateTime?
-  lockExpiresAt        DateTime?
-  
-  // Metadata
-  author               String?
-  department           String?
-  departmentId         String?
-  projectId            String?
-  customMetadata       Json?                  // Flexible metadata fields
-  
-  // Workflow & Approval
-  approvalStatus       DocumentApprovalStatus @default(DRAFT)
-  approvedBy           String?
-  approvedAt           DateTime?
-  reviewStatus         DocumentReviewStatus   @default(PENDING)
-  
-  // AI Features
-  sentimentScore       Float?                 // AI sentiment analysis
-  readabilityScore     Float?                 // AI readability analysis
-  qualityScore         Float?                 // AI quality assessment
-  keyPhrases           String[]               @default([])
-  aiSummary            String?
-  
-  // Audit & Tracking
-  uploadedBy           String?
-  viewCount            Int                    @default(0)
-  downloadCount        Int                    @default(0)
-  lastAccessedAt       DateTime?
-  lastAccessedBy       String?
-  
-  // Retention & Archival
-  retentionPeriod      Int?                   // Days
-  archiveDate          DateTime?
-  isArchived           Boolean                @default(false)
-  
-  // Soft Delete
-  isDeleted            Boolean                @default(false)
-  deletedAt            DateTime?
-  deletedBy            String?
-  
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  
-  // Relations
-  project              Project?               @relation(fields: [projectId], references: [id])
-  department_rel       Department?            @relation(fields: [departmentId], references: [id])
-  permissions          DocumentPermission[]
-  shares               DocumentShare[]
-  favorites            DocumentFavorite[]
-  comments             DocumentComment[]
-  auditLogs            DocumentAuditLog[]
-  workflowTasks        DocumentWorkflowTask[]
-  
-  // AI Relations
-  analysis             DocumentAnalysis?
-  aiClassification     DocumentClassificationAI? @relation("AIClassification")
-  content              DocumentContent[]      @relation("DocumentContent")
-  activities           DocumentActivity[]     @relation("DocumentActivities")
-
-  @@index([filename])
-  @@index([category])
-  @@index([classification])
-  @@index([uploadedBy])
-  @@index([isPublic])
-  @@index([isCheckedOut])
-  @@index([checkedOutBy])
-  @@index([approvalStatus])
-  @@index([reviewStatus])
-  @@index([department])
-  @@index([projectId])
-  @@index([isDeleted])
-  @@index([isArchived])
-  @@index([createdAt])
-  @@index([lastAccessedAt])
-  @@map("documents")
+enum AssetStatus {
+  ACTIVE
+  MAINTENANCE
+  DISPOSED
+  LOST
 }
 
-model DocumentFolder {
-  id           String           @id @default(cuid())
-  name         String
-  description  String?
-  path         String
-  parentId     String?
-  parent       DocumentFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id])
-  children     DocumentFolder[] @relation("FolderHierarchy")
-  level        Int              @default(0)
-  
-  // Access Control
-  isPublic     Boolean          @default(false)
-  ownerId      String
-  
-  // Metadata
-  department   String?
-  projectId    String?
-  
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  
-  // Relations
-  permissions  DocumentPermission[]
-
-  @@index([name])
-  @@index([parentId])
-  @@index([ownerId])
-  @@index([department])
-  @@index([projectId])
-  @@map("document_folders")
+enum AuditLogSeverity {
+  LOW
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
 }
 
-model DocumentPermission {
-  id            String               @id @default(cuid())
-  documentId    String?
-  folderId      String?
-  userId        String?
-  userEmail     String?
-  groupId       String?              // For group-based permissions
-  permission    DocumentPermissionType
-  grantedBy     String
-  grantedAt     DateTime             @default(now())
-  expiresAt     DateTime?
-  isInherited   Boolean              @default(false)
-  
-  document      Document?            @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  folder        DocumentFolder?      @relation(fields: [folderId], references: [id], onDelete: Cascade)
-
-  @@index([documentId])
-  @@index([folderId])
-  @@index([userId])
-  @@index([userEmail])
-  @@index([permission])
-  @@map("document_permissions")
+enum CallDirection {
+  INBOUND
+  OUTBOUND
 }
 
-model DocumentShare {
-  id              String    @id @default(cuid())
-  documentId      String
-  sharedBy        String
-  sharedWith      String?   // User ID
-  sharedWithEmail String?   // Email for external shares
-  permission      DocumentPermissionType
-  shareToken      String?   @unique
-  expiresAt       DateTime?
-  isActive        Boolean   @default(true)
-  accessCount     Int       @default(0)
-  lastAccessedAt  DateTime?
-  message         String?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  document        Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@index([documentId])
-  @@index([sharedBy])
-  @@index([sharedWith])
-  @@index([shareToken])
-  @@index([expiresAt])
-  @@map("document_shares")
+enum CallPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
-model DocumentFavorite {
-  id         String   @id @default(cuid())
-  documentId String
-  userId     String
-  addedAt    DateTime @default(now())
-  
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@unique([documentId, userId])
-  @@index([userId])
-  @@map("document_favorites")
+enum CallStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  ESCALATED
+  SPAM
 }
 
-model DocumentComment {
-  id         String   @id @default(cuid())
-  documentId String
-  userId     String
-  content    String
-  isResolved Boolean  @default(false)
-  parentId   String?  // For threaded comments
-  
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  parent     DocumentComment? @relation("CommentThreads", fields: [parentId], references: [id])
-  replies    DocumentComment[] @relation("CommentThreads")
-
-  @@index([documentId])
-  @@index([userId])
-  @@index([parentId])
-  @@map("document_comments")
+enum CallType {
+  INQUIRY
+  COMPLAINT
+  REQUEST
+  EMERGENCY
+  FEEDBACK
+  OTHER
 }
 
-model DocumentAuditLog {
-  id           String                @id @default(cuid())
-  documentId   String
-  userId       String
-  userEmail    String?
-  action       DocumentAuditAction
-  details      Json?
-  ipAddress    String?
-  userAgent    String?
-  sessionId    String?
-  
-  timestamp    DateTime              @default(now())
-  
-  document     Document              @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@index([documentId])
-  @@index([userId])
-  @@index([action])
-  @@index([timestamp])
-  @@map("document_audit_logs")
+enum DocumentApprovalStatus {
+  DRAFT
+  PENDING_REVIEW
+  UNDER_REVIEW
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  PUBLISHED
 }
 
-model DocumentWorkflowTask {
-  id          String                    @id @default(cuid())
-  documentId  String
-  taskType    DocumentWorkflowTaskType
-  assignedTo  String
-  assignedBy  String
-  title       String
-  description String?
-  status      TaskStatus                @default(PENDING)
-  priority    TaskPriority              @default(MEDIUM)
-  dueDate     DateTime?
-  completedAt DateTime?
-  comments    String?
-  
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
-  
-  document    Document                  @relation(fields: [documentId], references: [id], onDelete: Cascade)
-
-  @@index([documentId])
-  @@index([assignedTo])
-  @@index([status])
-  @@index([taskType])
-  @@index([dueDate])
-  @@map("document_workflow_tasks")
+enum DocumentAuditAction {
+  CREATED
+  VIEWED
+  DOWNLOADED
+  EDITED
+  DELETED
+  RESTORED
+  SHARED
+  UNSHARED
+  FAVORITED
+  UNFAVORITED
+  COMMENTED
+  CHECKED_OUT
+  CHECKED_IN
+  APPROVED
+  REJECTED
+  CLASSIFIED
+  PERMISSIONS_CHANGED
+  MOVED
+  COPIED
+  ARCHIVED
+  UNARCHIVED
 }
 
-model DocumentTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  category    String
-  template    Json     // Template structure/content
-  isActive    Boolean  @default(true)
-  createdBy   String
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([category])
-  @@index([isActive])
-  @@map("document_templates")
-}
-
-// AI-Enhanced Document Models
-model DocumentAnalysis {
-  id                     String   @id @default(cuid())
-  documentId             String   @unique
-  sentiment              Json     // {score: number, label: string, confidence: number}
-  readability            Json     // {score: number, level: string, suggestions: string[]}
-  quality                Json     // {score: number, issues: string[], strengths: string[]}
-  keyPhrases             String[]
-  summary                String?
-  topics                 String[]
-  language               String?
-  wordCount              Int?
-  estimatedReadingTime   Int?     // in minutes
-  analyzedAt             DateTime @default(now())
-  analyzedBy             String?
-  
-  document               Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  analyzedByUser         User?    @relation("AnalyzedBy", fields: [analyzedBy], references: [id])
-  
-  @@index([analyzedAt])
-  @@index([language])
-  @@map("document_analysis")
-}
-
-model DocumentClassificationAI {
-  id                String   @id @default(cuid())
-  documentId        String   @unique
-  category          String
-  confidence        Float
-  tags              String[]
-  securityLevel     String?
-  reasons           String[]
-  suggestedActions  String[]
-  classifiedAt      DateTime @default(now())
-  classifiedBy      String?
-  
-  document          Document @relation("AIClassification", fields: [documentId], references: [id], onDelete: Cascade)
-  classifiedByUser  User?    @relation("ClassifiedBy", fields: [classifiedBy], references: [id])
-  
-  @@index([category])
-  @@index([classifiedAt])
-  @@map("document_classification_ai")
-}
-
-model DocumentContent {
-  id          String   @id @default(cuid())
-  documentId  String
-  content     String   // Full document content for AI processing
-  version     Int      @default(1)
-  createdAt   DateTime @default(now())
-  createdBy   String?
-  
-  document    Document @relation("DocumentContent", fields: [documentId], references: [id], onDelete: Cascade)
-  creator     User?    @relation("ContentCreator", fields: [createdBy], references: [id])
-  
-  @@unique([documentId, version])
-  @@index([documentId])
-  @@map("document_content")
-}
-
-model SearchLog {
-  id           String   @id @default(cuid())
-  userId       String
-  query        String
-  resultsCount Int
-  searchTime   Int      // milliseconds
-  filters      Json?
-  searchType   String   // 'BASIC', 'AI_INTELLIGENT', 'SEMANTIC'
-  createdAt    DateTime @default(now())
-  
-  user         User     @relation("SearchLogs", fields: [userId], references: [id])
-  
-  @@index([userId])
-  @@index([createdAt])
-  @@index([searchType])
-  @@map("search_logs")
-}
-
-model BatchAnalysis {
-  id          String   @id @default(cuid())
-  userId      String
-  documentIds String[]
-  analysisType String
-  results     Json
-  createdAt   DateTime @default(now())
-  
-  user        User     @relation("BatchAnalyses", fields: [userId], references: [id])
-  
-  @@index([userId])
-  @@index([createdAt])
-  @@map("batch_analyses")
-}
-
-model DocumentActivity {
-  id         String   @id @default(cuid())
-  documentId String
-  userId     String
-  action     String   // 'VIEW', 'EDIT', 'DOWNLOAD', 'SHARE', 'AI_ANALYSIS', 'AI_CLASSIFICATION', 'AI_GENERATION'
-  details    Json?
-  createdAt  DateTime @default(now())
-  
-  document   Document @relation("DocumentActivities", fields: [documentId], references: [id], onDelete: Cascade)
-  user       User     @relation("UserActivities", fields: [userId], references: [id])
-  
-  @@index([documentId])
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("document_activities")
-}
-
-// Enhanced Enums for Document Repository
 enum DocumentCategory {
   POLICY
   PROCEDURE
@@ -928,46 +1116,12 @@ enum DocumentPermissionType {
   ADMIN
 }
 
-enum DocumentApprovalStatus {
-  DRAFT
-  PENDING_REVIEW
-  UNDER_REVIEW
-  PENDING_APPROVAL
-  APPROVED
-  REJECTED
-  PUBLISHED
-}
-
 enum DocumentReviewStatus {
   PENDING
   IN_REVIEW
   APPROVED
   REQUIRES_CHANGES
   REJECTED
-}
-
-enum DocumentAuditAction {
-  CREATED
-  VIEWED
-  DOWNLOADED
-  EDITED
-  DELETED
-  RESTORED
-  SHARED
-  UNSHARED
-  FAVORITED
-  UNFAVORITED
-  COMMENTED
-  CHECKED_OUT
-  CHECKED_IN
-  APPROVED
-  REJECTED
-  CLASSIFIED
-  PERMISSIONS_CHANGED
-  MOVED
-  COPIED
-  ARCHIVED
-  UNARCHIVED
 }
 
 enum DocumentWorkflowTaskType {
@@ -981,113 +1135,31 @@ enum DocumentWorkflowTaskType {
   PUBLISH
 }
 
-enum TaskStatus {
-  PENDING
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+  TERMINATED
+  ON_LEAVE
+}
+
+enum MitigationStatus {
+  PLANNED
   IN_PROGRESS
   COMPLETED
-  CANCELLED
   OVERDUE
 }
 
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-model Event {
-  id                   String              @id @default(cuid())
-  title                String
-  description          String?
-  type                 String
-  status               String              @default("planning")
-  startDate            DateTime
-  endDate              DateTime?
-  location             String?
-  venue                String?
-  capacity             Int?
-  agenda               Json?
-  speakers             Json?
-  budget               Float?
-  actualCost           Float               @default(0)
-  requiresRegistration Boolean             @default(false)
-  registrationDeadline DateTime?
-  partners             Json?
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  registrations        EventRegistration[]
-
-  @@index([type])
-  @@index([status])
-  @@index([startDate])
-  @@map("events")
-}
-
-model EventRegistration {
-  id                  String   @id @default(cuid())
-  eventId             String
-  participantName     String
-  participantEmail    String
-  participantPhone    String?
-  organization        String?
-  position            String?
-  specialRequirements String?
-  status              String   @default("pending")
-  registeredAt        DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  event               Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, participantEmail])
-  @@index([eventId])
-  @@index([status])
-  @@map("event_registrations")
-}
-
-model SystemConfig {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  value       Json
-  description String?
-  category    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([category])
-  @@map("system_config")
-}
-
-model Notification {
-  id        String           @id @default(cuid())
-  userId    String?
-  title     String
-  message   String
-  type      NotificationType @default(INFO)
-  isRead    Boolean          @default(false)
-  actionUrl String?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  @@index([userId])
-  @@index([isRead])
-  @@index([createdAt])
-  @@map("notifications")
-}
-
-enum UserRole {
-  BASIC_USER_1
-  BASIC_USER_2
-  ADVANCE_USER_1
-  ADVANCE_USER_2
-  HR
-  SYSTEM_ADMINISTRATOR
-}
-
-enum AuditLogSeverity {
-  LOW
+enum NotificationType {
   INFO
   WARNING
   ERROR
+  SUCCESS
+}
+
+enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
   CRITICAL
 }
 
@@ -1099,88 +1171,6 @@ enum ProjectStatus {
   CANCELLED
 }
 
-enum ProjectPriority {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum ActivityStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum CallType {
-  INQUIRY
-  COMPLAINT
-  REQUEST
-  EMERGENCY
-  FEEDBACK
-  OTHER
-}
-
-enum CallDirection {
-  INBOUND
-  OUTBOUND
-}
-
-enum AssetCondition {
-  EXCELLENT
-  GOOD
-  FAIR
-  POOR
-  DAMAGED
-}
-
-enum CallPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-enum CallStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-  CLOSED
-  ESCALATED
-  SPAM
-}
-
-enum EmployeeStatus {
-  ACTIVE
-  INACTIVE
-  TERMINATED
-  ON_LEAVE
-}
-
-enum AssetCategory {
-  COMPUTER
-  FURNITURE
-  VEHICLE
-  EQUIPMENT
-  OTHER
-}
-
-enum AssetStatus {
-  ACTIVE
-  MAINTENANCE
-  DISPOSED
-  LOST
-}
-
-enum NotificationType {
-  INFO
-  WARNING
-  ERROR
-  SUCCESS
-}
-
-// Risk Management Enums
 enum RiskCategory {
   OPERATIONAL
   STRATEGIC
@@ -1192,13 +1182,13 @@ enum RiskCategory {
   HR_PERSONNEL
 }
 
-enum RiskProbability {
+enum RiskImpact {
   LOW
   MEDIUM
   HIGH
 }
 
-enum RiskImpact {
+enum RiskProbability {
   LOW
   MEDIUM
   HIGH
@@ -1211,418 +1201,27 @@ enum RiskStatus {
   CLOSED
 }
 
-enum MitigationStatus {
-  PLANNED
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
   IN_PROGRESS
   COMPLETED
+  CANCELLED
   OVERDUE
 }
 
-// Risk Management Models
-model Risk {
-  id                String           @id @default(cuid())
-  riskId            String           @unique // Auto-generated risk identifier (e.g., RISK-2025-001)
-  title             String
-  description       String           @db.Text
-  category          RiskCategory
-  department        String?
-  probability       RiskProbability
-  impact            RiskImpact
-  riskScore         Int              // Auto-calculated: probability × impact (1-9 scale)
-  status            RiskStatus       @default(OPEN)
-  dateIdentified    DateTime         @default(now())
-  lastAssessed      DateTime?
-  ownerId           String?
-  owner             User?            @relation("RiskOwner", fields: [ownerId], references: [id])
-  tags              String[]         @default([]) // SDG, donor compliance, audit year tags
-  
-  // Relationships
-  mitigations       RiskMitigation[]
-  assessments       RiskAssessment[]
-  documents         RiskDocument[]
-  auditLogs         RiskAuditLog[]
-  
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  createdById       String?
-  createdBy         User?            @relation("RiskCreator", fields: [createdById], references: [id])
-  
-  @@map("risks")
-}
-
-model RiskMitigation {
-  id                  String           @id @default(cuid())
-  riskId              String
-  risk                Risk             @relation(fields: [riskId], references: [id], onDelete: Cascade)
-  
-  strategy            String           @db.Text
-  controlMeasure      String?          @db.Text
-  ownerId             String?
-  owner               User?            @relation("MitigationOwner", fields: [ownerId], references: [id])
-  deadline            DateTime?
-  implementationProgress Int           @default(0) // 0-100%
-  status              MitigationStatus @default(PLANNED)
-  
-  // Progress tracking
-  milestones          Json?            // Array of milestone objects
-  lastUpdated         DateTime         @updatedAt
-  completedAt         DateTime?
-  
-  // Notes and comments
-  notes               String?          @db.Text
-  
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  createdById         String?
-  createdBy           User?            @relation("MitigationCreator", fields: [createdById], references: [id])
-  
-  @@map("risk_mitigations")
-}
-
-model RiskAssessment {
-  id                String           @id @default(cuid())
-  riskId            String
-  risk              Risk             @relation(fields: [riskId], references: [id], onDelete: Cascade)
-  
-  assessmentDate    DateTime         @default(now())
-  assessorId        String?
-  assessor          User?            @relation("RiskAssessor", fields: [assessorId], references: [id])
-  
-  // Assessment data
-  previousProbability RiskProbability?
-  previousImpact      RiskImpact?
-  newProbability      RiskProbability
-  newImpact           RiskImpact
-  newRiskScore        Int
-  
-  // Assessment details
-  reasoning         String?          @db.Text
-  evidence          String?          @db.Text
-  recommendations   String?          @db.Text
-  
-  // Workflow fields
-  status            String           @default("SUBMITTED") // SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED
-  reviewedAt        DateTime?
-  reviewerId        String?
-  reviewer          User?            @relation("AssessmentReviewer", fields: [reviewerId], references: [id])
-  reviewComments    String?          @db.Text
-  
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  
-  @@map("risk_assessments")
-}
-
-model RiskDocument {
-  id              String   @id @default(cuid())
-  riskId          String
-  risk            Risk     @relation(fields: [riskId], references: [id], onDelete: Cascade)
-  
-  filename        String
-  originalName    String
-  fileSize        Int
-  mimeType        String
-  filePath        String
-  
-  description     String?
-  documentType    String   @default("SUPPORTING") // SUPPORTING, ASSESSMENT, REPORT, EVIDENCE
-  
-  uploadedById    String?
-  uploadedBy      User?    @relation("DocumentUploader", fields: [uploadedById], references: [id])
-  uploadedAt      DateTime @default(now())
-  
-  @@map("risk_documents")
-}
-
-model RiskAuditLog {
-  id              String   @id @default(cuid())
-  riskId          String
-  risk            Risk     @relation(fields: [riskId], references: [id], onDelete: Cascade)
-  
-  action          String   // CREATE, UPDATE, DELETE, ASSESS, MITIGATE
-  field           String?  // Field that was changed
-  oldValue        String?  @db.Text
-  newValue        String?  @db.Text
-  
-  userId          String?
-  user            User?    @relation("RiskAuditor", fields: [userId], references: [id])
-  timestamp       DateTime @default(now())
-  
-  // Additional context
-  ipAddress       String?
-  userAgent       String?
-  description     String?  @db.Text
-  
-  @@map("risk_audit_logs")
-}
-
-// Add Risk Management relations to User model
-model RiskNotification {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation("RiskNotifications", fields: [userId], references: [id])
-  
-  type            String   // OVERDUE_MITIGATION, RISK_ESCALATED, ASSESSMENT_DUE
-  title           String
-  message         String   @db.Text
-  riskId          String?
-  
-  isRead          Boolean  @default(false)
-  readAt          DateTime?
-  
-  createdAt       DateTime @default(now())
-  expiresAt       DateTime?
-  
-  @@map("risk_notifications")
-}
-
-// Enhanced Performance Management Models
-
-model Qualification {
-  id                  String   @id @default(cuid())
-  employeeId          String
-  type                String   // education, certification, skill, training
-  title               String
-  institution         String?
-  issuer              String?
-  dateObtained        DateTime
-  expiryDate          DateTime?
-  level               String?
-  grade               String?
-  description         String?
-  certificateUrl      String?
-  status              String   @default("active") // active, expired, pending
-  verificationStatus  String   @default("pending") // verified, pending, rejected
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  
-  employee            User @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
-  @@index([employeeId])
-  @@index([type])
-  @@index([status])
-  @@index([expiryDate])
-  @@map("qualifications")
-}
-
-model PerformancePlan {
-  id                    String                     @id @default(cuid())
-  employeeId            String
-  employeeName          String
-  planYear              Int
-  status                String                     @default("draft") // draft, active, completed, cancelled
-  electronicSignature   String?
-  signatureDate         DateTime?
-  createdAt             DateTime                   @default(now())
-  updatedAt             DateTime                   @updatedAt
-  
-  employee              User                       @relation("EmployeePerformancePlans", fields: [employeeId], references: [id], onDelete: Cascade)
-  keyResponsibilities   KeyResponsibility[]
-  developmentActivities DevelopmentActivity[]
-  appraisals            PerformanceAppraisal[]
-  
-  @@index([employeeId])
-  @@index([planYear])
-  @@index([status])
-  @@map("performance_plans")
-}
-
-model KeyResponsibility {
-  id          String     @id @default(cuid())
-  planId      String
-  title       String
-  description String?
-  weight      Float      @default(25) // percentage weight
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  
-  plan        PerformancePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  activities  PerformanceActivity[]
-  
-  @@index([planId])
-  @@map("key_responsibilities")
-}
-
-model PerformanceActivity {
-  id                 String  @id @default(cuid())
-  responsibilityId   String
-  description        String
-  timeline           String
-  successIndicators  String
-  supportDepartments String[] @default([])
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  
-  responsibility     KeyResponsibility @relation(fields: [responsibilityId], references: [id], onDelete: Cascade)
-  
-  @@index([responsibilityId])
-  @@map("performance_activities")
-}
-
-model DevelopmentActivity {
-  id          String   @id @default(cuid())
-  planId      String
-  title       String
-  description String
-  category    String   @default("professional") // professional, training, association
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  plan        PerformancePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  
-  @@index([planId])
-  @@index([category])
-  @@map("development_activities")
-}
-
-model PerformanceAppraisal {
-  id                            String                        @id @default(cuid())
-  employeeId                    String
-  employeeName                  String
-  planId                        String
-  reviewerId                    String?
-  supervisorId                  String?
-  type                          String                        // annual, quarterly, probation
-  status                        String                        @default("self_assessment") // self_assessment, manager_review, hr_review, completed
-  
-  // Employee Signature
-  employeeSignature             String?
-  employeeSignatureDate         DateTime?
-  
-  // Supervisor Signature
-  supervisorSignature           String?
-  supervisorSignatureDate       DateTime?
-  
-  // Reviewer Signature
-  reviewerSignature             String?
-  reviewerSignatureDate         DateTime?
-  
-  // Calculated Totals
-  selfTotalResponsibilityPoints   Int                         @default(0)
-  selfTotalValuePoints            Int                         @default(0)
-  selfOverallPercentage           Float                       @default(0)
-  
-  supervisorTotalResponsibilityPoints Int                     @default(0)
-  supervisorTotalValuePoints          Int                     @default(0)
-  supervisorOverallPercentage         Float                   @default(0)
-  
-  reviewerTotalResponsibilityPoints   Int                     @default(0)
-  reviewerTotalValuePoints            Int                     @default(0)
-  reviewerOverallPercentage           Float                   @default(0)
-  
-  finalOverallRating              Float?
-  
-  createdAt                       DateTime                    @default(now())
-  updatedAt                       DateTime                    @updatedAt
-  
-  employee                        User                        @relation("EmployeeAppraisals", fields: [employeeId], references: [id], onDelete: Cascade)
-  plan                            PerformancePlan             @relation(fields: [planId], references: [id])
-  supervisor                      User?                       @relation("SupervisorAppraisals", fields: [supervisorId], references: [id])
-  reviewer                        User?                       @relation("ReviewerAppraisals", fields: [reviewerId], references: [id])
-  
-  responsibilityAssessments       ResponsibilityAssessment[]
-  valueAssessments                ValueAssessment[]
-  
-  @@index([employeeId])
-  @@index([planId])
-  @@index([supervisorId])
-  @@index([reviewerId])
-  @@index([status])
-  @@index([type])
-  @@map("performance_appraisals")
-}
-
-model ResponsibilityAssessment {
-  id                 String   @id @default(cuid())
-  appraisalId        String
-  responsibilityId   String?
-  title              String
-  weight             Float
-  successIndicators  String?
-  
-  // Self Assessment
-  selfComment        String?
-  selfRating         String?  // A1, A2, B1, B2, C1, C2
-  selfPoints         Int      @default(0)
-  
-  // Supervisor Assessment
-  supervisorComment  String?
-  supervisorRating   String?
-  supervisorPoints   Int      @default(0)
-  
-  // Reviewer Assessment
-  reviewerComment    String?
-  reviewerRating     String?
-  reviewerPoints     Int      @default(0)
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  
-  appraisal          PerformanceAppraisal @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
-  
-  @@index([appraisalId])
-  @@map("responsibility_assessments")
-}
-
-model ValueAssessment {
-  id                String   @id @default(cuid())
-  appraisalId       String
-  valueName         String   // Teamwork, Responsiveness, etc.
-  
-  // Self Assessment
-  selfComment       String?
-  selfRating        String?  // A1, A2, B1, B2, C1, C2
-  selfPoints        Int      @default(0)
-  
-  // Supervisor Assessment
-  supervisorComment String?
-  supervisorRating  String?
-  supervisorPoints  Int      @default(0)
-  
-  // Reviewer Assessment
-  reviewerComment   String?
-  reviewerRating    String?
-  reviewerPoints    Int      @default(0)
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  appraisal         PerformanceAppraisal @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
-  
-  @@index([appraisalId])
-  @@index([valueName])
-  @@map("value_assessments")
-}
-
-// Organization Settings Model
-model OrganizationSettings {
-  id               String   @id @default(cuid())
-  name             String
-  email            String
-  phone            String
-  address          String?
-  timezone         String   @default("Africa/Harare")
-  defaultLanguage  String   @default("en")
-  currency         String   @default("USD")
-  logo             String?
-  website          String?
-  taxId            String?
-  registrationNo   String?
-  
-  // Business Hours
-  businessHoursStart  String?  @default("08:00")
-  businessHoursEnd    String?  @default("17:00")
-  workingDays         String[] @default(["monday", "tuesday", "wednesday", "thursday", "friday"])
-  
-  // System Settings
-  maintenanceMode     Boolean  @default(false)
-  allowRegistration   Boolean  @default(false)
-  emailNotifications  Boolean  @default(true)
-  smsNotifications    Boolean  @default(false)
-  pushNotifications   Boolean  @default(true)
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
-  @@map("organization_settings")
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  HR_MANAGER
+  PROJECT_MANAGER
+  CALL_CENTRE_AGENT
+  EMPLOYEE
+  USER
 }

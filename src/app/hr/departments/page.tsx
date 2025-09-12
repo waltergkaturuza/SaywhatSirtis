@@ -29,6 +29,8 @@ interface Department {
   budget?: number
   location?: string
   status: string
+  parentId?: string | null
+  level: number
   employeeCount: number
   employees?: Array<{
     id: string
@@ -507,14 +509,32 @@ export default function DepartmentsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {departments.map((department) => (
-                  <div key={department.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div 
+                    key={department.id} 
+                    className={`border rounded-lg p-6 hover:shadow-md transition-shadow ${
+                      department.parentId 
+                        ? 'border-l-4 border-l-blue-400 bg-blue-50/30 ml-4' 
+                        : 'border-l-4 border-l-orange-400 bg-white'
+                    }`}
+                  >
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className="flex-shrink-0">
-                          <BuildingOfficeIcon className="h-8 w-8 text-orange-600" />
+                          <BuildingOfficeIcon 
+                            className={`h-8 w-8 ${
+                              department.parentId ? 'text-blue-600' : 'text-orange-600'
+                            }`} 
+                          />
                         </div>
                         <div>
-                          <h4 className="text-lg font-medium text-gray-900">{department.name}</h4>
+                          <div className="flex items-center space-x-2">
+                            <h4 className="text-lg font-medium text-gray-900">{department.name}</h4>
+                            {department.parentId && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                Subunit
+                              </span>
+                            )}
+                          </div>
                           {department.code && (
                             <p className="text-sm text-gray-500">Code: {department.code}</p>
                           )}

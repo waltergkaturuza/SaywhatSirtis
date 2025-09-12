@@ -28,7 +28,7 @@ export async function GET(
     }
 
     // Fetch specific department
-    const department = await prisma.department.findUnique({
+    const department = await prisma.departments.findUnique({
       where: { id },
       include: {
         employees: {
@@ -131,7 +131,7 @@ export async function PUT(
     const { name, description, code, manager, budget, location, status } = await request.json();
 
     // Check if department exists
-    const existingDept = await prisma.department.findUnique({
+    const existingDept = await prisma.departments.findUnique({
       where: { id }
     });
 
@@ -147,7 +147,7 @@ export async function PUT(
 
     // Check if new name conflicts (if name is being changed)
     if (name && name.trim() !== existingDept.name) {
-      const nameConflict = await prisma.department.findFirst({
+      const nameConflict = await prisma.departments.findFirst({
         where: { 
           name: name.trim(),
           id: { not: id }
@@ -167,7 +167,7 @@ export async function PUT(
 
     // Check if new code conflicts (if code is being changed)
     if (code && code.trim() !== existingDept.code) {
-      const codeConflict = await prisma.department.findFirst({
+      const codeConflict = await prisma.departments.findFirst({
         where: { 
           code: code.trim().toUpperCase(),
           id: { not: id }
@@ -186,7 +186,7 @@ export async function PUT(
     }
 
     // Update department
-    const updatedDepartment = await prisma.department.update({
+    const updatedDepartment = await prisma.departments.update({
       where: { id },
       data: {
         name: name?.trim() || existingDept.name,
@@ -195,7 +195,8 @@ export async function PUT(
         manager: manager?.trim() || existingDept.manager,
         budget: budget !== undefined ? (budget ? parseFloat(budget) : null) : existingDept.budget,
         location: location?.trim() || existingDept.location,
-        status: status || existingDept.status
+        status: status || existingDept.status,
+        updatedAt: new Date()
       },
       include: {
         _count: {
@@ -266,7 +267,7 @@ export async function DELETE(
     }
 
     // Check if department exists
-    const existingDept = await prisma.department.findUnique({
+    const existingDept = await prisma.departments.findUnique({
       where: { id },
       include: {
         _count: {
@@ -303,7 +304,7 @@ export async function DELETE(
     }
 
     // Delete department
-    await prisma.department.delete({
+    await prisma.departments.delete({
       where: { id }
     });
 

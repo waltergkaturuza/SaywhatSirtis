@@ -36,7 +36,7 @@ export async function GET() {
 
     // Get real security events from audit logs with safe query execution
     const securityEvents = await safeQuery(async (prisma) => {
-      return await prisma.auditLog.findMany({
+      return await prisma.audit_logs.findMany({
         where: {
           timestamp: {
             gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
@@ -213,13 +213,13 @@ async function getSystemStats() {
     const [totalUsers, activeUsers, totalDocuments, totalEmployees, activeEmployees, recentAuditLogs] = await Promise.all([
       // Get total users
       safeQuery(async (prisma) => {
-        return await prisma.user.count()
+        return await prisma.users.count()
       }).catch(() => 0),
       
       // Get active users (logged in within last 30 days)
       safeQuery(async (prisma) => {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        return await prisma.user.count({
+        return await prisma.users.count({
           where: {
             OR: [
               { lastLogin: { gte: thirtyDaysAgo } },
@@ -231,12 +231,12 @@ async function getSystemStats() {
       
       // Get total documents
       safeQuery(async (prisma) => {
-        return await prisma.document.count()
+        return await prisma.documents.count()
       }).catch(() => 0),
       
       // Get total employees (users with employment details)
       safeQuery(async (prisma) => {
-        return await prisma.user.count({
+        return await prisma.users.count({
           where: { 
             OR: [
               { firstName: { not: null } },
@@ -249,7 +249,7 @@ async function getSystemStats() {
       
       // Get active employees (active users with employment details)
       safeQuery(async (prisma) => {
-        return await prisma.user.count({
+        return await prisma.users.count({
           where: { 
             isActive: true,
             OR: [
@@ -264,7 +264,7 @@ async function getSystemStats() {
       // Get API calls from audit logs (last 24 hours)
       safeQuery(async (prisma) => {
         const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-        return await prisma.auditLog.count({
+        return await prisma.audit_logs.count({
           where: {
             timestamp: { gte: yesterday }
           }
@@ -331,7 +331,7 @@ async function getServiceStatus() {
     // Check database connectivity
     const dbStatus = await safeQuery(async (prisma) => {
       const start = Date.now()
-      await prisma.user.findFirst()
+      await prisma.users.findFirst()
       const responseTime = Date.now() - start
       return { status: 'online' as const, responseTime }
     }).catch(() => ({ status: 'offline' as const, responseTime: 0 }))
@@ -399,7 +399,7 @@ async function getStorageUsage(): Promise<string> {
     // In a real implementation, this would check actual storage
     // For now, calculate based on document count
     const docCount = await safeQuery(async (prisma) => {
-      return await prisma.document.count()
+      return await prisma.documents.count()
     }).catch(() => 0)
     
     // Estimate storage: ~2MB per document average
@@ -552,7 +552,7 @@ async function getDeploymentMetrics() {
     // Query audit logs for deployment-specific data
     const deploymentLogs = await safeQuery(async (prisma) => {
       const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      return await prisma.auditLog.findMany({
+      return await prisma.audit_logs.findMany({
         where: {
           timestamp: { gte: last24Hours }
         },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 // GET /api/hr/department/subunits - Get all main departments for subunit creation
 export async function GET(request: NextRequest) {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get main departments (level 0) that can have subunits
-    const mainDepartments = await prisma.department.findMany({
+    const mainDepartments = await prisma.departments.findMany({
       where: {
         level: 0,
         status: 'ACTIVE'
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate parent department exists
-    const parentDept = await prisma.department.findUnique({
+    const parentDept = await prisma.departments.findUnique({
       where: { id: parentId }
     });
 
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
     const subunitName = `${parentDept.name} - ${name.trim()}`;
 
     // Check if subunit name already exists
-    const existingSubunit = await prisma.department.findUnique({
+    const existingSubunit = await prisma.departments.findUnique({
       where: { name: subunitName }
     });
 
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // Check if code already exists
     if (subunitCode) {
-      const existingCode = await prisma.department.findUnique({
+      const existingCode = await prisma.departments.findUnique({
         where: { code: subunitCode }
       });
 
@@ -157,8 +158,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the subunit
-    const newSubunit = await prisma.department.create({
+    const newSubunit = await prisma.departments.create({
       data: {
+        id: randomUUID(),
         name: subunitName,
         description: description?.trim() || `${name.trim()} subunit of ${parentDept.name}`,
         code: subunitCode,
@@ -167,7 +169,8 @@ export async function POST(request: NextRequest) {
         location: location?.trim() || parentDept.location,
         status: 'ACTIVE',
         parentId: parentId,
-        level: parentDept.level + 1
+        level: parentDept.level + 1,
+        updatedAt: new Date()
       },
       include: {
         parent: {

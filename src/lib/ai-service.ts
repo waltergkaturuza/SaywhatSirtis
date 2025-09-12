@@ -15,6 +15,7 @@ export interface EmployeeData {
   performanceRating?: number
   completedTrainingHours?: number
   projectsCompleted?: number
+  attendanceRate?: number
   yearsOfService?: number
 }
 

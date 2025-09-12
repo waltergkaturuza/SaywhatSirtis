@@ -104,8 +104,7 @@ export const dashboardWidgets: DashboardWidget[] = [
     component: QuickActionsWidget,
     size: "sm",
     order: 6
-  },
-
+  }
 ]
 
 // Modules Configuration

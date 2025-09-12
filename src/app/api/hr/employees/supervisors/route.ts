@@ -8,7 +8,7 @@ export async function GET() {
     const session = await getServerSession(authOptions)
     
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
     // Check permissions
@@ -19,45 +19,15 @@ export async function GET() {
                          session.user?.roles?.includes('hr_staff')
 
     if (!hasPermission) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Fetch employees who are supervisors or can be assigned as supervisors
-    const supervisors = await prisma.user.findMany({
+    console.log('Fetching potential supervisors...')
+    
+    // Simple query first - get all active users
+    const allUsers = await prisma.users.findMany({
       where: {
-        isActive: true,
-        OR: [
-          { 
-            position: {
-              contains: 'manager',
-              mode: 'insensitive'
-            }
-          },
-          {
-            position: {
-              contains: 'supervisor',
-              mode: 'insensitive'
-            }
-          },
-          {
-            position: {
-              contains: 'director',
-              mode: 'insensitive'
-            }
-          },
-          {
-            position: {
-              contains: 'head',
-              mode: 'insensitive'
-            }
-          },
-          {
-            position: {
-              contains: 'lead',
-              mode: 'insensitive'
-            }
-          }
-        ]
+        isActive: true
       },
       select: {
         id: true,
@@ -65,16 +35,69 @@ export async function GET() {
         lastName: true,
         position: true,
         department: true,
-        email: true,
-        isSupervisor: true,
-        isReviewer: true
+        email: true
       },
       orderBy: [
-        { isSupervisor: 'desc' },
         { firstName: 'asc' },
         { lastName: 'asc' }
       ]
     })
+
+    console.log('Found', allUsers.length, 'total users')
+    
+    // Filter for potential supervisors (those with supervisory positions)
+    const potentialSupervisors = allUsers.filter(user => {
+      if (!user.position) return false
+      const position = user.position.toLowerCase()
+      return position.includes('manager') || 
+             position.includes('supervisor') || 
+             position.includes('director') ||
+             position.includes('lead') ||
+             position.includes('head') ||
+             position.includes('admin')
+    })
+
+    console.log('Found', potentialSupervisors.length, 'potential supervisors')
+    
+    // Get corresponding employee records to check supervisor status
+    console.log('Fetching employee records...')
+    let employeeRecords = []
+    
+    if (potentialSupervisors.length > 0) {
+      try {
+        employeeRecords = await prisma.employees.findMany({
+          where: {
+            userId: { in: potentialSupervisors.map(u => u.id) }
+          },
+          select: {
+            userId: true,
+            is_supervisor: true,
+            is_reviewer: true
+          }
+        })
+      } catch (empError) {
+        console.error('Error fetching employee records:', empError)
+        // Continue without employee records
+      }
+    }
+
+    console.log('Found', employeeRecords.length, 'employee records')
+    
+    const employeeMap = new Map(employeeRecords.map(emp => [emp.userId, emp]))
+
+    // Merge the data
+    const supervisors = potentialSupervisors.map(user => ({
+      id: user.id,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      position: user.position || '',
+      department: user.department || '',
+      email: user.email || '',
+      isSupervisor: employeeMap.get(user.id)?.is_supervisor || false,
+      isReviewer: employeeMap.get(user.id)?.is_reviewer || false
+    }))
+
+    console.log('Returning', supervisors.length, 'supervisors')
 
     return NextResponse.json({
       success: true,
@@ -82,9 +105,9 @@ export async function GET() {
     })
 
   } catch (error) {
-    console.error('Error fetching supervisors:', error)
+    console.error('Error in supervisors API:', error)
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: `Internal server error: ${error.message}` },
       { status: 500 }
     )
   }

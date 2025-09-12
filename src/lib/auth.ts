@@ -13,7 +13,7 @@ const developmentUsers = [
     roles: ["admin"],
     permissions: [
       // HR Module - Full Access
-      "hr.full_access", "hr.view", "hr.create", "hr.edit", "hr.delete", 
+      "hr.full_access", "hr.view", "hr.create", "hr.edit", "hr.delete", "hr.attendance", 
       "hr.notifications", "hr.performance", "hr.training", "hr.employees",
       // Programs Module - Full Access  
       "programs.full_access", "programs.view", "programs.create", "programs.edit", "programs.delete",
@@ -49,7 +49,7 @@ const developmentUsers = [
     department: "Human Resources",
     position: "HR Manager", 
     roles: ["hr_manager"],
-    permissions: ["hr.full_access", "hr.notifications"]
+    permissions: ["hr.full_access", "hr.attendance", "hr.notifications"]
   },
   {
     id: "3",
@@ -59,7 +59,7 @@ const developmentUsers = [
     department: "Operations",
     position: "Supervisor",
     roles: ["supervisor"],
-    permissions: ["hr.view", "programs.view", "programs.head", "callcentre.access"]
+    permissions: ["hr.view", "hr.attendance", "programs.view", "programs.head", "callcentre.access"]
   },
   {
     id: "4",
