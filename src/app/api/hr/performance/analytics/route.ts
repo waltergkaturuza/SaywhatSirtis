@@ -49,10 +49,10 @@ export async function GET(request: NextRequest) {
     const performanceReviews = await prisma.performance_reviews.findMany({
       where: {
         createdAt: { gte: startDate },
-        employee: departmentFilter
+        employees: departmentFilter
       },
       include: {
-        employee: true
+        employees: true
       }
     })
 
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       departments.map(async (dept) => {
         const deptReviews = await prisma.performance_reviews.findMany({
           where: {
-            employee: { department: dept.department },
+            employees: { department: dept.department },
             createdAt: { gte: startDate }
           }
         })
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
         overallRating: { gte: 4.5 }
       },
       include: {
-        employee: true
+        employees: true
       },
       orderBy: {
         overallRating: 'desc'
@@ -115,10 +115,10 @@ export async function GET(request: NextRequest) {
     })
 
     const topPerformersData = topPerformers.map(review => ({
-      name: `${review.employee.firstName} ${review.employee.lastName}`,
-      department: review.employee.department,
+      name: `${review.employees.firstName} ${review.employees.lastName}`,
+      department: review.employees.department,
       rating: review.overallRating || 0,
-      position: review.employee.position || 'Employee'
+      position: review.employees.position || 'Employee'
     }))
 
     // Get employees needing attention
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
         overallRating: { lte: 3.2 }
       },
       include: {
-        employee: true
+        employees: true
       },
       orderBy: {
         overallRating: 'asc'
@@ -137,10 +137,10 @@ export async function GET(request: NextRequest) {
     })
 
     const needsAttentionData = needsAttention.map(review => ({
-      name: `${review.employee.firstName} ${review.employee.lastName}`,
-      department: review.employee.department,
+      name: `${review.employees.firstName} ${review.employees.lastName}`,
+      department: review.employees.department,
       rating: review.overallRating || 0,
-      position: review.employee.position || 'Employee',
+      position: review.employees.position || 'Employee',
       issue: 'Performance concerns'
     }))
 

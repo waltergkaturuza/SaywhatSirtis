@@ -72,13 +72,13 @@ export async function GET(request: NextRequest) {
           }
         },
         include: {
-          program: {
+          training_programs: {
             select: {
               title: true,
               category: true
             }
           },
-          employee: {
+          employees: {
             select: {
               firstName: true,
               lastName: true

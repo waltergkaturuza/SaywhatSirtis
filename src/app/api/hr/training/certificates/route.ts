@@ -32,16 +32,16 @@ export async function GET(request: NextRequest) {
     const certificates = await prisma.training_certificates.findMany({
       where: whereClause,
       include: {
-        enrollment: {
+        training_enrollments: {
           include: {
-            program: {
+            training_programs: {
               select: {
                 id: true,
                 title: true,
                 category: true
               }
             },
-            employee: {
+            employees: {
               select: {
                 id: true,
                 firstName: true,
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
         status: 'COMPLETED'
       },
       include: {
-        program: true
+        training_programs: true
       }
     })
 
@@ -118,15 +118,15 @@ export async function POST(request: NextRequest) {
         expiryDate: data.expiryDate ? new Date(data.expiryDate) : null
       },
       include: {
-        enrollment: {
+        training_enrollments: {
           include: {
-            program: {
+            training_programs: {
               select: {
                 title: true,
                 category: true
               }
             },
-            employee: {
+            employees: {
               select: {
                 firstName: true,
                 lastName: true,

@@ -32,10 +32,6 @@ export async function GET(request: NextRequest) {
         csvData = generateSalaryReport(department)
         filename = 'hr-salary-analytics'
         break
-      case 'attendance':
-        csvData = generateAttendanceReport(period, department)
-        filename = 'hr-attendance-analytics'
-        break
       default:
         csvData = generateComprehensiveReport(period, department)
         filename = 'hr-analytics'
@@ -68,7 +64,7 @@ function generateComprehensiveReport(period: string, department: string): string
     `Summary,Turnover Rate,8.5%,${period},${department},${date}`,
     `Summary,Average Tenure,3.2 years,${period},${department},${date}`,
     `Summary,Average Salary,$65000,${period},${department},${date}`,
-    `Summary,Attendance Rate,92.5%,${period},${department},${date}`,
+
     `Summary,Performance Score,4.2/5,${period},${department},${date}`,
     `Department,Technology,45 employees,${period},${department},${date}`,
     `Department,Programs,85 employees,${period},${department},${date}`,
@@ -149,25 +145,4 @@ function generateSalaryReport(department: string): string {
   return header + data.join('\n')
 }
 
-function generateAttendanceReport(period: string, department: string): string {
-  const header = 'Date,Present,Remote,Late,Absent,Department\n'
-  
-  const data = []
-  const today = new Date()
-  
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(today)
-    date.setDate(date.getDate() - i)
-    const dateStr = date.toISOString().split('T')[0]
-    
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6
-    const present = isWeekend ? 0 : Math.round(Math.random() * 40 + 240)
-    const remote = Math.round(present * 0.35)
-    const late = Math.round(present * 0.04)
-    const absent = isWeekend ? 0 : Math.round(Math.random() * 15 + 5)
-    
-    data.push(`${dateStr},${present},${remote},${late},${absent},${department}`)
-  }
-  
-  return header + data.join('\n')
-}
+

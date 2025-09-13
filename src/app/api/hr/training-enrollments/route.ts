@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
 
     const trainingEvent = await prisma.events.create({
       data: {
+        id: crypto.randomUUID(),
         title,
         description,
         type: 'training',
@@ -65,7 +66,8 @@ export async function POST(request: NextRequest) {
         location,
         speakers: instructor ? [{ name: instructor, role: 'Instructor' }] : undefined,
         requiresRegistration: true,
-        status: 'planning'
+        status: 'planning',
+        updatedAt: new Date()
       }
     })
 

@@ -61,7 +61,7 @@ export default function UserPermissionsTestPage() {
     },
     {
       module: "HR",
-      permissions: ["hr.view", "hr.full_access", "hr.attendance", "hr.employees"]
+      permissions: ["hr.view", "hr.full_access", "hr.employees"]
     },
     {
       module: "Analytics",

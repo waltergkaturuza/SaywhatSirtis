@@ -234,83 +234,17 @@ export default function NotificationRoutingPage() {
       routes: [
         { recipient: "Direct Supervisor", action: "Confirm Archive", deadline: "1 day" },
         { recipient: "IT Department", action: "Revoke Access", deadline: "immediate" },
-        { recipient: "Payroll", action: "Final Processing", deadline: "3 days" }
+
       ],
       status: "active",
       lastTriggered: "2024-01-12 13:30",
       successRate: 100
     },
-    {
-      id: 6,
-      name: "Leave Application Routing",
-      description: "Route leave applications through approval hierarchy with document management",
-      trigger: "leave_application_submitted",
-      routes: [
-        { recipient: "Direct Supervisor", action: "Review Application", deadline: "2 days" },
-        { recipient: "HR Department", action: "Final Approval & Documentation", deadline: "1 day" },
-        { recipient: "Payroll", action: "Update Leave Records", deadline: "1 day" }
-      ],
-      status: "active",
-      lastTriggered: "2024-01-15 16:20",
-      successRate: 91
-    },
-    {
-      id: 7,
-      name: "Emergency Leave Processing",
-      description: "Fast-track emergency leave applications with immediate notifications",
-      trigger: "emergency_leave_submitted",
-      routes: [
-        { recipient: "System", action: "Auto-approve 24h", deadline: "immediate" },
-        { recipient: "Direct Supervisor", action: "Emergency Notification", deadline: "1 hour" },
-        { recipient: "HR Department", action: "Document Validation", deadline: "4 hours" },
-        { recipient: "Team Lead", action: "Coverage Arrangement", deadline: "2 hours" }
-      ],
-      status: "active",
-      lastTriggered: "2024-01-14 22:30",
-      successRate: 98
-    },
-    {
-      id: 8,
-      name: "Leave Cancellation Workflow",
-      description: "Handle leave cancellation requests and team notifications",
-      trigger: "leave_cancellation_requested",
-      routes: [
-        { recipient: "Direct Supervisor", action: "Approve Cancellation", deadline: "1 day" },
-        { recipient: "HR Department", action: "Update Records", deadline: "1 day" },
-        { recipient: "Team Members", action: "Coverage Update", deadline: "immediate" }
-      ],
-      status: "active",
-      lastTriggered: "2024-01-13 11:45",
-      successRate: 85
-    },
-    {
-      id: 9,
-      name: "Leave Extension Request",
-      description: "Process leave extension requests with enhanced documentation",
-      trigger: "leave_extension_requested",
-      routes: [
-        { recipient: "Direct Supervisor", action: "Review Extension", deadline: "1 day" },
-        { recipient: "HR Director", action: "Policy Compliance Check", deadline: "2 days" },
-        { recipient: "Department Head", action: "Operational Impact Review", deadline: "1 day" }
-      ],
-      status: "active",
-      lastTriggered: "2024-01-12 14:15",
-      successRate: 73
-    },
-    {
-      id: 10,
-      name: "Medical Leave Documentation",
-      description: "Special routing for medical leaves requiring additional documentation",
-      trigger: "medical_leave_submitted",
-      routes: [
-        { recipient: "HR Medical Officer", action: "Medical Document Review", deadline: "1 day" },
-        { recipient: "Direct Supervisor", action: "Workload Redistribution", deadline: "2 days" },
-        { recipient: "Insurance Coordinator", action: "Benefits Processing", deadline: "3 days" }
-      ],
-      status: "active",
-      lastTriggered: "2024-01-11 09:30",
-      successRate: 94
-    }
+
+
+
+
+
   ]
 
   const recentNotifications = [
@@ -362,54 +296,7 @@ export default function NotificationRoutingPage() {
       priority: "high",
       deadline: "2024-01-16 17:00"
     },
-    {
-      id: 5,
-      type: "leave_application",
-      title: "Leave Application Submitted",
-      employee: "John Doe",
-      supervisor: "Sarah Johnson",
-      secretariat: "Operations",
-      timestamp: "2024-01-15 16:20",
-      status: "pending",
-      priority: "normal",
-      deadline: "2024-01-17 17:00"
-    },
-    {
-      id: 6,
-      type: "emergency_leave",
-      title: "Emergency Leave Auto-Approved",
-      employee: "Michael Chen",
-      supervisor: "Jennifer Smith",
-      secretariat: "Finance",
-      timestamp: "2024-01-14 22:30",
-      status: "completed",
-      priority: "urgent",
-      deadline: "2024-01-15 08:00"
-    },
-    {
-      id: 7,
-      type: "leave_extension",
-      title: "Leave Extension Request",
-      employee: "Emma Thompson",
-      supervisor: "Dr. Amina Hassan",
-      secretariat: "Healthcare",
-      timestamp: "2024-01-12 14:15",
-      status: "escalated",
-      priority: "high",
-      deadline: "2024-01-15 17:00"
-    },
-    {
-      id: 8,
-      type: "medical_leave",
-      title: "Medical Leave Documentation Review",
-      employee: "David Kim",
-      supervisor: "Mark Wilson",
-      secretariat: "Programs",
-      timestamp: "2024-01-11 09:30",
-      status: "pending",
-      priority: "high",
-      deadline: "2024-01-14 17:00"
-    }
+
   ]
 
   const getStatusColor = (status: string) => {
@@ -566,7 +453,7 @@ export default function NotificationRoutingPage() {
                     {notification.type === "appraisal" && <CheckCircleIcon className="h-5 w-5 text-green-600" />}
                     {notification.type === "training" && <UserGroupIcon className="h-5 w-5 text-purple-600" />}
                     {notification.type === "deadline" && <ClockIcon className="h-5 w-5 text-red-600" />}
-                    {notification.type === "leave_application" && <CalendarIcon className="h-5 w-5 text-blue-600" />}
+
                     {notification.type === "emergency_leave" && <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />}
                     {notification.type === "leave_extension" && <ArrowPathIcon className="h-5 w-5 text-orange-600" />}
                     {notification.type === "medical_leave" && <DocumentTextIcon className="h-5 w-5 text-green-600" />}

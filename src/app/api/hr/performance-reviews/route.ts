@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       prisma.performance_reviews.findMany({
         where,
         include: {
-          employee: {
+          employees: {
             select: {
               firstName: true,
               lastName: true,
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
 
     const performanceReview = await prisma.performance_reviews.create({
       data: {
+        id: crypto.randomUUID(),
         employeeId,
         reviewPeriod: `${new Date(reviewPeriodStart).getFullYear()}-${Math.ceil((new Date(reviewPeriodStart).getMonth() + 1) / 3)}Q`,
         reviewType: 'quarterly',
@@ -76,10 +77,11 @@ export async function POST(request: NextRequest) {
         nextReviewDate: new Date(new Date(reviewDate).setMonth(new Date(reviewDate).getMonth() + 3)), // Next review in 3 months
         overallRating,
         goals,
-        feedback: `Achievements: ${achievements || 'N/A'}\n\nAreas for Improvement: ${areasForImprovement || 'N/A'}\n\nComments: ${comments || 'N/A'}`
+        feedback: `Achievements: ${achievements || 'N/A'}\n\nAreas for Improvement: ${areasForImprovement || 'N/A'}\n\nComments: ${comments || 'N/A'}`,
+        updatedAt: new Date()
       },
       include: {
-        employee: {
+        employees: {
           select: {
             firstName: true,
             lastName: true,

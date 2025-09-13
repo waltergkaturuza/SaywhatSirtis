@@ -97,9 +97,6 @@ export async function GET(request: NextRequest) {
     // Mock salary data (handled by Belina software externally)
     const averageSalary = 65000 // Mock average salary for display purposes
 
-    // Get attendance rate (mock calculation - you'd implement based on your attendance system)
-    const attendanceRate = 92.5 // This would be calculated from actual attendance data
-
     // Get performance score from PerformanceReview model
     const performanceData = await prisma.performance_reviews.aggregate({
       where: {
@@ -129,7 +126,6 @@ export async function GET(request: NextRequest) {
       turnoverRate: Math.round(turnoverRate * 100) / 100,
       averageTenure: Math.round(averageTenure * 100) / 100,
       averageSalary: Math.round(averageSalary),
-      attendanceRate,
       performanceScore: Math.round(performanceScore * 100) / 100,
       trainingCompletionRate
     }

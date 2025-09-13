@@ -63,8 +63,6 @@ interface HRMetrics {
   turnoverRate: number
   averageTenure: number
   averageSalary: number
-  totalPayroll: number
-  attendanceRate: number
   performanceScore: number
   trainingCompletionRate: number
 }
@@ -76,7 +74,6 @@ interface DepartmentData {
   turnoverRate: number
   performanceScore: number
   satisfactionScore: number
-  attendanceRate?: number
 }
 
 interface TurnoverData {
@@ -99,13 +96,7 @@ interface SalaryData {
   avgSalary: number
 }
 
-interface AttendanceData {
-  date: string
-  present: number
-  absent: number
-  late: number
-  remote: number
-}
+
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7300']
 
@@ -117,7 +108,7 @@ export default function HRAnalytics() {
   const [turnoverData, setTurnoverData] = useState<TurnoverData[]>([])
   const [performanceData, setPerformanceData] = useState<PerformanceData[]>([])
   const [salaryData, setSalaryData] = useState<SalaryData[]>([])
-  const [attendanceData, setAttendanceData] = useState<AttendanceData[]>([])
+
 
   const { 
     loading, 
@@ -141,7 +132,7 @@ export default function HRAnalytics() {
       setTurnoverData(data.turnover)
       setPerformanceData(data.performance)
       setSalaryData(data.salary)
-      setAttendanceData(data.attendance)
+
     } catch (error) {
       console.error('Error fetching HR analytics:', error)
     }
@@ -284,7 +275,7 @@ export default function HRAnalytics() {
           <TabsTrigger value="workforce">Workforce</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="compensation">Compensation</TabsTrigger>
-          <TabsTrigger value="attendance">Attendance</TabsTrigger>
+
           <TabsTrigger value="trends">Trends</TabsTrigger>
         </TabsList>
 
@@ -606,84 +597,7 @@ export default function HRAnalytics() {
           </Card>
         </TabsContent>
 
-        {/* Attendance Tab */}
-        <TabsContent value="attendance" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Daily Attendance Pattern */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Daily Attendance Pattern</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={attendanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Area type="monotone" dataKey="present" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="Present" />
-                    <Area type="monotone" dataKey="remote" stackId="1" stroke="#8884d8" fill="#8884d8" name="Remote" />
-                    <Area type="monotone" dataKey="late" stackId="2" stroke="#ffc658" fill="#ffc658" name="Late" />
-                    <Area type="monotone" dataKey="absent" stackId="2" stroke="#ff7300" fill="#ff7300" name="Absent" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
 
-            {/* Attendance Rate by Department */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Attendance Rate by Department</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={departmentData.map(dept => ({
-                    ...dept,
-                    attendanceRate: dept.attendanceRate || 0
-                  }))}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="department" />
-                    <YAxis domain={[80, 100]} />
-                    <Tooltip formatter={(value) => typeof value === 'number' ? `${value.toFixed(1)}%` : `${value}%`} />
-                    <Bar dataKey="attendanceRate" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Attendance Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Attendance Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <UserCheck className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-green-600">92.5%</p>
-                  <p className="text-sm text-gray-600">Overall Attendance</p>
-                </div>
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <Clock className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-blue-600">35%</p>
-                  <p className="text-sm text-gray-600">Remote Work</p>
-                </div>
-                <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                  <AlertTriangle className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-yellow-600">4.2%</p>
-                  <p className="text-sm text-gray-600">Late Arrivals</p>
-                </div>
-                <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <UserX className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-red-600">3.3%</p>
-                  <p className="text-sm text-gray-600">Absenteeism</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Trends Tab */}
         <TabsContent value="trends" className="space-y-6">

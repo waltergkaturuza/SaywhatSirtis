@@ -15,17 +15,16 @@ export async function GET() {
     }
 
     // Get performance data for current user
-    const employee = await prisma.users.findFirst({
+    const employee = await prisma.employees.findFirst({
       where: { email: session.user.email },
       select: {
         id: true,
-        employeeId: true,
         firstName: true,
         lastName: true,
         email: true,
         department: true,
         position: true,
-        performanceReviews: {
+        performance_reviews: {
           orderBy: { createdAt: 'desc' },
           take: 10
         }
@@ -44,17 +43,16 @@ export async function GET() {
       data: {
         employee: {
           id: employee.id,
-          employeeId: employee.employeeId,
           firstName: employee.firstName,
           lastName: employee.lastName,
           email: employee.email,
           department: employee.department,
           position: employee.position
         },
-        performanceReviews: employee.performanceReviews,
+        performanceReviews: employee.performance_reviews,
         summary: {
-          totalReviews: employee.performanceReviews.length,
-          latestReview: employee.performanceReviews[0] || null
+          totalReviews: employee.performance_reviews.length,
+          latestReview: employee.performance_reviews[0] || null
         }
       }
     })
@@ -84,6 +82,7 @@ export async function POST(request: Request) {
     // Create new performance review
     const performanceReview = await prisma.performance_reviews.create({
       data: {
+        id: crypto.randomUUID(),
         employeeId,
         reviewPeriod: reviewPeriod || `Annual ${new Date().getFullYear()}`,
         reviewType: reviewType || 'annual',
@@ -91,7 +90,8 @@ export async function POST(request: Request) {
         goals: goals || {},
         feedback: feedback || '',
         reviewDate: new Date(),
-        nextReviewDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year from now
+        nextReviewDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+        updatedAt: new Date()
       }
     })
 

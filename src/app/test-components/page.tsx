@@ -6,7 +6,7 @@ import { EnhancedLayout, ModulePage } from "@/components/layout/enhanced-layout"
 import Header from "@/components/layout/header"
 import Sidebar from "@/components/layout/sidebar"
 import Chatbot from "@/components/chatbot/chatbot"
-import { AttendanceWidget } from "@/components/dashboard/attendance-widget"
+
 
 export default function ComponentTest() {
   return (
@@ -23,13 +23,12 @@ export default function ComponentTest() {
             <li>✅ Header</li>
             <li>✅ Sidebar</li>
             <li>✅ Chatbot</li>
-            <li>✅ AttendanceWidget</li>
+
           </ul>
         </div>
         
         <div className="p-4 border rounded">
-          <h2 className="font-semibold mb-2">AttendanceWidget Test:</h2>
-          <AttendanceWidget />
+
         </div>
       </div>
     </div>
