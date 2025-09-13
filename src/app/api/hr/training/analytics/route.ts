@@ -31,23 +31,23 @@ export async function GET(request: NextRequest) {
       topPerformers
     ] = await Promise.all([
       // Total active programs
-      prisma.trainingProgram.count({
+      prisma.training_programs.count({
         where: { status: 'ACTIVE' }
       }),
       
       // Total enrollments
-      prisma.trainingEnrollment.count(),
+      prisma.training_enrollments.count(),
       
       // Completed enrollments
-      prisma.trainingEnrollment.count({
+      prisma.training_enrollments.count({
         where: { status: 'COMPLETED' }
       }),
       
       // Certificates issued
-      prisma.trainingCertificate.count(),
+      prisma.training_certificates.count(),
       
       // Programs by category
-      prisma.trainingProgram.groupBy({
+      prisma.training_programs.groupBy({
         by: ['category'],
         _count: {
           id: true
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       }),
       
       // Enrollments by status
-      prisma.trainingEnrollment.groupBy({
+      prisma.training_enrollments.groupBy({
         by: ['status'],
         _count: {
           id: true
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       }),
       
       // Recent completions (last 30 days)
-      prisma.trainingEnrollment.findMany({
+      prisma.training_enrollments.findMany({
         where: {
           status: 'COMPLETED',
           completionDate: {
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       }),
       
       // Top performers (highest average scores)
-      prisma.trainingEnrollment.groupBy({
+      prisma.training_enrollments.groupBy({
         by: ['employeeId'],
         _avg: {
           finalScore: true
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
     // Get employee details for top performers
     const topPerformersWithDetails = await Promise.all(
       topPerformers.map(async (performer) => {
-        const employee = await prisma.user.findUnique({
+        const employee = await prisma.users.findUnique({
           where: { id: performer.employeeId },
           select: {
             id: true,

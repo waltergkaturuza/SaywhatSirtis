@@ -23,7 +23,7 @@ export async function GET(
     const caseId = params.id;
 
     // Try to find the call record by ID or case number
-    let call = await prisma.callRecord.findFirst({
+    let call = await prisma.call_records.findFirst({
       where: {
         OR: [
           { id: caseId },
@@ -104,7 +104,7 @@ export async function PUT(
     const body = await request.json();
 
     // Find the call record
-    let call = await prisma.callRecord.findFirst({
+    let call = await prisma.call_records.findFirst({
       where: {
         OR: [
           { id: caseId },
@@ -118,7 +118,7 @@ export async function PUT(
     }
 
     // Update the call record
-    const updatedCall = await prisma.callRecord.update({
+    const updatedCall = await prisma.call_records.update({
       where: { id: call.id },
       data: {
         callerName: body.clientName,

@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     if (programId) whereClause.programId = programId
     if (employeeId) whereClause.employeeId = employeeId
 
-    const enrollments = await prisma.trainingEnrollment.findMany({
+    const enrollments = await prisma.training_enrollments.findMany({
       where: whereClause,
       include: {
         program: {
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     const data = await request.json()
     
     // Check if enrollment already exists
-    const existingEnrollment = await prisma.trainingEnrollment.findFirst({
+    const existingEnrollment = await prisma.training_enrollments.findFirst({
       where: {
         programId: data.programId,
         employeeId: data.employeeId
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const enrollment = await prisma.trainingEnrollment.create({
+    const enrollment = await prisma.training_enrollments.create({
       data: {
         programId: data.programId,
         employeeId: data.employeeId,

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has HR permissions
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { email: session.user.email! }
     })
 
@@ -42,11 +42,11 @@ export async function GET(request: NextRequest) {
     const departmentFilter = department === 'all' ? {} : { department: department.toUpperCase() }
 
     // Fetch overall metrics
-    const totalEmployees = await prisma.user.count({
+    const totalEmployees = await prisma.users.count({
       where: departmentFilter
     })
 
-    const performanceReviews = await prisma.performanceReview.findMany({
+    const performanceReviews = await prisma.performance_reviews.findMany({
       where: {
         createdAt: { gte: startDate },
         employee: departmentFilter
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     const improvementRate = Math.floor(Math.random() * 20) + 5 // Placeholder calculation
 
     // Get department statistics
-    const departments = await prisma.user.groupBy({
+    const departments = await prisma.users.groupBy({
       by: ['department'],
       _count: {
         id: true
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     const departmentStats = await Promise.all(
       departments.map(async (dept) => {
-        const deptReviews = await prisma.performanceReview.findMany({
+        const deptReviews = await prisma.performance_reviews.findMany({
           where: {
             employee: { department: dept.department },
             createdAt: { gte: startDate }
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     )
 
     // Get top performers
-    const topPerformers = await prisma.performanceReview.findMany({
+    const topPerformers = await prisma.performance_reviews.findMany({
       where: {
         createdAt: { gte: startDate },
         overallRating: { gte: 4.5 }
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
     }))
 
     // Get employees needing attention
-    const needsAttention = await prisma.performanceReview.findMany({
+    const needsAttention = await prisma.performance_reviews.findMany({
       where: {
         createdAt: { gte: startDate },
         overallRating: { lte: 3.2 }

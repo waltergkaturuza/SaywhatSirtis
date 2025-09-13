@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get department statistics
-    const departments = await prisma.user.groupBy({
+    const departments = await prisma.users.groupBy({
       by: ['department'],
       where: {
         isActive: true
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get performance data by department
-    const performanceByDept = await prisma.performanceReview.groupBy({
+    const performanceByDept = await prisma.performance_reviews.groupBy({
       by: ['employeeId'],
       where: {
         createdAt: {

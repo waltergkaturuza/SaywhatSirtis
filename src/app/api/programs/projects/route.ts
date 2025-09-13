@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch projects from database with related data
-    const projects = await prisma.project.findMany({
+    const projects = await prisma.projects.findMany({
       include: {
         creator: {
           select: {
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the project in the database
-    const project = await prisma.project.create({
+    const project = await prisma.projects.create({
       data: {
         name: body.name,
         description: body.description,

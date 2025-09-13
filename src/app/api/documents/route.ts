@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch documents from database
-    const documents = await prisma.document.findMany({
+    const documents = await prisma.documents.findMany({
       where,
       orderBy: {
         createdAt: 'desc'
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
         let uploaderInfo = null
         if (doc.uploadedBy) {
           try {
-            const uploader = await prisma.user.findUnique({
+            const uploader = await prisma.users.findUnique({
               where: { id: doc.uploadedBy },
               select: {
                 firstName: true,
@@ -137,8 +138,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const document = await prisma.document.create({
+    const document = await prisma.documents.create({
       data: {
+        id: randomUUID(),
         filename,
         originalName,
         mimeType,
@@ -150,7 +152,8 @@ export async function POST(request: NextRequest) {
         tags: tags || [],
         isPublic: isPublic || false,
         accessLevel: accessLevel || 'internal',
-        uploadedBy: session.user?.id
+        uploadedBy: session.user?.id,
+        updatedAt: new Date()
       }
     })
 
@@ -182,7 +185,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if document exists and user has permission
-    const existingDocument = await prisma.document.findUnique({
+    const existingDocument = await prisma.documents.findUnique({
       where: { id }
     })
 
@@ -198,7 +201,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    const updatedDocument = await prisma.document.update({
+    const updatedDocument = await prisma.documents.update({
       where: { id },
       data: {
         description: description || existingDocument.description,
@@ -236,7 +239,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if document exists and user has permission
-    const existingDocument = await prisma.document.findUnique({
+    const existingDocument = await prisma.documents.findUnique({
       where: { id }
     })
 
@@ -252,7 +255,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    await prisma.document.delete({
+    await prisma.documents.delete({
       where: { id }
     })
 

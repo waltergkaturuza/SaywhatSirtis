@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { randomUUID } from 'crypto';
 
 // GET: Fetch employee qualifications
 export async function GET() {
@@ -16,7 +17,7 @@ export async function GET() {
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -28,7 +29,7 @@ export async function GET() {
     }
 
     // Fetch qualifications
-    const qualifications = await prisma.qualification.findMany({
+    const qualifications = await prisma.qualifications.findMany({
       where: { employeeId: employee.id },
       orderBy: { dateObtained: 'desc' }
     });
@@ -39,15 +40,17 @@ export async function GET() {
       type: q.type,
       title: q.title,
       institution: q.institution,
-      issuer: q.issuer,
       dateObtained: q.dateObtained.toISOString(),
       expiryDate: q.expiryDate?.toISOString(),
-      level: q.level,
       grade: q.grade,
       description: q.description,
       certificateUrl: q.certificateUrl,
-      status: q.status,
-      verificationStatus: q.verificationStatus
+      verificationStatus: q.verificationStatus,
+      isVerified: q.isVerified,
+      creditsEarned: q.creditsEarned,
+      skillsGained: q.skillsGained,
+      createdAt: q.createdAt.toISOString(),
+      updatedAt: q.updatedAt.toISOString()
     }));
 
     return NextResponse.json(formattedQualifications);
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -111,26 +114,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Create qualification
-    const qualification = await prisma.qualification.create({
+    const qualification = await prisma.qualifications.create({
       data: {
+        id: randomUUID(),
         employeeId: employee.id,
         type: body.type,
         title: body.title,
         institution: body.institution || null,
-        issuer: body.issuer || null,
+        description: body.description || null,
         dateObtained: new Date(body.dateObtained),
         expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
-        level: body.level || null,
         grade: body.grade || null,
-        description: body.description || null,
-        status: status,
-        verificationStatus: 'pending'
+        creditsEarned: body.creditsEarned ? parseFloat(body.creditsEarned) : null,
+        skillsGained: body.skillsGained || [],
+        verificationStatus: 'pending',
+        updatedAt: new Date()
       }
     });
 
     // Create audit trail
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: employee.id,
         action: 'CREATE',
         resource: 'Qualification',
@@ -150,15 +155,17 @@ export async function POST(request: NextRequest) {
       type: qualification.type,
       title: qualification.title,
       institution: qualification.institution,
-      issuer: qualification.issuer,
       dateObtained: qualification.dateObtained.toISOString(),
       expiryDate: qualification.expiryDate?.toISOString(),
-      level: qualification.level,
       grade: qualification.grade,
       description: qualification.description,
       certificateUrl: qualification.certificateUrl,
-      status: qualification.status,
-      verificationStatus: qualification.verificationStatus
+      verificationStatus: qualification.verificationStatus,
+      isVerified: qualification.isVerified,
+      creditsEarned: qualification.creditsEarned,
+      skillsGained: qualification.skillsGained,
+      createdAt: qualification.createdAt.toISOString(),
+      updatedAt: qualification.updatedAt.toISOString()
     };
 
     return NextResponse.json(formattedQualification, { status: 201 });

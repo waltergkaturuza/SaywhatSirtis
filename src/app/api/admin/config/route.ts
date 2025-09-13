@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { randomUUID } from "crypto"
 
 export async function GET() {
   try {
@@ -25,7 +26,7 @@ export async function GET() {
     }
 
     // Fetch system configurations from database
-    const systemConfigs = await prisma.systemConfig.findMany({
+    const systemConfigs = await prisma.system_config.findMany({
       orderBy: {
         category: 'asc'
       }
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
           else if (value === 'false') value = false
           else if (!isNaN(Number(value))) value = Number(value)
 
-          const updatedConfig = await prisma.systemConfig.update({
+          const updatedConfig = await prisma.system_config.update({
             where: { id: configId },
             data: { value }
           })
@@ -171,12 +172,14 @@ export async function POST(request: NextRequest) {
           else if (value === 'false') value = false
           else if (!isNaN(Number(value))) value = Number(value)
 
-          const newConfig = await prisma.systemConfig.create({
+          const newConfig = await prisma.system_config.create({
             data: {
+              id: randomUUID(),
               key: configData.key,
               value,
               description: configData.description,
-              category: configData.category
+              category: configData.category,
+              updatedAt: new Date(),
             }
           })
 
@@ -206,7 +209,7 @@ export async function POST(request: NextRequest) {
 
       case 'delete_config':
         try {
-          await prisma.systemConfig.delete({
+          await prisma.system_config.delete({
             where: { id: configId }
           })
 

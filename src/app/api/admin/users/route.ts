@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { randomUUID } from 'crypto'
 
 export async function GET() {
   try {
@@ -25,7 +26,7 @@ export async function GET() {
     }
 
     // Fetch users from database
-    const users = await prisma.user.findMany({
+    const users = await prisma.users.findMany({
       select: {
         id: true,
         email: true,
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'toggle_status':
         try {
-          const user = await prisma.user.findUnique({
+          const user = await prisma.users.findUnique({
             where: { id: userId }
           })
 
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "User not found" }, { status: 404 })
           }
 
-          const updatedUser = await prisma.user.update({
+          const updatedUser = await prisma.users.update({
             where: { id: userId },
             data: { isActive: !user.isActive },
             select: {
@@ -228,7 +229,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Check if user already exists
-          const existingUser = await prisma.user.findUnique({
+          const existingUser = await prisma.users.findUnique({
             where: { email: userData.email }
           })
 
@@ -242,15 +243,17 @@ export async function POST(request: NextRequest) {
           // Note: Password handling would be implemented here in production
           // For now, we create users without password (OAuth/SSO authentication)
           
-          const newUser = await prisma.user.create({
+          const newUser = await prisma.users.create({
             data: {
+              id: randomUUID(),
               email: userData.email,
               firstName: userData.firstName,
               lastName: userData.lastName,
               role: userData.role ? userData.role.toUpperCase() as any : 'BASIC_USER_1',
               department: userData.department || '',
               position: userData.position || '',
-              isActive: true
+              isActive: true,
+              updatedAt: new Date()
             },
             select: {
               id: true,
@@ -295,7 +298,7 @@ export async function POST(request: NextRequest) {
 
       case 'update_user':
         try {
-          const updatedUser = await prisma.user.update({
+          const updatedUser = await prisma.users.update({
             where: { id: userId },
             data: {
               firstName: userData.firstName,
@@ -347,7 +350,7 @@ export async function POST(request: NextRequest) {
 
       case 'delete_user':
         try {
-          await prisma.user.delete({
+          await prisma.users.delete({
             where: { id: userId }
           })
 

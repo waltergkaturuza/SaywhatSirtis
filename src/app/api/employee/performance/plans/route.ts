@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { randomUUID } from 'crypto';
 
 // Performance Plan Creation
 export async function POST(request: NextRequest) {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -24,6 +25,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Employee profile not found' }, 
         { status: 404 }
+      );
+    }
+
+    // Check if employee has a supervisor
+    if (!employee.supervisorId) {
+      return NextResponse.json(
+        { error: 'Employee must have a supervisor assigned for performance planning' }, 
+        { status: 400 }
       );
     }
 
@@ -41,38 +50,36 @@ export async function POST(request: NextRequest) {
     const defaultResponsibilities = getDefaultResponsibilities(employee.position || 'General Employee');
     
     // Create performance plan
-    const performancePlan = await prisma.performancePlan.create({
+    const performancePlan = await prisma.performance_plans.create({
       data: {
+        id: randomUUID(),
         employeeId: employee.id,
-        employeeName: `${employee.firstName} ${employee.lastName}`,
+        supervisorId: employee.supervisorId!,
         planYear: parseInt(body.planYear),
+        planPeriod: body.planPeriod || 'Annual',
         status: 'draft',
-        electronicSignature: body.electronicSignature || null,
-        signatureDate: body.electronicSignature ? new Date() : null,
+        updatedAt: new Date(),
         keyResponsibilities: {
           create: defaultResponsibilities.map((resp, index) => ({
+            id: randomUUID(),
             title: `Key Responsibility ${index + 1}`,
             description: resp.description,
-            weight: resp.weight
+            weight: resp.weight,
+            updatedAt: new Date()
           }))
-        },
-        developmentActivities: {
-          create: body.developmentActivities?.slice(0, 3).map((activity: any, index: number) => ({
-            title: activity.title || `Development Activity ${index + 1}`,
-            description: activity.description || activity.activity,
-            category: activity.category || 'professional'
-          })) || []
         }
       },
       include: {
         keyResponsibilities: true,
-        developmentActivities: true
+        employees: true,
+        supervisor: true
       }
     });
 
     // Create audit trail
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: employee.id,
         action: 'CREATE',
         resource: 'PerformancePlan',
@@ -111,7 +118,7 @@ export async function GET() {
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -123,11 +130,12 @@ export async function GET() {
     }
 
     // Fetch performance plans
-    const performancePlans = await prisma.performancePlan.findMany({
+    const performancePlans = await prisma.performance_plans.findMany({
       where: { employeeId: employee.id },
       include: {
         keyResponsibilities: true,
-        developmentActivities: true
+        employees: true,
+        supervisor: true
       },
       orderBy: { planYear: 'desc' }
     });

@@ -62,10 +62,10 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
     // Get user statistics from database with safe execution
     const [totalUsers, activeUsers] = await Promise.all([
       safeQuery(async (prisma) => {
-        return await prisma.user.count()
+        return await prisma.users.count()
       }).catch(() => 0),
       safeQuery(async (prisma) => {
-        return await prisma.user.count({ where: { isActive: true } })
+        return await prisma.users.count({ where: { isActive: true } })
       }).catch(() => 0)
     ])
 
@@ -74,7 +74,7 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
     try {
       totalDepartments = await safeQuery(async (prisma) => {
         // @ts-ignore - Department model may not exist yet
-        return await prisma.department?.count() || 0
+        return await prisma.departments.count() || 0
       }).catch(() => 3) // Default fallback
     } catch (error) {
       // Department model doesn't exist yet
@@ -86,7 +86,7 @@ export async function getSystemMetrics(): Promise<SystemMetrics> {
     let recentAuditLogs = 0
     try {
       recentAuditLogs = await safeQuery(async (prisma) => {
-        return await prisma.auditLog.count({
+        return await prisma.audit_logs.count({
           where: {
             timestamp: {
               gte: yesterday
@@ -318,7 +318,7 @@ async function getApiRequestCount(): Promise<number> {
   try {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     return await safeQuery(async (prisma) => {
-      return await prisma.auditLog.count({
+      return await prisma.audit_logs.count({
         where: {
           timestamp: {
             gte: yesterday
@@ -339,12 +339,12 @@ async function getApiErrorRate(): Promise<number> {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     return await safeQuery(async (prisma) => {
       const [totalRequests, errorRequests] = await Promise.all([
-        prisma.auditLog.count({
+        prisma.audit_logs.count({
           where: {
             timestamp: { gte: yesterday }
           }
         }),
-        prisma.auditLog.count({
+        prisma.audit_logs.count({
           where: {
             timestamp: { gte: yesterday },
             action: {

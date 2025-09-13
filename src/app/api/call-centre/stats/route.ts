@@ -22,12 +22,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get call centre statistics
-    const totalCalls = await prisma.callRecord.count()
+    const totalCalls = await prisma.call_records.count()
     
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
     
-    const callsToday = await prisma.callRecord.count({
+    const callsToday = await prisma.call_records.count({
       where: {
         createdAt: {
           gte: todayStart
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     thisMonthStart.setDate(1)
     thisMonthStart.setHours(0, 0, 0, 0)
     
-    const callsThisMonth = await prisma.callRecord.count({
+    const callsThisMonth = await prisma.call_records.count({
       where: {
         createdAt: {
           gte: thisMonthStart
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Calculate satisfaction rating average
-    const satisfactionStats = await prisma.callRecord.aggregate({
+    const satisfactionStats = await prisma.call_records.aggregate({
       _avg: {
         satisfactionRating: true
       },
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Count successful calls (resolved)
-    const successfulCalls = await prisma.callRecord.count({
+    const successfulCalls = await prisma.call_records.count({
       where: {
         status: 'RESOLVED'
       }

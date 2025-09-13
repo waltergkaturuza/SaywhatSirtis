@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { randomUUID } from 'crypto';
 
 // Performance Appraisal Creation
 export async function POST(request: NextRequest) {
@@ -16,18 +17,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: {
-        supervisor: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        }
-      }
+    const employee = await prisma.users.findUnique({
+      where: { email: session.user.email }
     });
 
     if (!employee) {
@@ -48,7 +39,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Get performance plan with key responsibilities
-    const performancePlan = await prisma.performancePlan.findFirst({
+    const performancePlan = await prisma.performance_plans.findFirst({
       where: { 
         id: planId,
         employeeId: employee.id 
@@ -79,113 +70,47 @@ export async function POST(request: NextRequest) {
     ];
 
     // Create performance appraisal
-    const appraisal = await prisma.performanceAppraisal.create({
+    const appraisal = await prisma.performance_appraisals.create({
       data: {
+        id: randomUUID(),
         employeeId: employee.id,
-        employeeName: `${employee.firstName} ${employee.lastName}`,
         planId: planId,
-        reviewerId: reviewerId,
-        supervisorId: employee.supervisor?.id,
-        type: appraisalType, // annual, quarterly, probation
-        status: 'self_assessment',
-        
-        // Key Responsibilities Assessment
-        responsibilityAssessments: {
-          create: performancePlan.keyResponsibilities.map((resp, index) => ({
-            responsibilityId: resp.id,
-            title: resp.title,
-            weight: resp.weight,
-            successIndicators: resp.activities.map(a => a.successIndicators).join(', '),
-            selfComment: selfAssessments?.[index]?.comment || '',
-            selfRating: selfAssessments?.[index]?.rating || 'B2',
-            selfPoints: getSelfRatingPoints(selfAssessments?.[index]?.rating || 'B2'),
-            supervisorComment: '',
-            supervisorRating: null,
-            supervisorPoints: 0
-          }))
-        },
-
-        // Value Goals Assessment
-        valueAssessments: {
-          create: standardValues.map((value, index) => ({
-            valueName: value,
-            selfComment: valueGoalsAssessments?.[index]?.comment || '',
-            selfRating: valueGoalsAssessments?.[index]?.rating || 'B2',
-            selfPoints: getSelfRatingPoints(valueGoalsAssessments?.[index]?.rating || 'B2'),
-            supervisorComment: '',
-            supervisorRating: null,
-            supervisorPoints: 0,
-            reviewerComment: '',
-            reviewerRating: null,
-            reviewerPoints: 0
-          }))
-        },
-
-        // Electronic Signature
-        employeeSignature: electronicSignature,
-        employeeSignatureDate: new Date()
-      },
-      include: {
-        responsibilityAssessments: true,
-        valueAssessments: true,
-        employee: {
-          select: {
-            firstName: true,
-            lastName: true,
-            employeeId: true,
-            position: true
-          }
-        },
-        supervisor: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
-        reviewer: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        }
+        supervisorId: reviewerId || employee.supervisorId,
+        appraisalType: appraisalType, // annual, quarterly, probation
+        status: 'draft',
+        selfAssessments: selfAssessments || {},
+        valueGoalsAssessments: valueGoalsAssessments || {},
+        electronicSignature: electronicSignature,
+        updatedAt: new Date()
       }
     });
 
-    // Calculate totals
-    const totalResponsibilityPoints = appraisal.responsibilityAssessments
-      .reduce((sum, assessment) => sum + assessment.selfPoints, 0);
-    
-    const totalValuePoints = appraisal.valueAssessments
-      .reduce((sum, assessment) => sum + assessment.selfPoints, 0);
-
-    const maxPossiblePoints = (appraisal.responsibilityAssessments.length + appraisal.valueAssessments.length) * 50;
-    const overallPercentage = ((totalResponsibilityPoints + totalValuePoints) / maxPossiblePoints) * 100;
-
-    // Update appraisal with calculations
-    await prisma.performanceAppraisal.update({
-      where: { id: appraisal.id },
-      data: {
-        selfTotalResponsibilityPoints: totalResponsibilityPoints,
-        selfTotalValuePoints: totalValuePoints,
-        selfOverallPercentage: overallPercentage
+    // Return the created appraisal
+    return NextResponse.json({
+      success: true,
+      appraisal: {
+        id: appraisal.id,
+        employeeId: appraisal.employeeId,
+        planId: appraisal.planId,
+        supervisorId: appraisal.supervisorId,
+        appraisalType: appraisal.appraisalType,
+        status: appraisal.status,
+        createdAt: appraisal.createdAt
       }
     });
+
+    // TODO: Add calculation logic for performance metrics
+    // This would be implemented when the detailed assessment structure is added
 
     // Create audit trail
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
-        userId: employee.id,
+        id: randomUUID(),
+        userId: employee!.id,
         action: 'CREATE',
+        details: `Created performance appraisal for ${appraisalType}`,
         resource: 'PerformanceAppraisal',
         resourceId: appraisal.id,
-        details: {
-          module: 'Performance Appraisal',
-          appraisalType: appraisalType,
-          stage: 'self_assessment',
-          changes: appraisal
-        },
         ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
@@ -228,7 +153,7 @@ export async function GET() {
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -240,7 +165,7 @@ export async function GET() {
     }
 
     // Fetch appraisals where employee is the subject, supervisor, or reviewer
-    const appraisals = await prisma.performanceAppraisal.findMany({
+    const appraisals = await prisma.performance_appraisals.findMany({
       where: {
         OR: [
           { employeeId: employee.id },
@@ -273,7 +198,7 @@ export async function GET() {
             email: true
           }
         },
-        plan: {
+        performancePlan: {
           select: {
             planYear: true,
             keyResponsibilities: {

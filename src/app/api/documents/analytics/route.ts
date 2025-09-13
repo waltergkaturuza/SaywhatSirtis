@@ -21,14 +21,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total document count
-    const totalDocuments = await prisma.document.count({
+    const totalDocuments = await prisma.documents.count({
       where: {
         isDeleted: false
       }
     });
 
     // Calculate total storage used
-    const storageResult = await prisma.document.aggregate({
+    const storageResult = await prisma.documents.aggregate({
       where: {
         isDeleted: false
       },
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     thisMonth.setDate(1);
     thisMonth.setHours(0, 0, 0, 0);
 
-    const viewsThisMonth = await prisma.document.aggregate({
+    const viewsThisMonth = await prisma.documents.aggregate({
       where: {
         isDeleted: false,
         lastAccessedAt: {

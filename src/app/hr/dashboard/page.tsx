@@ -24,9 +24,7 @@ import {
   ArrowTrendingUpIcon,
   ExclamationTriangleIcon,
   Bars3Icon,
-  XMarkIcon,
-  HomeIcon,
-  ArrowLeftIcon
+  XMarkIcon
 } from "@heroicons/react/24/outline"
 
 interface DashboardStats {
@@ -34,7 +32,6 @@ interface DashboardStats {
   activeEmployees: number
   newEmployeesThisMonth: number
   departmentCount: number
-  subunitCount: number
   trainingCount: number
   activeTrainings: number
   averagePerformance: number
@@ -64,11 +61,6 @@ export default function HRDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  // Debug sidebar state
-  useEffect(() => {
-    console.log('Sidebar state changed:', sidebarOpen)
-  }, [sidebarOpen])
 
   // Handle authentication
   useEffect(() => {
@@ -207,7 +199,7 @@ export default function HRDashboard() {
       icon: BuildingOfficeIcon,
       href: "/hr/departments",
       color: "red",
-      stats: loading ? "Loading..." : `${stats?.departmentCount || 0} depts • ${stats?.subunitCount || 0} subunits`
+      stats: loading ? "Loading..." : `${stats?.departmentCount || 0} departments`
     },
     {
       title: "HR Analytics",
@@ -256,6 +248,12 @@ export default function HRDashboard() {
         <div className="mx-4 lg:mx-8 xl:mx-16">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors lg:hidden"
+              >
+                <Bars3Icon className="h-5 w-5 text-gray-600" />
+              </button>
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">S</span>
@@ -266,28 +264,24 @@ export default function HRDashboard() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-3 ml-auto">
-              {/* Back Button */}
-              <Link href="/hr">
-                <button className="inline-flex items-center px-3 py-2 border border-orange-300 rounded-lg shadow-sm text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <ArrowLeftIcon className="h-4 w-4 mr-2" />
-                  Back
-                </button>
-              </Link>
-              
-              {/* Home Button */}
-              <Link href="/dashboard">
-                <button className="inline-flex items-center px-3 py-2 border border-orange-300 rounded-lg shadow-sm text-sm font-medium text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors">
-                  <HomeIcon className="h-4 w-4 mr-2" />
-                  Home
-                </button>
-              </Link>
-              
-              {/* HR Reports Button */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors hidden lg:flex"
+                title="Toggle Sidebar"
+              >
+                <Bars3Icon className="h-5 w-5 text-gray-600" />
+              </button>
               <Link href="/hr/reports">
-                <button className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow-sm text-sm font-medium text-white hover:from-orange-600 hover:to-orange-700 transition-colors">
+                <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                   <DocumentTextIcon className="h-4 w-4 mr-2" />
                   HR Reports
+                </button>
+              </Link>
+              <Link href="/hr/employees/add">
+                <button className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:from-orange-600 hover:to-orange-700 transition-all">
+                  <UserPlusIcon className="h-4 w-4 mr-2" />
+                  Add Employee
                 </button>
               </Link>
             </div>
@@ -296,37 +290,37 @@ export default function HRDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="mx-4 lg:mx-8 xl:mx-16 py-4 relative">
+      <div className="mx-4 lg:mx-8 xl:mx-16 py-8">
         <div className={`flex flex-col ${sidebarOpen ? 'lg:flex-row' : ''} gap-8`}>
           {/* Main Dashboard Content */}
           <div className={`flex-1 ${sidebarOpen ? '' : 'w-full'}`}>
-            <div className="space-y-4">
+            <div className="space-y-8">
               {/* Welcome Header */}
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-4 text-white shadow-lg">
-                <h1 className="text-2xl font-bold mb-2">HR Management Dashboard</h1>
-                <p className="text-orange-100 text-sm">Comprehensive human resources management overview and navigation</p>
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-8 text-white shadow-lg">
+                <h1 className="text-3xl font-bold mb-3">HR Management Dashboard</h1>
+                <p className="text-orange-100 text-lg">Comprehensive human resources management overview and navigation</p>
               </div>
 
               {/* Key Metrics Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg border border-orange-600 p-4 hover:shadow-lg transition-all text-white">
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl border-2 border-orange-600 p-6 hover:shadow-xl hover:shadow-orange-200 transition-all transform hover:-translate-y-1 text-white">
                   <div className="flex items-center">
-                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <UserGroupIcon className="w-6 h-6 text-white" />
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <UserGroupIcon className="w-8 h-8 text-white" />
                     </div>
-                    <div className="ml-3">
-                      <h3 className="text-xl font-bold text-white">
+                    <div className="ml-4">
+                      <h3 className="text-2xl font-bold text-white">
                         {loading ? (
-                          <div className="w-8 h-5 bg-white/20 animate-pulse rounded"></div>
+                          <div className="w-12 h-6 bg-white/20 animate-pulse rounded"></div>
                         ) : (
                           stats?.totalEmployees || '0'
                         )}
                       </h3>
-                      <p className="text-xs text-orange-100 font-medium">Total Employees</p>
+                      <p className="text-sm text-orange-100 font-medium">Total Employees</p>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center text-xs">
-                    <ArrowTrendingUpIcon className="w-3 h-3 text-green-300 mr-1" />
+                  <div className="mt-4 flex items-center text-sm">
+                    <ArrowTrendingUpIcon className="w-4 h-4 text-green-300 mr-1" />
                     <span className="text-green-200 font-semibold">
                       +{loading ? '0' : stats?.newEmployeesThisMonth || '0'}
                     </span>
@@ -334,69 +328,69 @@ export default function HRDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg border border-green-600 p-4 hover:shadow-lg transition-all text-white">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-6 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
                   <div className="flex items-center">
-                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <AcademicCapIcon className="w-6 h-6 text-white" />
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <AcademicCapIcon className="w-8 h-8 text-white" />
                     </div>
-                    <div className="ml-3">
-                      <h3 className="text-xl font-bold text-white">
+                    <div className="ml-4">
+                      <h3 className="text-2xl font-bold text-white">
                         {loading ? (
-                          <div className="w-8 h-5 bg-white/20 animate-pulse rounded"></div>
+                          <div className="w-12 h-6 bg-white/20 animate-pulse rounded"></div>
                         ) : (
                           stats?.activeTrainings || '0'
                         )}
                       </h3>
-                      <p className="text-xs text-green-100 font-medium">Training Sessions</p>
+                      <p className="text-sm text-green-100 font-medium">Training Sessions</p>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center text-xs">
+                  <div className="mt-4 flex items-center text-sm">
                     <div className="w-2 h-2 bg-green-200 rounded-full mr-2"></div>
                     <span className="text-green-200 font-semibold">Active</span>
                     <span className="text-green-100 ml-1">this month</span>
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg border border-green-600 p-4 hover:shadow-lg transition-all text-white">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-6 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
                   <div className="flex items-center">
-                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <StarIcon className="w-6 h-6 text-white" />
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <StarIcon className="w-8 h-8 text-white" />
                     </div>
-                    <div className="ml-3">
-                      <h3 className="text-xl font-bold text-white">
+                    <div className="ml-4">
+                      <h3 className="text-2xl font-bold text-white">
                         {loading ? (
-                          <div className="w-8 h-5 bg-white/20 animate-pulse rounded"></div>
+                          <div className="w-12 h-6 bg-white/20 animate-pulse rounded"></div>
                         ) : (
                           stats?.averagePerformance || '4.7'
                         )}
                       </h3>
-                      <p className="text-xs text-green-100 font-medium">Avg Performance</p>
+                      <p className="text-sm text-green-100 font-medium">Avg Performance</p>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center text-xs">
+                  <div className="mt-4 flex items-center text-sm">
                     <span className="text-green-100">Out of 5.0 - </span>
                     <span className="text-green-200 font-semibold ml-1">Excellent</span>
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg border border-green-600 p-4 hover:shadow-lg transition-all text-white">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-6 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
                   <div className="flex items-center">
-                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <UsersIcon className="w-6 h-6 text-white" />
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <UsersIcon className="w-8 h-8 text-white" />
                     </div>
-                    <div className="ml-3">
-                      <h3 className="text-xl font-bold text-white">
+                    <div className="ml-4">
+                      <h3 className="text-2xl font-bold text-white">
                         {loading ? (
-                          <div className="w-8 h-5 bg-white/20 animate-pulse rounded"></div>
+                          <div className="w-12 h-6 bg-white/20 animate-pulse rounded"></div>
                         ) : (
                           stats?.activeEmployees || '0'
                         )}
                       </h3>
-                      <p className="text-xs text-green-100 font-medium">Active Employees</p>
+                      <p className="text-sm text-green-100 font-medium">Active Employees</p>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center text-xs">
-                    <ArrowTrendingUpIcon className="w-3 h-3 text-green-200 mr-1" />
+                  <div className="mt-4 flex items-center text-sm">
+                    <ArrowTrendingUpIcon className="w-4 h-4 text-green-200 mr-1" />
                     <span className="text-green-200 font-semibold">
                       +{loading ? '0' : stats?.newHires || '0'} new
                     </span>
@@ -406,25 +400,25 @@ export default function HRDashboard() {
 
               {/* HR Modules Grid */}
               <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">HR Management Modules</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <h2 className="text-2xl font-bold text-gray-900 mb-8">HR Management Modules</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   {hrModules.map((module, index) => (
                     <Link key={index} href={module.href}>
                       <div 
-                        className={`p-4 rounded-lg border hover:shadow-lg transition-all duration-300 cursor-pointer ${getColorClasses(module.color)}`}
+                        className={`p-6 rounded-xl border-2 hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${getColorClasses(module.color)}`}
                         onClick={() => handleIconClick(index)}
                       >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="p-2 bg-white rounded-lg shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="p-3 bg-white rounded-xl shadow-sm">
                             <module.icon 
-                              className={`h-6 w-6 transition-colors duration-200 ${getIconColorClasses(module.color)}`} 
+                              className={`h-8 w-8 transition-colors duration-200 ${getIconColorClasses(module.color)}`} 
                             />
                           </div>
-                          <ChevronRightIcon className="h-4 w-4 opacity-50" />
+                          <ChevronRightIcon className="h-6 w-6 opacity-50" />
                         </div>
-                        <h3 className="font-bold text-gray-900 mb-2 text-sm">{module.title}</h3>
-                        <p className="text-xs text-gray-700 mb-3 leading-relaxed">{module.description}</p>
-                        <div className="text-xs font-semibold text-gray-600 bg-white bg-opacity-50 px-2 py-1 rounded">
+                        <h3 className="font-bold text-gray-900 mb-3 text-lg">{module.title}</h3>
+                        <p className="text-sm text-gray-700 mb-4 leading-relaxed">{module.description}</p>
+                        <div className="text-sm font-semibold text-gray-600 bg-white bg-opacity-50 px-3 py-2 rounded-lg">
                           {module.stats}
                         </div>
                       </div>
@@ -434,8 +428,8 @@ export default function HRDashboard() {
               </div>
 
               {/* Recent Activity */}
-              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Recent HR Activity</h3>
+              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-xl font-bold text-gray-900 mb-6">Recent HR Activity</h3>
                 <div className="space-y-4">
                   {loading ? (
                     <div className="space-y-4">
@@ -481,7 +475,7 @@ export default function HRDashboard() {
 
           {/* Sidebar */}
           {sidebarOpen && (
-            <div className="fixed lg:relative top-16 lg:top-0 left-0 lg:right-auto h-[calc(100vh-4rem)] lg:h-auto w-80 lg:w-80 bg-gray-50 lg:bg-transparent z-30 lg:z-auto overflow-y-auto lg:overflow-visible transform translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none border-l border-gray-200 lg:border-l-0">
+            <div className="fixed lg:relative top-0 right-0 h-full lg:h-auto w-80 lg:w-80 bg-white lg:bg-transparent z-30 lg:z-auto overflow-y-auto lg:overflow-visible animate-in slide-in-from-right-5 duration-300 shadow-2xl lg:shadow-none">
               {/* Mobile Close Button */}
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -580,29 +574,12 @@ export default function HRDashboard() {
                   </Link>
                 </div>
               </div>
-            </div>
+              </div>
             </div>
           )}
         </div>
       </div>
       
-      {/* Floating Sidebar Toggle Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`fixed top-20 right-4 z-50 p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110 ${
-          sidebarOpen 
-            ? 'bg-red-500 hover:bg-red-600' 
-            : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700'
-        }`}
-        title={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
-      >
-        {sidebarOpen ? (
-          <XMarkIcon className="h-6 w-6 text-white" />
-        ) : (
-          <Bars3Icon className="h-6 w-6 text-white" />
-        )}
-      </button>
-
       {/* SIRTIS Copilot */}
       <SirtisCopilot />
     </div>

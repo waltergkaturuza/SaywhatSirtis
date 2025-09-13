@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
@@ -37,25 +37,25 @@ export async function GET(request: NextRequest) {
         budgetInfo
       ] = await Promise.all([
         // Total projects count
-        prisma.project.count(),
+        prisma.projects.count(),
         
         // Active projects count
-        prisma.project.count({
+        prisma.projects.count({
           where: { status: 'ACTIVE' }
         }),
         
         // Completed projects count
-        prisma.project.count({
+        prisma.projects.count({
           where: { status: 'COMPLETED' }
         }),
         
         // On-hold projects count
-        prisma.project.count({
+        prisma.projects.count({
           where: { status: 'ON_HOLD' }
         }),
 
         // Recent activities
-        prisma.activity.findMany({
+        prisma.activities.findMany({
           take: 10,
           orderBy: { createdAt: 'desc' },
           include: {
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         }),
 
         // Recent projects for the dashboard cards
-        prisma.project.findMany({
+        prisma.projects.findMany({
           take: 6,
           orderBy: { createdAt: 'desc' },
           include: {
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
         }),
 
         // Budget information
-        prisma.project.aggregate({
+        prisma.projects.aggregate({
           _sum: {
             budget: true,
             actualSpent: true
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
       const budgetUtilization = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0
 
       // Calculate overdue projects (projects past end date with non-completed status)
-      const overdueProjects = await prisma.project.count({
+      const overdueProjects = await prisma.projects.count({
         where: {
           AND: [
             {
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
       })
 
       // Calculate high risk projects (assuming projects with high spending ratio or overdue)
-      const highRiskProjects = await prisma.project.count({
+      const highRiskProjects = await prisma.projects.count({
         where: {
           OR: [
             {
@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
 
       // Calculate average progress (this would need a progress field in your schema)
       // For now, we'll calculate based on time elapsed vs total time
-      const projectsWithDates = await prisma.project.findMany({
+      const projectsWithDates = await prisma.projects.findMany({
         select: {
           startDate: true,
           endDate: true,

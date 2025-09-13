@@ -19,8 +19,8 @@ export async function testDatabaseConnection() {
 export async function testBasicQueries() {
   try {
     // Test basic model access
-    const userCount = await prisma.user.count()
-    const projectCount = await prisma.project.count()
+    const userCount = await prisma.users.count()
+    const projectCount = await prisma.projects.count()
     
     console.log('Database queries successful:', { userCount, projectCount })
     return { 

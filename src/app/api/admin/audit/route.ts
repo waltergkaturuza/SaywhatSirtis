@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { randomUUID } from "crypto"
 
 export async function GET() {
   try {
@@ -25,9 +26,9 @@ export async function GET() {
     }
 
     // Fetch audit logs from database
-    const auditLogs = await prisma.auditLog.findMany({
+    const auditLogs = await prisma.audit_logs.findMany({
       include: {
-        user: {
+        users: {
           select: {
             firstName: true,
             lastName: true,
@@ -118,8 +119,9 @@ export async function POST(request: NextRequest) {
 
     try {
       // Create new audit log entry
-      const newLog = await prisma.auditLog.create({
+      const newLog = await prisma.audit_logs.create({
         data: {
+          id: randomUUID(),
           userId: userId || session.user?.id,
           action,
           resource,
@@ -128,7 +130,7 @@ export async function POST(request: NextRequest) {
           userAgent: request.headers.get('user-agent'),
         },
         include: {
-          user: {
+          users: {
             select: {
               firstName: true,
               lastName: true,
@@ -141,7 +143,7 @@ export async function POST(request: NextRequest) {
       const transformedLog = {
         id: newLog.id,
         userId: newLog.userId,
-        userName: newLog.user ? `${newLog.user.firstName || ''} ${newLog.user.lastName || ''}`.trim() || newLog.user.email : 'Unknown',
+        userName: newLog.users ? `${newLog.users.firstName || ''} ${newLog.users.lastName || ''}`.trim() || newLog.users.email : 'Unknown',
         action: newLog.action,
         resource: newLog.resource,
         timestamp: newLog.timestamp.toISOString(),

@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
 
     // Check if asset number already exists
     const existingAsset = await executeQuery(async (prisma) => {
-      return await prisma.asset.findUnique({
+      return await prisma.assets.findUnique({
         where: { assetTag: validatedData.assetNumber }
       })
     })
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
 
     // Create new asset in database
     const newAsset = await executeQuery(async (prisma) => {
-      return await prisma.asset.create({
+      return await prisma.assets.create({
         data: {
           name: validatedData.name,
           assetTag: validatedData.assetNumber,
@@ -329,7 +329,7 @@ export async function PUT(request: NextRequest) {
 
     // Check if asset exists
     const existingAsset = await executeQuery(async (prisma) => {
-      return await prisma.asset.findUnique({
+      return await prisma.assets.findUnique({
         where: { id }
       })
     })
@@ -344,7 +344,7 @@ export async function PUT(request: NextRequest) {
     // Check if asset number is being changed and already exists (validatedData uses assetNumber)
     if (validatedData.assetNumber && validatedData.assetNumber !== existingAsset.assetTag) {
       const duplicateAsset = await executeQuery(async (prisma) => {
-        return await prisma.asset.findUnique({
+        return await prisma.assets.findUnique({
           where: { assetTag: validatedData.assetNumber }
         })
       })
@@ -370,7 +370,7 @@ export async function PUT(request: NextRequest) {
 
     // Update asset in database
     const updatedAsset = await executeQuery(async (prisma) => {
-      return await prisma.asset.update({
+      return await prisma.assets.update({
         where: { id },
         data: updateData
       })
@@ -442,7 +442,7 @@ export async function DELETE(request: NextRequest) {
 
     // Check if asset exists
     const existingAsset = await executeQuery(async (prisma) => {
-      return await prisma.asset.findUnique({
+      return await prisma.assets.findUnique({
         where: { id }
       })
     })
@@ -456,7 +456,7 @@ export async function DELETE(request: NextRequest) {
 
     // Delete asset from database (this will cascade delete maintenance records)
     await executeQuery(async (prisma) => {
-      return await prisma.asset.delete({
+      return await prisma.assets.delete({
         where: { id }
       })
     })

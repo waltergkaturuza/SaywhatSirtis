@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 // POST: Upload profile picture
 export async function POST(request: NextRequest) {
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     // Create unique filename
     const fileExtension = file.name.split('.').pop();
-    const fileName = `profile-${employee.employeeId}-${uuidv4()}.${fileExtension}`;
+    const fileName = `profile-${employee.id}-${uuidv4()}.${fileExtension}`;
     
     // Create upload directory if it doesn't exist
     const uploadDir = join(process.cwd(), 'public', 'uploads', 'profiles');
@@ -80,14 +81,15 @@ export async function POST(request: NextRequest) {
     // Update user profile with new picture URL
     const profilePictureUrl = `/uploads/profiles/${fileName}`;
     
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.users.update({
       where: { email: session.user.email },
       data: { profileImage: profilePictureUrl }
     });
 
     // Create audit trail
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: employee.id,
         action: 'UPDATE',
         resource: 'User',

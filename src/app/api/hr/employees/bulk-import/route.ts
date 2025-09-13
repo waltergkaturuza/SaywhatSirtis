@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if employee already exists
-        const existingEmployee = await prisma.user.findFirst({
+        const existingEmployee = await prisma.users.findFirst({
           where: { email: employeeData.email }
         })
 
@@ -108,21 +109,24 @@ export async function POST(request: NextRequest) {
         }
 
         // Create employee with required userId (temporary approach - create minimal user)
-        const userData = await prisma.user.create({
+        const userData = await prisma.users.create({
           data: {
+            id: randomUUID(),
             email: employeeData.email,
             username: employeeData.email.split('@')[0],
             firstName: employeeData.firstname || null,
             lastName: employeeData.lastname || null,
             department: employeeData.department || null,
             position: employeeData.position || null,
-            role: 'BASIC_USER_1'
+            role: 'USER',
+            updatedAt: new Date()
           }
         })
 
-        await prisma.user.create({
+        await prisma.employees.create({
           data: {
-            id: userData.id,
+            id: randomUUID(),
+            userId: userData.id,
             firstName: employeeData.firstname,
             lastName: employeeData.lastname,
             email: employeeData.email,
@@ -133,7 +137,8 @@ export async function POST(request: NextRequest) {
             phoneNumber: employeeData.phone || null,
             address: employeeData.address || null,
             employeeId: employeeData.employeeid || `EMP${Date.now()}-${i}`,
-            startDate: employeeData.startdate ? new Date(employeeData.startdate) : new Date()
+            startDate: employeeData.startdate ? new Date(employeeData.startdate) : new Date(),
+            updatedAt: new Date()
           }
         })
 

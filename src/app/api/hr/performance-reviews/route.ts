@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const where = employeeId ? { employeeId } : {}
 
     const [performanceReviews, total] = await Promise.all([
-      prisma.performanceReview.findMany({
+      prisma.performance_reviews.findMany({
         where,
         include: {
           employee: {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit
       }),
-      prisma.performanceReview.count({ where })
+      prisma.performance_reviews.count({ where })
     ])
 
     return NextResponse.json({
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       status = 'DRAFT'
     } = body
 
-    const performanceReview = await prisma.performanceReview.create({
+    const performanceReview = await prisma.performance_reviews.create({
       data: {
         employeeId,
         reviewPeriod: `${new Date(reviewPeriodStart).getFullYear()}-${Math.ceil((new Date(reviewPeriodStart).getMonth() + 1) / 3)}Q`,

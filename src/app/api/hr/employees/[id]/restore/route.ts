@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { randomUUID } from 'crypto'
 
 export async function PATCH(
   request: NextRequest,
@@ -20,7 +21,7 @@ export async function PATCH(
     const { id: employeeId } = await params
 
     // Check if employee exists and is archived
-    const existingEmployee = await prisma.user.findUnique({
+    const existingEmployee = await prisma.employees.findUnique({
       where: { id: employeeId }
     })
 
@@ -39,25 +40,26 @@ export async function PATCH(
     }
 
     // Restore the employee
-    const restoredEmployee = await prisma.user.update({
+    const restoredEmployee = await prisma.employees.update({
       where: { id: employeeId },
       data: {
         status: 'ACTIVE',
-        archivedAt: null,
-        archiveReason: null,
-        accessRevoked: false
-      } as any // Type assertion to bypass TypeScript cache issue
+        archived_at: null,
+        archive_reason: null,
+        access_revoked: false,
+        updatedAt: new Date()
+      }
     })
 
     // Create audit log entry
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         action: 'RESTORE',
         resource: 'Employee',
         resourceId: employeeId,
         userId: session.user.id,
         details: `Employee ${existingEmployee.email} restored by ${session.user.email}`,
-        timestamp: new Date(),
         ipAddress: request.headers.get('x-forwarded-for') || 
                   request.headers.get('x-real-ip') || 
                   'unknown'

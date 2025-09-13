@@ -195,8 +195,7 @@ export async function PUT(
         manager: manager?.trim() || existingDept.manager,
         budget: budget !== undefined ? (budget ? parseFloat(budget) : null) : existingDept.budget,
         location: location?.trim() || existingDept.location,
-        status: status || existingDept.status,
-        updatedAt: new Date()
+        status: status || existingDept.status
       },
       include: {
         _count: {

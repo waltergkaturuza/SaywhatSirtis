@@ -10,13 +10,13 @@ export async function GET() {
     console.log('DB Status: Database connected successfully')
     
     // Test basic query
-    const userCount = await prisma.user.count()
+    const userCount = await prisma.users.count()
     console.log(`DB Status: Found ${userCount} users`)
     
     const documentCount = await prisma.document.count()
     console.log(`DB Status: Found ${documentCount} documents`)
     
-    const eventCount = await prisma.event.count()
+    const eventCount = await prisma.events.count()
     console.log(`DB Status: Found ${eventCount} events`)
     
     // Test database info

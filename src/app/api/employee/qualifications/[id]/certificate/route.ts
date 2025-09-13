@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 // POST: Upload qualification certificate
 export async function POST(
@@ -23,7 +24,7 @@ export async function POST(
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -35,7 +36,7 @@ export async function POST(
     }
 
     // Find qualification and verify ownership
-    const qualification = await prisma.qualification.findFirst({
+    const qualification = await prisma.qualifications.findFirst({
       where: {
         id: params.id,
         employeeId: employee.id
@@ -99,17 +100,19 @@ export async function POST(
     // Update qualification with certificate URL
     const certificateUrl = `/uploads/certificates/${fileName}`;
     
-    const updatedQualification = await prisma.qualification.update({
+    const updatedQualification = await prisma.qualifications.update({
       where: { id: qualification.id },
       data: { 
         certificateUrl: certificateUrl,
-        verificationStatus: 'pending' // Reset to pending when new certificate is uploaded
+        verificationStatus: 'uploaded',
+        updatedAt: new Date()
       }
     });
 
     // Create audit trail
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: employee.id,
         action: 'UPDATE',
         resource: 'Qualification',
@@ -117,7 +120,7 @@ export async function POST(
         details: {
           module: 'Qualification Certificate',
           field: 'certificateUrl',
-          oldValue: qualification.certificateUrl,
+          oldValue: null, // Training enrollment doesn't store certificate URL directly
           newValue: certificateUrl,
           fileName: fileName,
           fileSize: file.size,

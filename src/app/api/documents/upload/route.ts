@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -84,8 +85,9 @@ export async function POST(request: NextRequest) {
     // For now, we'll just save the metadata
     
     // Save document metadata to database
-    const document = await prisma.document.create({
+    const document = await prisma.documents.create({
       data: {
+        id: randomUUID(),
         filename: filename,
         originalName: file.name,
         mimeType: file.type,
@@ -97,14 +99,15 @@ export async function POST(request: NextRequest) {
         tags: [],
         isPublic: classification === 'PUBLIC',
         accessLevel: classification?.toLowerCase() || 'internal',
-        uploadedBy: session.user?.id
+        uploadedBy: session.user?.id,
+        updatedAt: new Date()
       }
     })
 
     // Get uploader info for response
     let uploaderName = 'Unknown'
     if (session.user?.id) {
-      const uploader = await prisma.user.findUnique({
+      const uploader = await prisma.users.findUnique({
         where: { id: session.user.id },
         select: {
           firstName: true,

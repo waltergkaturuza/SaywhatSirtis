@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     await prisma.$connect()
     
     // Try a simple query
-    const userCount = await prisma.user.count()
+    const userCount = await prisma.users.count()
     
     // Get database info
     const databaseUrl = process.env.DATABASE_URL

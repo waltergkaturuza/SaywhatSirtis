@@ -17,13 +17,13 @@ export async function GET() {
     // Test multiple queries to check for prepared statement conflicts
     const [userCount, projectAggregate] = await Promise.all([
       safeQuery(async (prisma) => {
-        return await prisma.user.count()
+        return await prisma.users.count()
       }).catch((error) => {
         console.error('User count failed:', error)
         return 0
       }),
       safeQuery(async (prisma) => {
-        return await prisma.project?.aggregate({
+        return await prisma.projects?.aggregate({
           _count: true,
           _sum: { budget: true }
         })
@@ -37,7 +37,7 @@ export async function GET() {
     
     // Test another query to ensure no prepared statement conflicts
     const auditCount = await safeQuery(async (prisma) => {
-      return await prisma.auditLog.count()
+      return await prisma.audit_logs.count()
     }).catch((error) => {
       console.error('Audit count failed:', error)
       return 0

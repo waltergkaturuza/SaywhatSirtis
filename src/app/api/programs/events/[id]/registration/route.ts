@@ -19,7 +19,7 @@ export async function POST(
     const { registrationFields, registrationDeadline, requiresRegistration } = body;
 
     // Check if event exists
-    const event = await prisma.event.findUnique({
+    const event = await prisma.events.findUnique({
       where: { id },
     });
 
@@ -79,7 +79,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const event = await prisma.event.findUnique({
+    const event = await prisma.events.findUnique({
       where: { id }
     });
 

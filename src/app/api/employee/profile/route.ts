@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { randomUUID } from 'crypto';
 
 // GET: Fetch employee profile
 export async function GET() {
@@ -16,7 +17,7 @@ export async function GET() {
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email },
       include: {
         supervisor: {
@@ -25,11 +26,6 @@ export async function GET() {
             firstName: true,
             lastName: true,
             email: true
-          }
-        },
-        departmentRef: {
-          select: {
-            name: true
           }
         }
       }
@@ -45,25 +41,20 @@ export async function GET() {
     // Format response
     const profileData = {
       id: employee.id,
-      employeeId: employee.employeeId,
       firstName: employee.firstName,
       lastName: employee.lastName,
-      middleName: employee.middleName,
       email: employee.email,
+      username: employee.username,
       phoneNumber: employee.phoneNumber,
-      alternativePhone: employee.alternativePhone,
-      address: employee.address,
-      dateOfBirth: employee.dateOfBirth?.toISOString(),
-      gender: employee.gender,
-      nationality: employee.nationality,
-      nationalId: employee.nationalId,
-      passportNumber: employee.passportNumber,
-      emergencyContact: employee.emergencyContact,
-      emergencyPhone: employee.emergencyPhone,
+      bio: employee.bio,
+      location: employee.location,
       position: employee.position,
-      department: employee.departmentRef?.name || employee.department || 'Unassigned',
-      startDate: employee.startDate?.toISOString() || null,
-      profilePicture: null, // Profile pictures are stored in User model
+      department: employee.department || 'Unassigned',
+      role: employee.role,
+      profileImage: employee.profileImage,
+      isActive: employee.isActive,
+      lastLogin: employee.lastLogin?.toISOString() || null,
+      createdAt: employee.createdAt?.toISOString() || null,
       supervisor: employee.supervisor ? {
         id: employee.supervisor.id,
         name: `${employee.supervisor.firstName} ${employee.supervisor.lastName}`,
@@ -116,7 +107,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -128,7 +119,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update employee profile
-    const updatedEmployee = await prisma.user.update({
+    const updatedEmployee = await prisma.users.update({
       where: { id: employee.id },
       data: updateData,
       include: {
@@ -139,18 +130,14 @@ export async function PUT(request: NextRequest) {
             lastName: true,
             email: true
           }
-        },
-        departmentRef: {
-          select: {
-            name: true
-          }
         }
       }
     });
 
     // Create audit trail
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: employee.id,
         action: 'UPDATE',
         resource: 'Employee',
@@ -171,25 +158,20 @@ export async function PUT(request: NextRequest) {
     // Format response
     const profileData = {
       id: updatedEmployee.id,
-      employeeId: updatedEmployee.employeeId,
       firstName: updatedEmployee.firstName,
       lastName: updatedEmployee.lastName,
-      middleName: updatedEmployee.middleName,
       email: updatedEmployee.email,
+      username: updatedEmployee.username,
       phoneNumber: updatedEmployee.phoneNumber,
-      alternativePhone: updatedEmployee.alternativePhone,
-      address: updatedEmployee.address,
-      dateOfBirth: updatedEmployee.dateOfBirth?.toISOString(),
-      gender: updatedEmployee.gender,
-      nationality: updatedEmployee.nationality,
-      nationalId: updatedEmployee.nationalId,
-      passportNumber: updatedEmployee.passportNumber,
-      emergencyContact: updatedEmployee.emergencyContact,
-      emergencyPhone: updatedEmployee.emergencyPhone,
+      bio: updatedEmployee.bio,
+      location: updatedEmployee.location,
       position: updatedEmployee.position,
-      department: updatedEmployee.departmentRef?.name || updatedEmployee.department || 'Unassigned',
-      startDate: updatedEmployee.startDate?.toISOString() || null,
-      profilePicture: null, // Profile pictures are stored in User model
+      department: updatedEmployee.department || 'Unassigned',
+      role: updatedEmployee.role,
+      profileImage: updatedEmployee.profileImage,
+      isActive: updatedEmployee.isActive,
+      lastLogin: updatedEmployee.lastLogin?.toISOString() || null,
+      createdAt: updatedEmployee.createdAt?.toISOString() || null,
       supervisor: updatedEmployee.supervisor ? {
         id: updatedEmployee.supervisor.id,
         name: `${updatedEmployee.supervisor.firstName} ${updatedEmployee.supervisor.lastName}`,

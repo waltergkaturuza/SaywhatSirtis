@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total employees
-    const totalEmployees = await prisma.user.count({
+    const totalEmployees = await prisma.users.count({
       where: {
         ...whereClause,
         isActive: true
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get active employees
-    const activeEmployees = await prisma.user.count({
+    const activeEmployees = await prisma.users.count({
       where: {
         ...whereClause,
         isActive: true,
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get new hires in period
-    const newHires = await prisma.user.count({
+    const newHires = await prisma.users.count({
       where: {
         ...whereClause,
         createdAt: {
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get departures in period (approximation using inactive users)
-    const departures = await prisma.user.count({
+    const departures = await prisma.users.count({
       where: {
         ...whereClause,
         isActive: false,
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     const turnoverRate = averageEmployees > 0 ? (departures / averageEmployees) * 100 : 0
 
     // Calculate average tenure
-    const employees = await prisma.user.findMany({
+    const employees = await prisma.users.findMany({
       where: {
         ...whereClause,
         isActive: true
@@ -101,9 +101,9 @@ export async function GET(request: NextRequest) {
     const attendanceRate = 92.5 // This would be calculated from actual attendance data
 
     // Get performance score from PerformanceReview model
-    const performanceData = await prisma.performanceReview.aggregate({
+    const performanceData = await prisma.performance_reviews.aggregate({
       where: {
-        employee: department !== 'all' ? { department } : undefined,
+        employees: department !== 'all' ? { department } : undefined,
         createdAt: {
           gte: startDate
         }

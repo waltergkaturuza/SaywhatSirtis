@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has HR permissions
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { email: session.user.email! }
     })
 
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get employees who can act as supervisors (managers and senior positions)
-    const supervisors = await prisma.user.findMany({
+    const supervisors = await prisma.users.findMany({
       where: {
         OR: [
           { position: { contains: 'Manager' } },

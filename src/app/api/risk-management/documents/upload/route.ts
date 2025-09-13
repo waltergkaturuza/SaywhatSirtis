@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if risk exists
-    const risk = await prisma.risk.findUnique({
+    const risk = await prisma.risks.findUnique({
       where: { id: riskId }
     })
 
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current user
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { email: session.user.email }
     })
 

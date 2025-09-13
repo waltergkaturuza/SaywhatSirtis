@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
 
     // Create some mock data if database is empty
-    const projectCount = await prisma.project.count()
+    const projectCount = await prisma.projects.count()
     
     if (projectCount === 0) {
       // Return mock data for empty database
@@ -44,25 +44,25 @@ export async function GET(request: NextRequest) {
       budgetInfo
     ] = await Promise.all([
       // Total projects count
-      prisma.project.count(),
+      prisma.projects.count(),
       
       // Active projects count
-      prisma.project.count({
+      prisma.projects.count({
         where: { status: 'ACTIVE' }
       }),
       
       // Completed projects count
-      prisma.project.count({
+      prisma.projects.count({
         where: { status: 'COMPLETED' }
       }),
       
       // On-hold projects count
-      prisma.project.count({
+      prisma.projects.count({
         where: { status: 'ON_HOLD' }
       }),
 
       // Recent projects for the dashboard cards
-      prisma.project.findMany({
+      prisma.projects.findMany({
         take: 5,
         orderBy: {
           createdAt: 'desc'
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       }),
 
       // Budget calculations
-      prisma.project.aggregate({
+      prisma.projects.aggregate({
         _sum: {
           budget: true,
           actualSpent: true

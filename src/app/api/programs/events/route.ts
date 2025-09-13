@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     // Get events with pagination
     const [events, total] = await Promise.all([
-      prisma.event.findMany({
+      prisma.events.findMany({
         where,
         orderBy: {
           createdAt: 'desc',
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         skip: offset,
         take: limit,
       }),
-      prisma.event.count({ where }),
+      prisma.events.count({ where }),
     ]);
 
     console.log(`Events API: Found ${events.length} events, total: ${total}`)
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     // Find organizer user
     let organizerUser;
     if (organizer) {
-      organizerUser = await prisma.user.findFirst({
+      organizerUser = await prisma.users.findFirst({
         where: {
           OR: [
             { email: organizer },
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the event
-    const event = await prisma.event.create({
+    const event = await prisma.events.create({
       data: {
         title: name,
         description,

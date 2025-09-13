@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
     if (employeeId) where.attendees = { contains: employeeId }
 
     const [trainingEvents, total] = await Promise.all([
-      prisma.event.findMany({
+      prisma.events.findMany({
         where,
         orderBy: { startDate: 'desc' },
         skip,
         take: limit
       }),
-      prisma.event.count({ where })
+      prisma.events.count({ where })
     ])
 
     return NextResponse.json({
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       attendees = []
     } = body
 
-    const trainingEvent = await prisma.event.create({
+    const trainingEvent = await prisma.events.create({
       data: {
         title,
         description,

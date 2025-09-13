@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function PATCH(
   request: NextRequest,
@@ -29,7 +30,7 @@ export async function PATCH(
     const { isReviewer } = body
 
     // Validate employee exists
-    const existingEmployee = await prisma.user.findUnique({
+    const existingEmployee = await prisma.employees.findUnique({
       where: { id: employeeId }
     })
 
@@ -38,22 +39,23 @@ export async function PATCH(
     }
 
     // Update reviewer status
-    const updatedEmployee = await prisma.user.update({
+    const updatedEmployee = await prisma.employees.update({
       where: { id: employeeId },
       data: {
-        isReviewer: isReviewer
+        is_reviewer: isReviewer,
+        updatedAt: new Date()
       }
     })
 
     // Create audit log entry
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         action: isReviewer ? 'ASSIGN_REVIEWER' : 'REMOVE_REVIEWER',
         resource: 'Employee',
         resourceId: employeeId,
         userId: session.user.id,
         details: `Employee ${existingEmployee.email} ${isReviewer ? 'assigned as' : 'removed from'} reviewer role by ${session.user.email}`,
-        timestamp: new Date(),
         ipAddress: request.headers.get('x-forwarded-for') || 
                   request.headers.get('x-real-ip') || 
                   'unknown'

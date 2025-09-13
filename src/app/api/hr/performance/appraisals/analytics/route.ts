@@ -17,16 +17,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Basic analytics for performance appraisals
-    const totalReviews = await prisma.performanceReview.count()
-    const completedReviews = await prisma.performanceReview.count({
+    const totalReviews = await prisma.performance_reviews.count()
+    const completedReviews = await prisma.performance_reviews.count({
       where: { reviewType: 'annual' }
     })
-    const quarterlyReviews = await prisma.performanceReview.count({
+    const quarterlyReviews = await prisma.performance_reviews.count({
       where: { reviewType: 'quarterly' }
     })
 
     // Calculate average rating
-    const avgRating = await prisma.performanceReview.aggregate({
+    const avgRating = await prisma.performance_reviews.aggregate({
       _avg: {
         overallRating: true
       }

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     const [employees, salaryStats] = await Promise.all([
       // Get employees with salary data
-      prisma.user.findMany({
+      prisma.employees.findMany({
         where,
         select: {
           id: true,
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         orderBy: { salary: 'desc' }
       }),
       // Get salary statistics
-      prisma.user.aggregate({
+      prisma.employees.aggregate({
         where,
         _avg: { salary: true },
         _min: { salary: true },
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     ])
 
     // Calculate salary distribution by department
-    const departmentStats = await prisma.user.groupBy({
+    const departmentStats = await prisma.employees.groupBy({
       by: ['department'],
       where: { salary: { not: null } },
       _avg: { salary: true },
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Calculate salary distribution by position
-    const positionStats = await prisma.user.groupBy({
+    const positionStats = await prisma.employees.groupBy({
       by: ['position'],
       where: { salary: { not: null } },
       _avg: { salary: true },
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     const rangeDistribution = await Promise.all(
       salaryRanges.map(async (range) => {
-        const count = await prisma.user.count({
+        const count = await prisma.users.count({
           where: {
             ...where,
             salary: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all calls without pagination for now
-    const calls = await prisma.callRecord.findMany({
+    const calls = await prisma.call_records.findMany({
       orderBy: {
         createdAt: 'desc'
       }
@@ -91,8 +92,9 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Create new call record
-    const call = await prisma.callRecord.create({
+    const call = await prisma.call_records.create({
       data: {
+        id: randomUUID(),
         caseNumber: `CASE-${Date.now()}`, // Generate unique case number
         callerName,
         callerPhone,
@@ -106,7 +108,8 @@ export async function POST(request: NextRequest) {
         notes: description || '',
         assignedOfficer: assignedTo,
         status: 'OPEN',
-        callStartTime: new Date()
+        callStartTime: new Date(),
+        updatedAt: new Date()
       }
     })
 

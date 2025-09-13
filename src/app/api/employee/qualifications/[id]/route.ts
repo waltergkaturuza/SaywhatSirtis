@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { randomUUID } from 'crypto';
 
 // PUT: Update qualification
 export async function PUT(
@@ -20,7 +21,7 @@ export async function PUT(
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -32,7 +33,7 @@ export async function PUT(
     }
 
     // Find qualification and verify ownership
-    const existingQualification = await prisma.qualification.findFirst({
+    const existingQualification = await prisma.qualifications.findFirst({
       where: {
         id: params.id,
         employeeId: employee.id
@@ -72,26 +73,26 @@ export async function PUT(
     }
 
     // Update qualification
-    const updatedQualification = await prisma.qualification.update({
+    const updatedQualification = await prisma.qualifications.update({
       where: { id: params.id },
       data: {
-        type: body.type,
-        title: body.title,
-        institution: body.institution || null,
-        issuer: body.issuer || null,
-        dateObtained: new Date(body.dateObtained),
-        expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
-        level: body.level || null,
-        grade: body.grade || null,
-        description: body.description || null,
-        status: status,
-        verificationStatus: 'pending' // Reset verification status when updated
+        type: body.type || existingQualification.type,
+        title: body.title || existingQualification.title,
+        institution: body.institution || existingQualification.institution,
+        description: body.description || existingQualification.description,
+        dateObtained: body.dateObtained ? new Date(body.dateObtained) : existingQualification.dateObtained,
+        expiryDate: body.expiryDate ? new Date(body.expiryDate) : existingQualification.expiryDate,
+        grade: body.grade || existingQualification.grade,
+        creditsEarned: body.creditsEarned ? parseFloat(body.creditsEarned) : existingQualification.creditsEarned,
+        skillsGained: body.skillsGained || existingQualification.skillsGained,
+        updatedAt: new Date()
       }
     });
 
     // Create audit trail
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: employee.id,
         action: 'UPDATE',
         resource: 'Qualification',
@@ -109,18 +110,21 @@ export async function PUT(
     // Format response
     const formattedQualification = {
       id: updatedQualification.id,
+      employeeId: updatedQualification.employeeId,
       type: updatedQualification.type,
       title: updatedQualification.title,
       institution: updatedQualification.institution,
-      issuer: updatedQualification.issuer,
-      dateObtained: updatedQualification.dateObtained.toISOString(),
-      expiryDate: updatedQualification.expiryDate?.toISOString(),
-      level: updatedQualification.level,
-      grade: updatedQualification.grade,
       description: updatedQualification.description,
+      dateObtained: updatedQualification.dateObtained.toISOString(),
+      expiryDate: updatedQualification.expiryDate?.toISOString() || null,
+      grade: updatedQualification.grade,
       certificateUrl: updatedQualification.certificateUrl,
-      status: updatedQualification.status,
-      verificationStatus: updatedQualification.verificationStatus
+      verificationStatus: updatedQualification.verificationStatus,
+      isVerified: updatedQualification.isVerified,
+      creditsEarned: updatedQualification.creditsEarned,
+      skillsGained: updatedQualification.skillsGained,
+      createdAt: updatedQualification.createdAt.toISOString(),
+      updatedAt: updatedQualification.updatedAt.toISOString()
     };
 
     return NextResponse.json(formattedQualification);
@@ -151,7 +155,7 @@ export async function DELETE(
     }
 
     // Find employee by email
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.users.findUnique({
       where: { email: session.user.email }
     });
 
@@ -163,7 +167,7 @@ export async function DELETE(
     }
 
     // Find qualification and verify ownership
-    const qualification = await prisma.qualification.findFirst({
+    const qualification = await prisma.qualifications.findFirst({
       where: {
         id: params.id,
         employeeId: employee.id
@@ -178,13 +182,14 @@ export async function DELETE(
     }
 
     // Delete qualification
-    await prisma.qualification.delete({
+    await prisma.qualifications.delete({
       where: { id: params.id }
     });
 
     // Create audit trail
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: employee.id,
         action: 'DELETE',
         resource: 'Qualification',

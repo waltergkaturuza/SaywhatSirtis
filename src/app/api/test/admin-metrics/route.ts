@@ -12,7 +12,7 @@ export async function GET() {
     // Get some basic metrics that might have BigInt values
     const metrics = await Promise.all([
       // Test user count (should work)
-      prisma.user.count().catch(() => 0),
+      prisma.users.count().catch(() => 0),
       
       // Test if we can run a simple aggregation
       prisma.$queryRaw`SELECT COUNT(*)::text as total_tables 

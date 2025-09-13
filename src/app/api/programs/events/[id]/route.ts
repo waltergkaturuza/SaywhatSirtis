@@ -15,7 +15,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const event = await prisma.event.findUnique({
+    const event = await prisma.events.findUnique({
       where: { id },
       include: {
         registrations: {
@@ -74,7 +74,7 @@ export async function PUT(
     } = body;
 
     // Check if event exists
-    const existingEvent = await prisma.event.findUnique({
+    const existingEvent = await prisma.events.findUnique({
       where: { id },
     });
 
@@ -83,7 +83,7 @@ export async function PUT(
     }
 
     // Update the event
-    const event = await prisma.event.update({
+    const event = await prisma.events.update({
       where: { id },
       data: {
         title: name,
@@ -131,7 +131,7 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if event exists
-    const existingEvent = await prisma.event.findUnique({
+    const existingEvent = await prisma.events.findUnique({
       where: { id },
     });
 
@@ -140,7 +140,7 @@ export async function DELETE(
     }
 
     // Delete the event
-    await prisma.event.delete({
+    await prisma.events.delete({
       where: { id },
     });
 

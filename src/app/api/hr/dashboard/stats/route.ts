@@ -29,20 +29,14 @@ export async function GET(request: NextRequest) {
         totalEmployees,
         activeEmployees,
         departmentCount,
-        subunitCount,
         trainingCount,
         activeTrainings
       ] = await Promise.all([
-        prisma.employees.count().catch(e => { console.error('Employee count error:', e); return 0; }),
-        prisma.employees.count({
-          where: { status: 'ACTIVE' }
-        }).catch(e => { console.error('Active employee count error:', e); return 0; }),
-        prisma.departments.count({
-          where: { parentId: null } // Only count main departments, not subunits
-        }).catch(e => { console.error('Department count error:', e); return 0; }),
-        prisma.departments.count({
-          where: { parentId: { not: null } } // Count only subunits
-        }).catch(e => { console.error('Subunit count error:', e); return 0; }),
+        prisma.users.count().catch(e => { console.error('User count error:', e); return 0; }),
+        prisma.users.count({
+          where: { isActive: true }
+        }).catch(e => { console.error('Active user count error:', e); return 0; }),
+        prisma.departments.count().catch(e => { console.error('Department count error:', e); return 0; }),
         prisma.events.count({
           where: { type: 'training' }
         }).catch(e => { console.error('Training count error:', e); return 0; }),
@@ -61,7 +55,7 @@ export async function GET(request: NextRequest) {
       thisMonthStart.setDate(1)
       thisMonthStart.setHours(0, 0, 0, 0)
       
-      const newEmployeesThisMonth = await prisma.employees.count({
+      const newEmployeesThisMonth = await prisma.users.count({
         where: {
           createdAt: { gte: thisMonthStart }
         }
@@ -117,7 +111,7 @@ export async function GET(request: NextRequest) {
       
       const onboardingCount = await prisma.employees.count({
         where: {
-          createdAt: {
+          startDate: {
             gte: onboardingThreshold
           },
           status: 'ACTIVE'
@@ -129,7 +123,6 @@ export async function GET(request: NextRequest) {
         activeEmployees,
         newEmployeesThisMonth,
         departmentCount,
-        subunitCount,
         trainingCount,
         activeTrainings,
         averagePerformance,

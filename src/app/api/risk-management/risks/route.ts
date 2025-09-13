@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     const [risks, total] = await Promise.all([
-      prisma.risk.findMany({
+      prisma.risks.findMany({
         where,
         include: {
           owner: {
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit
       }),
-      prisma.risk.count({ where })
+      prisma.risks.count({ where })
     ]);
 
     return NextResponse.json({
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     // Generate unique risk ID
     const riskId = generateRiskId();
 
-    const risk = await prisma.risk.create({
+    const risk = await prisma.risks.create({
       data: {
         riskId,
         title,

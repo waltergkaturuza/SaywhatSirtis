@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get events
-    const events = await prisma.event.findMany({
+    const events = await prisma.events.findMany({
       where,
       include: {
         registrations: {

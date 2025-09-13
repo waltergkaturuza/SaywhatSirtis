@@ -531,8 +531,11 @@ model employees {
   employees            employees?             @relation("employeesToemployees", fields: [supervisor_id], references: [id])
   other_employees      employees[]            @relation("employeesToemployees")
   performance_reviews  performance_reviews[]
+  performance_plans    performance_plans[]
+  performance_appraisals performance_appraisals[]
   training_attendance  training_attendance[]
   training_enrollments training_enrollments[]
+  qualifications       qualifications[]
 
   @@index([archived_at])
   @@index([department])
@@ -639,6 +642,119 @@ model performance_reviews {
 
   @@index([employeeId])
   @@index([reviewDate])
+}
+
+model performance_plans {
+  id                    String                      @id
+  employeeId            String
+  supervisorId          String
+  planYear              Int
+  planPeriod            String
+  status                String                      @default("draft")
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime
+  employees             employees                   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  supervisor            users                       @relation("PerformancePlanSupervisor", fields: [supervisorId], references: [id])
+  keyResponsibilities   performance_responsibilities[]
+  appraisals            performance_appraisals[]
+
+  @@index([employeeId])
+  @@index([supervisorId])
+  @@index([planYear])
+}
+
+model performance_responsibilities {
+  id                  String                         @id
+  planId              String
+  title               String
+  description         String?
+  weight              Float?                         @default(0)
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime
+  performancePlan     performance_plans              @relation(fields: [planId], references: [id], onDelete: Cascade)
+  activities          performance_activities[]
+  assessments         performance_responsibility_assessments[]
+
+  @@index([planId])
+}
+
+model performance_activities {
+  id                    String                      @id
+  responsibilityId      String
+  title                 String
+  description           String?
+  targetDate            DateTime?
+  status                String                      @default("pending")
+  completedAt           DateTime?
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime
+  responsibility        performance_responsibilities @relation(fields: [responsibilityId], references: [id], onDelete: Cascade)
+
+  @@index([responsibilityId])
+  @@index([targetDate])
+}
+
+model performance_responsibility_assessments {
+  id              String                 @id
+  appraisalId     String
+  responsibilityId String
+  selfRating      String?
+  supervisorRating String?
+  reviewerRating  String?
+  comments        String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime
+  appraisal       performance_appraisals @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
+  responsibility  performance_responsibilities @relation(fields: [responsibilityId], references: [id])
+
+  @@index([appraisalId])
+  @@index([responsibilityId])
+}
+
+model performance_value_assessments {
+  id              String                 @id
+  appraisalId     String
+  valueType       String
+  valueTitle      String
+  selfRating      String?
+  supervisorRating String?
+  reviewerRating  String?
+  comments        String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime
+  appraisal       performance_appraisals @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
+
+  @@index([appraisalId])
+}
+
+model performance_appraisals {
+  id                      String                         @id
+  planId                  String
+  employeeId              String
+  supervisorId            String
+  reviewerId              String?
+  appraisalType           String
+  overallRating           Float?
+  selfAssessments         Json?
+  supervisorAssessments   Json?
+  valueGoalsAssessments   Json?
+  electronicSignature     String?
+  status                  String                         @default("draft")
+  submittedAt             DateTime?
+  approvedAt              DateTime?
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime
+  performancePlan         performance_plans              @relation(fields: [planId], references: [id], onDelete: Cascade)
+  employee                employees                      @relation(fields: [employeeId], references: [id])
+  supervisor              users                          @relation("AppraisalSupervisor", fields: [supervisorId], references: [id])
+  reviewer                users?                         @relation("AppraisalReviewer", fields: [reviewerId], references: [id])
+  responsibilityAssessments performance_responsibility_assessments[]
+  valueAssessments        performance_value_assessments[]
+
+  @@index([planId])
+  @@index([employeeId])
+  @@index([supervisorId])
+  @@index([reviewerId])
 }
 
 model projects {
@@ -937,6 +1053,7 @@ model users {
   role                                                 UserRole                     @default(USER)
   department                                           String?
   position                                             String?
+  supervisorId                                         String?
   isActive                                             Boolean                      @default(true)
   lastLogin                                            DateTime?
   createdAt                                            DateTime                     @default(now())
@@ -970,6 +1087,11 @@ model users {
   risks_risks_ownerIdTousers                           risks[]                      @relation("risks_ownerIdTousers")
   search_logs                                          search_logs[]
   sessions                                             sessions[]
+  supervisor                                           users?                       @relation("SupervisorEmployee", fields: [supervisorId], references: [id])
+  supervisees                                          users[]                      @relation("SupervisorEmployee")
+  performance_plans_supervised                         performance_plans[]          @relation("PerformancePlanSupervisor")
+  performance_appraisals_supervised                    performance_appraisals[]     @relation("AppraisalSupervisor")
+  performance_appraisals_reviewed                      performance_appraisals[]     @relation("AppraisalReviewer")
 }
 
 model verificationtokens {
@@ -978,6 +1100,31 @@ model verificationtokens {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model qualifications {
+  id                String                    @id
+  employeeId        String
+  type              QualificationType
+  title             String
+  institution       String?
+  description       String?
+  dateObtained      DateTime
+  expiryDate        DateTime?
+  grade             String?
+  certificateUrl    String?
+  verificationStatus String                  @default("pending")
+  isVerified        Boolean                  @default(false)
+  creditsEarned     Float?
+  skillsGained      String[]                @default([])
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime
+  employees         employees               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([type])
+  @@index([dateObtained])
+  @@index([expiryDate])
 }
 
 enum ActivityStatus {
@@ -1224,4 +1371,13 @@ enum UserRole {
   CALL_CENTRE_AGENT
   EMPLOYEE
   USER
+}
+
+enum QualificationType {
+  EDUCATION
+  CERTIFICATION
+  SKILL
+  TRAINING
+  LICENSE
+  AWARD
 }

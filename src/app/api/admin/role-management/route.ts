@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { UserRole, Department, DEPARTMENT_DEFAULT_ROLES, ROLE_DEFINITIONS, getRoleDisplayName, getDepartmentDisplayName } from '@/types/roles'
 import { UserRole as PrismaUserRole } from '@prisma/client'
+import { randomUUID } from 'crypto'
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 
       case 'users':
         // Get all users with their roles
-        const users = await prisma.user.findMany({
+        const users = await prisma.users.findMany({
           select: {
             id: true,
             email: true,
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Update user role
-        const updatedUser = await prisma.user.update({
+        const updatedUser = await prisma.users.update({
           where: { id: userId },
           data: { role: newRole as PrismaUserRole },
           select: {
@@ -157,8 +158,9 @@ export async function POST(request: NextRequest) {
         })
 
         // Log the role change
-        await prisma.auditLog.create({
+        await prisma.audit_logs.create({
           data: {
+            id: randomUUID(),
             userId: session.user.id,
             action: 'ROLE_ASSIGNED',
             details: `Assigned role ${newRole} to user ${updatedUser.email}`,
@@ -190,14 +192,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Update all users in the department to the default role
-        const bulkUpdateResult = await prisma.user.updateMany({
+        const bulkUpdateResult = await prisma.users.updateMany({
           where: { department: department },
-          data: { role: defaultRole as PrismaUserRole }
+          data: { role: defaultRole as unknown as PrismaUserRole }
         })
 
         // Log the bulk operation
-        await prisma.auditLog.create({
+        await prisma.audit_logs.create({
           data: {
+            id: randomUUID(),
             userId: session.user.id,
             action: 'BULK_ROLE_ASSIGNMENT',
             details: `Assigned default role ${defaultRole} to ${bulkUpdateResult.count} users in ${department} department`,
@@ -220,7 +223,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get user's department
-        const user = await prisma.user.findUnique({
+        const user = await prisma.users.findUnique({
           where: { id: userId },
           select: { department: true, email: true }
         })
@@ -237,9 +240,9 @@ export async function POST(request: NextRequest) {
         }
 
         // Update user to department default role
-        const resetUser = await prisma.user.update({
+        const resetUser = await prisma.users.update({
           where: { id: userId },
-          data: { role: departmentDefaultRole as PrismaUserRole },
+          data: { role: departmentDefaultRole as unknown as PrismaUserRole },
           select: {
             id: true,
             email: true,
@@ -251,8 +254,9 @@ export async function POST(request: NextRequest) {
         })
 
         // Log the reset
-        await prisma.auditLog.create({
+        await prisma.audit_logs.create({
           data: {
+            id: randomUUID(),
             userId: session.user.id,
             action: 'ROLE_RESET_TO_DEFAULT',
             details: `Reset user ${user.email} to department default role ${departmentDefaultRole}`,

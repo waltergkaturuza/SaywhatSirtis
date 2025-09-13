@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function PATCH(
   request: NextRequest,
@@ -27,7 +28,7 @@ export async function PATCH(
     const body = await request.json()
 
     // Validate employee exists
-    const existingEmployee = await prisma.user.findUnique({
+    const existingEmployee = await prisma.employees.findUnique({
       where: { id: employeeId }
     })
 
@@ -36,17 +37,17 @@ export async function PATCH(
     }
 
     // Update employee status to ARCHIVED and revoke access
-    const updatedEmployee = await prisma.user.update({
+    const updatedEmployee = await prisma.employees.update({
       where: { id: employeeId },
       data: {
         status: 'ARCHIVED',
-        archivedAt: new Date(),
-        archiveReason: body.reason || 'Other',
-        accessRevoked: true, // Automatically revoke access when archiving
+        archived_at: new Date(),
+        archive_reason: body.reason || 'Other',
+        access_revoked: true, // Automatically revoke access when archiving
         updatedAt: new Date()
-      } as any, // Type assertion to bypass TypeScript cache issue
+      },
       include: {
-        departmentRef: {
+        departments: {
           select: {
             name: true
           }
@@ -56,8 +57,9 @@ export async function PATCH(
 
     // Create audit log entry for archiving
     try {
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
+          id: randomUUID(),
           action: 'ARCHIVE_EMPLOYEE',
           resource: 'Employee',
           resourceId: employeeId,

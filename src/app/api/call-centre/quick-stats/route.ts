@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       overdueCases
     ] = await Promise.all([
       // Total calls today
-      prisma.callRecord.count({
+      prisma.call_records.count({
         where: {
           createdAt: {
             gte: today,
@@ -45,13 +45,13 @@ export async function GET(request: NextRequest) {
         }
       }),
       // Active cases (calls that are still open)
-      prisma.callRecord.count({
+      prisma.call_records.count({
         where: {
           status: 'OPEN'
         }
       }),
       // Pending follow-ups
-      prisma.callRecord.count({
+      prisma.call_records.count({
         where: {
           followUpRequired: true,
           followUpDate: {
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         }
       }),
       // Overdue cases (calls older than 7 days and still open)
-      prisma.callRecord.count({
+      prisma.call_records.count({
         where: {
           status: 'OPEN',
           createdAt: {
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     ])
 
     // Calculate valid calls rate
-    const validCalls = await prisma.callRecord.count({
+    const validCalls = await prisma.call_records.count({
       where: {
         createdAt: {
           gte: today,

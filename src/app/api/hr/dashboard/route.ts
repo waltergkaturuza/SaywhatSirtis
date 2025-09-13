@@ -17,17 +17,17 @@ export async function GET() {
     // Get HR dashboard statistics
     const stats = await Promise.all([
       // Total active employees
-      prisma.user.count({
+      prisma.users.count({
         where: { isActive: true }
       }),
       
       // Total archived employees
-      prisma.user.count({
+      prisma.users.count({
         where: { isActive: false }
       }),
       
       // Recent hires (last 30 days)
-      prisma.user.count({
+      prisma.users.count({
         where: {
           isActive: true,
           createdAt: {
@@ -37,7 +37,7 @@ export async function GET() {
       }),
       
       // Employees by department
-      prisma.user.groupBy({
+      prisma.users.groupBy({
         by: ['department'],
         where: { isActive: true },
         _count: { id: true }

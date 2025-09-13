@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function GET(
   request: NextRequest,
@@ -28,10 +29,10 @@ export async function GET(
     }
 
     // Fetch employee with all details including relationships
-    const employee = await prisma.user.findUnique({
+    const employee = await prisma.employees.findUnique({
       where: { id: employeeId },
       include: {
-        departmentRef: {
+        departments: {
           select: {
             id: true,
             name: true,
@@ -39,7 +40,7 @@ export async function GET(
             level: true
           }
         },
-        supervisor: {
+        employees: {
           select: {
             id: true,
             firstName: true,
@@ -48,7 +49,7 @@ export async function GET(
             position: true
           }
         },
-        subordinates: {
+        other_employees: {
           select: {
             id: true,
             firstName: true,
@@ -91,7 +92,7 @@ export async function GET(
       // Work Information
       department: employee.department,
       departmentId: employee.departmentId,
-      departmentRef: employee.departmentRef,
+      departmentRef: employee.departments,
       position: employee.position,
       employmentType: employee.employmentType,
       startDate: employee.startDate,
@@ -102,24 +103,24 @@ export async function GET(
       status: employee.status,
       
       // Supervisor and Role fields
-      supervisorId: employee.supervisorId,
-      supervisor: employee.supervisor,
-      subordinates: employee.subordinates,
-      isSupervisor: employee.isSupervisor,
-      isReviewer: employee.isReviewer,
+      supervisorId: employee.supervisor_id,
+      supervisor: employee.employees,
+      subordinates: employee.other_employees,
+      isSupervisor: employee.is_supervisor,
+      isReviewer: employee.is_reviewer,
       
       // Benefits fields
-      medicalAid: employee.medicalAid,
-      funeralCover: employee.funeralCover,
-      vehicleBenefit: employee.vehicleBenefit,
-      fuelAllowance: employee.fuelAllowance,
-      airtimeAllowance: employee.airtimeAllowance,
-      otherBenefits: employee.otherBenefits,
+      medicalAid: employee.medical_aid,
+      funeralCover: employee.funeral_cover,
+      vehicleBenefit: employee.vehicle_benefit,
+      fuelAllowance: employee.fuel_allowance,
+      airtimeAllowance: employee.airtime_allowance,
+      otherBenefits: employee.other_benefits,
       
       // Archive fields
-      archivedAt: employee.archivedAt,
-      archiveReason: employee.archiveReason,
-      accessRevoked: employee.accessRevoked,
+      archivedAt: employee.archived_at,
+      archiveReason: employee.archive_reason,
+      accessRevoked: employee.access_revoked,
       
       // Timestamps
       createdAt: employee.createdAt,
@@ -165,7 +166,7 @@ export async function PUT(
     }
 
     // Validate employee exists
-    const existingEmployee = await prisma.user.findUnique({
+    const existingEmployee = await prisma.users.findUnique({
       where: { id: employeeId }
     })
 
@@ -220,12 +221,12 @@ export async function PUT(
     }
 
     // Update employee
-    const updatedEmployee = await prisma.user.update({
+    const updatedEmployee = await prisma.employees.update({
       where: { id: employeeId },
       data: updateData,
       include: {
-        departmentRef: true,
-        supervisor: {
+        departments: true,
+        employees: {
           select: {
             id: true,
             firstName: true,
@@ -237,14 +238,14 @@ export async function PUT(
     })
 
     // Create audit log entry
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         action: 'UPDATE',
         resource: 'Employee',
         resourceId: employeeId,
         userId: session.user.id,
         details: `Employee ${updatedEmployee.email} updated by ${session.user.email}`,
-        timestamp: new Date(),
         ipAddress: request.headers.get('x-forwarded-for') || 
                   request.headers.get('x-real-ip') || 
                   'unknown'

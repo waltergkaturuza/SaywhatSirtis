@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Fetch calls with follow-up requirements
-      calls = await prisma.callRecord.findMany({
+      calls = await prisma.call_records.findMany({
         where,
         select: {
           id: true,
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'complete_followup':
         try {
-          const updatedCall = await prisma.callRecord.update({
+          const updatedCall = await prisma.call_records.update({
             where: { id: callId },
             data: {
               followUpRequired: false,
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
 
       case 'reschedule_followup':
         try {
-          const updatedCall = await prisma.callRecord.update({
+          const updatedCall = await prisma.call_records.update({
             where: { id: callId },
             data: {
               followUpDate: new Date(updates.newDate),

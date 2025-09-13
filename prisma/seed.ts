@@ -1,4 +1,5 @@
 import { PrismaClient, UserRole, RiskCategory, RiskProbability, RiskImpact, RiskStatus, MitigationStatus } from '@prisma/client'
+import { randomUUID } from 'crypto'
 
 const prisma = new PrismaClient()
 
@@ -9,10 +10,10 @@ async function safeSeed() {
   console.log('🔍 Checking existing data...')
   
   const existingCounts = {
-    users: await prisma.user.count(),
-    projects: await prisma.project.count(),
-    callRecords: await prisma.callRecord.count(),
-    activities: await prisma.activity.count()
+    users: await prisma.users.count(),
+    projects: await prisma.projects.count(),
+    callRecords: await prisma.call_records.count(),
+    activities: await prisma.activities.count()
   }
   
   console.log('📊 Current data counts:', existingCounts)
@@ -41,13 +42,13 @@ async function safeSeed() {
     await new Promise(resolve => setTimeout(resolve, 3000))
     
     // Clear existing data in reverse order of dependencies
-    await prisma.activity.deleteMany({})
-    await prisma.callRecord.deleteMany({})
-    await prisma.project.deleteMany({})
-    await prisma.auditLog.deleteMany({})
-    await prisma.session.deleteMany({})
-    await prisma.account.deleteMany({})
-    await prisma.user.deleteMany({})
+    await prisma.activities.deleteMany({})
+    await prisma.call_records.deleteMany({})
+    await prisma.projects.deleteMany({})
+    await prisma.audit_logs.deleteMany({})
+    await prisma.sessions.deleteMany({})
+    await prisma.accounts.deleteMany({})
+    await prisma.users.deleteMany({})
     
     console.log('✅ Existing data cleared')
   }
@@ -55,10 +56,11 @@ async function safeSeed() {
   // Create Users (only if they don't exist)
   console.log('👥 Creating users...')
   
-  const adminExists = await prisma.user.findUnique({ where: { email: 'admin@saywhat.org' } })
+  const adminExists = await prisma.users.findUnique({ where: { email: 'admin@saywhat.org' } })
   if (!adminExists) {
-    await prisma.user.create({
+    await prisma.users.create({
       data: {
+        id: randomUUID(),
         email: 'admin@saywhat.org',
         username: 'admin',
         firstName: 'System',
@@ -71,6 +73,7 @@ async function safeSeed() {
         isActive: true,
         roles: ['ADMIN', 'SUPER_USER'],
         twoFactorEnabled: true,
+        updatedAt: new Date(),
       }
     })
     console.log('   ✅ Created admin user')
@@ -78,10 +81,11 @@ async function safeSeed() {
     console.log('   ℹ️  Admin user already exists')
   }
 
-  const pmExists = await prisma.user.findUnique({ where: { email: 'pm@saywhat.org' } })
+  const pmExists = await prisma.users.findUnique({ where: { email: 'pm@saywhat.org' } })
   if (!pmExists) {
-    await prisma.user.create({
+    await prisma.users.create({
       data: {
+        id: randomUUID(),
         email: 'pm@saywhat.org',
         username: 'projectmanager',
         firstName: 'John',
@@ -93,6 +97,7 @@ async function safeSeed() {
         location: 'Johannesburg, South Africa',
         isActive: true,
         roles: ['PROJECT_MANAGER', 'PROJECT_LEAD'],
+        updatedAt: new Date(),
       }
     })
     console.log('   ✅ Created project manager')
@@ -101,16 +106,17 @@ async function safeSeed() {
   }
 
   // Only create sample projects if none exist
-  const projectCount = await prisma.project.count()
+  const projectCount = await prisma.projects.count()
   if (projectCount === 0) {
     console.log('📋 Creating sample projects...')
     
-    const admin = await prisma.user.findUnique({ where: { email: 'admin@saywhat.org' } })
-    const projectManager = await prisma.user.findUnique({ where: { email: 'pm@saywhat.org' } })
+    const admin = await prisma.users.findUnique({ where: { email: 'admin@saywhat.org' } })
+    const projectManager = await prisma.users.findUnique({ where: { email: 'pm@saywhat.org' } })
     
     if (admin && projectManager) {
-      await prisma.project.create({
+      await prisma.projects.create({
         data: {
+          id: randomUUID(),
           name: 'Community Water Access Program',
           description: 'Implementing sustainable water access solutions in rural communities.',
           objectives: {
@@ -130,6 +136,7 @@ async function safeSeed() {
           currency: 'ZAR',
           creatorId: admin.id,
           managerId: projectManager.id,
+          updatedAt: new Date(),
         }
       })
       console.log('   ✅ Created sample project')
@@ -139,12 +146,12 @@ async function safeSeed() {
   }
 
   // Only create sample risks if none exist
-  const riskCount = await prisma.risk.count()
+  const riskCount = await prisma.risks.count()
   if (riskCount === 0) {
     console.log('🚨 Creating sample risks...')
     
-    const admin = await prisma.user.findUnique({ where: { email: 'admin@saywhat.org' } })
-    const projectManager = await prisma.user.findUnique({ where: { email: 'pm@saywhat.org' } })
+    const admin = await prisma.users.findUnique({ where: { email: 'admin@saywhat.org' } })
+    const projectManager = await prisma.users.findUnique({ where: { email: 'pm@saywhat.org' } })
     
     if (admin && projectManager) {
       const risks = [
@@ -221,15 +228,20 @@ async function safeSeed() {
       ]
 
       for (const riskData of risks) {
-        const risk = await prisma.risk.create({
-          data: riskData
+        const risk = await prisma.risks.create({
+          data: {
+            ...riskData,
+            id: randomUUID(),
+            updatedAt: new Date(),
+          }
         })
         console.log(`   ✅ Created risk: ${risk.riskId}`)
         
         // Create sample mitigations for each risk
         if (risk.riskId === 'RISK-2025-001') {
-          await prisma.riskMitigation.create({
+          await prisma.risk_mitigations.create({
             data: {
+              id: randomUUID(),
               riskId: risk.id,
               strategy: 'Implement comprehensive staff retention program with competitive compensation and career development opportunities.',
               controlMeasure: 'Regular staff satisfaction surveys and exit interviews to identify retention issues early.',
@@ -241,14 +253,17 @@ async function safeSeed() {
                 { title: 'Salary review completed', completed: true, date: '2025-01-15' },
                 { title: 'Training program launched', completed: true, date: '2025-02-01' },
                 { title: 'Mentorship program rollout', completed: false, targetDate: '2025-04-01' }
-              ]
+              ],
+              lastUpdated: new Date(),
+              updatedAt: new Date(),
             }
           })
         }
         
         if (risk.riskId === 'RISK-2025-003') {
-          await prisma.riskMitigation.create({
+          await prisma.risk_mitigations.create({
             data: {
+              id: randomUUID(),
               riskId: risk.id,
               strategy: 'Implement multi-factor authentication, regular security audits, and staff cybersecurity training.',
               controlMeasure: 'Monthly penetration testing and quarterly security awareness training for all staff.',
@@ -261,7 +276,9 @@ async function safeSeed() {
                 { title: 'MFA implementation', completed: true, date: '2025-01-20' },
                 { title: 'Security audit completed', completed: true, date: '2025-02-15' },
                 { title: 'Staff training completed', completed: true, date: '2025-02-28' }
-              ]
+              ],
+              lastUpdated: new Date(),
+              updatedAt: new Date(),
             }
           })
         }
@@ -277,12 +294,12 @@ async function safeSeed() {
   
   // Final counts
   const finalCounts = {
-    users: await prisma.user.count(),
-    projects: await prisma.project.count(),
-    callRecords: await prisma.callRecord.count(),
-    activities: await prisma.activity.count(),
-    risks: await prisma.risk.count(),
-    mitigations: await prisma.riskMitigation.count()
+    users: await prisma.users.count(),
+    projects: await prisma.projects.count(),
+    callRecords: await prisma.call_records.count(),
+    activities: await prisma.activities.count(),
+    risks: await prisma.risks.count(),
+    mitigations: await prisma.risk_mitigations.count()
   }
   
   console.log('📊 Final data counts:', finalCounts)

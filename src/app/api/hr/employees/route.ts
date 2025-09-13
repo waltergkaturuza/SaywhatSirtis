@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 import { 
   createSuccessResponse, 
   createErrorResponse, 
@@ -198,7 +199,7 @@ export async function POST(request: Request) {
     }
 
     // Check if employee email already exists
-    const existingEmployee = await prisma.user.findUnique({
+    const existingEmployee = await prisma.users.findUnique({
       where: { email: formData.email }
     })
 
@@ -222,7 +223,7 @@ export async function POST(request: Request) {
     }
 
     // Generate employee ID
-    const employeeCount = await prisma.user.count()
+    const employeeCount = await prisma.users.count()
     const employeeId = `EMP${(employeeCount + 1).toString().padStart(4, '0')}`
 
     // Sanitize input data
@@ -252,9 +253,48 @@ export async function POST(request: Request) {
       otherBenefits: formData.otherBenefits || []
     }
 
-    // Create new employee
-    const newEmployee = await prisma.user.create({
-      data: sanitizedData
+    // Create user account first
+    const newUser = await prisma.users.create({
+      data: {
+        id: randomUUID(),
+        email: sanitizedData.email,
+        firstName: sanitizedData.firstName,
+        lastName: sanitizedData.lastName,
+        department: sanitizedData.department,
+        position: sanitizedData.position,
+        role: 'USER',
+        updatedAt: new Date()
+      }
+    })
+
+    // Create employee record
+    const newEmployee = await prisma.employees.create({
+      data: {
+        id: randomUUID(),
+        userId: newUser.id,
+        employeeId: sanitizedData.employeeId,
+        firstName: sanitizedData.firstName,
+        lastName: sanitizedData.lastName,
+        email: sanitizedData.email,
+        phoneNumber: sanitizedData.phoneNumber,
+        department: sanitizedData.department,
+        departmentId: sanitizedData.departmentId,
+        position: sanitizedData.position,
+        startDate: sanitizedData.startDate,
+        hireDate: sanitizedData.hireDate,
+        salary: sanitizedData.salary,
+        status: sanitizedData.status,
+        supervisor_id: sanitizedData.supervisorId,
+        is_supervisor: sanitizedData.isSupervisor,
+        is_reviewer: sanitizedData.isReviewer,
+        medical_aid: sanitizedData.medicalAid,
+        funeral_cover: sanitizedData.funeralCover,
+        vehicle_benefit: sanitizedData.vehicleBenefit,
+        fuel_allowance: sanitizedData.fuelAllowance,
+        airtime_allowance: sanitizedData.airtimeAllowance,
+        other_benefits: sanitizedData.otherBenefits,
+        updatedAt: new Date()
+      }
     })
 
     const response = createSuccessResponse({

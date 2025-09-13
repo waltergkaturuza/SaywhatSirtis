@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     // Get performance data for current user
-    const employee = await prisma.user.findFirst({
+    const employee = await prisma.users.findFirst({
       where: { email: session.user.email },
       select: {
         id: true,
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     const { employeeId, reviewPeriod, reviewType, overallRating, goals, feedback } = body
 
     // Create new performance review
-    const performanceReview = await prisma.performanceReview.create({
+    const performanceReview = await prisma.performance_reviews.create({
       data: {
         employeeId,
         reviewPeriod: reviewPeriod || `Annual ${new Date().getFullYear()}`,

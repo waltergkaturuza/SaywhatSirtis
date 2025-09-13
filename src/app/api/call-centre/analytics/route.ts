@@ -17,11 +17,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Basic analytics for call centre
-    const totalCalls = await prisma.callRecord.count()
-    const completedCalls = await prisma.callRecord.count({
+    const totalCalls = await prisma.call_records.count()
+    const completedCalls = await prisma.call_records.count({
       where: { status: 'COMPLETED' }
     })
-    const pendingCalls = await prisma.callRecord.count({
+    const pendingCalls = await prisma.call_records.count({
       where: { status: 'PENDING' }
     })
 

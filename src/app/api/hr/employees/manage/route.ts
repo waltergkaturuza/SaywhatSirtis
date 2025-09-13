@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has HR permissions
-    const user = await prisma.user.findUnique({
+    const user = await prisma.employees.findUnique({
       where: { email: session.user.email! }
     })
 
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all employees
-    const employees = await prisma.user.findMany({
+    const employees = await prisma.employees.findMany({
       orderBy: {
         lastName: 'asc'
       }

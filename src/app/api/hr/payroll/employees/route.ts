@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get employees for payroll processing
-    const employees = await prisma.user.findMany({
+    const employees = await prisma.employees.findMany({
       select: {
         id: true,
         firstName: true,

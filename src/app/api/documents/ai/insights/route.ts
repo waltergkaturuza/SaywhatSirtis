@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get basic document insights from existing data
-    const totalDocuments = await prisma.document.count({
+    const totalDocuments = await prisma.documents.count({
       where: {
         OR: [
           { uploadedBy: session.user.id },
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const recentDocuments = await prisma.document.count({
+    const recentDocuments = await prisma.documents.count({
       where: {
         OR: [
           { uploadedBy: session.user.id },
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Group documents by type
-    const documentsByType = await prisma.document.groupBy({
+    const documentsByType = await prisma.documents.groupBy({
       by: ['mimeType'],
       where: {
         OR: [
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Calculate total storage used
-    const storageUsed = await prisma.document.aggregate({
+    const storageUsed = await prisma.documents.aggregate({
       where: {
         OR: [
           { uploadedBy: session.user.id },

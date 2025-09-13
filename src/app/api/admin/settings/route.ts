@@ -90,7 +90,7 @@ async function checkDatabaseStatus() {
 
 async function checkApiServicesStatus() {
   try {
-    const userCount = await prisma.user.count();
+    const userCount = await prisma.users.count();
     return { status: 'healthy', message: `API services operational (${userCount} users)` };
   } catch (error) {
     return { status: 'error', message: 'API services unavailable' };
@@ -99,7 +99,7 @@ async function checkApiServicesStatus() {
 
 async function checkFileStorageStatus() {
   try {
-    const documentCount = await prisma.document.count();
+    const documentCount = await prisma.documents.count();
     return { status: 'warning', message: `File storage accessible (${documentCount} documents)` };
   } catch (error) {
     return { status: 'error', message: 'File storage unavailable' };

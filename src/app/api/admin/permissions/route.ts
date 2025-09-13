@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function GET(request: NextRequest) {
   try {
@@ -141,15 +142,16 @@ export async function POST(request: NextRequest) {
     // Update user role instead of permissions (RBAC system)
     if (permissions.length > 0) {
       const newRole = permissions[0] as any // Use first permission as role
-      await prisma.user.update({
+      await prisma.users.update({
         where: { id: userId },
         data: { role: newRole }
       })
     }
 
     // Log the permission change
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: session.user.id,
         action: 'UPDATE_PERMISSIONS',
         resource: 'User',

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 interface SystemSetting {
   key: string
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all system settings
-    const settings = await prisma.systemConfig.findMany({
+    const settings = await prisma.system_config.findMany({
       orderBy: [
         { category: 'asc' },
         { key: 'asc' }
@@ -140,16 +141,18 @@ export async function GET(request: NextRequest) {
 
     // If no settings exist, create default ones
     if (settings.length === 0) {
-      await prisma.systemConfig.createMany({
+      await prisma.system_config.createMany({
         data: defaultSettings.map(setting => ({
+          id: randomUUID(),
           key: setting.key,
           value: setting.value,
           description: setting.description,
-          category: setting.category
+          category: setting.category,
+          updatedAt: new Date()
         }))
       })
 
-      const newSettings = await prisma.systemConfig.findMany({
+      const newSettings = await prisma.system_config.findMany({
         orderBy: [
           { category: 'asc' },
           { key: 'asc' }
@@ -191,12 +194,12 @@ export async function PUT(request: NextRequest) {
 
     // Update each setting
     const updatePromises = settings.map(async (setting: any) => {
-      const existing = await prisma.systemConfig.findUnique({
+      const existing = await prisma.system_config.findUnique({
         where: { key: setting.key }
       })
 
       if (existing) {
-        return prisma.systemConfig.update({
+        return prisma.system_config.update({
           where: { key: setting.key },
           data: {
             value: setting.value,
@@ -205,12 +208,14 @@ export async function PUT(request: NextRequest) {
           }
         })
       } else {
-        return prisma.systemConfig.create({
+        return prisma.system_config.create({
           data: {
+            id: randomUUID(),
             key: setting.key,
             value: setting.value,
             description: setting.description,
-            category: setting.category
+            category: setting.category,
+            updatedAt: new Date()
           }
         })
       }
@@ -219,11 +224,14 @@ export async function PUT(request: NextRequest) {
     await Promise.all(updatePromises)
 
     // Log the settings update
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: session.user.id,
         action: 'UPDATE_SYSTEM_SETTINGS',
+        details: `Updated ${settings.length} system settings`,
         resource: 'SystemSettings',
+        resourceId: 'bulk',
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
@@ -263,20 +271,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new setting
-    const setting = await prisma.systemConfig.create({
+    const setting = await prisma.system_config.create({
       data: {
+        id: randomUUID(),
         key,
         value,
         description,
-        category
+        category,
+        updatedAt: new Date()
       }
     })
 
     // Log the setting creation
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
+        id: randomUUID(),
         userId: session.user.id,
         action: 'CREATE_SYSTEM_SETTING',
+        details: `Created system setting: ${key}`,
         resource: 'SystemSetting',
         resourceId: setting.id,
         ipAddress: request.headers.get('x-forwarded-for') || 'unknown',

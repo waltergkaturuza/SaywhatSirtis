@@ -24,20 +24,20 @@ export async function GET() {
       positionStats
     ] = await Promise.all([
       // Total users in system
-      prisma.user.count(),
+      prisma.users.count(),
       
       // Active employees
-      prisma.user.count({
+      prisma.users.count({
         where: { isActive: true }
       }),
       
       // Archived employees
-      prisma.user.count({
+      prisma.users.count({
         where: { isActive: false }
       }),
       
       // Recent hires (last 30 days)
-      prisma.user.count({
+      prisma.users.count({
         where: {
           isActive: true,
           createdAt: {
@@ -47,7 +47,7 @@ export async function GET() {
       }),
       
       // Department breakdown
-      prisma.user.groupBy({
+      prisma.users.groupBy({
         by: ['department'],
         where: { 
           isActive: true,
@@ -58,7 +58,7 @@ export async function GET() {
       }),
       
       // Position breakdown
-      prisma.user.groupBy({
+      prisma.users.groupBy({
         by: ['position'],
         where: { 
           isActive: true,
@@ -74,13 +74,13 @@ export async function GET() {
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
     
     const [currentMonthHires, previousMonthHires] = await Promise.all([
-      prisma.user.count({
+      prisma.users.count({
         where: {
           isActive: true,
           createdAt: { gte: thirtyDaysAgo }
         }
       }),
-      prisma.user.count({
+      prisma.users.count({
         where: {
           isActive: true,
           createdAt: { 

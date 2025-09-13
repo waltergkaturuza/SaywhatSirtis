@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    const programs = await prisma.trainingProgram.findMany({
+    const programs = await prisma.training_programs.findMany({
       include: {
         enrollments: {
           include: {
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json()
     
-    const program = await prisma.trainingProgram.create({
+    const program = await prisma.training_programs.create({
       data: {
         title: data.title,
         description: data.description,

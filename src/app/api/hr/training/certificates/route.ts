@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const certificates = await prisma.trainingCertificate.findMany({
+    const certificates = await prisma.training_certificates.findMany({
       where: whereClause,
       include: {
         enrollment: {
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     const data = await request.json()
     
     // Verify enrollment exists and is completed
-    const enrollment = await prisma.trainingEnrollment.findFirst({
+    const enrollment = await prisma.training_enrollments.findFirst({
       where: {
         id: data.enrollmentId,
         status: 'COMPLETED'
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     // Generate certificate number
     const certificateNumber = `CERT-${Date.now()}-${enrollment.employeeId.slice(-4)}`
 
-    const certificate = await prisma.trainingCertificate.create({
+    const certificate = await prisma.training_certificates.create({
       data: {
         enrollmentId: data.enrollmentId,
         certificateNumber,

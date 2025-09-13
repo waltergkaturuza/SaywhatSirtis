@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get call centre records from database and transform them into cases
-    const calls = await prisma.callRecord.findMany({
+    const calls = await prisma.call_records.findMany({
       where: {
         // Only include calls that have been assigned to create cases
         assignedOfficer: {

@@ -38,18 +38,18 @@ export async function GET(request: NextRequest) {
     
     try {
       // Get total call statistics
-      totalCalls = await prisma.callRecord.count({
+      totalCalls = await prisma.call_records.count({
         where: dateFilter
       })
 
-      resolvedCalls = await prisma.callRecord.count({
+      resolvedCalls = await prisma.call_records.count({
         where: {
           ...dateFilter,
           status: 'RESOLVED'
         }
       })
 
-      pendingCalls = await prisma.callRecord.count({
+      pendingCalls = await prisma.call_records.count({
         where: {
           ...dateFilter,
           status: 'OPEN'
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get calls by priority
-    const priorityStats = await prisma.callRecord.groupBy({
+    const priorityStats = await prisma.call_records.groupBy({
       by: ['priority'],
       where: dateFilter,
       _count: {
@@ -85,14 +85,14 @@ export async function GET(request: NextRequest) {
     }).catch(() => [])
 
     // Get calls by category
-    const categoryStats = await prisma.callRecord.groupBy({
+    const categoryStats = await prisma.call_records.groupBy({
       by: ['category'],
       where: dateFilter,
       _count: {
         id: true
       }
     }).catch(() => [])    // Get calls grouped by assigned officer
-    const callsGroupedByOfficer = await prisma.callRecord.groupBy({
+    const callsGroupedByOfficer = await prisma.call_records.groupBy({
       by: ['assignedOfficer'],
       where: {
         ...dateFilter,
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
 
     // Get officer details for those with calls
     const officerIds = callsGroupedByOfficer.map(group => group.assignedOfficer).filter(Boolean)
-    const officers = await prisma.user.findMany({
+    const officers = await prisma.users.findMany({
       where: {
         id: {
           in: officerIds as string[]
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Get recent activity (last 10 calls)
-    const recentCalls = await prisma.callRecord.findMany({
+    const recentCalls = await prisma.call_records.findMany({
       where: dateFilter,
       orderBy: {
         createdAt: 'desc'
