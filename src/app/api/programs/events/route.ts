@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
     // Create the event
     const event = await prisma.events.create({
       data: {
+        id: crypto.randomUUID(),
         title: name,
         description,
         startDate: new Date(startDate),
@@ -138,6 +139,7 @@ export async function POST(request: NextRequest) {
         status: status?.toLowerCase() || 'planning',
         type: category?.toLowerCase() || 'conference',
         budget: parseFloat(budget) || 0,
+        updatedAt: new Date()
       }
     });
 

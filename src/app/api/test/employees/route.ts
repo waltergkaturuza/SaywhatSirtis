@@ -11,8 +11,7 @@ export async function GET() {
         lastName: true,
         email: true,
         department: true,
-        position: true,
-        status: true
+        position: true
       },
       take: 5
     })

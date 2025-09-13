@@ -17,12 +17,12 @@ export async function GET(
     const { id } = await params
 
     // Get documents for the risk
-    const documents = await prisma.riskDocument.findMany({
+    const documents = await prisma.risk_documents.findMany({
       where: { 
         riskId: id
       },
       include: {
-        uploadedBy: {
+        users: {
           select: {
             id: true,
             firstName: true,
@@ -78,7 +78,7 @@ export async function DELETE(
     }
 
     // Delete the document
-    const document = await prisma.riskDocument.delete({
+    const document = await prisma.risk_documents.delete({
       where: { id: documentId }
     })
 

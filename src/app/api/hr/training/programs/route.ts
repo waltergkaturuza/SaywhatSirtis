@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
 
     const programs = await prisma.training_programs.findMany({
       include: {
-        enrollments: {
+        training_enrollments: {
           include: {
-            employee: {
+            employees: {
               select: {
                 id: true,
                 firstName: true,
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
-            enrollments: true
+            training_enrollments: true
           }
         }
       },
@@ -48,9 +48,9 @@ export async function GET(request: NextRequest) {
       success: true,
       programs: programs.map(program => ({
         ...program,
-        enrolledCount: program._count.enrollments,
-        participants: program.enrollments.map(enrollment => ({
-          ...enrollment.employee,
+        enrolledCount: program._count.training_enrollments,
+        participants: program.training_enrollments.map(enrollment => ({
+          ...enrollment.employees,
           enrollmentDate: enrollment.enrollmentDate,
           status: enrollment.status,
           completionDate: enrollment.completionDate,
@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
     
     const program = await prisma.training_programs.create({
       data: {
+        id: crypto.randomUUID(),
         title: data.title,
         description: data.description,
         category: data.category,
@@ -103,7 +104,8 @@ export async function POST(request: NextRequest) {
         status: data.status || 'DRAFT',
         cost: data.cost || 0,
         enrollmentDeadline: data.enrollmentDeadline ? new Date(data.enrollmentDeadline) : null,
-        certificationAvailable: data.certificationAvailable || false
+        certificationAvailable: data.certificationAvailable || false,
+        updatedAt: new Date()
       }
     })
 

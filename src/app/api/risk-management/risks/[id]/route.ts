@@ -15,10 +15,10 @@ export async function GET(
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const risk = await prisma.risk.findUnique({
+    const risk = await prisma.risks.findUnique({
       where: { id },
       include: {
-        owner: {
+        users_risks_ownerIdTousers: {
           select: {
             id: true,
             firstName: true,
@@ -26,7 +26,7 @@ export async function GET(
             email: true
           }
         },
-        createdBy: {
+        users_risks_createdByIdTousers: {
           select: {
             id: true,
             firstName: true,
@@ -34,7 +34,7 @@ export async function GET(
             email: true
           }
         },
-        mitigations: {
+        risk_mitigations: {
           select: {
             id: true,
             strategy: true,
@@ -43,12 +43,12 @@ export async function GET(
             implementationProgress: true
           }
         },
-        assessments: true,
+        risk_assessments: true,
         _count: {
           select: {
-            mitigations: true,
-            assessments: true,
-            documents: true
+            risk_mitigations: true,
+            risk_assessments: true,
+            risk_documents: true
           }
         }
       }
@@ -118,7 +118,7 @@ export async function PUT(
 
     const riskScore = probabilityScore * impactScore
 
-    const risk = await prisma.risk.update({
+    const risk = await prisma.risks.update({
       where: { id },
       data: {
         title,
@@ -134,7 +134,7 @@ export async function PUT(
         updatedAt: new Date()
       },
       include: {
-        owner: {
+        users_risks_ownerIdTousers: {
           select: {
             id: true,
             firstName: true,
@@ -142,7 +142,7 @@ export async function PUT(
             email: true
           }
         },
-        createdBy: {
+        users_risks_createdByIdTousers: {
           select: {
             id: true,
             firstName: true,
@@ -150,12 +150,12 @@ export async function PUT(
             email: true
           }
         },
-        mitigations: true,
+        risk_mitigations: true,
         _count: {
           select: {
-            mitigations: true,
-            assessments: true,
-            documents: true
+            risk_mitigations: true,
+            risk_assessments: true,
+            risk_documents: true
           }
         }
       }
@@ -188,11 +188,11 @@ export async function DELETE(
     }
 
     // Check if risk exists
-    const existingRisk = await prisma.risk.findUnique({
+    const existingRisk = await prisma.risks.findUnique({
       where: { id },
       include: {
-        mitigations: true,
-        assessments: true
+        risk_mitigations: true,
+        risk_assessments: true
       }
     })
 
@@ -203,15 +203,15 @@ export async function DELETE(
     // Delete related records first (cascade delete)
     await prisma.$transaction([
       // Delete risk assessments
-      prisma.riskAssessment.deleteMany({
+      prisma.risk_assessments.deleteMany({
         where: { riskId: id }
       }),
       // Delete risk mitigations
-      prisma.riskMitigation.deleteMany({
+      prisma.risk_mitigations.deleteMany({
         where: { riskId: id }
       }),
       // Delete the risk itself
-      prisma.risk.delete({
+      prisma.risks.delete({
         where: { id }
       })
     ])

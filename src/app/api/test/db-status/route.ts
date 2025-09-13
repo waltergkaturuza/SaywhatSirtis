@@ -13,7 +13,7 @@ export async function GET() {
     const userCount = await prisma.users.count()
     console.log(`DB Status: Found ${userCount} users`)
     
-    const documentCount = await prisma.document.count()
+    const documentCount = await prisma.documents.count()
     console.log(`DB Status: Found ${documentCount} documents`)
     
     const eventCount = await prisma.events.count()

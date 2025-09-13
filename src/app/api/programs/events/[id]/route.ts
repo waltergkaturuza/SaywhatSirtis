@@ -18,7 +18,7 @@ export async function GET(
     const event = await prisma.events.findUnique({
       where: { id },
       include: {
-        registrations: {
+        event_registrations: {
           select: {
             id: true,
             participantName: true,
@@ -97,7 +97,7 @@ export async function PUT(
         budget: budget ? parseFloat(budget) : undefined,
       },
       include: {
-        registrations: {
+        event_registrations: {
           select: {
             id: true,
             participantName: true,

@@ -84,8 +84,9 @@ export async function POST(request: NextRequest) {
       await writeFile(join(uploadsDir, filename), buffer)
       
       // Save document record to database
-      const document = await prisma.riskDocument.create({
+      const document = await prisma.risk_documents.create({
         data: {
+          id: crypto.randomUUID(),
           filename: filename,
           originalName: originalName,
           filePath: join('uploads', 'risk-documents', filename),
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
           uploadedById: user.id
         },
         include: {
-          uploadedBy: {
+          users: {
             select: {
               id: true,
               firstName: true,
@@ -114,8 +115,9 @@ export async function POST(request: NextRequest) {
     } catch (fileError) {
       console.error('File operation error:', fileError)
       // Fallback: save document record without file (for demo purposes)
-      const document = await prisma.riskDocument.create({
+      const document = await prisma.risk_documents.create({
         data: {
+          id: crypto.randomUUID(),
           filename: filename,
           originalName: originalName,
           filePath: `/uploads/risk-documents/${filename}`,
@@ -125,7 +127,7 @@ export async function POST(request: NextRequest) {
           uploadedById: user.id
         },
         include: {
-          uploadedBy: {
+          users: {
             select: {
               id: true,
               firstName: true,
@@ -168,12 +170,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get documents for the risk
-    const documents = await prisma.riskDocument.findMany({
+    const documents = await prisma.risk_documents.findMany({
       where: { 
         riskId: riskId
       },
       include: {
-        uploadedBy: {
+        users: {
           select: {
             id: true,
             firstName: true,

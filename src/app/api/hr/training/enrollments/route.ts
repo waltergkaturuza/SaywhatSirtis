@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     const enrollments = await prisma.training_enrollments.findMany({
       where: whereClause,
       include: {
-        program: {
+        training_programs: {
           select: {
             id: true,
             title: true,
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
             endDate: true
           }
         },
-        employee: {
+        employees: {
           select: {
             id: true,
             firstName: true,
@@ -103,20 +104,22 @@ export async function POST(request: NextRequest) {
 
     const enrollment = await prisma.training_enrollments.create({
       data: {
+        id: randomUUID(),
         programId: data.programId,
         employeeId: data.employeeId,
         status: data.status || 'ENROLLED',
         enrollmentDate: new Date(),
-        progress: 0
+        progress: 0,
+        updatedAt: new Date()
       },
       include: {
-        program: {
+        training_programs: {
           select: {
             title: true,
             category: true
           }
         },
-        employee: {
+        employees: {
           select: {
             firstName: true,
             lastName: true,

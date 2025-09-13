@@ -296,7 +296,7 @@ async function getActiveSessionCount(): Promise<number> {
   try {
     // Count active sessions from NextAuth sessions table if it exists
     return await safeQuery(async (prisma) => {
-      const activeSessionsCount = await prisma.session?.count({
+      const activeSessionsCount = await prisma.sessions?.count({
         where: {
           expires: {
             gt: new Date()

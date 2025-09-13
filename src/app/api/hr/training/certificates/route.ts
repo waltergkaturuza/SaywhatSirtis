@@ -112,9 +112,11 @@ export async function POST(request: NextRequest) {
 
     const certificate = await prisma.training_certificates.create({
       data: {
+        id: crypto.randomUUID(),
         enrollmentId: data.enrollmentId,
         certificateNumber,
         issuedDate: new Date(),
+        updatedAt: new Date(),
         expiryDate: data.expiryDate ? new Date(data.expiryDate) : null
       },
       include: {

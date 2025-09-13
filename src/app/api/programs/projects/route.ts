@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Fetch projects from database with related data
     const projects = await prisma.projects.findMany({
       include: {
-        creator: {
+        users_projects_creatorIdTousers: {
           select: {
             id: true,
             firstName: true,
@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
     // Create the project in the database
     const project = await prisma.projects.create({
       data: {
+        id: crypto.randomUUID(),
         name: body.name,
         description: body.description,
         timeframe: body.timeframe || `${body.startDate} to ${body.endDate}`,
@@ -108,7 +109,8 @@ export async function POST(request: NextRequest) {
           uploadedDocuments: body.uploadedDocuments || []
         }),
         budget: body.budget ? parseFloat(body.budget) : null,
-        actualSpent: 0
+        actualSpent: 0,
+        updatedAt: new Date()
       }
     })
 

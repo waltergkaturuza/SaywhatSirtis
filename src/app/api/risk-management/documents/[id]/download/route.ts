@@ -19,7 +19,7 @@ export async function GET(
     const { id } = await params
 
     // Get document from database
-    const document = await prisma.riskDocument.findUnique({
+    const document = await prisma.risk_documents.findUnique({
       where: { 
         id: id
       }

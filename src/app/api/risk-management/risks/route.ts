@@ -61,20 +61,20 @@ export async function GET(request: NextRequest) {
       prisma.risks.findMany({
         where,
         include: {
-          owner: {
+          users_risks_ownerIdTousers: {
             select: { id: true, firstName: true, lastName: true, email: true }
           },
-          createdBy: {
+          users_risks_createdByIdTousers: {
             select: { id: true, firstName: true, lastName: true, email: true }
           },
-          mitigations: {
+          risk_mitigations: {
             select: { id: true, status: true, implementationProgress: true }
           },
           _count: {
-            select: { 
-              mitigations: true,
-              assessments: true,
-              documents: true
+            select: {
+              risk_mitigations: true,
+              risk_assessments: true,
+              risk_documents: true
             }
           }
         },
@@ -152,6 +152,7 @@ export async function POST(request: NextRequest) {
 
     const risk = await prisma.risks.create({
       data: {
+        id: crypto.randomUUID(),
         riskId,
         title,
         description,
@@ -162,21 +163,23 @@ export async function POST(request: NextRequest) {
         riskScore,
         ownerId: ownerId || session.user.id,
         createdById: session.user.id,
-        tags
+        tags,
+        updatedAt: new Date()
       },
       include: {
-        owner: {
+        users_risks_ownerIdTousers: {
           select: { id: true, firstName: true, lastName: true, email: true }
         },
-        createdBy: {
+        users_risks_createdByIdTousers: {
           select: { id: true, firstName: true, lastName: true, email: true }
         }
       }
     });
 
     // Create audit log
-    await prisma.riskAuditLog.create({
+    await prisma.risk_audit_logs.create({
       data: {
+        id: crypto.randomUUID(),
         riskId: risk.id,
         action: 'CREATE',
         userId: session.user.id,

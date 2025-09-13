@@ -29,110 +29,72 @@ export async function GET() {
       return NextResponse.json(response, { status })
     }
 
-    // Get all active users with their employee data (left join to include users without employee records)
-    const usersWithEmployees = await prisma.users.findMany({
+    // Get all active employees with their user data
+    const employees = await prisma.employees.findMany({
       where: { 
-        isActive: true
+        status: 'ACTIVE'
       },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        department: true,
-        position: true,
-        phoneNumber: true,
-        createdAt: true,
-        updatedAt: true,
-        roles: true,
-        location: true,
-        bio: true,
-        role: true
+      include: {
+        employees: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        }
       },
       orderBy: { firstName: 'asc' }
     })
 
-    // Get corresponding employee records
-    const employeeRecords = await prisma.employees.findMany({
-      where: {
-        userId: { in: usersWithEmployees.map(u => u.id) }
-      },
-      select: {
-        id: true,
-        userId: true,
-        employeeId: true,
-        salary: true,
-        hireDate: true,
-        startDate: true,
-        employmentType: true,
-        status: true,
-        supervisor_id: true,
-        is_supervisor: true,
-        is_reviewer: true,
-        medical_aid: true,
-        funeral_cover: true,
-        vehicle_benefit: true,
-        fuel_allowance: true,
-        airtime_allowance: true,
-        other_benefits: true,
-        departmentId: true
-      }
-    })
-
-    // Create a map for quick lookup
-    const employeeMap = new Map(employeeRecords.map(emp => [emp.userId, emp]))
-
-    // Transform data for frontend - merge user and employee data
-    const transformedEmployees = usersWithEmployees.map((user: any) => {
-      const employeeData = employeeMap.get(user.id)
-      
+    // Transform employee data for frontend
+    const transformedEmployees = employees.map((employee: any) => {
       return {
-        // Basic user info
-        id: user.id,
-        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
-        email: user.email,
-        department: user.department || 'N/A',
-        position: user.position || 'N/A',
-        phone: user.phoneNumber || 'N/A',
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        roles: user.roles || [],
-        location: user.location,
-        bio: user.bio,
-        role: user.role,
+        // Basic employee info
+        id: employee.id,
+        name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email,
+        email: employee.email,
+        department: employee.department || 'N/A',
+        position: employee.position || 'N/A',
+        phone: employee.phoneNumber || 'N/A',
+        createdAt: employee.createdAt,
+        updatedAt: employee.updatedAt,
+        location: employee.location,
+        bio: employee.bio,
         
-        // Employee-specific data (if exists)
-        employeeId: employeeData?.employeeId || null,
-        salary: employeeData?.salary || null,
-        hireDate: employeeData?.hireDate ? employeeData.hireDate.toISOString().split('T')[0] : null,
-        startDate: employeeData?.startDate ? employeeData.startDate.toISOString().split('T')[0] : null,
-        employmentType: employeeData?.employmentType || 'FULL_TIME',
-        status: employeeData?.status || 'ACTIVE',
-        supervisorId: employeeData?.supervisor_id || null,
-        isSupervisor: employeeData?.is_supervisor || false,
-        isReviewer: employeeData?.is_reviewer || false,
+        // Employee-specific data
+        employeeId: employee.employeeId,
+        salary: employee.salary,
+        hireDate: employee.hireDate ? employee.hireDate.toISOString().split('T')[0] : null,
+        startDate: employee.startDate ? employee.startDate.toISOString().split('T')[0] : null,
+        employmentType: employee.employmentType || 'FULL_TIME',
+        status: employee.status || 'ACTIVE',
+        supervisorId: employee.supervisor_id,
+        supervisor: employee.employees,
+        isSupervisor: employee.is_supervisor || false,
+        isReviewer: employee.is_reviewer || false,
+        
+        // Default user-specific data (since users relation is not available)
+        roles: [],
+        role: 'employee',
+        isActive: true,
         
         // Benefits
         benefits: {
-          medicalAid: employeeData?.medical_aid || false,
-          funeralCover: employeeData?.funeral_cover || false,
-          vehicleBenefit: employeeData?.vehicle_benefit || false,
-          fuelAllowance: employeeData?.fuel_allowance || false,
-          airtimeAllowance: employeeData?.airtime_allowance || false,
-          other: employeeData?.other_benefits || []
-        },
-        
-        // Flag to indicate if user has employee record
-        hasEmployeeRecord: !!employeeData
+          medicalAid: employee.medical_aid || false,
+          funeralCover: employee.funeral_cover || false,
+          vehicleBenefit: employee.vehicle_benefit || false,
+          fuelAllowance: employee.fuel_allowance || false,
+          airtimeAllowance: employee.airtime_allowance || false,
+          other: employee.other_benefits || []
+        }
       }
     })
 
     const response = createSuccessResponse(transformedEmployees, {
-      message: `Retrieved ${transformedEmployees.length} users/employees`,
+      message: `Retrieved ${transformedEmployees.length} employees`,
       meta: { 
-        totalUsers: usersWithEmployees.length,
-        usersWithEmployeeRecords: employeeRecords.length,
-        usersWithoutEmployeeRecords: usersWithEmployees.length - employeeRecords.length
+        totalEmployees: employees.length
       }
     })
 
@@ -199,7 +161,7 @@ export async function POST(request: Request) {
     }
 
     // Check if employee email already exists
-    const existingEmployee = await prisma.users.findUnique({
+    const existingEmployee = await prisma.employees.findUnique({
       where: { email: formData.email }
     })
 
@@ -223,7 +185,7 @@ export async function POST(request: Request) {
     }
 
     // Generate employee ID
-    const employeeCount = await prisma.users.count()
+    const employeeCount = await prisma.employees.count()
     const employeeId = `EMP${(employeeCount + 1).toString().padStart(4, '0')}`
 
     // Sanitize input data

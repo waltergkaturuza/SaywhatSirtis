@@ -29,6 +29,57 @@ export default function DataSummaryPage() {
     status: "all"
   })
 
+  // Mock summary data for now
+  const summaryData = {
+    totalProjects: 145,
+    totalReach: 2500000,
+    countries: 8,
+    averageProgress: 67,
+    totalBudget: 15000000
+  }
+
+  const genderBreakdown = [
+    { category: 'Female', count: 1400000, percentage: 56 },
+    { category: 'Male', count: 1100000, percentage: 44 }
+  ]
+
+  const ageBreakdown = [
+    { category: '18-25', count: 625000, percentage: 25 },
+    { category: '26-35', count: 875000, percentage: 35 },
+    { category: '36-45', count: 500000, percentage: 20 },
+    { category: '46+', count: 500000, percentage: 20 }
+  ]
+
+  const countryData = [
+    {
+      country: 'Zimbabwe',
+      projects: 45,
+      beneficiaries: 850000,
+      budget: 5200000,
+      reach: 850000,
+      progress: 75,
+      provinces: ['Harare', 'Bulawayo', 'Midlands'],
+      topSectors: ['Health', 'Education']
+    },
+    {
+      country: 'Nigeria',
+      projects: 38,
+      beneficiaries: 720000,
+      budget: 4300000,
+      reach: 720000,
+      progress: 68,
+      provinces: ['Lagos', 'Abuja', 'Kano'],
+      topSectors: ['Agriculture', 'Health']
+    }
+  ]
+
+  const sectorData = [
+    { sector: 'Health', projects: 45, budget: 6200000, reach: 1200000 },
+    { sector: 'Education', projects: 38, budget: 4100000, reach: 900000 },
+    { sector: 'Agriculture', projects: 32, budget: 2800000, reach: 750000 },
+    { sector: 'Infrastructure', projects: 30, budget: 1900000, reach: 650000 }
+  ]
+
   const metadata = {
     title: "Programs Data Summary",
     description: "Comprehensive data analysis and reporting for all programs",

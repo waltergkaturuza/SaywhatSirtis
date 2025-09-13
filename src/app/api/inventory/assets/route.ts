@@ -229,6 +229,7 @@ export async function POST(request: NextRequest) {
     const newAsset = await executeQuery(async (prisma) => {
       return await prisma.assets.create({
         data: {
+          id: crypto.randomUUID(),
           name: validatedData.name,
           assetTag: validatedData.assetNumber,
           category: mapCategory(validatedData.category),
@@ -237,7 +238,8 @@ export async function POST(request: NextRequest) {
           currentValue: validatedData.currentValue,
           location: validatedData.location,
           status: mapStatus(validatedData.status),
-          purchaseDate: validatedData.procurementDate
+          purchaseDate: validatedData.procurementDate,
+          updatedAt: new Date()
         }
       })
     })

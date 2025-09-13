@@ -22,12 +22,12 @@ export async function GET(
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    const program = await prisma.trainingProgram.findUnique({
+    const program = await prisma.training_programs.findUnique({
       where: { id },
       include: {
-        enrollments: {
+        training_enrollments: {
           include: {
-            employee: {
+            employees: {
               select: {
                 firstName: true,
                 lastName: true,
@@ -38,7 +38,7 @@ export async function GET(
         },
         _count: {
           select: {
-            enrollments: true
+            training_enrollments: true
           }
         }
       }
@@ -91,7 +91,7 @@ export async function PUT(
       )
     }
 
-    const updatedProgram = await prisma.trainingProgram.update({
+    const updatedProgram = await prisma.training_programs.update({
       where: { id },
       data: {
         title: data.title,
@@ -143,7 +143,7 @@ export async function DELETE(
     }
 
     // Check if program has enrollments
-    const enrollmentCount = await prisma.trainingEnrollment.count({
+    const enrollmentCount = await prisma.training_enrollments.count({
       where: { programId: id }
     })
 
@@ -154,7 +154,7 @@ export async function DELETE(
       )
     }
 
-    await prisma.trainingProgram.delete({
+    await prisma.training_programs.delete({
       where: { id }
     })
 

@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
           createdAt: 'desc'
         },
         include: {
-          creator: {
+          users_projects_creatorIdTousers: {
             select: {
               firstName: true,
               lastName: true,
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
         priority: project.priority,
         progress: project.progress || 0,
         dueDate: project.endDate,
-        manager: project.creator ? `${project.creator.firstName || ''} ${project.creator.lastName || ''}`.trim() || 'Unassigned' : 'Unassigned',
+        manager: project.users_projects_creatorIdTousers ? `${project.users_projects_creatorIdTousers.firstName || ''} ${project.users_projects_creatorIdTousers.lastName || ''}`.trim() || 'Unassigned' : 'Unassigned',
         budget: project.budget || 0
       }))
     }
