@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
         enrollmentId: data.enrollmentId,
         certificateNumber,
         issuedDate: new Date(),
+        createdAt: new Date(),
         updatedAt: new Date(),
         expiryDate: data.expiryDate ? new Date(data.expiryDate) : null
       },
