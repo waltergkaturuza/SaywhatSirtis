@@ -286,13 +286,17 @@ export async function PUT(
 
   } catch (error) {
     console.error('Error updating employee:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorCode = error instanceof Error && 'code' in error ? (error as any).code : undefined
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
     console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack
+      message: errorMessage,
+      code: errorCode,
+      stack: errorStack
     })
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: errorMessage },
       { status: 500 }
     )
   }

@@ -233,7 +233,7 @@ export async function POST(request: Request) {
     }
 
     // Generate unique employee ID
-    let employeeId: string
+    let employeeId: string = '' // Initialize with empty string
     let isUnique = false
     let attempts = 0
     
