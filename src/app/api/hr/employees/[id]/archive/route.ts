@@ -57,19 +57,27 @@ export async function PATCH(
 
     // Create audit log entry for archiving
     try {
+      // Find the user ID from the database using session email
+      const sessionUser = await prisma.users.findFirst({
+        where: { email: session.user.email },
+        select: { id: true }
+      })
+
       await prisma.audit_logs.create({
         data: {
           id: randomUUID(),
           action: 'ARCHIVE_EMPLOYEE',
           resource: 'Employee',
           resourceId: employeeId,
-          userId: session.user.id,
+          userId: sessionUser?.id || null, // Use actual user ID from database or null
           details: {
             employeeName: `${existingEmployee.firstName} ${existingEmployee.lastName}`,
             previousStatus: existingEmployee.status,
             newStatus: 'ARCHIVED',
-            reason: 'Employee archived via HR dashboard'
-          }
+            reason: body.reason || 'Employee archived via HR dashboard',
+            archivedBy: session.user.email
+          },
+          timestamp: new Date()
         }
       })
     } catch (auditError) {

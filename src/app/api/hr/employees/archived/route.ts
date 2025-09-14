@@ -21,24 +21,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Get all archived employees (inactive employees)
+    // Get all archived employees (archived employees)
     const archivedEmployees = await prisma.employees.findMany({
       where: { 
-        status: 'INACTIVE'
+        status: 'ARCHIVED'
       },
-      select: {
-        id: true,
-        employeeId: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        department: true,
-        position: true,
-        phoneNumber: true,
-        status: true,
-        hireDate: true,
-        createdAt: true,
-        updatedAt: true
+      include: {
+        departments: true
       },
       orderBy: { updatedAt: 'desc' }
     })
@@ -57,15 +46,20 @@ export async function GET() {
     const transformedEmployees = archivedEmployees.map(emp => ({
       id: emp.id,
       employeeId: emp.employeeId,
-      name: `${emp.firstName} ${emp.lastName}`,
       email: emp.email,
-      department: emp.department,
-      position: emp.position,
-      phone: emp.phoneNumber,
-      status: emp.status,
-      hireDate: emp.hireDate ? emp.hireDate.toISOString().split('T')[0] : 'N/A',
-      archiveDate: emp.updatedAt.toISOString().split('T')[0], // Using updatedAt as archive date
-      reason: 'Terminated' // Default reason since we don't have this field
+      username: `${emp.firstName} ${emp.lastName}`, // Using username field for display name
+      department: emp.departments?.name || emp.department || 'N/A',
+      position: emp.position || 'N/A',
+      phone: emp.phoneNumber || 'N/A',
+      archiveDate: emp.archived_at ? new Date(emp.archived_at) : new Date(emp.updatedAt),
+      archiveReason: emp.archive_reason || 'Not specified',
+      clearanceStatus: emp.access_revoked ? 'Revoked' : 'Pending',
+      supervisor: 'N/A', // We can add this later if needed
+      exitInterview: false, // Default value
+      notes: 'N/A',
+      createdAt: emp.createdAt,
+      updatedAt: emp.updatedAt,
+      lastLogin: null // We don't track this yet
     }))
 
     return NextResponse.json({
