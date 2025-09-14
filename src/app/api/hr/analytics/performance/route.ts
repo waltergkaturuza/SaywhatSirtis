@@ -7,35 +7,87 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get('period') || '12months'
     const department = searchParams.get('department') || 'all'
 
-    // Mock performance distribution data
-    const performanceData = [
-      { rating: 'Excellent', count: 85, percentage: 28.3 },
-      { rating: 'Satisfactory', count: 142, percentage: 47.3 },
-      { rating: 'Needs Improvement', count: 58, percentage: 19.3 },
-      { rating: 'Unsatisfactory', count: 15, percentage: 5.0 }
-    ]
-
-    // If department filter is applied, adjust the data
-    if (department !== 'all') {
-      // Simulate department-specific performance distribution
-      const departmentFactors: { [key: string]: number } = {
-        'Technology': 1.2,
-        'Analytics': 1.1,
-        'Finance': 1.05,
-        'Human Resources': 1.0,
-        'Operations': 0.95,
-        'Programs': 0.9,
-        'Call Centre': 0.85
-      }
-      
-      const factor = departmentFactors[department] || 1.0
-      
-      return NextResponse.json(performanceData.map(item => ({
-        ...item,
-        count: Math.round(item.count * factor * 0.3), // Scale down for department
-        percentage: item.percentage // Keep percentages similar
-      })))
+    // Calculate date range
+    const now = new Date()
+    let startDate: Date
+    switch (period) {
+      case '3months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+        break
+      case '6months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1)
+        break
+      case '24months':
+        startDate = new Date(now.getFullYear() - 2, now.getMonth(), 1)
+        break
+      default: // 12months
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1)
     }
+
+    // Build where clause for department filtering
+    let whereClause: any = {
+      createdAt: {
+        gte: startDate
+      }
+    }
+
+    if (department !== 'all') {
+      // Get employees from specific department
+      const deptEmployees = await prisma.employees.findMany({
+        where: {
+          departments: {
+            OR: [
+              { name: { contains: department, mode: 'insensitive' } },
+              { code: { contains: department, mode: 'insensitive' } }
+            ]
+          }
+        },
+        select: { id: true }
+      })
+
+      whereClause.employeeId = {
+        in: deptEmployees.map(e => e.id)
+      }
+    }
+
+    // Get real performance distribution from database
+    const performanceReviews = await prisma.performance_reviews.findMany({
+      where: whereClause,
+      select: {
+        overallRating: true
+      }
+    })
+
+    // Categorize performance ratings
+    const excellent = performanceReviews.filter(p => p.overallRating >= 4.5).length
+    const satisfactory = performanceReviews.filter(p => p.overallRating >= 3.5 && p.overallRating < 4.5).length
+    const needsImprovement = performanceReviews.filter(p => p.overallRating >= 2.0 && p.overallRating < 3.5).length
+    const unsatisfactory = performanceReviews.filter(p => p.overallRating < 2.0).length
+    
+    const total = performanceReviews.length || 1 // Avoid division by zero
+
+    const performanceData = [
+      { 
+        rating: 'Excellent', 
+        count: excellent, 
+        percentage: Math.round((excellent / total) * 1000) / 10 
+      },
+      { 
+        rating: 'Satisfactory', 
+        count: satisfactory, 
+        percentage: Math.round((satisfactory / total) * 1000) / 10 
+      },
+      { 
+        rating: 'Needs Improvement', 
+        count: needsImprovement, 
+        percentage: Math.round((needsImprovement / total) * 1000) / 10 
+      },
+      { 
+        rating: 'Unsatisfactory', 
+        count: unsatisfactory, 
+        percentage: Math.round((unsatisfactory / total) * 1000) / 10 
+      }
+    ]
 
     return NextResponse.json(performanceData)
   } catch (error) {

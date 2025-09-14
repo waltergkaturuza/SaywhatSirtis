@@ -26,45 +26,47 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause for department filter
-    const whereClause: Record<string, string> = {}
+    const whereClause: any = {}
     if (department !== 'all') {
-      whereClause.department = department
+      whereClause.departments = {
+        OR: [
+          { name: { contains: department, mode: 'insensitive' } },
+          { code: { contains: department, mode: 'insensitive' } }
+        ]
+      }
     }
 
     // Get total employees
-    const totalEmployees = await prisma.users.count({
+    const totalEmployees = await prisma.employees.count({
       where: {
         ...whereClause,
-        isActive: true
+        status: 'ACTIVE'
       }
     })
 
-    // Get active employees
-    const activeEmployees = await prisma.users.count({
+    // Get active employees (using joinDate instead of lastLogin for active calculation)
+    const activeEmployees = await prisma.employees.count({
       where: {
         ...whereClause,
-        isActive: true,
-        lastLogin: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
-        }
+        status: 'ACTIVE'
       }
     })
 
     // Get new hires in period
-    const newHires = await prisma.users.count({
+    const newHires = await prisma.employees.count({
       where: {
         ...whereClause,
-        createdAt: {
+        hireDate: {
           gte: startDate
         }
       }
     })
 
-    // Get departures in period (approximation using inactive users)
-    const departures = await prisma.users.count({
+    // Get departures in period
+    const departures = await prisma.employees.count({
       where: {
         ...whereClause,
-        isActive: false,
+        status: 'ARCHIVED',
         updatedAt: {
           gte: startDate,
           lte: now
@@ -77,30 +79,40 @@ export async function GET(request: NextRequest) {
     const turnoverRate = averageEmployees > 0 ? (departures / averageEmployees) * 100 : 0
 
     // Calculate average tenure
-    const employees = await prisma.users.findMany({
+    const employees = await prisma.employees.findMany({
       where: {
         ...whereClause,
-        isActive: true
+        status: 'ACTIVE'
       },
       select: {
-        createdAt: true
+        hireDate: true,
+        departments: true
       }
     })
 
-    const totalTenure = employees.reduce((sum: number, emp: { createdAt: Date }) => {
-      const tenure = (now.getTime() - emp.createdAt.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+    const totalTenure = employees.reduce((sum: number, emp: { hireDate: Date }) => {
+      const tenure = emp.hireDate ? (now.getTime() - emp.hireDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000) : 0
       return sum + tenure
     }, 0)
 
     const averageTenure = employees.length > 0 ? totalTenure / employees.length : 0
 
-    // Mock salary data (handled by Belina software externally)
-    const averageSalary = 65000 // Mock average salary for display purposes
+    // Get real average salary from database
+    const salaryData = await prisma.employees.aggregate({
+      where: {
+        ...whereClause,
+        status: 'ACTIVE',
+        salary: { not: null }
+      },
+      _avg: {
+        salary: true
+      }
+    })
+    const averageSalary = salaryData._avg.salary || 0
 
-    // Get performance score from PerformanceReview model
+    // Get real performance score from PerformanceReview model
     const performanceData = await prisma.performance_reviews.aggregate({
       where: {
-        employees: department !== 'all' ? { department } : undefined,
         createdAt: {
           gte: startDate
         }
@@ -113,11 +125,32 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Mock performance score since we need actual performance data
-    const performanceScore = 4.2 // This would be calculated from actual performance data
+    const performanceScore = performanceData._avg.overallRating || 0
 
-    // Get training completion rate (mock calculation)
-    const trainingCompletionRate = 85.3 // This would be calculated from training data
+    // Get real training completion rate from database
+    const trainingData = await prisma.training_enrollments.aggregate({
+      where: {
+        createdAt: {
+          gte: startDate
+        }
+      },
+      _count: {
+        id: true
+      }
+    })
+
+    const completedTraining = await prisma.training_enrollments.count({
+      where: {
+        createdAt: {
+          gte: startDate
+        },
+        status: 'COMPLETED'
+      }
+    })
+
+    const trainingCompletionRate = trainingData._count.id > 0 
+      ? (completedTraining / trainingData._count.id) * 100 
+      : 0
 
     const metrics = {
       totalEmployees,

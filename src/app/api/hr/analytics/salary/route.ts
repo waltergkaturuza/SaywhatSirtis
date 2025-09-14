@@ -19,7 +19,14 @@ export async function GET(request: NextRequest) {
     const where: any = {
       salary: { not: null }
     }
-    if (department) where.department = department
+    if (department && department !== 'all') {
+      // Try to match by department name or use departmentId if it's an ID
+      where.OR = [
+        { department: department },
+        { departments: { name: department } },
+        { departments: { code: department } }
+      ]
+    }
     if (position) where.position = position
 
     const [employees, salaryStats] = await Promise.all([
@@ -33,7 +40,13 @@ export async function GET(request: NextRequest) {
           position: true,
           department: true,
           salary: true,
-          hireDate: true
+          hireDate: true,
+          departments: {
+            select: {
+              name: true,
+              code: true
+            }
+          }
         },
         orderBy: { salary: 'desc' }
       }),
@@ -50,7 +63,10 @@ export async function GET(request: NextRequest) {
     // Calculate salary distribution by department
     const departmentStats = await prisma.employees.groupBy({
       by: ['department'],
-      where: { salary: { not: null } },
+      where: { 
+        salary: { not: null },
+        department: { not: null }
+      },
       _avg: { salary: true },
       _count: { salary: true },
       orderBy: { _avg: { salary: 'desc' } }
@@ -76,7 +92,7 @@ export async function GET(request: NextRequest) {
 
     const rangeDistribution = await Promise.all(
       salaryRanges.map(async (range) => {
-        const count = await prisma.users.count({
+        const count = await prisma.employees.count({
           where: {
             ...where,
             salary: {
