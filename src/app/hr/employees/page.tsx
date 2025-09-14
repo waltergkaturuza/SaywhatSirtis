@@ -250,10 +250,12 @@ export default function EmployeesPage() {
   )
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    const normalizedStatus = status?.toLowerCase()
+    switch (normalizedStatus) {
       case "active":
         return "bg-saywhat-green/20 text-saywhat-green border border-saywhat-green/30"
       case "on-leave":
+      case "on_leave":
         return "bg-saywhat-orange/20 text-saywhat-orange border border-saywhat-orange/30"
       case "inactive":
         return "bg-saywhat-grey/20 text-saywhat-grey border border-saywhat-grey/30"
@@ -263,10 +265,12 @@ export default function EmployeesPage() {
   }
 
   const getStatusText = (status: string) => {
-    switch (status) {
+    const normalizedStatus = status?.toLowerCase()
+    switch (normalizedStatus) {
       case "active":
         return "Active"
       case "on-leave":
+      case "on_leave":
         return "On Leave"
       case "inactive":
         return "Inactive"
@@ -510,6 +514,7 @@ export default function EmployeesPage() {
         // Refresh employee list and close modal
         fetchEmployees()
         setShowEditModal(false)
+        setEditFormData({})
         setSelectedEmployee(null)
         console.log('Employee updated successfully')
         alert('Employee updated successfully!')
@@ -686,7 +691,7 @@ export default function EmployeesPage() {
                     Status
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
-                    Performance
+                    Position
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Hire Date
@@ -733,10 +738,8 @@ export default function EmployeesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex">{renderStars(employee.performance)}</div>
-                        <span className="ml-2 text-sm font-semibold text-saywhat-black">{employee.performance}</span>
-                      </div>
+                      <div className="text-sm font-semibold text-saywhat-black">{employee.position}</div>
+                      <div className="text-xs text-saywhat-grey font-medium">{employee.employmentType || 'Full Time'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-saywhat-black flex items-center font-medium">
@@ -980,7 +983,13 @@ export default function EmployeesPage() {
       </Dialog>
 
       {/* Edit Employee Modal */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+      <Dialog open={showEditModal} onOpenChange={(open) => {
+        setShowEditModal(open)
+        if (!open) {
+          setEditFormData({})
+          setSelectedEmployee(null)
+        }
+      }}>
         <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-saywhat-orange to-saywhat-red bg-clip-text text-transparent">
@@ -992,12 +1001,16 @@ export default function EmployeesPage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
               <span className="ml-2">Loading employee details...</span>
             </div>
-          ) : selectedEmployee && (
+          ) : editFormData && Object.keys(editFormData).length > 0 && (
             <EmployeeForm
               mode="edit"
-              employeeData={selectedEmployee}
+              employeeData={editFormData}
               onSubmit={handleUpdateEmployee}
-              onCancel={() => setShowEditModal(false)}
+              onCancel={() => {
+                setShowEditModal(false)
+                setEditFormData({})
+                setSelectedEmployee(null)
+              }}
               isLoading={formLoading}
             />
           )}

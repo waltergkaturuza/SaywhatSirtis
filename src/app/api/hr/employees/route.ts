@@ -29,7 +29,7 @@ export async function GET() {
       return NextResponse.json(response, { status })
     }
 
-    // Get all active employees with their user data
+    // Get all active employees with their user data and department info
     const employees = await prisma.employees.findMany({
       where: { 
         status: 'ACTIVE'
@@ -41,6 +41,13 @@ export async function GET() {
             firstName: true,
             lastName: true,
             email: true
+          }
+        },
+        departments: {
+          select: {
+            id: true,
+            name: true,
+            code: true
           }
         }
       },
@@ -54,7 +61,7 @@ export async function GET() {
         id: employee.id,
         name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email,
         email: employee.email,
-        department: employee.department || 'N/A',
+        department: employee.departments?.name || employee.department || 'Not Assigned',
         position: employee.position || 'N/A',
         phone: employee.phoneNumber || 'N/A',
         createdAt: employee.createdAt,

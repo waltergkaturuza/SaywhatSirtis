@@ -22,56 +22,25 @@ export async function GET() {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Fetch users who are supervisors or can be assigned as supervisors
-    const potentialSupervisors = await prisma.users.findMany({
+    // Fetch employees who are marked as supervisors or reviewers
+    const supervisorEmployees = await prisma.employees.findMany({
       where: {
-        isActive: true,
+        status: 'ACTIVE',
         OR: [
-          { 
-            position: {
-              contains: 'manager',
-              mode: 'insensitive'
-            }
-          },
-          {
-            position: {
-              contains: 'supervisor',
-              mode: 'insensitive'
-            }
-          },
-          {
-            position: {
-              contains: 'director',
-              mode: 'insensitive'
-            }
-          },
-          {
-            position: {
-              contains: 'lead',
-              mode: 'insensitive'
-            }
-          },
-          {
-            position: {
-              contains: 'head',
-              mode: 'insensitive'
-            }
-          },
-          {
-            position: {
-              contains: 'lead',
-              mode: 'insensitive'
-            }
-          }
+          { is_supervisor: true },
+          { is_reviewer: true }
         ]
       },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        position: true,
-        department: true,
-        email: true
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            isActive: true
+          }
+        }
       },
       orderBy: [
         { firstName: 'asc' },
@@ -79,31 +48,58 @@ export async function GET() {
       ]
     })
 
-    // Get corresponding employee records to check supervisor status
-    const employeeRecords = await prisma.employees.findMany({
+    // Also include users with supervisor-like position titles as fallback
+    const positionBasedSupervisors = await prisma.employees.findMany({
       where: {
-        userId: { in: potentialSupervisors.map(u => u.id) }
+        status: 'ACTIVE',
+        AND: [
+          {
+            OR: [
+              { is_supervisor: { not: true } },
+              { is_reviewer: { not: true } }
+            ]
+          },
+          {
+            position: {
+              contains: 'manager',
+              mode: 'insensitive'
+            }
+          }
+        ]
       },
-      select: {
-        userId: true,
-        is_supervisor: true,
-        is_reviewer: true
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            isActive: true
+          }
+        }
       }
     })
 
-    const employeeMap = new Map(employeeRecords.map(emp => [emp.userId, emp]))
+    // Combine both lists and remove duplicates
+    const allSupervisors = [...supervisorEmployees, ...positionBasedSupervisors]
+    const uniqueSupervisors = allSupervisors.filter((supervisor, index, self) => 
+      index === self.findIndex(s => s.id === supervisor.id)
+    )
 
-    // Merge the data
-    const supervisors = potentialSupervisors.map(user => ({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      position: user.position,
-      department: user.department,
-      email: user.email,
-      isSupervisor: employeeMap.get(user.id)?.is_supervisor || false,
-      isReviewer: employeeMap.get(user.id)?.is_reviewer || false
-    }))
+    // Transform the data for frontend
+    const supervisors = uniqueSupervisors
+      .filter(emp => emp.user && emp.user.isActive) // Only active users
+      .map(emp => ({
+        id: emp.user.id,
+        employeeId: emp.employeeId,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        position: emp.position,
+        department: emp.department,
+        email: emp.email,
+        isSupervisor: emp.is_supervisor || false,
+        isReviewer: emp.is_reviewer || false
+      }))
 
     return NextResponse.json({
       success: true,
