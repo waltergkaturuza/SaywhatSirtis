@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { EmployeeForm } from "@/components/hr/EmployeeForm"
 import { ARCHIVE_REASON_OPTIONS } from "@/types/employee"
 import {
   UserGroupIcon,
@@ -40,6 +41,7 @@ export default function EmployeesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
   const [showViewModal, setShowViewModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [showArchiveModal, setShowArchiveModal] = useState(false)
   const [archiveReason, setArchiveReason] = useState("")
   const [archiveNotes, setArchiveNotes] = useState("")
@@ -177,7 +179,7 @@ export default function EmployeesPage() {
         showOptions={true}
       />
       <Link href="/hr/employees/add">
-        <button className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700">
+        <button className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-saywhat-orange to-saywhat-red border border-transparent rounded-md shadow-md text-sm font-medium text-saywhat-white hover:from-saywhat-red hover:to-saywhat-orange hover:shadow-lg transition-all duration-200 transform hover:scale-105">
           <UserPlusIcon className="h-4 w-4 mr-2" />
           Add Employee
         </button>
@@ -187,47 +189,59 @@ export default function EmployeesPage() {
 
   const sidebar = (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Stats</h3>
+      <div className="bg-gradient-to-r from-saywhat-green/10 to-saywhat-orange/5 border-l-4 border-saywhat-green/30 rounded-lg p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-saywhat-black mb-4 flex items-center">
+          <UserGroupIcon className="h-5 w-5 text-saywhat-orange mr-2" />
+          Employee Stats
+        </h3>
         <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Total Employees</span>
-            <span className="font-semibold">-</span>
+          <div className="flex justify-between items-center p-2 bg-saywhat-white/50 rounded-md">
+            <span className="text-sm text-saywhat-grey font-medium">Total Employees</span>
+            <span className="font-bold text-saywhat-black bg-saywhat-orange/10 px-2 py-1 rounded">-</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Active</span>
-            <span className="font-semibold text-green-600">-</span>
+          <div className="flex justify-between items-center p-2 bg-saywhat-white/50 rounded-md">
+            <span className="text-sm text-saywhat-grey font-medium">Active</span>
+            <span className="font-bold text-saywhat-green bg-saywhat-green/10 px-2 py-1 rounded">-</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">On Leave</span>
-            <span className="font-semibold text-orange-600">-</span>
+          <div className="flex justify-between items-center p-2 bg-saywhat-white/50 rounded-md">
+            <span className="text-sm text-saywhat-grey font-medium">On Leave</span>
+            <span className="font-bold text-saywhat-orange bg-saywhat-orange/10 px-2 py-1 rounded">-</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Inactive</span>
-            <span className="font-semibold text-gray-600">-</span>
+          <div className="flex justify-between items-center p-2 bg-saywhat-white/50 rounded-md">
+            <span className="text-sm text-saywhat-grey font-medium">Inactive</span>
+            <span className="font-bold text-saywhat-grey bg-saywhat-grey/10 px-2 py-1 rounded">-</span>
           </div>
         </div>
       </div>
 
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Departments</h3>
+      <div className="bg-gradient-to-r from-saywhat-orange/10 to-saywhat-green/5 border-l-4 border-saywhat-orange/30 rounded-lg p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-saywhat-black mb-4 flex items-center">
+          <FunnelIcon className="h-5 w-5 text-saywhat-green mr-2" />
+          Departments
+        </h3>
         <div className="space-y-2">
-          <div className="text-sm text-gray-500 text-center py-4">
+          <div className="text-sm text-saywhat-grey text-center py-4 bg-saywhat-white/50 rounded-md">
             Loading departments...
           </div>
         </div>
       </div>
 
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-        <div className="space-y-2">
-          <Link href="/hr/employees/add" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+      <div className="bg-gradient-to-r from-saywhat-red/5 to-saywhat-orange/10 border-l-4 border-saywhat-red/30 rounded-lg p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-saywhat-black mb-4 flex items-center">
+          <UserPlusIcon className="h-5 w-5 text-saywhat-red mr-2" />
+          Quick Actions
+        </h3>
+        <div className="space-y-3">
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            className="block w-full text-left p-3 text-sm font-medium text-saywhat-orange hover:text-saywhat-white bg-saywhat-white hover:bg-gradient-to-r hover:from-saywhat-orange hover:to-saywhat-red rounded-lg border-l-2 border-saywhat-orange hover:border-saywhat-green shadow-sm hover:shadow-md transition-all duration-200"
+          >
             Add New Employee
-          </Link>
-          <Link href="/hr/employees/bulk-import" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+          </button>
+          <Link href="/hr/employees/bulk-import" className="block w-full text-left p-3 text-sm font-medium text-saywhat-orange hover:text-saywhat-white bg-saywhat-white hover:bg-gradient-to-r hover:from-saywhat-orange hover:to-saywhat-red rounded-lg border-l-2 border-saywhat-orange hover:border-saywhat-green shadow-sm hover:shadow-md transition-all duration-200">
             Bulk Import
           </Link>
-          <Link href="/hr/employees/reports" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
+          <Link href="/hr/employees/reports" className="block w-full text-left p-3 text-sm font-medium text-saywhat-orange hover:text-saywhat-white bg-saywhat-white hover:bg-gradient-to-r hover:from-saywhat-orange hover:to-saywhat-red rounded-lg border-l-2 border-saywhat-orange hover:border-saywhat-green shadow-sm hover:shadow-md transition-all duration-200">
             Generate Report
           </Link>
         </div>
@@ -238,13 +252,13 @@ export default function EmployeesPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-100 text-green-800"
+        return "bg-saywhat-green/20 text-saywhat-green border border-saywhat-green/30"
       case "on-leave":
-        return "bg-orange-100 text-orange-800"
+        return "bg-saywhat-orange/20 text-saywhat-orange border border-saywhat-orange/30"
       case "inactive":
-        return "bg-gray-100 text-gray-800"
+        return "bg-saywhat-grey/20 text-saywhat-grey border border-saywhat-grey/30"
       default:
-        return "bg-white text-black"
+        return "bg-saywhat-white text-saywhat-black border border-saywhat-grey/20"
     }
   }
 
@@ -267,8 +281,8 @@ export default function EmployeesPage() {
         key={i}
         className={`h-4 w-4 ${
           i < Math.floor(rating)
-            ? "text-yellow-400 fill-current"
-            : "text-gray-300"
+            ? "text-saywhat-orange fill-current"
+            : "text-saywhat-grey/30"
         }`}
       />
     ))
@@ -290,6 +304,44 @@ export default function EmployeesPage() {
     setShowViewModal(true)
   }
 
+  // Convert snake_case database fields to camelCase for form
+  const convertDbDataToFormFormat = (dbData: any) => {
+    return {
+      id: dbData.id,
+      firstName: dbData.firstName,
+      lastName: dbData.lastName,
+      middleName: dbData.middleName,
+      email: dbData.email,
+      phoneNumber: dbData.phoneNumber,
+      alternativePhone: dbData.alternativePhone,
+      address: dbData.address,
+      dateOfBirth: dbData.dateOfBirth,
+      gender: dbData.gender,
+      nationality: dbData.nationality,
+      nationalId: dbData.nationalId,
+      emergencyContact: dbData.emergencyContact,
+      emergencyPhone: dbData.emergencyPhone,
+      employeeId: dbData.employeeId,
+      position: dbData.position,
+      departmentId: dbData.departmentId,
+      employmentType: dbData.employmentType,
+      startDate: dbData.startDate,
+      hireDate: dbData.hireDate,
+      salary: dbData.salary?.toString() || '',
+      currency: dbData.currency,
+      status: dbData.status,
+      supervisorId: dbData.supervisor_id,
+      isSupervisor: dbData.is_supervisor || false,
+      isReviewer: dbData.is_reviewer || false,
+      medicalAid: dbData.medical_aid || false,
+      funeralCover: dbData.funeral_cover || false,
+      vehicleBenefit: dbData.vehicle_benefit || false,
+      fuelAllowance: dbData.fuel_allowance || false,
+      airtimeAllowance: dbData.airtime_allowance || false,
+      otherBenefits: dbData.other_benefits || []
+    }
+  }
+
   const handleEditEmployee = async (employee: any) => {
     setSelectedEmployee(employee)
     setFormLoading(true)
@@ -300,18 +352,64 @@ export default function EmployeesPage() {
       const result = await response.json()
       
       if (result.success) {
-        setEditFormData(result.data)
+        // Convert database format to form format
+        const formData = convertDbDataToFormFormat(result.data)
+        console.log('Database data:', result.data)
+        console.log('Converted form data:', formData)
+        setEditFormData(formData)
       } else {
         console.error('Failed to fetch employee details:', result.error)
         // Use basic employee data as fallback
-        setEditFormData(employee)
+        const formData = convertDbDataToFormFormat(employee)
+        setEditFormData(formData)
       }
     } catch (error) {
       console.error('Error fetching employee details:', error)
-      setEditFormData(employee)
+      const formData = convertDbDataToFormFormat(employee)
+      setEditFormData(formData)
     } finally {
       setFormLoading(false)
       setShowEditModal(true)
+    }
+  }
+
+  // Prepare form data for API (already in camelCase format expected by API)
+  const prepareFormDataForApi = (formData: any) => {
+    return {
+      id: formData.id,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      middleName: formData.middleName,
+      email: formData.email,
+      phoneNumber: formData.phoneNumber,
+      alternativePhone: formData.alternativePhone,
+      address: formData.address,
+      dateOfBirth: formData.dateOfBirth,
+      gender: formData.gender,
+      nationality: formData.nationality,
+      nationalId: formData.nationalId,
+      emergencyContact: formData.emergencyContact,
+      emergencyPhone: formData.emergencyPhone,
+      employeeId: formData.employeeId,
+      position: formData.position,
+      departmentId: formData.departmentId,
+      employmentType: formData.employmentType,
+      startDate: formData.startDate,
+      hireDate: formData.hireDate,
+      salary: formData.salary,
+      currency: formData.currency,
+      status: formData.status,
+      supervisorId: formData.supervisorId,
+      isSupervisor: formData.isSupervisor || false,
+      isReviewer: formData.isReviewer || false,
+      medicalAid: formData.medicalAid || false,
+      funeralCover: formData.funeralCover || false,
+      vehicleBenefit: formData.vehicleBenefit || false,
+      fuelAllowance: formData.fuelAllowance || false,
+      airtimeAllowance: formData.airtimeAllowance || false,
+      otherBenefits: formData.otherBenefits ? 
+        (Array.isArray(formData.otherBenefits) ? formData.otherBenefits : formData.otherBenefits.split(',').map((b: string) => b.trim())) 
+        : []
     }
   }
 
@@ -320,12 +418,17 @@ export default function EmployeesPage() {
 
     setFormLoading(true)
     try {
+      // Prepare form data for API
+      const apiFormData = prepareFormDataForApi(editFormData)
+      console.log('Original form data:', editFormData)
+      console.log('API form data:', apiFormData)
+
       const response = await fetch(`/api/hr/employees/${editFormData.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editFormData)
+        body: JSON.stringify(apiFormData)
       })
 
       const result = await response.json()
@@ -337,6 +440,79 @@ export default function EmployeesPage() {
         setEditFormData({})
         // You can add a toast notification here
         console.log('Employee updated successfully')
+      } else {
+        console.error('Failed to update employee:', result.error)
+        alert('Failed to update employee: ' + (result.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Error updating employee:', error)
+      alert('Error updating employee. Please try again.')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleCreateEmployee = async (formData: any) => {
+    setFormLoading(true)
+    try {
+      const response = await fetch('/api/hr/employees', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ formData })
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        // Success - refresh employee list and close modal
+        fetchEmployees()
+        setShowCreateModal(false)
+        console.log('Employee created successfully')
+        alert('Employee created successfully!')
+      } else {
+        // Handle different error types
+        if (response.status === 401) {
+          alert('Authentication required. Please log in to create employees.')
+        } else {
+          alert(result.error || result.message || 'Failed to create employee')
+        }
+      }
+    } catch (error) {
+      console.error("Error creating employee:", error)
+      alert('An error occurred while creating the employee. Please try again.')
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleUpdateEmployee = async (formData: any) => {
+    if (!selectedEmployee?.id) return
+
+    setFormLoading(true)
+    try {
+      // Prepare form data for API
+      const apiFormData = prepareFormDataForApi(formData)
+      console.log('Updating employee with data:', apiFormData)
+
+      const response = await fetch(`/api/hr/employees/${selectedEmployee.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiFormData)
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Refresh employee list and close modal
+        fetchEmployees()
+        setShowEditModal(false)
+        setSelectedEmployee(null)
+        console.log('Employee updated successfully')
+        alert('Employee updated successfully!')
       } else {
         console.error('Failed to update employee:', result.error)
         alert('Failed to update employee: ' + (result.error || 'Unknown error'))
@@ -425,28 +601,28 @@ export default function EmployeesPage() {
     >
       <div className="space-y-6">
         {/* Search and Filters */}
-        <div className="bg-white rounded-lg border p-6">
+        <div className="bg-gradient-to-r from-saywhat-white to-saywhat-light-grey rounded-xl border-2 border-saywhat-orange/20 p-6 shadow-lg">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                  <MagnifyingGlassIcon className="h-5 w-5 text-saywhat-orange" />
                 </div>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search employees by name, email, or ID..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-3 border-2 border-saywhat-green/30 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange bg-saywhat-white text-saywhat-black placeholder-saywhat-grey shadow-sm"
                 />
               </div>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <select
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="px-4 py-3 border-2 border-saywhat-green/30 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange bg-saywhat-white text-saywhat-black shadow-sm"
               >
                 <option value="all">All Departments</option>
                 {sortDepartmentsHierarchically(departments).map((dept) => (
@@ -460,7 +636,7 @@ export default function EmployeesPage() {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="px-4 py-3 border-2 border-saywhat-green/30 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange bg-saywhat-white text-saywhat-black shadow-sm"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -470,13 +646,13 @@ export default function EmployeesPage() {
               
               <Link
                 href="/hr/employees/archived"
-                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center px-4 py-3 border-2 border-saywhat-green/30 rounded-lg text-sm font-medium text-saywhat-grey bg-saywhat-white hover:bg-saywhat-green hover:text-saywhat-white hover:border-saywhat-green shadow-sm hover:shadow-md transition-all duration-200"
               >
                 <ArchiveBoxIcon className="h-4 w-4 mr-2" />
                 View Archived
               </Link>
               
-              <button className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              <button className="inline-flex items-center px-4 py-3 border-2 border-saywhat-orange/30 rounded-lg text-sm font-medium text-saywhat-grey bg-saywhat-white hover:bg-saywhat-orange hover:text-saywhat-white hover:border-saywhat-orange shadow-sm hover:shadow-md transition-all duration-200">
                 <FunnelIcon className="h-4 w-4 mr-2" />
                 More Filters
               </button>
@@ -485,70 +661,71 @@ export default function EmployeesPage() {
         </div>
 
         {/* Employee List */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="bg-gradient-to-r from-saywhat-white to-saywhat-light-grey shadow-xl rounded-xl overflow-hidden border-2 border-saywhat-orange/20">
+          <div className="px-6 py-5 border-b-2 border-saywhat-green/30 bg-gradient-to-r from-saywhat-green/10 to-saywhat-orange/5">
+            <h3 className="text-xl font-bold text-saywhat-black flex items-center">
+              <UserGroupIcon className="h-6 w-6 text-saywhat-orange mr-3" />
               Employee Directory ({filteredEmployees.length} employees)
             </h3>
           </div>
           
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y-2 divide-saywhat-orange/20">
+              <thead className="bg-gradient-to-r from-saywhat-orange/10 to-saywhat-green/10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Employee
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Contact
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Department
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Performance
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Hire Date
                   </th>
-                  <th className="relative px-6 py-3">
+                  <th className="relative px-6 py-4">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-saywhat-white divide-y-2 divide-saywhat-green/20">
                 {filteredEmployees.map((employee) => (
-                  <tr key={employee.id} className="hover:bg-gray-50">
+                  <tr key={employee.id} className="hover:bg-gradient-to-r hover:from-saywhat-green/5 hover:to-saywhat-orange/5 transition-all duration-200">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <span className="text-sm font-medium text-indigo-600">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-r from-saywhat-orange to-saywhat-red flex items-center justify-center shadow-sm">
+                          <span className="text-sm font-bold text-saywhat-white">
                             {employee.name.split(' ').map((n: string) => n[0]).join('')}
                           </span>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{employee.name}</div>
-                          <div className="text-sm text-gray-500">{employee.position}</div>
-                          <div className="text-xs text-gray-400">ID: {employee.employeeId}</div>
+                          <div className="text-sm font-semibold text-saywhat-black">{employee.name}</div>
+                          <div className="text-sm text-saywhat-grey font-medium">{employee.position}</div>
+                          <div className="text-xs text-saywhat-orange font-medium">ID: {employee.employeeId}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 flex items-center">
-                        <EnvelopeIcon className="h-4 w-4 mr-2 text-gray-400" />
+                      <div className="text-sm text-saywhat-black flex items-center font-medium">
+                        <EnvelopeIcon className="h-4 w-4 mr-2 text-saywhat-green" />
                         {employee.email}
                       </div>
-                      <div className="text-sm text-gray-500 flex items-center mt-1">
-                        <PhoneIcon className="h-4 w-4 mr-2 text-gray-400" />
+                      <div className="text-sm text-saywhat-grey flex items-center mt-1">
+                        <PhoneIcon className="h-4 w-4 mr-2 text-saywhat-orange" />
                         {employee.phone}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{employee.department}</div>
-                      <div className="text-sm text-gray-500">{employee.location}</div>
+                      <div className="text-sm text-saywhat-black font-medium">{employee.department}</div>
+                      <div className="text-sm text-saywhat-grey">{employee.location}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(employee.status)}`}>
@@ -558,12 +735,12 @@ export default function EmployeesPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex">{renderStars(employee.performance)}</div>
-                        <span className="ml-2 text-sm text-gray-600">{employee.performance}</span>
+                        <span className="ml-2 text-sm font-semibold text-saywhat-black">{employee.performance}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 flex items-center">
-                        <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" />
+                      <div className="text-sm text-saywhat-black flex items-center font-medium">
+                        <CalendarIcon className="h-4 w-4 mr-2 text-saywhat-green" />
                         {new Date(employee.hireDate).toLocaleDateString()}
                       </div>
                     </td>
@@ -571,14 +748,14 @@ export default function EmployeesPage() {
                       <div className="flex items-center space-x-2">
                         <button 
                           onClick={() => handleViewEmployee(employee)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                          className="text-saywhat-green hover:text-saywhat-white p-2 rounded-lg hover:bg-saywhat-green shadow-sm hover:shadow-md transition-all duration-200"
                           title="View Employee"
                         >
                           <EyeIcon className="h-4 w-4" />
                         </button>
                         <button 
                           onClick={() => handleEditEmployee(employee)}
-                          className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50"
+                          className="text-saywhat-orange hover:text-saywhat-white p-2 rounded-lg hover:bg-saywhat-orange shadow-sm hover:shadow-md transition-all duration-200"
                           title="Edit Employee"
                         >
                           <PencilIcon className="h-4 w-4" />
@@ -591,11 +768,11 @@ export default function EmployeesPage() {
                           variant="ghost"
                           size="sm"
                           iconOnly={true}
-                          className="text-green-600 hover:text-green-900 p-1 h-8 w-8"
+                          className="text-saywhat-green hover:text-saywhat-white p-2 rounded-lg hover:bg-saywhat-green shadow-sm hover:shadow-md transition-all duration-200 h-9 w-9"
                         />
                         <button 
                           onClick={() => handleArchiveEmployee(employee)}
-                          className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-50"
+                          className="text-saywhat-red hover:text-saywhat-white p-2 rounded-lg hover:bg-saywhat-red shadow-sm hover:shadow-md transition-all duration-200"
                           title="Archive Employee"
                         >
                           <ArchiveBoxIcon className="h-4 w-4" />
@@ -609,10 +786,10 @@ export default function EmployeesPage() {
           </div>
           
           {filteredEmployees.length === 0 && (
-            <div className="text-center py-12">
-              <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No employees found</h3>
-              <p className="mt-1 text-sm text-gray-500">
+            <div className="text-center py-12 bg-gradient-to-r from-saywhat-green/5 to-saywhat-orange/5">
+              <UserGroupIcon className="mx-auto h-12 w-12 text-saywhat-orange" />
+              <h3 className="mt-2 text-sm font-semibold text-saywhat-black">No employees found</h3>
+              <p className="mt-1 text-sm text-saywhat-grey">
                 Try adjusting your search criteria or filters.
               </p>
             </div>
@@ -804,394 +981,43 @@ export default function EmployeesPage() {
 
       {/* Edit Employee Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Employee</DialogTitle>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-saywhat-orange to-saywhat-red bg-clip-text text-transparent">
+              Edit Employee
+            </DialogTitle>
           </DialogHeader>
           {formLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
               <span className="ml-2">Loading employee details...</span>
             </div>
-          ) : editFormData.id && (
-            <div className="space-y-6">
-              {/* Personal Information Section */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      value={editFormData.firstName || ''}
-                      onChange={(e) => handleEditFormChange('firstName', e.target.value)}
-                      className="mt-1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name *</Label>
-                    <Input
-                      id="lastName"
-                      value={editFormData.lastName || ''}
-                      onChange={(e) => handleEditFormChange('lastName', e.target.value)}
-                      className="mt-1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="middleName">Middle Name</Label>
-                    <Input
-                      id="middleName"
-                      value={editFormData.middleName || ''}
-                      onChange={(e) => handleEditFormChange('middleName', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={editFormData.email || ''}
-                      onChange={(e) => handleEditFormChange('email', e.target.value)}
-                      className="mt-1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phoneNumber">Phone Number</Label>
-                    <Input
-                      id="phoneNumber"
-                      value={editFormData.phoneNumber || ''}
-                      onChange={(e) => handleEditFormChange('phoneNumber', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="alternativePhone">Alternative Phone</Label>
-                    <Input
-                      id="alternativePhone"
-                      value={editFormData.alternativePhone || ''}
-                      onChange={(e) => handleEditFormChange('alternativePhone', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={editFormData.address || ''}
-                      onChange={(e) => handleEditFormChange('address', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                    <Input
-                      id="dateOfBirth"
-                      type="date"
-                      value={editFormData.dateOfBirth ? new Date(editFormData.dateOfBirth).toISOString().split('T')[0] : ''}
-                      onChange={(e) => handleEditFormChange('dateOfBirth', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="gender">Gender</Label>
-                    <Select value={editFormData.gender || ''} onValueChange={(value) => handleEditFormChange('gender', value)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                        <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="nationality">Nationality</Label>
-                    <Input
-                      id="nationality"
-                      value={editFormData.nationality || ''}
-                      onChange={(e) => handleEditFormChange('nationality', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="nationalId">National ID</Label>
-                    <Input
-                      id="nationalId"
-                      value={editFormData.nationalId || ''}
-                      onChange={(e) => handleEditFormChange('nationalId', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Emergency Contact Section */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="emergencyContact">Emergency Contact Name</Label>
-                    <Input
-                      id="emergencyContact"
-                      value={editFormData.emergencyContact || ''}
-                      onChange={(e) => handleEditFormChange('emergencyContact', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="emergencyPhone">Emergency Contact Phone</Label>
-                    <Input
-                      id="emergencyPhone"
-                      value={editFormData.emergencyPhone || ''}
-                      onChange={(e) => handleEditFormChange('emergencyPhone', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Work Information Section */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Work Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="employeeId">Employee ID</Label>
-                    <Input
-                      id="employeeId"
-                      value={editFormData.employeeId || ''}
-                      className="mt-1"
-                      disabled
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="position">Position *</Label>
-                    <Input
-                      id="position"
-                      value={editFormData.position || ''}
-                      onChange={(e) => handleEditFormChange('position', e.target.value)}
-                      className="mt-1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="department">Department</Label>
-                    <Select value={editFormData.departmentId || ''} onValueChange={(value) => {
-                      const selectedDept = departments.find(d => d.id === value)
-                      handleEditFormChange('departmentId', value)
-                      handleEditFormChange('department', selectedDept?.name || '')
-                    }}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortDepartmentsHierarchically(departments).map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {'  '.repeat(dept.level || 0)}
-                            {dept.name} ({dept.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="employmentType">Employment Type</Label>
-                    <Select value={editFormData.employmentType || 'FULL_TIME'} onValueChange={(value) => handleEditFormChange('employmentType', value)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="FULL_TIME">Full Time</SelectItem>
-                        <SelectItem value="PART_TIME">Part Time</SelectItem>
-                        <SelectItem value="CONTRACT">Contract</SelectItem>
-                        <SelectItem value="INTERN">Intern</SelectItem>
-                        <SelectItem value="CONSULTANT">Consultant</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="salary">Salary</Label>
-                    <Input
-                      id="salary"
-                      type="number"
-                      value={editFormData.salary || ''}
-                      onChange={(e) => handleEditFormChange('salary', e.target.value)}
-                      className="mt-1"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="currency">Currency</Label>
-                    <Select value={editFormData.currency || 'USD'} onValueChange={(value) => handleEditFormChange('currency', value)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="ZWL">ZWL</SelectItem>
-                        <SelectItem value="ZAR">ZAR</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="status">Status</Label>
-                    <Select value={editFormData.status || 'ACTIVE'} onValueChange={(value) => handleEditFormChange('status', value)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ACTIVE">Active</SelectItem>
-                        <SelectItem value="ON_LEAVE">On Leave</SelectItem>
-                        <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                        <SelectItem value="TERMINATED">Terminated</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="supervisor">Supervisor</Label>
-                    <Select value={editFormData.supervisorId || ''} onValueChange={(value) => handleEditFormChange('supervisorId', value || null)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select supervisor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">No Supervisor</SelectItem>
-                        {supervisors.map((supervisor) => (
-                          <SelectItem key={supervisor.id} value={supervisor.id}>
-                            {supervisor.firstName} {supervisor.lastName} - {supervisor.position}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Roles Section */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Roles & Permissions</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isSupervisor"
-                      checked={editFormData.isSupervisor || false}
-                      onChange={(e) => handleEditFormChange('isSupervisor', e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <Label htmlFor="isSupervisor">Is Supervisor</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isReviewer"
-                      checked={editFormData.isReviewer || false}
-                      onChange={(e) => handleEditFormChange('isReviewer', e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <Label htmlFor="isReviewer">Is Reviewer</Label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Benefits Section */}
-              <div className="border-b pb-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Benefits</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="medicalAid"
-                      checked={editFormData.medicalAid || false}
-                      onChange={(e) => handleEditFormChange('medicalAid', e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <Label htmlFor="medicalAid">Medical Aid</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="funeralCover"
-                      checked={editFormData.funeralCover || false}
-                      onChange={(e) => handleEditFormChange('funeralCover', e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <Label htmlFor="funeralCover">Funeral Cover</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="vehicleBenefit"
-                      checked={editFormData.vehicleBenefit || false}
-                      onChange={(e) => handleEditFormChange('vehicleBenefit', e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <Label htmlFor="vehicleBenefit">Vehicle Benefit</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="fuelAllowance"
-                      checked={editFormData.fuelAllowance || false}
-                      onChange={(e) => handleEditFormChange('fuelAllowance', e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <Label htmlFor="fuelAllowance">Fuel Allowance</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="airtimeAllowance"
-                      checked={editFormData.airtimeAllowance || false}
-                      onChange={(e) => handleEditFormChange('airtimeAllowance', e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    <Label htmlFor="airtimeAllowance">Airtime Allowance</Label>
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <Label htmlFor="otherBenefits">Other Benefits (separate with commas)</Label>
-                  <Input
-                    id="otherBenefits"
-                    value={Array.isArray(editFormData.otherBenefits) ? editFormData.otherBenefits.join(', ') : ''}
-                    onChange={(e) => {
-                      const benefits = e.target.value.split(',').map(b => b.trim()).filter(b => b)
-                      handleEditFormChange('otherBenefits', benefits)
-                    }}
-                    placeholder="e.g., Housing Allowance, Education Fund, Transport Subsidy"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowEditModal(false)
-                    setEditFormData({})
-                  }}
-                  disabled={formLoading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSaveEmployee}
-                  disabled={formLoading}
-                  className="bg-indigo-600 hover:bg-indigo-700"
-                >
-                  {formLoading ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            </div>
+          ) : selectedEmployee && (
+            <EmployeeForm
+              mode="edit"
+              employeeData={selectedEmployee}
+              onSubmit={handleUpdateEmployee}
+              onCancel={() => setShowEditModal(false)}
+              isLoading={formLoading}
+            />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Employee Modal */}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto p-0">
+          <div className="p-6">
+            <DialogHeader className="pb-4">
+              <DialogTitle className="text-2xl font-bold text-saywhat-black">Add New Employee</DialogTitle>
+            </DialogHeader>
+            <EmployeeForm
+              mode="create"
+              onSubmit={handleCreateEmployee}
+              onCancel={() => setShowCreateModal(false)}
+              isLoading={formLoading}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 

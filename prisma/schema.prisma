@@ -488,6 +488,7 @@ model documents {
 model employees {
   id                   String                 @id
   userId               String                 @unique
+  user                 users                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   employeeId           String                 @unique
   firstName            String
   lastName             String
@@ -1092,6 +1093,7 @@ model users {
   performance_plans_supervised                         performance_plans[]          @relation("PerformancePlanSupervisor")
   performance_appraisals_supervised                    performance_appraisals[]     @relation("AppraisalSupervisor")
   performance_appraisals_reviewed                      performance_appraisals[]     @relation("AppraisalReviewer")
+  employee                                             employees?
 }
 
 model verificationtokens {

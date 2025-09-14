@@ -10,8 +10,11 @@ module.exports = {
       colors: {
         'saywhat': {
           'orange': '#ff6b35',
-          'red': '#dc2626',
+          'red': '#dc2626', 
+          'green': '#10b981',
+          'black': '#000000',
           'grey': '#6b7280',
+          'white': '#ffffff',
           'dark': '#1f2937',
           'light-grey': '#f3f4f6',
         },

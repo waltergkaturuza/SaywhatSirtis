@@ -48,19 +48,18 @@ export async function PATCH(
     })
 
     // Create audit log entry
-    await prisma.audit_logs.create({
-      data: {
-        id: randomUUID(),
-        action: isSupervisor ? 'PROMOTE_SUPERVISOR' : 'DEMOTE_SUPERVISOR',
-        resource: 'Employee',
-        resourceId: employeeId,
-        userId: session.user.id,
-        details: `Employee ${existingEmployee.email} ${isSupervisor ? 'promoted to' : 'removed from'} supervisor role by ${session.user.email}`,
-        ipAddress: request.headers.get('x-forwarded-for') || 
-                  request.headers.get('x-real-ip') || 
-                  'unknown'
-      }
-    })
+    const { createAuditLog } = await import('@/lib/api-utils')
+    await createAuditLog(
+      prisma,
+      session.user.email,
+      isSupervisor ? 'PROMOTE_SUPERVISOR' : 'DEMOTE_SUPERVISOR',
+      'Employee',
+      employeeId,
+      `Employee ${existingEmployee.email} ${isSupervisor ? 'promoted to' : 'removed from'} supervisor role by ${session.user.email}`,
+      request.headers.get('x-forwarded-for') || 
+      request.headers.get('x-real-ip') || 
+      'unknown'
+    )
 
     return NextResponse.json({
       success: true,

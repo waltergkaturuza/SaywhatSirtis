@@ -252,3 +252,52 @@ export function withErrorHandling<T extends unknown[]>(
     }
   };
 }
+
+/**
+ * Create audit log entry with proper user ID resolution
+ * @param prisma - Prisma client instance
+ * @param sessionUserEmail - Email from the session
+ * @param action - Action performed (CREATE, UPDATE, DELETE, etc.)
+ * @param resource - Resource type (Employee, User, etc.)
+ * @param resourceId - ID of the affected resource
+ * @param details - Additional details about the action
+ * @param ipAddress - IP address of the requester
+ */
+export async function createAuditLog(
+  prisma: any,
+  sessionUserEmail: string,
+  action: string,
+  resource: string,
+  resourceId: string,
+  details: string,
+  ipAddress: string = 'unknown'
+) {
+  try {
+    // Find the actual user ID from database based on email
+    const dbUser = await prisma.users.findUnique({
+      where: { email: sessionUserEmail },
+      select: { id: true }
+    });
+
+    // Create audit log entry only if we found the user
+    if (dbUser) {
+      const { randomUUID } = await import('crypto');
+      await prisma.audit_logs.create({
+        data: {
+          id: randomUUID(),
+          action,
+          resource,
+          resourceId,
+          userId: dbUser.id,
+          details,
+          ipAddress
+        }
+      });
+    } else {
+      console.warn(`User not found in database for email: ${sessionUserEmail}`);
+    }
+  } catch (error) {
+    console.error('Failed to create audit log:', error);
+    // Don't throw error for audit log failure - it shouldn't break the main operation
+  }
+}

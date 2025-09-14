@@ -262,7 +262,7 @@ export const modulesConfig: ModuleConfig[] = [
     name: "Human Resources",
     description: "Employee management and performance",
     icon: UserGroupIcon,
-    color: "purple",
+    color: "orange",
     defaultPath: "/hr",
     requiredPermissions: ["hr.view"],
     navigation: [

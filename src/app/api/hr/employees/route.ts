@@ -131,15 +131,7 @@ export async function POST(request: Request) {
       'email', 'position'
     ])
     
-    // Check that either department or departmentId is provided
-    if (!formData.department && !formData.departmentId) {
-      const { response, status } = createErrorResponse(
-        'Department is required',
-        HttpStatus.BAD_REQUEST,
-        { code: ErrorCodes.VALIDATION_ERROR }
-      )
-      return NextResponse.json(response, { status })
-    }
+    // Department is now optional - employees can be created without departments
     
     if (validationError) {
       const { response, status } = createErrorResponse(
@@ -174,19 +166,97 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status })
     }
 
-    // If departmentId is provided, fetch the department name for backward compatibility
-    let departmentName = formData.department
-    if (formData.departmentId && !formData.department) {
-      const department = await prisma.departments.findUnique({
-        where: { id: formData.departmentId },
-        select: { name: true }
-      })
-      departmentName = department?.name || ''
+    // Check if user email already exists
+    const existingUser = await prisma.users.findUnique({
+      where: { email: formData.email }
+    })
+
+    if (existingUser) {
+      const { response, status } = createErrorResponse(
+        'User with this email already exists',
+        HttpStatus.CONFLICT,
+        { code: ErrorCodes.DUPLICATE_ENTRY }
+      )
+      return NextResponse.json(response, { status })
     }
 
-    // Generate employee ID
-    const employeeCount = await prisma.employees.count()
-    const employeeId = `EMP${(employeeCount + 1).toString().padStart(4, '0')}`
+    // Handle department validation and resolution
+    let departmentName = formData.department || ''
+    let validDepartmentId = null
+
+    if (formData.departmentId) {
+      // Validate that the departmentId exists
+      const department = await prisma.departments.findUnique({
+        where: { id: formData.departmentId },
+        select: { id: true, name: true, status: true }
+      })
+      
+      if (!department) {
+        const { response, status } = createErrorResponse(
+          'Invalid department selected',
+          HttpStatus.BAD_REQUEST,
+          { code: ErrorCodes.VALIDATION_ERROR }
+        )
+        return NextResponse.json(response, { status })
+      }
+      
+      if (department.status !== 'ACTIVE') {
+        const { response, status } = createErrorResponse(
+          'Selected department is not active',
+          HttpStatus.BAD_REQUEST,
+          { code: ErrorCodes.VALIDATION_ERROR }
+        )
+        return NextResponse.json(response, { status })
+      }
+      
+      validDepartmentId = department.id
+      departmentName = department.name
+    } else if (formData.department) {
+      // Try to find department by name if only name is provided
+      const department = await prisma.departments.findFirst({
+        where: { 
+          name: formData.department,
+          status: 'ACTIVE'
+        },
+        select: { id: true, name: true }
+      })
+      
+      if (department) {
+        validDepartmentId = department.id
+        departmentName = department.name
+      } else {
+        // Department name provided but doesn't exist - create it or use null
+        console.warn(`Department "${formData.department}" not found, creating employee without department link`)
+        departmentName = formData.department
+        validDepartmentId = null
+      }
+    }
+
+    // Generate unique employee ID
+    let employeeId: string
+    let isUnique = false
+    let attempts = 0
+    
+    while (!isUnique && attempts < 10) {
+      const employeeCount = await prisma.employees.count()
+      employeeId = `EMP${(employeeCount + 1 + attempts).toString().padStart(4, '0')}`
+      
+      const existingEmployeeId = await prisma.employees.findUnique({
+        where: { employeeId },
+        select: { id: true }
+      })
+      
+      if (!existingEmployeeId) {
+        isUnique = true
+      } else {
+        attempts++
+      }
+    }
+    
+    if (!isUnique) {
+      // Fallback to timestamp-based ID
+      employeeId = `EMP${Date.now().toString().slice(-8)}`
+    }
 
     // Sanitize input data
     const sanitizedData = {
@@ -196,7 +266,7 @@ export async function POST(request: Request) {
       email: formData.email.toLowerCase().trim(),
       phoneNumber: formData.phoneNumber ? sanitizeInput(formData.phoneNumber) : null,
       department: sanitizeInput(departmentName || ''), // Keep for backward compatibility
-      departmentId: formData.departmentId || null, // Use departmentId for proper relation
+      departmentId: validDepartmentId, // Use validated departmentId for proper relation
       position: sanitizeInput(formData.position),
       startDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
       hireDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
@@ -215,49 +285,56 @@ export async function POST(request: Request) {
       otherBenefits: formData.otherBenefits || []
     }
 
-    // Create user account first
-    const newUser = await prisma.users.create({
-      data: {
-        id: randomUUID(),
-        email: sanitizedData.email,
-        firstName: sanitizedData.firstName,
-        lastName: sanitizedData.lastName,
-        department: sanitizedData.department,
-        position: sanitizedData.position,
-        role: 'USER',
-        updatedAt: new Date()
-      }
+    // Create user and employee in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user account first
+      const newUser = await tx.users.create({
+        data: {
+          id: randomUUID(),
+          email: sanitizedData.email,
+          firstName: sanitizedData.firstName,
+          lastName: sanitizedData.lastName,
+          department: sanitizedData.department,
+          position: sanitizedData.position,
+          role: 'USER',
+          updatedAt: new Date()
+        }
+      })
+
+      // Create employee record
+      const newEmployee = await tx.employees.create({
+        data: {
+          id: randomUUID(),
+          userId: newUser.id,
+          employeeId: sanitizedData.employeeId,
+          firstName: sanitizedData.firstName,
+          lastName: sanitizedData.lastName,
+          email: sanitizedData.email,
+          phoneNumber: sanitizedData.phoneNumber,
+          department: sanitizedData.department,
+          departmentId: sanitizedData.departmentId,
+          position: sanitizedData.position,
+          startDate: sanitizedData.startDate,
+          hireDate: sanitizedData.hireDate,
+          salary: sanitizedData.salary,
+          status: sanitizedData.status,
+          supervisor_id: sanitizedData.supervisorId,
+          is_supervisor: sanitizedData.isSupervisor,
+          is_reviewer: sanitizedData.isReviewer,
+          medical_aid: sanitizedData.medicalAid,
+          funeral_cover: sanitizedData.funeralCover,
+          vehicle_benefit: sanitizedData.vehicleBenefit,
+          fuel_allowance: sanitizedData.fuelAllowance,
+          airtime_allowance: sanitizedData.airtimeAllowance,
+          other_benefits: sanitizedData.otherBenefits,
+          updatedAt: new Date()
+        }
+      })
+
+      return { newUser, newEmployee }
     })
 
-    // Create employee record
-    const newEmployee = await prisma.employees.create({
-      data: {
-        id: randomUUID(),
-        userId: newUser.id,
-        employeeId: sanitizedData.employeeId,
-        firstName: sanitizedData.firstName,
-        lastName: sanitizedData.lastName,
-        email: sanitizedData.email,
-        phoneNumber: sanitizedData.phoneNumber,
-        department: sanitizedData.department,
-        departmentId: sanitizedData.departmentId,
-        position: sanitizedData.position,
-        startDate: sanitizedData.startDate,
-        hireDate: sanitizedData.hireDate,
-        salary: sanitizedData.salary,
-        status: sanitizedData.status,
-        supervisor_id: sanitizedData.supervisorId,
-        is_supervisor: sanitizedData.isSupervisor,
-        is_reviewer: sanitizedData.isReviewer,
-        medical_aid: sanitizedData.medicalAid,
-        funeral_cover: sanitizedData.funeralCover,
-        vehicle_benefit: sanitizedData.vehicleBenefit,
-        fuel_allowance: sanitizedData.fuelAllowance,
-        airtime_allowance: sanitizedData.airtimeAllowance,
-        other_benefits: sanitizedData.otherBenefits,
-        updatedAt: new Date()
-      }
-    })
+    const { newEmployee } = result
 
     const response = createSuccessResponse({
       id: newEmployee.id,

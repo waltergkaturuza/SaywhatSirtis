@@ -48,19 +48,18 @@ export async function PATCH(
     })
 
     // Create audit log entry
-    await prisma.audit_logs.create({
-      data: {
-        id: randomUUID(),
-        action: isReviewer ? 'ASSIGN_REVIEWER' : 'REMOVE_REVIEWER',
-        resource: 'Employee',
-        resourceId: employeeId,
-        userId: session.user.id,
-        details: `Employee ${existingEmployee.email} ${isReviewer ? 'assigned as' : 'removed from'} reviewer role by ${session.user.email}`,
-        ipAddress: request.headers.get('x-forwarded-for') || 
-                  request.headers.get('x-real-ip') || 
-                  'unknown'
-      }
-    })
+    const { createAuditLog } = await import('@/lib/api-utils')
+    await createAuditLog(
+      prisma,
+      session.user.email,
+      isReviewer ? 'ASSIGN_REVIEWER' : 'REMOVE_REVIEWER',
+      'Employee',
+      employeeId,
+      `Employee ${existingEmployee.email} ${isReviewer ? 'assigned as' : 'removed from'} reviewer role by ${session.user.email}`,
+      request.headers.get('x-forwarded-for') || 
+      request.headers.get('x-real-ip') || 
+      'unknown'
+    )
 
     return NextResponse.json({
       success: true,

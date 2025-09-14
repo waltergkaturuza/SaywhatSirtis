@@ -24,7 +24,11 @@ import {
   ArrowTrendingUpIcon,
   ExclamationTriangleIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  HomeIcon,
+  ArrowLeftIcon,
+  BuildingOffice2Icon,
+  ChartPieIcon
 } from "@heroicons/react/24/outline"
 
 interface DashboardStats {
@@ -60,7 +64,8 @@ export default function HRDashboard() {
   const [activities, setActivities] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+
 
   // Handle authentication
   useEffect(() => {
@@ -235,25 +240,28 @@ export default function HRDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 relative">
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+
+
+
       
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="mx-4 lg:mx-8 xl:mx-16">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors lg:hidden"
-              >
-                <Bars3Icon className="h-5 w-5 text-gray-600" />
-              </button>
+              {/* Home and Back Navigation Icons */}
+              <div className="flex items-center space-x-2">
+                <Link href="/">
+                  <button className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-green-500 hover:to-green-600 rounded-lg flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md">
+                    <HomeIcon className="h-5 w-5 text-white" />
+                  </button>
+                </Link>
+                <Link href="/hr">
+                  <button className="w-10 h-10 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-green-500 hover:to-green-600 rounded-lg flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md">
+                    <ArrowLeftIcon className="h-5 w-5 text-white" />
+                  </button>
+                </Link>
+              </div>
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">S</span>
@@ -265,23 +273,10 @@ export default function HRDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors hidden lg:flex"
-                title="Toggle Sidebar"
-              >
-                <Bars3Icon className="h-5 w-5 text-gray-600" />
-              </button>
               <Link href="/hr/reports">
                 <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
                   <DocumentTextIcon className="h-4 w-4 mr-2" />
                   HR Reports
-                </button>
-              </Link>
-              <Link href="/hr/employees/add">
-                <button className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:from-orange-600 hover:to-orange-700 transition-all">
-                  <UserPlusIcon className="h-4 w-4 mr-2" />
-                  Add Employee
                 </button>
               </Link>
             </div>
@@ -290,36 +285,36 @@ export default function HRDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="mx-4 lg:mx-8 xl:mx-16 py-8">
-        <div className={`flex flex-col ${sidebarOpen ? 'lg:flex-row' : ''} gap-8`}>
+      <div className="mx-4 lg:mx-8 xl:mx-16 py-6">
+        <div className="flex flex-col gap-6">
           {/* Main Dashboard Content */}
-          <div className={`flex-1 ${sidebarOpen ? '' : 'w-full'}`}>
-            <div className="space-y-8">
+          <div className="w-full">
+            <div className="space-y-6">
               {/* Welcome Header */}
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-8 text-white shadow-lg">
-                <h1 className="text-3xl font-bold mb-3">HR Management Dashboard</h1>
-                <p className="text-orange-100 text-lg">Comprehensive human resources management overview and navigation</p>
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
+                <h1 className="text-2xl font-bold mb-2">HR Management Dashboard</h1>
+                <p className="text-orange-100 text-base">Comprehensive human resources management overview and navigation</p>
               </div>
 
               {/* Key Metrics Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl border-2 border-orange-600 p-6 hover:shadow-xl hover:shadow-orange-200 transition-all transform hover:-translate-y-1 text-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl border-2 border-orange-600 p-5 hover:shadow-xl hover:shadow-orange-200 transition-all transform hover:-translate-y-1 text-white">
                   <div className="flex items-center">
                     <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
                       <UserGroupIcon className="w-8 h-8 text-white" />
                     </div>
-                    <div className="ml-4">
-                      <h3 className="text-2xl font-bold text-white">
+                    <div className="ml-3">
+                      <h3 className="text-xl font-bold text-white">
                         {loading ? (
-                          <div className="w-12 h-6 bg-white/20 animate-pulse rounded"></div>
+                          <div className="w-10 h-5 bg-white/20 animate-pulse rounded"></div>
                         ) : (
                           stats?.totalEmployees || '0'
                         )}
                       </h3>
-                      <p className="text-sm text-orange-100 font-medium">Total Employees</p>
+                      <p className="text-xs text-orange-100 font-medium">Total Employees</p>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center text-sm">
+                  <div className="mt-2 flex items-center text-xs">
                     <ArrowTrendingUpIcon className="w-4 h-4 text-green-300 mr-1" />
                     <span className="text-green-200 font-semibold">
                       +{loading ? '0' : stats?.newEmployeesThisMonth || '0'}
@@ -328,10 +323,10 @@ export default function HRDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-6 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-4 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
                   <div className="flex items-center">
-                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <AcademicCapIcon className="w-8 h-8 text-white" />
+                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <AcademicCapIcon className="w-6 h-6 text-white" />
                     </div>
                     <div className="ml-4">
                       <h3 className="text-2xl font-bold text-white">
@@ -351,10 +346,10 @@ export default function HRDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-6 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-4 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
                   <div className="flex items-center">
-                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <StarIcon className="w-8 h-8 text-white" />
+                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <StarIcon className="w-6 h-6 text-white" />
                     </div>
                     <div className="ml-4">
                       <h3 className="text-2xl font-bold text-white">
@@ -373,10 +368,10 @@ export default function HRDashboard() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-6 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-4 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
                   <div className="flex items-center">
-                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <UsersIcon className="w-8 h-8 text-white" />
+                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                      <UsersIcon className="w-6 h-6 text-white" />
                     </div>
                     <div className="ml-4">
                       <h3 className="text-2xl font-bold text-white">
@@ -398,188 +393,142 @@ export default function HRDashboard() {
                 </div>
               </div>
 
-              {/* HR Modules Grid */}
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-8">HR Management Modules</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {/* Main Content Layout */}
+              <div className={`grid grid-cols-1 gap-6 transition-all duration-300 ${
+                sidebarOpen ? 'lg:grid-cols-4' : 'lg:grid-cols-1'
+              }`}>
+                {/* HR Modules */}
+                <div className={`transition-all duration-300 ${
+                  sidebarOpen ? 'lg:col-span-3' : 'lg:col-span-1'
+                }`}>
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">HR Management Modules</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {hrModules.map((module, index) => (
                     <Link key={index} href={module.href}>
                       <div 
-                        className={`p-6 rounded-xl border-2 hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${getColorClasses(module.color)}`}
+                        className={`p-5 rounded-xl border-2 hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${getColorClasses(module.color)}`}
                         onClick={() => handleIconClick(index)}
                       >
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="p-3 bg-white rounded-xl shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="p-3 bg-white rounded-lg shadow-sm">
                             <module.icon 
-                              className={`h-8 w-8 transition-colors duration-200 ${getIconColorClasses(module.color)}`} 
+                              className={`h-7 w-7 transition-colors duration-200 ${getIconColorClasses(module.color)}`} 
                             />
                           </div>
                           <ChevronRightIcon className="h-6 w-6 opacity-50" />
                         </div>
                         <h3 className="font-bold text-gray-900 mb-3 text-lg">{module.title}</h3>
-                        <p className="text-sm text-gray-700 mb-4 leading-relaxed">{module.description}</p>
+                        <p className="text-sm text-gray-700 mb-3 leading-relaxed">{module.description}</p>
                         <div className="text-sm font-semibold text-gray-600 bg-white bg-opacity-50 px-3 py-2 rounded-lg">
                           {module.stats}
                         </div>
                       </div>
                     </Link>
                   ))}
+                  </div>
                 </div>
-              </div>
-
-              {/* Recent Activity */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-xl font-bold text-gray-900 mb-6">Recent HR Activity</h3>
-                <div className="space-y-4">
-                  {loading ? (
-                    <div className="space-y-4">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className="flex items-start space-x-3 animate-pulse">
-                          <div className="flex-shrink-0">
-                            <div className="h-6 w-6 bg-gray-200 rounded"></div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                      ))}
+                
+                {/* Sidebar */}
+                {sidebarOpen && (
+                  <div className="lg:col-span-1 transition-all duration-300 space-y-4">
+                    {/* Quick Actions */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                      <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+                      <div className="space-y-2">
+                        <Link href="/hr/employees/add">
+                          <button className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-orange-50 hover:bg-orange-100 hover:text-orange-800 rounded-lg transition-all duration-200 group border border-orange-100 hover:border-orange-200">
+                            <UserPlusIcon className="h-4 w-4 mr-3 text-orange-500 group-hover:text-orange-700" />
+                            Add New Employee
+                          </button>
+                        </Link>
+                        <Link href="/hr/departments/add">
+                          <button className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-orange-50 hover:bg-orange-100 hover:text-orange-800 rounded-lg transition-all duration-200 group border border-orange-100 hover:border-orange-200">
+                            <BuildingOffice2Icon className="h-4 w-4 mr-3 text-orange-500 group-hover:text-orange-700" />
+                            Add New Department
+                          </button>
+                        </Link>
+                        <Link href="/hr/performance/plans">
+                          <button className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-orange-50 hover:bg-orange-100 hover:text-orange-800 rounded-lg transition-all duration-200 group border border-orange-100 hover:border-orange-200">
+                            <ChartPieIcon className="h-4 w-4 mr-3 text-orange-500 group-hover:text-orange-700" />
+                            Performance Plans
+                          </button>
+                        </Link>
+                        <Link href="/hr/performance/appraisals">
+                          <button className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-orange-50 hover:bg-orange-100 hover:text-orange-800 rounded-lg transition-all duration-200 group border border-orange-100 hover:border-orange-200">
+                            <StarIcon className="h-4 w-4 mr-3 text-orange-500 group-hover:text-orange-700" />
+                            Appraisals
+                          </button>
+                        </Link>
+                      </div>
                     </div>
-                  ) : activities.length > 0 ? (
-                    activities.map((activity) => {
-                      const IconComponent = getIconComponent(activity.icon)
-                      return (
-                        <div key={activity.id} className="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-lg transition-colors">
-                          <div className="flex-shrink-0">
-                            <div className="p-2 bg-orange-100 rounded-lg">
-                              <IconComponent className={`h-5 w-5 ${getIconColor(activity.color)}`} />
+                    
+                    {/* Recent Activity */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm sticky top-20">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Activity</h3>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {loading ? (
+                        <div className="space-y-3">
+                          {[...Array(3)].map((_, i) => (
+                            <div key={i} className="flex items-start space-x-3 animate-pulse">
+                              <div className="flex-shrink-0">
+                                <div className="h-6 w-6 bg-gray-200 rounded"></div>
+                              </div>
+                              <div className="flex-1">
+                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900">{activity.title}</p>
-                            <p className="text-sm text-gray-600">{activity.description} - {activity.timeAgo}</p>
-                          </div>
+                          ))}
                         </div>
-                      )
-                    })
-                  ) : (
-                    <div className="text-center py-8">
-                      <ClockIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-sm text-gray-500">No recent activity to display</p>
+                      ) : activities.length > 0 ? (
+                        activities.slice(0, 6).map((activity) => {
+                          const IconComponent = getIconComponent(activity.icon)
+                          return (
+                            <div key={activity.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                              <div className="flex-shrink-0">
+                                <div className="p-2 bg-orange-100 rounded-lg">
+                                  <IconComponent className={`h-4 w-4 ${getIconColor(activity.color)}`} />
+                                </div>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-gray-900">{activity.title}</p>
+                                <p className="text-xs text-gray-600">{activity.description}</p>
+                                <p className="text-xs text-gray-400 mt-1">{activity.timeAgo}</p>
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div className="text-center py-6">
+                          <ClockIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                          <p className="text-sm text-gray-500">No recent activity</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-
-          {/* Sidebar */}
-          {sidebarOpen && (
-            <div className="fixed lg:relative top-0 right-0 h-full lg:h-auto w-80 lg:w-80 bg-white lg:bg-transparent z-30 lg:z-auto overflow-y-auto lg:overflow-visible animate-in slide-in-from-right-5 duration-300 shadow-2xl lg:shadow-none">
-              {/* Mobile Close Button */}
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="absolute top-4 right-4 p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors lg:hidden z-40"
-              >
-                <XMarkIcon className="h-5 w-5 text-gray-600" />
-              </button>
-              <div className="space-y-6 p-4 lg:p-0 pt-16 lg:pt-0">
-              <div className="bg-gradient-to-r from-gray-800 to-black rounded-xl border-2 border-gray-700 p-6 shadow-xl text-white">
-                <h3 className="text-lg font-bold text-white mb-4">Quick Stats</h3>
-                {error ? (
-                  <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                    <div className="flex items-center">
-                      <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-2" />
-                      <div className="text-sm text-red-800">{error}</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-orange-600 rounded-lg shadow-lg">
-                      <span className="text-sm font-medium text-orange-100">Total Employees</span>
-                      <span className="font-bold text-white">
-                        {loading ? (
-                          <div className="w-8 h-4 bg-white/20 animate-pulse rounded"></div>
-                        ) : (
-                          stats?.totalEmployees || 0
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-green-600 rounded-lg shadow-lg">
-                      <span className="text-sm font-medium text-green-100">Active</span>
-                      <span className="font-bold text-white">
-                        {loading ? (
-                          <div className="w-8 h-4 bg-white/20 animate-pulse rounded"></div>
-                        ) : (
-                          stats?.activeEmployees || 0
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-red-600 rounded-lg shadow-lg">
-                      <span className="text-sm font-medium text-red-100">New Hires (Month)</span>
-                      <span className="font-bold text-white">
-                        {loading ? (
-                          <div className="w-8 h-4 bg-white/20 animate-pulse rounded"></div>
-                        ) : (
-                          stats?.newEmployeesThisMonth || 0
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-xl border-2 border-red-600 p-6 shadow-xl text-white">
-                <h3 className="text-lg font-bold text-white mb-4">Pending Actions</h3>
-                {error ? (
-                  <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                    <div className="text-sm text-red-800">Unable to load pending actions</div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="p-4 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30 shadow-lg">
-                      <div className="text-sm font-bold text-white">
-                        {loading ? '...' : `${stats?.pendingReviews || 0} Reviews Due`}
-                      </div>
-                      <div className="text-xs text-red-100 mt-1">Performance reviews pending</div>
-                    </div>
-                    <div className="p-4 bg-white/20 backdrop-blur-sm rounded-lg border border-white/30 shadow-lg">
-                      <div className="text-sm font-bold text-white">
-                        {loading ? '...' : `${stats?.onboardingCount || 0} Onboarding`}
-                      </div>
-                      <div className="text-xs text-red-100 mt-1">New employee setup</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-xl border-2 border-orange-600 p-6 shadow-xl text-white">
-                <h3 className="text-lg font-bold text-white mb-4">Quick Links</h3>
-                <div className="space-y-2">
-                  <Link href="/hr/employees" className="flex items-center p-3 text-sm font-medium text-white hover:bg-white/20 hover:text-orange-100 rounded-lg transition-colors">
-                    <UserGroupIcon className="h-4 w-4 mr-3" />
-                    Employee Directory
-                  </Link>
-                  <Link href="/hr/performance" className="flex items-center p-3 text-sm font-medium text-white hover:bg-white/20 hover:text-orange-100 rounded-lg transition-colors">
-                    <StarIcon className="h-4 w-4 mr-3" />
-                    Performance Reviews
-                  </Link>
-                  <Link href="/hr/training" className="flex items-center p-3 text-sm font-medium text-white hover:bg-white/20 hover:text-orange-100 rounded-lg transition-colors">
-                    <AcademicCapIcon className="h-4 w-4 mr-3" />
-                    Training Programs
-                  </Link>
-                  <Link href="/hr/reports" className="flex items-center p-3 text-sm font-medium text-white hover:bg-white/20 hover:text-orange-100 rounded-lg transition-colors">
-                    <DocumentTextIcon className="h-4 w-4 mr-3" />
-                    HR Reports
-                  </Link>
-                </div>
-              </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
       
+      {/* Floating Sidebar Toggle Button */}
+      <button 
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className={`fixed top-20 right-4 z-50 p-3 bg-white border-2 rounded-full shadow-lg hover:bg-gray-50 transition-all duration-200 hover:shadow-xl ${
+          sidebarOpen 
+            ? 'border-orange-500 hover:border-orange-600' 
+            : 'border-gray-300 hover:border-orange-400'
+        }`}
+        title={sidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
+      >
+        <Bars3Icon className={`h-5 w-5 transition-colors duration-200 ${
+          sidebarOpen ? 'text-orange-600' : 'text-gray-700'
+        }`} />
+      </button>
+
       {/* SIRTIS Copilot */}
       <SirtisCopilot />
     </div>

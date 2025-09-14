@@ -323,45 +323,97 @@ export default function AddEmployeePage() {
 
   return (
     <EnhancedLayout>
-      <div className="max-w-none px-2 w-full min-h-screen">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Add New Employee</h1>
-          <p className="text-gray-600">Complete all steps to onboard a new team member</p>
+      <div className="max-w-none px-2 w-full min-h-screen bg-gradient-to-br from-saywhat-white to-saywhat-grey/10">
+        {/* Navigation Header */}
+        <div className="mb-8 bg-gradient-to-r from-saywhat-black via-saywhat-dark to-saywhat-grey text-saywhat-white p-6 rounded-xl shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-saywhat-orange/10 to-saywhat-red/5"></div>
+          <div className="relative z-10 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/hr/dashboard')}
+                className="flex items-center space-x-2 px-4 py-2 bg-saywhat-orange/20 hover:bg-saywhat-orange/30 rounded-lg border border-saywhat-orange/30 transition-all duration-300 hover:scale-105"
+              >
+                <svg className="w-5 h-5 text-saywhat-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span className="text-saywhat-white font-medium">Home</span>
+              </button>
+              <button
+                onClick={() => router.back()}
+                className="flex items-center space-x-2 px-4 py-2 bg-saywhat-red/20 hover:bg-saywhat-red/30 rounded-lg border border-saywhat-red/30 transition-all duration-300 hover:scale-105"
+              >
+                <svg className="w-5 h-5 text-saywhat-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="text-saywhat-white font-medium">Back</span>
+              </button>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-saywhat-orange to-saywhat-red rounded-xl flex items-center justify-center shadow-lg">
+                <UserIcon className="w-7 h-7 text-saywhat-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-saywhat-orange to-saywhat-red bg-clip-text text-transparent">
+                  Add New Employee
+                </h1>
+                <p className="text-saywhat-grey/80 text-sm font-medium">SAYWHAT Human Resource Management System</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Progress Steps */}
-        <div className="mb-8">
+        <div className="mb-8 bg-gradient-to-r from-saywhat-white to-saywhat-grey/5 p-6 rounded-xl shadow-lg border border-saywhat-grey/20">
           <nav aria-label="Progress">
             <ol className="flex items-center justify-between">
               {steps.map((step, stepIdx) => (
                 <li key={step.id} className="relative flex-1">
                   <div className="flex items-center">
                     <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
+                      className={`flex h-12 w-12 items-center justify-center rounded-xl border-2 shadow-lg transition-all duration-300 ${
                         currentStep >= step.id
-                          ? "border-indigo-600 bg-indigo-600 text-white"
-                          : "border-gray-300 bg-white text-gray-400"
+                          ? "border-saywhat-orange bg-gradient-to-br from-saywhat-orange to-saywhat-red text-saywhat-white shadow-saywhat-orange/30"
+                          : currentStep === step.id
+                          ? "border-saywhat-green bg-gradient-to-br from-saywhat-green to-emerald-500 text-saywhat-white shadow-saywhat-green/30 animate-pulse"
+                          : "border-saywhat-grey/50 bg-saywhat-white text-saywhat-grey/60"
                       }`}
                     >
-                      <step.icon className="h-5 w-5" />
+                      {currentStep > step.id ? (
+                        <CheckCircleIcon className="h-6 w-6" />
+                      ) : (
+                        <step.icon className="h-6 w-6" />
+                      )}
                     </div>
                     {stepIdx !== steps.length - 1 && (
                       <div
-                        className={`absolute top-5 left-10 w-full h-0.5 ${
-                          currentStep > step.id ? "bg-indigo-600" : "bg-gray-300"
+                        className={`absolute top-6 left-12 w-full h-1 rounded-full transition-all duration-500 ${
+                          currentStep > step.id 
+                            ? "bg-gradient-to-r from-saywhat-orange to-saywhat-red shadow-lg" 
+                            : currentStep === step.id
+                            ? "bg-gradient-to-r from-saywhat-green to-emerald-500 shadow-lg"
+                            : "bg-saywhat-grey/30"
                         }`}
                       />
                     )}
                   </div>
-                  <div className="mt-2">
+                  <div className="mt-3 text-center">
                     <span
-                      className={`text-sm font-medium ${
-                        currentStep >= step.id ? "text-orange-600" : "text-gray-500"
+                      className={`text-sm font-bold block transition-all duration-300 ${
+                        currentStep >= step.id 
+                          ? "text-saywhat-orange" 
+                          : currentStep === step.id
+                          ? "text-saywhat-green"
+                          : "text-saywhat-grey"
                       }`}
                     >
                       {step.name}
                     </span>
+                    {currentStep === step.id && (
+                      <span className="text-xs text-saywhat-green font-medium">Current</span>
+                    )}
+                    {currentStep > step.id && (
+                      <span className="text-xs text-saywhat-orange font-medium">Completed</span>
+                    )}
                   </div>
                 </li>
               ))}
@@ -370,74 +422,83 @@ export default function AddEmployeePage() {
         </div>
 
         {/* Form Content */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-8">
+        <div className="bg-gradient-to-br from-saywhat-white to-saywhat-grey/5 shadow-2xl rounded-xl border-2 border-saywhat-grey/20 overflow-hidden">
+          <div className="px-8 py-10">
             {/* Step 1: Personal Information */}
             {currentStep === 1 && (
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Personal Information</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="space-y-8">
+                <div className="flex items-center space-x-4 mb-8 p-4 bg-gradient-to-r from-saywhat-orange/10 to-saywhat-red/5 rounded-xl border-l-4 border-saywhat-orange">
+                  <div className="w-12 h-12 bg-gradient-to-br from-saywhat-orange to-saywhat-red rounded-xl flex items-center justify-center shadow-lg">
+                    <UserIcon className="w-6 h-6 text-saywhat-white" />
+                  </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <h2 className="text-2xl font-bold text-saywhat-black">Personal Information</h2>
+                    <p className="text-saywhat-grey text-sm">Employee's basic personal details</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-saywhat-black mb-2">
                       First Name *
                     </label>
                     <input
                       type="text"
                       value={formData.firstName}
                       onChange={(e) => handleInputChange("firstName", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                       required
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-saywhat-black mb-2">
                       Middle Name
                     </label>
                     <input
                       type="text"
                       value={formData.middleName}
                       onChange={(e) => handleInputChange("middleName", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-saywhat-black mb-2">
                       Last Name *
                     </label>
                     <input
                       type="text"
                       value={formData.lastName}
                       onChange={(e) => handleInputChange("lastName", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date of Birth
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-saywhat-black mb-2 flex items-center space-x-2">
+                      <CalendarIcon className="w-4 h-4 text-saywhat-orange" />
+                      <span>Date of Birth</span>
                     </label>
                     <input
                       type="date"
                       value={formData.dateOfBirth}
                       onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-saywhat-black mb-2">
                       Gender
                     </label>
                     <select
                       value={formData.gender}
                       onChange={(e) => handleInputChange("gender", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                     >
                       <option value="">Select Gender</option>
                       <option value="male">Male</option>
@@ -446,85 +507,94 @@ export default function AddEmployeePage() {
                       <option value="prefer-not-to-say">Prefer not to say</option>
                     </select>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number *
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-saywhat-black mb-2 flex items-center space-x-2">
+                      <PhoneIcon className="w-4 h-4 text-saywhat-green" />
+                      <span>Phone Number *</span>
                     </label>
                     <input
                       type="tel"
                       value={formData.phoneNumber}
                       onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                       required
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Work Email *
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-saywhat-black mb-2 flex items-center space-x-2">
+                      <EnvelopeIcon className="w-4 h-4 text-saywhat-red" />
+                      <span>Work Email *</span>
                     </label>
                     <input
                       type="email"
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                       required
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-saywhat-black mb-2">
                     Address
                   </label>
                   <textarea
                     value={formData.address}
                     onChange={(e) => handleInputChange("address", e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md resize-none"
+                    placeholder="Enter full address"
                   />
                 </div>
 
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <div className="border-t-2 border-saywhat-red/20 pt-8">
+                  <div className="flex items-center space-x-4 mb-6 p-4 bg-gradient-to-r from-saywhat-red/10 to-saywhat-orange/5 rounded-xl border-l-4 border-saywhat-red">
+                    <div className="w-10 h-10 bg-gradient-to-br from-saywhat-red to-saywhat-orange rounded-xl flex items-center justify-center shadow-lg">
+                      <PhoneIcon className="w-5 h-5 text-saywhat-white" />
+                    </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <h3 className="text-xl font-bold text-saywhat-black">Emergency Contact</h3>
+                      <p className="text-saywhat-grey text-sm">Contact person in case of emergency</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-saywhat-black mb-2">
                         Contact Name *
                       </label>
                       <input
                         type="text"
                         value={formData.emergencyContactName}
                         onChange={(e) => handleInputChange("emergencyContactName", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                         required
                       />
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-saywhat-black mb-2">
                         Contact Phone *
                       </label>
                       <input
                         type="tel"
                         value={formData.emergencyContactPhone}
                         onChange={(e) => handleInputChange("emergencyContactPhone", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                         required
                       />
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-saywhat-black mb-2">
                         Relationship
                       </label>
                       <select
                         value={formData.emergencyContactRelationship}
                         onChange={(e) => handleInputChange("emergencyContactRelationship", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                       >
                         <option value="">Select Relationship</option>
                         <option value="spouse">Spouse</option>
@@ -542,26 +612,36 @@ export default function AddEmployeePage() {
 
             {/* Step 2: Employment Information */}
             {currentStep === 2 && (
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Employment Information</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="space-y-8">
+                <div className="flex items-center space-x-4 mb-8 p-4 bg-gradient-to-r from-saywhat-green/10 to-saywhat-orange/5 rounded-xl border-l-4 border-saywhat-green">
+                  <div className="w-12 h-12 bg-gradient-to-br from-saywhat-green to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <BuildingOfficeIcon className="w-6 h-6 text-saywhat-white" />
+                  </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Employee ID *
+                    <h2 className="text-2xl font-bold text-saywhat-black">Employment Information</h2>
+                    <p className="text-saywhat-grey text-sm">Job details and department assignment</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-saywhat-black mb-2 flex items-center space-x-2">
+                      <IdentificationIcon className="w-4 h-4 text-saywhat-orange" />
+                      <span>Employee ID *</span>
                     </label>
                     <input
                       type="text"
                       value={formData.employeeId}
                       onChange={(e) => handleInputChange("employeeId", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                       required
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Department *
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-saywhat-black mb-2 flex items-center space-x-2">
+                      <BuildingOfficeIcon className="w-4 h-4 text-saywhat-green" />
+                      <span>Department *</span>
                     </label>
                     <select
                       value={formData.departmentId}
@@ -570,7 +650,7 @@ export default function AddEmployeePage() {
                         handleInputChange("departmentId", e.target.value)
                         handleInputChange("department", selectedDept?.name || "")
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-4 py-3 border-2 border-saywhat-grey/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-300 bg-saywhat-white shadow-sm hover:shadow-md"
                       required
                     >
                       <option value="">Select Department</option>
@@ -1397,34 +1477,74 @@ export default function AddEmployeePage() {
                 Previous
               </button>
               
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => router.push("/hr/employees")}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
+              <div className="flex justify-between items-center">
+                <div>
+                  {currentStep > 1 && (
+                    <button
+                      onClick={handlePrevious}
+                      className="flex items-center space-x-2 px-6 py-3 text-sm font-bold text-saywhat-grey bg-saywhat-white border-2 border-saywhat-grey/30 rounded-lg hover:bg-saywhat-grey/10 hover:border-saywhat-grey transition-all duration-300 shadow-sm hover:shadow-md"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      <span>Previous</span>
+                    </button>
+                  )}
+                </div>
                 
-                {currentStep === totalSteps ? (
+                <div className="flex space-x-4">
                   <button
-                    onClick={handleSubmit}
-                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700"
+                    onClick={() => router.push("/hr/employees")}
+                    className="flex items-center space-x-2 px-6 py-3 text-sm font-bold text-saywhat-red bg-saywhat-white border-2 border-saywhat-red/30 rounded-lg hover:bg-saywhat-red hover:text-saywhat-white transition-all duration-300 shadow-sm hover:shadow-md"
                   >
-                    Create Employee
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Cancel</span>
                   </button>
-                ) : (
-                  <button
-                    onClick={handleNext}
-                    className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md hover:bg-orange-700"
-                  >
-                    Next
-                  </button>
-                )}
+                  
+                  {currentStep === totalSteps ? (
+                    <button
+                      onClick={handleSubmit}
+                      className="flex items-center space-x-2 px-8 py-3 text-sm font-bold text-saywhat-white bg-gradient-to-r from-saywhat-green to-emerald-600 border border-transparent rounded-lg hover:from-emerald-600 hover:to-saywhat-green transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                    >
+                      <CheckCircleIcon className="w-5 h-5" />
+                      <span>Create Employee</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleNext}
+                      className="flex items-center space-x-2 px-8 py-3 text-sm font-bold text-saywhat-white bg-gradient-to-r from-saywhat-orange to-saywhat-red border border-transparent rounded-lg hover:from-saywhat-red hover:to-saywhat-orange transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                    >
+                      <span>Next</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Footer */}
+          <div className="bg-gradient-to-r from-saywhat-black via-saywhat-dark to-saywhat-grey text-saywhat-white p-4 rounded-b-xl border-t-2 border-saywhat-grey/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gradient-to-br from-saywhat-orange to-saywhat-red rounded-full flex items-center justify-center">
+                  <span className="text-xs font-bold text-saywhat-white">S</span>
+                </div>
+                <span className="text-sm font-medium text-saywhat-grey/80">
+                  SAYWHAT Human Resource Management System
+                </span>
+              </div>
+              <div className="text-sm text-saywhat-grey/60">
+                Step {currentStep} of {totalSteps}
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
     </EnhancedLayout>
   )
 }

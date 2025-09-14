@@ -110,7 +110,7 @@ export default function SirtisCopilot() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 z-50">
+    <div className="fixed bottom-4 right-4 z-50">
       {/* Chat Window */}
       {isOpen && (
         <div className="mb-4 w-80 h-96 bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col">

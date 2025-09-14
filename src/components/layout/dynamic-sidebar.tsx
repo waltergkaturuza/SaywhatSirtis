@@ -27,28 +27,29 @@ function NavigationGroup({
 }) {
   return (
     <>
-      {items.map((item) => (
-        <div key={item.id}>
+      {items.map((item, index) => (
+        <div key={item.id} className={cn("mb-2", index === 0 && level === 0 && "mt-1")}>
           {item.children ? (
             <Disclosure as="div" defaultOpen={level === 0}>
               {({ open }) => (
                 <>
                   <Disclosure.Button
                     className={cn(
-                      "group flex w-full items-center justify-between rounded-md p-2 text-left text-sm font-medium",
+                      "group flex w-full items-center justify-between rounded-md p-3 text-left text-sm font-medium transition-all duration-200 hover:shadow-sm",
                       level === 0 
-                        ? "text-gray-900 hover:bg-gray-50" 
-                        : "text-gray-700 hover:bg-gray-50",
-                      currentPath.startsWith(item.href) && "bg-gray-100 text-indigo-600"
+                        ? currentPath.startsWith(item.href)
+                          ? "bg-gradient-to-r from-saywhat-orange to-saywhat-red text-saywhat-white shadow-md border-l-4 border-saywhat-green"
+                          : "bg-gradient-to-r from-saywhat-green/10 to-saywhat-orange/5 text-saywhat-black hover:from-saywhat-orange/20 hover:to-saywhat-red/10 hover:text-saywhat-orange border-l-4 border-saywhat-green/30 hover:border-saywhat-green shadow-sm hover:shadow-md font-semibold"
+                        : "ml-6 bg-gradient-to-r from-saywhat-green/5 to-saywhat-orange/5 text-saywhat-grey hover:from-saywhat-green/15 hover:to-saywhat-orange/10 hover:text-saywhat-green border-l-3 border-saywhat-green/20 hover:border-saywhat-green/50 shadow-sm"
                     )}
                   >
                     <div className="flex items-center">
                       <item.icon
                         className={cn(
-                          "mr-3 h-5 w-5 flex-shrink-0",
+                          "mr-3 h-5 w-5 flex-shrink-0 transition-colors duration-200",
                           currentPath.startsWith(item.href)
-                            ? "text-indigo-600"
-                            : "text-gray-400 group-hover:text-gray-500"
+                            ? "text-saywhat-orange"
+                            : "text-saywhat-grey group-hover:text-saywhat-orange"
                         )}
                         aria-hidden="true"
                       />
@@ -56,13 +57,13 @@ function NavigationGroup({
                     </div>
                     <ChevronRightIcon
                       className={cn(
-                        "h-4 w-4 transform transition-transform",
-                        open ? "rotate-90" : ""
+                        "h-4 w-4 transform transition-all duration-300",
+                        open ? "rotate-90 text-saywhat-orange" : "text-saywhat-grey group-hover:text-saywhat-orange"
                       )}
                     />
                   </Disclosure.Button>
-                  <Disclosure.Panel className="mt-1 space-y-1">
-                    <div className={cn(level === 0 && "ml-8")}>
+                  <Disclosure.Panel className="mt-2 space-y-2 bg-gradient-to-r from-saywhat-green/5 to-saywhat-orange/5 border-l-4 border-saywhat-green/30 ml-2 pl-3 py-3 rounded-r-md shadow-inner">
+                    <div className={cn(level === 0 && "ml-6")}>
                       <NavigationGroup
                         items={item.children || []}
                         currentPath={currentPath}
@@ -77,25 +78,25 @@ function NavigationGroup({
             <Link
               href={item.href}
               className={cn(
-                "group flex items-center rounded-md p-2 text-sm font-medium",
-                level > 0 && "ml-8",
+                "group flex items-center rounded-md p-3 text-sm font-medium transition-all duration-200 hover:transform hover:translate-x-1 hover:shadow-sm",
+                level > 0 && "ml-6",
                 currentPath === item.href
-                  ? "bg-indigo-100 text-indigo-600"
-                  : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
+                  ? "bg-gradient-to-r from-saywhat-orange to-saywhat-red text-saywhat-white shadow-md border-l-4 border-saywhat-green"
+                  : "bg-gradient-to-r from-saywhat-green/10 to-saywhat-orange/5 text-saywhat-black hover:from-saywhat-orange/20 hover:to-saywhat-red/10 hover:text-saywhat-orange border-l-4 border-saywhat-green/30 hover:border-saywhat-green shadow-sm hover:shadow-md font-semibold"
               )}
             >
               <item.icon
                 className={cn(
-                  "mr-3 h-5 w-5 flex-shrink-0",
+                  "mr-3 h-5 w-5 flex-shrink-0 transition-colors duration-200",
                   currentPath === item.href
-                    ? "text-indigo-600"
-                    : "text-gray-400 group-hover:text-indigo-600"
+                    ? "text-saywhat-white"
+                    : "text-saywhat-grey group-hover:text-saywhat-orange"
                 )}
                 aria-hidden="true"
               />
               <span>{item.name}</span>
               {item.badge && (
-                <span className="ml-auto inline-block py-0.5 px-2 text-xs rounded-full bg-indigo-100 text-indigo-600">
+                <span className="ml-auto inline-block py-0.5 px-2 text-xs rounded-full bg-saywhat-green text-saywhat-white font-medium shadow-sm">
                   {item.badge}
                 </span>
               )}
@@ -159,32 +160,39 @@ export default function DynamicSidebar({
                   </div>
                 </Transition.Child>
                 
-                <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-2">
+                <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gradient-to-b from-saywhat-white to-saywhat-light-grey px-6 pb-2">
                   {/* Mobile sidebar content */}
                   <div className="flex h-16 shrink-0 items-center">
-                    <h1 className="text-xl font-bold text-gray-900">SIRTIS</h1>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-gradient-to-r from-saywhat-orange to-saywhat-red rounded-lg flex items-center justify-center">
+                        <span className="text-saywhat-white font-bold text-sm">S</span>
+                      </div>
+                      <div>
+                        <h1 className="text-lg font-bold text-saywhat-black">SIRTIS</h1>
+                        <p className="text-xs text-saywhat-grey">SAYWHAT</p>
+                      </div>
+                    </div>
                   </div>
                   
                   {moduleConfig && (
                     <div className="flex flex-col">
                       {/* Module Header */}
-                      <div className="mb-4 p-3 rounded-lg" style={{ backgroundColor: `var(--color-${moduleConfig.color}-50)` }}>
+                      <div className="mb-4 p-4 rounded-lg bg-gradient-to-r from-saywhat-orange/10 to-saywhat-red/10 border border-saywhat-orange/30">
                         <div className="flex items-center">
-                          <moduleConfig.icon 
-                            className={cn(
-                              "h-6 w-6 mr-3",
-                              `text-${moduleConfig.color}-600`
-                            )}
-                          />
+                          <div className="p-2 bg-saywhat-orange/20 rounded-md mr-3">
+                            <moduleConfig.icon 
+                              className="h-6 w-6 text-saywhat-orange"
+                            />
+                          </div>
                           <div>
-                            <h2 className="font-semibold text-gray-900">{moduleConfig.name}</h2>
-                            <p className="text-sm text-gray-600">{moduleConfig.description}</p>
+                            <h2 className="font-semibold text-saywhat-black">{moduleConfig.name}</h2>
+                            <p className="text-sm text-saywhat-grey">{moduleConfig.description}</p>
                           </div>
                         </div>
                       </div>
 
                       {/* Navigation */}
-                      <nav className="flex flex-1 flex-col space-y-1">
+                      <nav className="flex flex-1 flex-col space-y-2">
                         <NavigationGroup items={navigation} currentPath={currentPath} />
                       </nav>
                     </div>
@@ -198,40 +206,39 @@ export default function DynamicSidebar({
 
       {/* Static sidebar for desktop */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
+        <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r-4 border-saywhat-orange/30 bg-gradient-to-b from-saywhat-white to-saywhat-light-grey px-6 pb-4 shadow-lg">
           {/* Header */}
-          <div className="flex h-16 shrink-0 items-center">
-            <Link href="/" className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">SIRTIS</h1>
-              <span className="ml-2 text-sm text-gray-500">SAYWHAT</span>
+          <div className="flex h-16 shrink-0 items-center border-b border-saywhat-grey/20 pb-4">
+            <Link href="/" className="flex items-center space-x-3 hover:transform hover:scale-105 transition-all duration-200">
+              <div className="w-10 h-10 bg-gradient-to-r from-saywhat-orange to-saywhat-red rounded-lg flex items-center justify-center shadow-md">
+                <span className="text-saywhat-white font-bold text-lg">S</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-saywhat-black">SIRTIS</h1>
+                <span className="text-sm text-saywhat-grey font-medium">SAYWHAT</span>
+              </div>
             </Link>
           </div>
           
           {moduleConfig && (
             <div className="flex flex-col">
               {/* Module Header */}
-              <div className="mb-6 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200">
+              <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-saywhat-orange/10 via-saywhat-green/10 to-saywhat-red/10 border-2 border-saywhat-orange/20 shadow-sm hover:shadow-md transition-all duration-300">
                 <div className="flex items-center">
-                  <div className={cn(
-                    "p-2 rounded-md mr-3",
-                    `bg-${moduleConfig.color}-100`
-                  )}>
+                  <div className="p-3 bg-gradient-to-r from-saywhat-orange to-saywhat-red rounded-lg mr-4 shadow-sm">
                     <moduleConfig.icon 
-                      className={cn(
-                        "h-6 w-6",
-                        `text-${moduleConfig.color}-600`
-                      )}
+                      className="h-6 w-6 text-saywhat-white"
                     />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-gray-900">{moduleConfig.name}</h2>
-                    <p className="text-sm text-gray-600">{moduleConfig.description}</p>
+                    <h2 className="font-bold text-saywhat-black text-lg">{moduleConfig.name}</h2>
+                    <p className="text-sm text-saywhat-grey font-medium">{moduleConfig.description}</p>
                   </div>
                 </div>
               </div>
 
               {/* Navigation */}
-              <nav className="flex flex-1 flex-col space-y-1">
+              <nav className="flex flex-1 flex-col space-y-2">
                 <NavigationGroup items={navigation} currentPath={currentPath} />
               </nav>
             </div>

@@ -146,14 +146,20 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('PUT request received for employee update')
     const session = await getServerSession(authOptions)
     
     if (!session?.user) {
+      console.log('Unauthorized: no session or user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id: employeeId } = await params
+    console.log('Employee ID:', employeeId)
+    
     const formData = await request.json()
+    console.log('Form data keys:', Object.keys(formData))
+    console.log('Sample form data:', JSON.stringify(formData, null, 2))
 
     // Check permissions
     const hasPermission = session.user?.permissions?.includes('hr.edit') ||
@@ -166,7 +172,7 @@ export async function PUT(
     }
 
     // Validate employee exists
-    const existingEmployee = await prisma.users.findUnique({
+    const existingEmployee = await prisma.employees.findUnique({
       where: { id: employeeId }
     })
 
@@ -174,51 +180,72 @@ export async function PUT(
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
     }
 
-    // Prepare update data
+    // Prepare update data (only include fields that should be updated)
     const updateData: any = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      middleName: formData.middleName || null,
-      email: formData.email.toLowerCase().trim(),
-      phoneNumber: formData.phoneNumber || null,
-      alternativePhone: formData.alternativePhone || null,
-      address: formData.address || null,
-      
-      // Personal Information
-      dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth) : null,
-      gender: formData.gender || null,
-      nationality: formData.nationality || null,
-      nationalId: formData.nationalId || null,
-      passportNumber: formData.passportNumber || null,
-      
-      // Emergency Contact
-      emergencyContact: formData.emergencyContact || null,
-      emergencyPhone: formData.emergencyPhone || null,
-      
-      // Work Information
-      department: formData.department || null,
-      departmentId: formData.departmentId || null,
-      position: formData.position,
-      employmentType: formData.employmentType || 'FULL_TIME',
-      salary: formData.salary ? parseFloat(formData.salary) : null,
-      currency: formData.currency || 'USD',
-      status: formData.status || 'ACTIVE',
-      
-      // Supervisor and Role fields
-      supervisorId: formData.supervisorId || null,
-      isSupervisor: formData.isSupervisor || false,
-      isReviewer: formData.isReviewer || false,
-      
-      // Benefits fields
-      medicalAid: formData.medicalAid || false,
-      funeralCover: formData.funeralCover || false,
-      vehicleBenefit: formData.vehicleBenefit || false,
-      fuelAllowance: formData.fuelAllowance || false,
-      airtimeAllowance: formData.airtimeAllowance || false,
-      otherBenefits: formData.otherBenefits || [],
-      
       updatedAt: new Date()
     }
+
+    // Only update fields that are provided and not undefined
+    if (formData.firstName !== undefined) updateData.firstName = formData.firstName
+    if (formData.lastName !== undefined) updateData.lastName = formData.lastName
+    if (formData.middleName !== undefined) updateData.middleName = formData.middleName || null
+    if (formData.email !== undefined) updateData.email = formData.email.toLowerCase().trim()
+    if (formData.phoneNumber !== undefined) updateData.phoneNumber = formData.phoneNumber || null
+    if (formData.alternativePhone !== undefined) updateData.alternativePhone = formData.alternativePhone || null
+    if (formData.address !== undefined) updateData.address = formData.address || null
+    
+    // Personal Information
+    if (formData.dateOfBirth !== undefined) updateData.dateOfBirth = formData.dateOfBirth ? new Date(formData.dateOfBirth) : null
+    if (formData.gender !== undefined) updateData.gender = formData.gender || null
+    if (formData.nationality !== undefined) updateData.nationality = formData.nationality || null
+    if (formData.nationalId !== undefined) updateData.nationalId = formData.nationalId || null
+    if (formData.passportNumber !== undefined) updateData.passportNumber = formData.passportNumber || null
+    
+    // Emergency Contact
+    if (formData.emergencyContact !== undefined) updateData.emergencyContact = formData.emergencyContact || null
+    if (formData.emergencyPhone !== undefined) updateData.emergencyPhone = formData.emergencyPhone || null
+    
+    // Work Information
+    if (formData.department !== undefined) updateData.department = formData.department || null
+    if (formData.departmentId !== undefined) updateData.departmentId = formData.departmentId || null
+    if (formData.position !== undefined) updateData.position = formData.position
+    if (formData.employmentType !== undefined) updateData.employmentType = formData.employmentType || 'FULL_TIME'
+    if (formData.startDate !== undefined) updateData.startDate = formData.startDate ? new Date(formData.startDate) : existingEmployee.startDate
+    if (formData.hireDate !== undefined) updateData.hireDate = formData.hireDate ? new Date(formData.hireDate) : null
+    if (formData.endDate !== undefined) updateData.endDate = formData.endDate ? new Date(formData.endDate) : null
+    if (formData.salary !== undefined) updateData.salary = formData.salary ? parseFloat(formData.salary) : null
+    if (formData.currency !== undefined) updateData.currency = formData.currency || 'USD'
+    if (formData.status !== undefined) updateData.status = formData.status || 'ACTIVE'
+    
+    // Supervisor and Role fields - validate supervisor exists
+    if (formData.supervisorId !== undefined) {
+      if (formData.supervisorId === 'no-supervisor' || !formData.supervisorId) {
+        updateData.supervisor_id = null
+      } else {
+        // Validate that the supervisor exists
+        const supervisorExists = await prisma.employees.findUnique({
+          where: { id: formData.supervisorId },
+          select: { id: true }
+        })
+        
+        if (!supervisorExists) {
+          console.error(`Supervisor with ID ${formData.supervisorId} not found`)
+          updateData.supervisor_id = null // Set to null if supervisor doesn't exist
+        } else {
+          updateData.supervisor_id = formData.supervisorId
+        }
+      }
+    }
+    if (formData.isSupervisor !== undefined) updateData.is_supervisor = formData.isSupervisor || false
+    if (formData.isReviewer !== undefined) updateData.is_reviewer = formData.isReviewer || false
+    
+    // Benefits fields
+    if (formData.medicalAid !== undefined) updateData.medical_aid = formData.medicalAid || false
+    if (formData.funeralCover !== undefined) updateData.funeral_cover = formData.funeralCover || false
+    if (formData.vehicleBenefit !== undefined) updateData.vehicle_benefit = formData.vehicleBenefit || false
+    if (formData.fuelAllowance !== undefined) updateData.fuel_allowance = formData.fuelAllowance || false
+    if (formData.airtimeAllowance !== undefined) updateData.airtime_allowance = formData.airtimeAllowance || false
+    if (formData.otherBenefits !== undefined) updateData.other_benefits = formData.otherBenefits || []
 
     // Update employee
     const updatedEmployee = await prisma.employees.update({
@@ -238,19 +265,18 @@ export async function PUT(
     })
 
     // Create audit log entry
-    await prisma.audit_logs.create({
-      data: {
-        id: randomUUID(),
-        action: 'UPDATE',
-        resource: 'Employee',
-        resourceId: employeeId,
-        userId: session.user.id,
-        details: `Employee ${updatedEmployee.email} updated by ${session.user.email}`,
-        ipAddress: request.headers.get('x-forwarded-for') || 
-                  request.headers.get('x-real-ip') || 
-                  'unknown'
-      }
-    })
+    const { createAuditLog } = await import('@/lib/api-utils')
+    await createAuditLog(
+      prisma,
+      session.user.email,
+      'UPDATE',
+      'Employee',
+      employeeId,
+      `Employee ${updatedEmployee.email} updated by ${session.user.email}`,
+      request.headers.get('x-forwarded-for') || 
+      request.headers.get('x-real-ip') || 
+      'unknown'
+    )
 
     return NextResponse.json({
       success: true,
@@ -260,8 +286,13 @@ export async function PUT(
 
   } catch (error) {
     console.error('Error updating employee:', error)
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    })
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     )
   }
