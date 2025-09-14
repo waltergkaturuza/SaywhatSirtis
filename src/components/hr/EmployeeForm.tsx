@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { UserRole, Department, getDefaultRoleForDepartment, getRoleDisplayName, ROLE_DEFINITIONS } from "@/types/roles"
-import { UserIcon, EnvelopeIcon, PhoneIcon, IdentificationIcon, BriefcaseIcon, AcademicCapIcon, KeyIcon } from "@heroicons/react/24/outline"
+import { UserIcon, EnvelopeIcon, PhoneIcon, IdentificationIcon, BriefcaseIcon, AcademicCapIcon, KeyIcon, DocumentTextIcon } from "@heroicons/react/24/outline"
 
 interface EmployeeFormData {
   // Personal Information
@@ -68,6 +68,15 @@ interface EmployeeFormData {
   medicalCheckCompleted: boolean
   trainingCompleted: boolean
   additionalNotes: string
+  
+  // Documents
+  uploadedDocuments: Array<{
+    id: string
+    name: string
+    type: string
+    size: number
+    category: string
+  }>
   
   // System fields
   status: string
@@ -149,6 +158,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     medicalCheckCompleted: false,
     trainingCompleted: false,
     additionalNotes: "",
+    uploadedDocuments: [],
     status: "ACTIVE",
     alternativePhone: "",
     nationality: "",
@@ -208,6 +218,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         medicalCheckCompleted: employeeData.medicalCheckCompleted || false,
         trainingCompleted: employeeData.trainingCompleted || false,
         additionalNotes: employeeData.additionalNotes || "",
+        uploadedDocuments: employeeData.uploadedDocuments || [],
         status: employeeData.status || "ACTIVE",
         alternativePhone: employeeData.alternativePhone || "",
         nationality: employeeData.nationality || "",
@@ -531,10 +542,10 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         <div>
           <Label htmlFor="employmentType">Employment Type</Label>
           <Select value={formData.employmentType} onValueChange={(value) => handleInputChange('employmentType', value)}>
-            <SelectTrigger>
-              <SelectValue />
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+              <SelectValue placeholder="Select employment type" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border border-gray-300 shadow-lg">
               <SelectItem value="FULL_TIME">Full Time</SelectItem>
               <SelectItem value="PART_TIME">Part Time</SelectItem>
               <SelectItem value="CONTRACT">Contract</SelectItem>
@@ -573,10 +584,10 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         <div>
           <Label htmlFor="currency">Currency</Label>
           <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
-            <SelectTrigger>
-              <SelectValue />
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+              <SelectValue placeholder="Select currency" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border border-gray-300 shadow-lg">
               <SelectItem value="USD">USD</SelectItem>
               <SelectItem value="ZWL">ZWL</SelectItem>
               <SelectItem value="EUR">EUR</SelectItem>
@@ -604,10 +615,10 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             value={formData.supervisorId || 'no-supervisor'} 
             onValueChange={(value) => handleInputChange('supervisorId', value === 'no-supervisor' ? null : value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select supervisor" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border border-gray-300 shadow-lg">
               <SelectItem value="no-supervisor">No Supervisor</SelectItem>
               {supervisors.map((supervisor) => (
                 <SelectItem key={supervisor.id} value={supervisor.id}>
@@ -655,20 +666,31 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         </div>
         <div>
           <Label htmlFor="payGrade">Pay Grade</Label>
-          <Input
-            id="payGrade"
-            value={formData.payGrade}
-            onChange={(e) => handleInputChange('payGrade', e.target.value)}
-            placeholder="e.g., L1, L2, Senior, etc."
-          />
+          <Select value={formData.payGrade} onValueChange={(value) => handleInputChange('payGrade', value)}>
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="Select Pay Grade" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-gray-300 shadow-lg">
+              <SelectItem value="PO6" className="text-orange-600 font-semibold hover:bg-orange-50">PO6 (Highest)</SelectItem>
+              <SelectItem value="PO4" className="text-orange-500 hover:bg-orange-50">PO4</SelectItem>
+              <SelectItem value="PO3" className="text-green-600 hover:bg-green-50">PO3</SelectItem>
+              <SelectItem value="PO2" className="text-green-500 hover:bg-green-50">PO2</SelectItem>
+              <SelectItem value="PO1" className="text-black hover:bg-gray-50">PO1</SelectItem>
+              <SelectItem value="SO2" className="text-gray-700 hover:bg-gray-50">SO2</SelectItem>
+              <SelectItem value="SO1" className="text-gray-600 hover:bg-gray-50">SO1</SelectItem>
+              <SelectItem value="Scale 5" className="text-gray-500 hover:bg-gray-50">Scale 5</SelectItem>
+              <SelectItem value="Scale 4" className="text-gray-400 hover:bg-gray-50">Scale 4</SelectItem>
+              <SelectItem value="M1/M2" className="text-gray-300 hover:bg-gray-50">M1/M2 (Lowest)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label htmlFor="payFrequency">Pay Frequency</Label>
           <Select value={formData.payFrequency} onValueChange={(value) => handleInputChange('payFrequency', value)}>
-            <SelectTrigger>
-              <SelectValue />
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+              <SelectValue placeholder="Select pay frequency" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border border-gray-300 shadow-lg">
               <SelectItem value="weekly">Weekly</SelectItem>
               <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
               <SelectItem value="monthly">Monthly</SelectItem>
@@ -794,8 +816,8 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
   const renderStep6 = () => {
     return (
-      <div className="space-y-4">
-      <h3 className="text-lg font-medium">Access & Permissions</h3>
+      <div className="space-y-6">
+      <h3 className="text-lg font-medium">Access, Permissions & Documents</h3>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center space-x-2">
@@ -896,6 +918,86 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               />
               <Label htmlFor="trainingCompleted">Training Completed</Label>
             </div>
+          </div>
+
+          {/* Documents Section */}
+          <div className="border-t pt-6 mt-6">
+            <h4 className="text-md font-medium mb-4 flex items-center">
+              <DocumentTextIcon className="h-5 w-5 mr-2" />
+              Employee Documents
+            </h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { name: "CV/Resume", category: "cv", icon: "📄" },
+                { name: "ID Copy", category: "identification", icon: "🆔" },
+                { name: "Qualifications", category: "qualifications", icon: "🎓" },
+                { name: "Contracts", category: "contracts", icon: "📋" },
+                { name: "Medical", category: "medical", icon: "🏥" },
+                { name: "References", category: "references", icon: "📝" },
+                { name: "Bank Details", category: "banking", icon: "🏦" },
+                { name: "Other", category: "other", icon: "📁" }
+              ].map((docType) => (
+                <div
+                  key={docType.category}
+                  className="border border-gray-200 rounded-lg p-3 text-center hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => {
+                    // Create a file input for document upload
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.multiple = true
+                    input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png'
+                    input.onchange = (e) => {
+                      const files = (e.target as HTMLInputElement).files
+                      if (files) {
+                        const newDocs = Array.from(files).map(file => ({
+                          id: Math.random().toString(36).substr(2, 9),
+                          name: file.name,
+                          type: file.type,
+                          size: file.size,
+                          category: docType.category
+                        }))
+                        handleInputChange('uploadedDocuments', [...formData.uploadedDocuments, ...newDocs])
+                      }
+                    }
+                    input.click()
+                  }}
+                >
+                  <div className="text-2xl mb-1">{docType.icon}</div>
+                  <div className="text-xs font-medium">{docType.name}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {formData.uploadedDocuments.filter(doc => doc.category === docType.category).length} files
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Uploaded Documents List */}
+            {formData.uploadedDocuments.length > 0 && (
+              <div className="mt-4">
+                <h5 className="text-sm font-medium text-gray-900 mb-2">Uploaded Documents ({formData.uploadedDocuments.length})</h5>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {formData.uploadedDocuments.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded border">
+                      <div className="flex items-center space-x-2">
+                        <DocumentTextIcon className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm">{doc.name}</span>
+                        <span className="text-xs text-gray-500">({doc.category})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updatedDocs = formData.uploadedDocuments.filter(d => d.id !== doc.id)
+                          handleInputChange('uploadedDocuments', updatedDocs)
+                        }}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-4">
