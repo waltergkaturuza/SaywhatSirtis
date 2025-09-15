@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const totalTenure = employees.reduce((sum: number, emp: { hireDate: Date }) => {
+    const totalTenure = employees.reduce((sum: number, emp: { hireDate: Date | null }) => {
       const tenure = emp.hireDate ? (now.getTime() - emp.hireDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000) : 0
       return sum + tenure
     }, 0)
