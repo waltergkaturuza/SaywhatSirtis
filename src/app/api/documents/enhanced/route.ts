@@ -351,7 +351,7 @@ async function getFilesByDepartment(request: NextRequest, userId: string) {
     { id: 'finance', name: 'Finance', code: 'FIN', fileCount: 189 },
     { id: 'operations', name: 'Operations', code: 'OPS', fileCount: 156 },
     { id: 'marketing', name: 'Marketing', code: 'MKT', fileCount: 298 },
-    { id: 'it', name: 'Information Technology', code: 'IT', fileCount: 145 },
+    { id: 'hr', name: 'Human Resources', code: 'HR', fileCount: 145 },
     { id: 'legal', name: 'Legal', code: 'LEG', fileCount: 78 }
   ]
 

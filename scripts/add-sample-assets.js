@@ -17,7 +17,7 @@ const sampleAssets = [
     currentValue: 900.00,
     condition: 'GOOD',
     status: 'ACTIVE',
-    location: 'IT Department'
+    location: 'HR Department'
   },
   {
     assetTag: 'AST-002',

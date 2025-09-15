@@ -47,7 +47,7 @@ const sampleResources: Resource[] = [
     name: 'Developer',
     type: 'human',
     role: 'Technical',
-    department: 'IT',
+    department: 'HR',
     costPerHour: 40,
     availability: 80,
     allocation: [],

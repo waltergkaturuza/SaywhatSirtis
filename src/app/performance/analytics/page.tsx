@@ -203,7 +203,7 @@ export default function PerformanceAnalyticsPage() {
                   <option value="all">All Departments</option>
                   <option value="hr">Human Resources</option>
                   <option value="finance">Finance</option>
-                  <option value="it">Information Technology</option>
+                  <option value="hr">Human Resources</option>
                   <option value="operations">Operations</option>
                   <option value="programs">Programs</option>
                 </select>

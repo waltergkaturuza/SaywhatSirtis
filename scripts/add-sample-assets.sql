@@ -16,7 +16,7 @@ INSERT INTO assets (
     '2023-01-15'::date,
     1200.00,
     900.00,
-    'IT Department',
+    'HR Department',
     'GOOD',
     'ACTIVE',
     now(),

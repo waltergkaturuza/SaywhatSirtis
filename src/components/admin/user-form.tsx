@@ -51,16 +51,8 @@ interface UserFormProps {
   isEditing?: boolean
 }
 
-const departments = [
-  'Administration',
-  'Human Resources',
-  'Finance',
-  'Operations',
-  'Call Centre',
-  'ICT',
-  'Programs',
-  'Monitoring & Evaluation'
-]
+// Departments will be fetched dynamically from the HR departments API
+const defaultDepartments: string[] = []
 
 const positions = [
   'Director',
@@ -127,6 +119,8 @@ export function UserForm({ user, onSubmit, onCancel, isEditing = false }: UserFo
     ...user
   })
   
+  const [departments, setDepartments] = useState<string[]>(defaultDepartments)
+  
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -134,6 +128,25 @@ export function UserForm({ user, onSubmit, onCancel, isEditing = false }: UserFo
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [profileImagePreview, setProfileImagePreview] = useState(user?.profileImage || '')
+
+  // Fetch departments from Admin API
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await fetch('/api/admin/departments')
+        if (response.ok) {
+          const data = await response.json()
+          const deptNames = data.map((dept: any) => dept.name)
+          setDepartments(deptNames)
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error)
+        setDepartments([])
+      }
+    }
+    
+    fetchDepartments()
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         { status: "REJECTED", _count: { id: 17 } }
       ],
       departmentBreakdown: [
-        { department: "IT", _count: { id: 6 } },
+        { department: "HR", _count: { id: 6 } },
         { department: "Sales", _count: { id: 3 } },
         { department: "Marketing", _count: { id: 2 } },
         { department: "HR", _count: { id: 1 } }

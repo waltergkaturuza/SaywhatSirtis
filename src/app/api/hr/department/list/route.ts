@@ -39,7 +39,7 @@ export async function GET() {
     // Return fallback departments on any error
     const fallbackDepartments = [
       { id: 'hr-dept', name: 'Human Resources', code: 'HR', level: 0, parentId: null, status: 'ACTIVE' },
-      { id: 'it-dept', name: 'Information Technology', code: 'IT', level: 0, parentId: null, status: 'ACTIVE' },
+      { id: 'hr-dept', name: 'Human Resources', code: 'HR', level: 0, parentId: null, status: 'ACTIVE' },
       { id: 'finance-dept', name: 'Finance & Administration', code: 'FIN', level: 0, parentId: null, status: 'ACTIVE' }
     ]
     

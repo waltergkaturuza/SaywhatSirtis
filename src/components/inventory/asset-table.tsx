@@ -57,7 +57,7 @@ export function AssetTable({ searchQuery, permissions }: AssetTableProps) {
             depreciationMethod: "straight-line",
             procurementDate: "2024-01-15",
             location: { id: "head-office", name: "Head Office", code: "HO", type: "building" },
-            department: "IT",
+            department: "HR",
             assignedTo: "John Smith",
             assignedEmail: "john.smith@company.com",
             status: "active",

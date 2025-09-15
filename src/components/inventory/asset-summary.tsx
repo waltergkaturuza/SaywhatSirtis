@@ -67,7 +67,7 @@ export function AssetSummary({ searchQuery, permissions }: AssetSummaryProps) {
             { location: "Warehouse", value: 1155000, count: 290, percentage: 7.5 }
           ],
           valueByDepartment: [
-            { department: "IT", value: 4500000, count: 890, percentage: 29.2 },
+            { department: "HR", value: 4500000, count: 890, percentage: 29.2 },
             { department: "Operations", value: 3200000, count: 450, percentage: 20.8 },
             { department: "Administration", value: 2800000, count: 680, percentage: 18.2 },
             { department: "Finance", value: 2400000, count: 320, percentage: 15.6 },
@@ -118,7 +118,7 @@ export function AssetSummary({ searchQuery, permissions }: AssetSummaryProps) {
         depreciationMethod: "straight-line",
         procurementDate: "2024-01-15",
         location: { id: "head-office", name: "Head Office", code: "HO", type: "building" },
-        department: "IT",
+        department: "HR",
         assignedTo: "John Smith",
         assignedEmail: "john.smith@company.com",
         status: "active",

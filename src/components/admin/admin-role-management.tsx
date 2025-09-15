@@ -122,7 +122,7 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
       modules: ['Program Management', 'Project Tracking', 'Resource Allocation', 'Quality Control']
     },
     'IT': {
-      name: 'Information Technology',
+      name: 'Human Resources',
       modules: ['System Administration', 'User Management', 'Security', 'Infrastructure', 'Support']
     },
     'Call Centre': {
@@ -196,7 +196,7 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
     'System Administration': [
       { id: 'sysadmin.view', name: 'View System Status', description: 'View system health and status', actions: ['view'] },
       { id: 'sysadmin.edit', name: 'System Configuration', description: 'Configure system settings', actions: ['edit'] },
-      { id: 'sysadmin.manage_department', name: 'Manage IT Department', description: 'Manage IT department operations', actions: ['manage_department'] },
+      { id: 'sysadmin.manage_department', name: 'Manage HR Department', description: 'Manage HR department operations', actions: ['manage_department'] },
       { id: 'sysadmin.strategic_access', name: 'Strategic System Access', description: 'Full system administrative access', actions: ['strategic_access'] },
     ],
     'User Management': [

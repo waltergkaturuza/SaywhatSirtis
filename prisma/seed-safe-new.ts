@@ -67,7 +67,7 @@ async function safeSeed() {
         firstName: 'System',
         lastName: 'Administrator',
         role: 'SYSTEM_ADMINISTRATOR' as any,
-        department: 'IT',
+        department: 'HR',
         position: 'System Administrator',
         phoneNumber: '+27123456789',
         location: 'Cape Town, South Africa',

@@ -29,25 +29,63 @@ export async function GET() {
       return NextResponse.json(response, { status })
     }
 
-    // Get all active employees with their user data and department info
-    const employees = await prisma.employees.findMany({
-      where: { 
-        status: 'ACTIVE'
-      },
+    // Get current user to check permissions
+    const currentUser = await prisma.users.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!currentUser) {
+      const { response, status } = createErrorResponse(
+        'User not found',
+        HttpStatus.NOT_FOUND
+      )
+      return NextResponse.json(response, { status })
+    }
+
+    const isHR = currentUser.roles?.includes('hr') || currentUser.role === 'ADMIN'
+    const isSupervisor = currentUser.roles?.includes('supervisor')
+
+    // Build query based on permissions
+    let whereClause: any = {
+      isActive: true
+    }
+
+    // If user is not HR, limit to their scope
+    if (!isHR) {
+      if (isSupervisor) {
+        // Supervisors can see their subordinates and themselves
+        const subordinates = await prisma.users.findMany({
+          where: { supervisorId: currentUser.id },
+          select: { id: true }
+        })
+        
+        const allowedIds = [currentUser.id, ...subordinates.map(sub => sub.id)]
+        whereClause.id = { in: allowedIds }
+      } else {
+        // Regular employees can only see themselves
+        whereClause.id = currentUser.id
+      }
+    }
+
+    // Get all active users (employees) with their details
+    const employees = await prisma.users.findMany({
+      where: whereClause,
       include: {
-        employees: {
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            startDate: true,
+            status: true
+          }
+        },
+        supervisor: {
           select: {
             id: true,
             firstName: true,
             lastName: true,
-            email: true
-          }
-        },
-        departments: {
-          select: {
-            id: true,
-            name: true,
-            code: true
+            email: true,
+            position: true
           }
         }
       },
@@ -55,46 +93,39 @@ export async function GET() {
     })
 
     // Transform employee data for frontend
-    const transformedEmployees = employees.map((employee: any) => {
+    const transformedEmployees = employees.map((emp: any) => {
       return {
         // Basic employee info
-        id: employee.id,
-        name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email,
-        email: employee.email,
-        department: employee.departments?.name || employee.department || 'Not Assigned',
-        position: employee.position || 'N/A',
-        phone: employee.phoneNumber || 'N/A',
-        createdAt: employee.createdAt,
-        updatedAt: employee.updatedAt,
-        location: employee.location,
-        bio: employee.bio,
+        id: emp.id,
+        employeeId: emp.employee?.employeeId || `EMP${emp.id.slice(-4).toUpperCase()}`,
+        name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        email: emp.email,
+        department: emp.department || 'Not Assigned',
+        position: emp.position || 'N/A',
+        phone: emp.phoneNumber || 'N/A',
+        
+        // Supervisor info
+        supervisor: emp.supervisor ? {
+          id: emp.supervisor.id,
+          name: `${emp.supervisor.firstName} ${emp.supervisor.lastName}`,
+          email: emp.supervisor.email,
+          position: emp.supervisor.position
+        } : null,
         
         // Employee-specific data
-        employeeId: employee.employeeId,
-        salary: employee.salary,
-        hireDate: employee.hireDate ? employee.hireDate.toISOString().split('T')[0] : null,
-        startDate: employee.startDate ? employee.startDate.toISOString().split('T')[0] : null,
-        employmentType: employee.employmentType || 'FULL_TIME',
-        status: employee.status || 'ACTIVE',
-        supervisorId: employee.supervisor_id,
-        supervisor: employee.employees,
-        isSupervisor: employee.is_supervisor || false,
-        isReviewer: employee.is_reviewer || false,
+        startDate: emp.employee?.startDate,
+        status: emp.employee?.status || 'active',
+        roles: emp.roles || [],
+        role: emp.role,
+        isActive: emp.isActive,
         
-        // Default user-specific data (since users relation is not available)
-        roles: [],
-        role: 'employee',
-        isActive: true,
-        
-        // Benefits
-        benefits: {
-          medicalAid: employee.medical_aid || false,
-          funeralCover: employee.funeral_cover || false,
-          vehicleBenefit: employee.vehicle_benefit || false,
-          fuelAllowance: employee.fuel_allowance || false,
-          airtimeAllowance: employee.airtime_allowance || false,
-          other: employee.other_benefits || []
-        }
+        // Additional info
+        location: emp.location,
+        bio: emp.bio,
+        createdAt: emp.createdAt,
+        updatedAt: emp.updatedAt
       }
     })
 

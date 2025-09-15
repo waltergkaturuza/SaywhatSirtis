@@ -46,7 +46,7 @@ export default function JobDescriptionsPage() {
       {
         id: '1',
         title: 'Software Developer',
-        department: 'IT',
+        department: 'HR',
         level: 'Mid-Level',
         status: 'active',
         description: 'Develop and maintain software applications for SAYWHAT organization.',

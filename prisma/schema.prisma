@@ -649,19 +649,45 @@ model performance_plans {
   id                    String                      @id
   employeeId            String
   supervisorId          String
+  reviewerId            String?
   planYear              Int
   planPeriod            String
-  status                String                      @default("draft")
+  status                String                      @default("draft") // draft, supervisor-review, supervisor-approved, reviewer-review, reviewer-approved, completed
+  supervisorComments    String?
+  reviewerComments      String?
+  submittedAt           DateTime?
+  supervisorApprovedAt  DateTime?
+  reviewerApprovedAt    DateTime?
   createdAt             DateTime                    @default(now())
   updatedAt             DateTime
   employees             employees                   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   supervisor            users                       @relation("PerformancePlanSupervisor", fields: [supervisorId], references: [id])
+  reviewer              users?                      @relation("PerformancePlanReviewer", fields: [reviewerId], references: [id])
   keyResponsibilities   performance_responsibilities[]
   appraisals            performance_appraisals[]
+  comments              performance_plan_comments[]
 
   @@index([employeeId])
   @@index([supervisorId])
+  @@index([reviewerId])
   @@index([planYear])
+  @@index([status])
+}
+
+model performance_plan_comments {
+  id               String                      @id
+  planId           String
+  userId           String
+  comment          String
+  commentType      String                      // submit, supervisor-approve, supervisor-reject, reviewer-approve, reviewer-reject, general
+  createdAt        DateTime                    @default(now())
+  performancePlan  performance_plans           @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user             users                       @relation("PerformancePlanComments", fields: [userId], references: [id])
+
+  @@index([planId])
+  @@index([userId])
+  @@index([commentType])
+  @@index([createdAt])
 }
 
 model performance_responsibilities {
@@ -1093,6 +1119,8 @@ model users {
   performance_plans_supervised                         performance_plans[]          @relation("PerformancePlanSupervisor")
   performance_appraisals_supervised                    performance_appraisals[]     @relation("AppraisalSupervisor")
   performance_appraisals_reviewed                      performance_appraisals[]     @relation("AppraisalReviewer")
+  performance_plans_reviewed                           performance_plans[]          @relation("PerformancePlanReviewer")
+  performance_plan_comments                            performance_plan_comments[]  @relation("PerformancePlanComments")
   employee                                             employees?
 }
 
@@ -1373,6 +1401,12 @@ enum UserRole {
   CALL_CENTRE_AGENT
   EMPLOYEE
   USER
+  BASIC_USER_1
+  BASIC_USER_2
+  ADVANCE_USER_1
+  ADVANCE_USER_2
+  HR
+  SYSTEM_ADMINISTRATOR
 }
 
 enum QualificationType {

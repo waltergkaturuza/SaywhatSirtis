@@ -3,9 +3,105 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { randomUUID } from 'crypto'
+import * as bcrypt from 'bcryptjs'
 
-export async function GET() {
+// Helper functions for role management - aligned with HR module definitions
+function getRoleDisplayName(role: string): string {
+  return role.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
+}
+
+function getRolePermissions(role: string): string[] {
+  // Common baseline permissions for all users
+  const basePermissions = [
+    'dashboard',
+    'personalProfile',
+    'documents',
+    'performance_plans',
+    'appraisals',
+    'training'
+  ]
+
+  const rolePermissions = {
+    'BASIC_USER_1': [
+      ...basePermissions,
+      'call_center_view',
+      'documents_view'
+    ],
+    'BASIC_USER_2': [
+      ...basePermissions,
+      'programs_view',
+      'inventory_view'
+    ],
+    'ADVANCE_USER_1': [
+      ...basePermissions,
+      'call_center_full',
+      'programs_edit',
+      'risks_edit',
+      'reports_generate'
+    ],
+    'ADVANCE_USER_2': [
+      ...basePermissions,
+      'programs_full',
+      'documents_edit',
+      'inventory_edit',
+      'reports_generate'
+    ],
+    'HR': [
+      ...basePermissions,
+      'hr_full',
+      'view_other_profiles',
+      'manage_performance',
+      'recruitment',
+      'employee_reports'
+    ],
+    'SYSTEM_ADMINISTRATOR': [
+      'full_access',
+      'admin_panel',
+      'user_management',
+      'system_settings',
+      'security_management',
+      'audit_logs'
+    ]
+  }
+  
+  return rolePermissions[role as keyof typeof rolePermissions] || basePermissions
+}
+
+function getDepartmentPermissions(department: string): string[] {
+  const departmentPermissions = {
+    'EXECUTIVE_LEADERSHIP': ['strategic_planning', 'executive_reports', 'board_communications'],
+    'FINANCE_AND_ADMINISTRATION': ['financial_management', 'budget_oversight', 'admin_operations'],
+    'PROGRAMS_AND_OPERATIONS': ['program_management', 'field_operations', 'beneficiary_management'],
+    'HUMAN_RESOURCES': ['staff_management', 'recruitment_full', 'performance_management'],
+    'GRANTS_AND_COMPLIANCE': ['grant_applications', 'donor_reports', 'compliance_monitoring', 'audit_support'],
+    'COMMUNICATIONS_AND_ADVOCACY': ['media_relations', 'content_creation', 'social_media', 'advocacy_campaigns'],
+    // Legacy departments
+    'HR': ['hr_policies', 'staff_management', 'recruitment_full'],
+    'FINANCE': ['financial_reports', 'budget_management'],
+    'PROGRAMS': ['project_management', 'field_operations'],
+    'CALL_CENTER': ['customer_service', 'data_entry', 'reporting'],
+    'INVENTORY': ['asset_tracking', 'procurement_support', 'maintenance_logs'],
+    'DOCUMENTS': ['document_classification', 'archive_management', 'version_control']
+  }
+  
+  return departmentPermissions[department] || []
+}
+
+// Enhanced function to combine role and department permissions  
+function getCombinedPermissions(role: string, department: string): string[] {
+  const rolePerms = getRolePermissions(role)
+  const deptPerms = getDepartmentPermissions(department)
+  
+  // Combine and deduplicate permissions
+  return [...new Set([...rolePerms, ...deptPerms])]
+}
+
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url)
+    const action = searchParams.get('action')
+    const userId = searchParams.get('userId')
+
     const session = await getServerSession(authOptions)
 
     // Temporarily allow unauthenticated access in development for testing
@@ -22,6 +118,36 @@ export async function GET() {
       
       if (!hasAdminAccess && !isDevelopment) {
         return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+      }
+    }
+
+    // Handle specific user permissions request
+    if (action === 'get_permissions' && userId) {
+      try {
+        const user = await prisma.users.findUnique({
+          where: { id: userId },
+          select: {
+            role: true,
+            department: true
+          }
+        })
+
+        if (!user) {
+          return NextResponse.json({ error: "User not found" }, { status: 404 })
+        }
+
+        const permissions = getCombinedPermissions(user.role || 'BASIC_USER_1', user.department || '')
+        
+        return NextResponse.json({
+          success: true,
+          permissions
+        })
+      } catch (error) {
+        console.error("Error fetching user permissions:", error)
+        return NextResponse.json(
+          { error: "Failed to fetch user permissions" },
+          { status: 500 }
+        )
       }
     }
 
@@ -47,76 +173,41 @@ export async function GET() {
     // Transform data to match frontend interface
     const transformedUsers = users.map(user => ({
       id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      firstName: user.firstName || 'Unknown',
+      lastName: user.lastName || 'User',
       email: user.email,
       role: user.role || 'BASIC_USER_1',
-      department: user.department,
-      position: user.position,
-      lastLogin: user.lastLogin?.toISOString(),
-      status: user.isActive ? 'active' : 'inactive',
+      department: user.department || 'Unassigned',
+      position: user.position || 'No Position',
+      employeeId: user.id, // Using user ID as employee ID for now
+      isActive: user.isActive,
+      lastLogin: user.lastLogin ? user.lastLogin.toISOString() : null,
       createdAt: user.createdAt.toISOString(),
-      permissions: [] // TODO: Add permissions based on role
+      updatedAt: user.createdAt.toISOString(),
+      roles: [{
+        role: {
+          name: user.role || 'BASIC_USER_1',
+          description: getRoleDisplayName(user.role || 'BASIC_USER_1')
+        }
+      }],
+      permissions: getCombinedPermissions(user.role || 'BASIC_USER_1', user.department || '')
     }))
 
     return NextResponse.json({
       success: true,
-      users: transformedUsers,
-      total: users.length
+      data: {
+        users: transformedUsers,
+        total: transformedUsers.length,
+        page: 1,
+        totalPages: 1
+      }
     })
   } catch (error) {
     console.error("Error fetching users:", error)
-    
-    // Fallback to mock data when database is unavailable
-    console.log("Database unavailable, returning mock data for development")
-    const mockUsers = [
-      {
-        id: "1",
-        firstName: "System",
-        lastName: "Administrator",
-        email: "admin@saywhat.org",
-        role: "SYSTEM_ADMINISTRATOR",
-        department: "Executive Directors Office",
-        position: "System Administrator",
-        lastLogin: new Date().toISOString(),
-        status: "active" as const,
-        createdAt: new Date().toISOString(),
-        permissions: []
-      },
-      {
-        id: "2",
-        firstName: "HR",
-        lastName: "Manager",
-        email: "hr@saywhat.org",
-        role: "HR",
-        department: "Human Resource Management",
-        position: "HR Manager",
-        lastLogin: new Date(Date.now() - 86400000).toISOString(),
-        status: "active" as const,
-        createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-        permissions: []
-      },
-      {
-        id: "3",
-        firstName: "John",
-        lastName: "Doe",
-        email: "john.doe@saywhat.org",
-        role: "BASIC_USER_1",
-        department: "Programs",
-        position: "Program Officer",
-        lastLogin: new Date(Date.now() - 172800000).toISOString(),
-        status: "active" as const,
-        createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-        permissions: []
-      }
-    ]
-
-    return NextResponse.json({
-      success: true,
-      users: mockUsers,
-      total: mockUsers.length,
-      note: "Using mock data - database unavailable"
-    })
+    return NextResponse.json(
+      { error: "Database connection failed" },
+      { status: 500 }
+    )
   }
 }
 
@@ -184,21 +275,29 @@ export async function POST(request: NextRequest) {
 
           const transformedUser = {
             id: updatedUser.id,
-            firstName: updatedUser.firstName,
-            lastName: updatedUser.lastName,
+            firstName: updatedUser.firstName || 'Unknown',
+            lastName: updatedUser.lastName || 'User',
             email: updatedUser.email,
-            role: updatedUser.role || 'USER',
-            department: updatedUser.department,
-            position: updatedUser.position,
-            lastLogin: updatedUser.lastLogin?.toISOString(),
+            role: updatedUser.role || 'BASIC_USER_1',
+            department: updatedUser.department || 'Unassigned',
+            position: updatedUser.position || 'No Position',
+            lastLogin: updatedUser.lastLogin ? updatedUser.lastLogin.toISOString() : null,
             status: updatedUser.isActive ? 'active' : 'inactive',
+            isActive: updatedUser.isActive,
             createdAt: updatedUser.createdAt.toISOString(),
-            permissions: []
+            permissions: getCombinedPermissions(updatedUser.role || 'BASIC_USER_1', updatedUser.department || ''),
+            roles: [{
+              role: {
+                name: updatedUser.role || 'BASIC_USER_1',
+                displayName: getRoleDisplayName(updatedUser.role || 'BASIC_USER_1'),
+                permissions: getCombinedPermissions(updatedUser.role || 'BASIC_USER_1', updatedUser.department || '')
+              }
+            }]
           }
 
           return NextResponse.json({
             success: true,
-            user: { ...transformedUser, role: transformedUser.role.replace('USER', 'BASIC_USER_1') },
+            user: transformedUser,
             message: `User ${updatedUser.isActive ? 'activated' : 'deactivated'} successfully`
           })
         } catch (error) {
@@ -240,20 +339,23 @@ export async function POST(request: NextRequest) {
             )
           }
 
-          // Note: Password handling would be implemented here in production
-          // For now, we create users without password (OAuth/SSO authentication)
-          
+          // Hash the password
+          const hashedPassword = await bcrypt.hash(userData.password, 10)
+
+          // Create new user
           const newUser = await prisma.users.create({
             data: {
               id: randomUUID(),
               email: userData.email,
               firstName: userData.firstName,
               lastName: userData.lastName,
-              role: userData.role ? userData.role.toUpperCase() as any : 'BASIC_USER_1',
-              department: userData.department || '',
-              position: userData.position || '',
+              role: userData.role || 'BASIC_USER_1',
+              department: userData.department || 'Unassigned',
+              position: userData.position || 'No Position',
+              password: hashedPassword,
               isActive: true,
-              updatedAt: new Date()
+              createdAt: new Date(),
+              updatedAt: new Date(),
             },
             select: {
               id: true,
@@ -264,7 +366,6 @@ export async function POST(request: NextRequest) {
               department: true,
               position: true,
               isActive: true,
-              lastLogin: true,
               createdAt: true,
             }
           })
@@ -274,13 +375,21 @@ export async function POST(request: NextRequest) {
             firstName: newUser.firstName,
             lastName: newUser.lastName,
             email: newUser.email,
-            role: newUser.role || 'BASIC_USER_1',
+            role: newUser.role,
             department: newUser.department,
             position: newUser.position,
-            lastLogin: newUser.lastLogin?.toISOString(),
-            status: newUser.isActive ? 'active' : 'inactive',
+            employeeId: newUser.id,
+            isActive: newUser.isActive,
+            lastLogin: null,
             createdAt: newUser.createdAt.toISOString(),
-            permissions: []
+            updatedAt: newUser.createdAt.toISOString(),
+            roles: [{
+              role: {
+                name: newUser.role || 'BASIC_USER_1',
+                description: getRoleDisplayName(newUser.role || 'BASIC_USER_1')
+              }
+            }],
+            permissions: getCombinedPermissions(newUser.role || 'BASIC_USER_1', newUser.department || '')
           }
 
           return NextResponse.json({
@@ -298,15 +407,46 @@ export async function POST(request: NextRequest) {
 
       case 'update_user':
         try {
+          if (!userId) {
+            return NextResponse.json(
+              { error: "User ID is required for update" },
+              { status: 400 }
+            )
+          }
+
+          // Check if user exists
+          const existingUser = await prisma.users.findUnique({
+            where: { id: userId }
+          })
+
+          if (!existingUser) {
+            return NextResponse.json(
+              { error: "User not found" },
+              { status: 404 }
+            )
+          }
+
+          // Prepare update data
+          const updateData: any = {
+            updatedAt: new Date()
+          }
+
+          if (userData.firstName) updateData.firstName = userData.firstName
+          if (userData.lastName) updateData.lastName = userData.lastName
+          if (userData.email) updateData.email = userData.email
+          if (userData.role) updateData.role = userData.role
+          if (userData.department) updateData.department = userData.department
+          if (userData.position) updateData.position = userData.position
+
+          // Hash password if provided
+          if (userData.password && userData.password.trim()) {
+            updateData.password = await bcrypt.hash(userData.password, 10)
+          }
+
+          // Update user
           const updatedUser = await prisma.users.update({
             where: { id: userId },
-            data: {
-              firstName: userData.firstName,
-              lastName: userData.lastName,
-              role: userData.role ? userData.role.toUpperCase() as any : undefined,
-              department: userData.department,
-              position: userData.position,
-            },
+            data: updateData,
             select: {
               id: true,
               email: true,
@@ -318,6 +458,7 @@ export async function POST(request: NextRequest) {
               isActive: true,
               lastLogin: true,
               createdAt: true,
+              updatedAt: true,
             }
           })
 
@@ -326,18 +467,26 @@ export async function POST(request: NextRequest) {
             firstName: updatedUser.firstName,
             lastName: updatedUser.lastName,
             email: updatedUser.email,
-            role: updatedUser.role || 'USER',
+            role: updatedUser.role,
             department: updatedUser.department,
             position: updatedUser.position,
-            lastLogin: updatedUser.lastLogin?.toISOString(),
-            status: updatedUser.isActive ? 'active' : 'inactive',
+            employeeId: updatedUser.id,
+            isActive: updatedUser.isActive,
+            lastLogin: updatedUser.lastLogin ? updatedUser.lastLogin.toISOString() : null,
             createdAt: updatedUser.createdAt.toISOString(),
-            permissions: []
+            updatedAt: updatedUser.updatedAt.toISOString(),
+            roles: [{
+              role: {
+                name: updatedUser.role || 'BASIC_USER_1',
+                description: getRoleDisplayName(updatedUser.role || 'BASIC_USER_1')
+              }
+            }],
+            permissions: getCombinedPermissions(updatedUser.role || 'BASIC_USER_1', updatedUser.department || '')
           }
 
           return NextResponse.json({
             success: true,
-            user: { ...transformedUser, role: transformedUser.role.replace('USER', 'BASIC_USER_1') },
+            user: transformedUser,
             message: "User updated successfully"
           })
         } catch (error) {
@@ -350,6 +499,26 @@ export async function POST(request: NextRequest) {
 
       case 'delete_user':
         try {
+          if (!userId) {
+            return NextResponse.json(
+              { error: "User ID is required for deletion" },
+              { status: 400 }
+            )
+          }
+
+          // Check if user exists
+          const existingUser = await prisma.users.findUnique({
+            where: { id: userId }
+          })
+
+          if (!existingUser) {
+            return NextResponse.json(
+              { error: "User not found" },
+              { status: 404 }
+            )
+          }
+
+          // Delete user
           await prisma.users.delete({
             where: { id: userId }
           })
@@ -367,16 +536,15 @@ export async function POST(request: NextRequest) {
         }
 
       default:
-        return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+        return NextResponse.json(
+          { error: "Invalid action" },
+          { status: 400 }
+        )
     }
   } catch (error) {
-    console.error("Error in users API:", error)
+    console.error("Error processing request:", error)
     return NextResponse.json(
-      { 
-        success: false,
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error"
-      },
+      { error: "Internal server error" },
       { status: 500 }
     )
   }

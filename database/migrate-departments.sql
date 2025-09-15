@@ -90,9 +90,12 @@ CREATE TRIGGER update_department_updated_at_trigger
 INSERT INTO "Department" ("id", "name", "description", "code", "status") 
 VALUES 
     ('dept_hr_default', 'Human Resources', 'Manages employee relations, recruitment, and HR policies', 'HR', 'ACTIVE'),
-    ('dept_it_default', 'Information Technology', 'Manages technology infrastructure and software development', 'IT', 'ACTIVE'),
-    ('dept_finance_default', 'Finance', 'Handles financial planning, accounting, and budgeting', 'FIN', 'ACTIVE'),
-    ('dept_operations_default', 'Operations', 'Manages day-to-day business operations and processes', 'OPS', 'ACTIVE')
+    ('dept_edo_default', 'Executive Directors Office', 'Executive leadership and strategic oversight', 'EDO', 'ACTIVE'),
+    ('dept_rd_default', 'Executive Directors Office - Research and Development', 'Research and Development initiatives', 'R&D', 'ACTIVE'),
+    ('dept_finance_default', 'Finance and Administration', 'Handles financial planning, accounting, and administration', 'FIN', 'ACTIVE'),
+    ('dept_programs_default', 'Programs', 'Manages program implementation and monitoring', 'PROG', 'ACTIVE'),
+    ('dept_gc_default', 'Grants and Compliance', 'Grant management and regulatory compliance', 'GC', 'ACTIVE'),
+    ('dept_ca_default', 'Communications and Advocacy', 'Communications, outreach and advocacy activities', 'C&A', 'ACTIVE')
 ON CONFLICT ("name") DO NOTHING;
 
 -- Report migration results

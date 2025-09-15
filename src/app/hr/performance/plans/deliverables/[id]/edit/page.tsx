@@ -40,7 +40,7 @@ const getSampleDeliverable = (id: string): DeliverableFormData => {
       timeline: "Q1 2024 - Q2 2024",
       startDate: "2024-01-01",
       endDate: "2024-06-30",
-      supportDepartment: "IT Department, Training Unit",
+      supportDepartment: "HR, Training Unit",
       responsiblePerson: "john.doe",
       successIndicator: "20% increase in task completion rate, 95% team adoption",
       priority: "high",
@@ -402,7 +402,7 @@ export default function EditDeliverablePage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Department</option>
-                  <option value="IT Department, Training Unit">IT Department, Training Unit</option>
+                  <option value="HR, Training Unit">HR, Training Unit</option>
                   <option value="Finance Department">Finance Department</option>
                   <option value="HR Department">HR Department</option>
                   <option value="Operations Department">Operations Department</option>

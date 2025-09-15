@@ -31,13 +31,15 @@ async function checkDepartments() {
       console.log('❌ No departments found in the database!')
       console.log('📝 Creating default departments...')
       
-      // Create default departments
+      // Create default departments - using actual HR departments only
       const defaultDepartments = [
         { name: 'Human Resources', code: 'HR', description: 'Human Resources Department' },
-        { name: 'Information Technology', code: 'IT', description: 'Information Technology Department' },
-        { name: 'Finance', code: 'FIN', description: 'Finance Department' },
-        { name: 'Operations', code: 'OPS', description: 'Operations Department' },
-        { name: 'Administration', code: 'ADMIN', description: 'Administration Department' }
+        { name: 'Executive Directors Office', code: 'EDO', description: 'Executive Directors Office' },
+        { name: 'Executive Directors Office - Research and Development', code: 'R&D', description: 'Research and Development Department' },
+        { name: 'Finance and Administration', code: 'FIN', description: 'Finance and Administration Department' },
+        { name: 'Programs', code: 'PROG', description: 'Programs Department' },
+        { name: 'Grants and Compliance', code: 'GC', description: 'Grants and Compliance Department' },
+        { name: 'Communications and Advocacy', code: 'C&A', description: 'Communications and Advocacy Department' }
       ]
 
       for (const dept of defaultDepartments) {

@@ -90,7 +90,7 @@ export default function AddRiskPage() {
       
       // Load departments
       setDepartments([
-        { id: '1', name: 'Information Technology' },
+        { id: '1', name: 'Human Resources' },
         { id: '2', name: 'Finance' },
         { id: '3', name: 'Human Resources' },
         { id: '4', name: 'Operations' },

@@ -147,7 +147,7 @@ export default function InventoryManagementPage() {
         type: "building",
         address: "123 Main Street, Harare"
       },
-      department: "IT",
+      department: "HR",
       assignedTo: "John Doe",
       procurementValue: 1500,
       currentValue: 1200,

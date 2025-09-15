@@ -233,7 +233,7 @@ export default function NotificationRoutingPage() {
       trigger: "employee_archived",
       routes: [
         { recipient: "Direct Supervisor", action: "Confirm Archive", deadline: "1 day" },
-        { recipient: "IT Department", action: "Revoke Access", deadline: "immediate" },
+        { recipient: "HR Department", action: "Revoke Access", deadline: "immediate" },
 
       ],
       status: "active",

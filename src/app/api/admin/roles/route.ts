@@ -3,52 +3,106 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// Mock roles data
+// HR Module roles - matching the actual role system
 let roles = [
   {
     id: '1',
-    name: 'admin',
-    description: 'System Administrator',
-    permissions: ['admin', 'user_management', 'system_config', 'audit_log'],
-    userCount: 2,
+    name: 'BASIC_1',
+    description: 'Basic 1 - Entry level user with basic permissions',
+    permissions: ['basic_access', 'profile_management'],
+    userCount: 0,
     createdAt: '2024-01-15',
     updatedAt: '2024-01-15'
   },
   {
     id: '2',
-    name: 'hr_manager',
-    description: 'HR Manager',
-    permissions: ['hr_management', 'employee_data'],
-    userCount: 3,
+    name: 'BASIC_2',
+    description: 'Basic 2 - Basic user with additional permissions',
+    permissions: ['basic_access', 'profile_management', 'department_data'],
+    userCount: 0,
     createdAt: '2024-02-01',
     updatedAt: '2024-02-01'
   },
   {
     id: '3',
-    name: 'programs_manager',
-    description: 'Programs Manager',
-    permissions: ['programs_management', 'project_data', 'reports'],
-    userCount: 4,
+    name: 'ADVANCE_USER_1',
+    description: 'Advanced User 1 - Advanced user with departmental access',
+    permissions: ['departmental_access', 'project_data', 'reports'],
+    userCount: 0,
     createdAt: '2024-03-10',
     updatedAt: '2024-03-10'
   },
   {
     id: '4',
-    name: 'call_centre_agent',
-    description: 'Call Centre Agent',
-    permissions: ['call_centre', 'case_management'],
-    userCount: 12,
+    name: 'ADVANCE_USER_2',
+    description: 'Advanced User 2 - Advanced user with cross-departmental access',
+    permissions: ['cross_departmental_access', 'advanced_reports', 'project_management'],
+    userCount: 1,
     createdAt: '2024-05-20',
     updatedAt: '2024-05-20'
   },
   {
     id: '5',
-    name: 'employee',
-    description: 'Regular Employee',
-    permissions: ['basic_access', 'profile_management'],
-    userCount: 25,
+    name: 'SUPER_ADMIN',
+    description: 'Super Admin - Full system administrator access',
+    permissions: ['admin', 'user_management', 'system_config', 'audit_log', 'all_access'],
+    userCount: 1,
     createdAt: '2024-06-01',
     updatedAt: '2024-06-01'
+  },
+  {
+    id: '6',
+    name: 'ADMIN',
+    description: 'Admin - Administrative access to most features',
+    permissions: ['admin', 'user_management', 'system_config', 'hr_management'],
+    userCount: 1,
+    createdAt: '2024-07-01',
+    updatedAt: '2024-07-01'
+  },
+  {
+    id: '7',
+    name: 'HR_MANAGER',
+    description: 'HR Manager - Human Resources management access',
+    permissions: ['hr_management', 'employee_data', 'performance_management'],
+    userCount: 1,
+    createdAt: '2024-08-01',
+    updatedAt: '2024-08-01'
+  },
+  {
+    id: '8',
+    name: 'PROJECT_MANAGER',
+    description: 'Project Manager - Project management and oversight access',
+    permissions: ['project_management', 'project_data', 'reports', 'team_management'],
+    userCount: 1,
+    createdAt: '2024-09-01',
+    updatedAt: '2024-09-01'
+  },
+  {
+    id: '9',
+    name: 'CALL_CENTRE_AGENT',
+    description: 'Call Centre Agent - Call centre operations access',
+    permissions: ['call_centre', 'case_management', 'customer_data'],
+    userCount: 0,
+    createdAt: '2024-10-01',
+    updatedAt: '2024-10-01'
+  },
+  {
+    id: '10',
+    name: 'EMPLOYEE',
+    description: 'Employee - Standard employee access',
+    permissions: ['basic_access', 'profile_management', 'self_service'],
+    userCount: 0,
+    createdAt: '2024-11-01',
+    updatedAt: '2024-11-01'
+  },
+  {
+    id: '11',
+    name: 'USER',
+    description: 'User - Basic user access',
+    permissions: ['basic_access', 'profile_view'],
+    userCount: 1,
+    createdAt: '2024-12-01',
+    updatedAt: '2024-12-01'
   }
 ]
 

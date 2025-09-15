@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: employeeId } = await params
+    const { id: requestId } = await params
 
     // Check permissions
     const hasPermission = session.user?.permissions?.includes('hr.view') ||
@@ -28,9 +28,13 @@ export async function GET(
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Fetch employee with all details including relationships
-    const employee = await prisma.employees.findUnique({
-      where: { id: employeeId },
+    // Handle both User IDs and Employee IDs - convert User ID to Employee ID if needed
+    let employeeId = requestId
+    let employee = null
+
+    // First try as Employee ID
+    employee = await prisma.employees.findUnique({
+      where: { id: requestId },
       include: {
         departments: {
           select: {
@@ -61,8 +65,84 @@ export async function GET(
       }
     })
 
+    // If not found, try as User ID (convert User ID to Employee ID)
     if (!employee) {
-      return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+      console.log(`Employee not found with ID ${requestId}, trying as User ID...`)
+      
+      employee = await prisma.employees.findUnique({
+        where: { userId: requestId },
+        include: {
+          departments: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              level: true
+            }
+          },
+          employees: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              position: true
+            }
+          },
+          other_employees: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              position: true
+            }
+          }
+        }
+      })
+      
+      if (employee) {
+        console.log(`✅ Found employee by User ID: ${requestId} → Employee ID: ${employee.id}`)
+        employeeId = employee.id // Update to use the actual employee ID
+      }
+    }
+
+    if (!employee) {
+      // Try to find a similar employee to provide helpful suggestions
+      try {
+        const similarEmployees = await prisma.employees.findMany({
+          where: {
+            OR: [
+              { employeeId: { contains: employeeId.slice(-6) } }, // Last 6 chars
+              { email: { contains: '@saywhat.org' } }
+            ]
+          },
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          },
+          take: 3
+        })
+
+        if (similarEmployees.length > 0) {
+          return NextResponse.json({ 
+            error: 'Employee not found',
+            message: `Employee with ID ${employeeId} does not exist. Did you mean one of these?`,
+            suggestions: similarEmployees
+          }, { status: 404 })
+        }
+      } catch (suggestionError) {
+        console.log('Could not fetch suggestions:', suggestionError.message)
+      }
+
+      return NextResponse.json({ 
+        error: 'Employee not found',
+        message: `Employee with ID ${employeeId} does not exist. Please refresh the employee list.`,
+        code: 'EMPLOYEE_NOT_FOUND'
+      }, { status: 404 })
     }
 
     // Transform employee data for frontend
@@ -154,8 +234,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id: employeeId } = await params
-    console.log('Employee ID:', employeeId)
+    const { id: requestId } = await params
+    console.log('Request ID:', requestId)
     
     const formData = await request.json()
     console.log('Form data keys:', Object.keys(formData))
@@ -171,13 +251,63 @@ export async function PUT(
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Validate employee exists
-    const existingEmployee = await prisma.employees.findUnique({
-      where: { id: employeeId }
+    // Handle both User IDs and Employee IDs - find employee by either ID
+    let existingEmployee = null
+    let employeeId = requestId
+
+    // First try as Employee ID
+    existingEmployee = await prisma.employees.findUnique({
+      where: { id: requestId }
     })
 
+    // If not found, try as User ID
     if (!existingEmployee) {
-      return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+      console.log(`Employee not found with ID ${requestId}, trying as User ID...`)
+      
+      existingEmployee = await prisma.employees.findUnique({
+        where: { userId: requestId }
+      })
+      
+      if (existingEmployee) {
+        console.log(`✅ Found employee by User ID: ${requestId} → Employee ID: ${existingEmployee.id}`)
+        employeeId = existingEmployee.id // Update to use the actual employee ID
+      }
+    }
+
+    if (!existingEmployee) {
+      console.log(`Employee not found with either ID: ${requestId}`)
+      
+      // Try to find current employees to provide helpful info
+      try {
+        const currentEmployees = await prisma.employees.findMany({
+          select: {
+            id: true,
+            userId: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          },
+          take: 5,
+          orderBy: { updatedAt: 'desc' }
+        })
+
+        return NextResponse.json({ 
+          error: 'Employee not found',
+          message: `No employee found with ID ${requestId} (tried both Employee ID and User ID).`,
+          suggestion: 'Please refresh your browser and try again. The employee list may be outdated.',
+          currentEmployees: currentEmployees,
+          requestId: requestId,
+          code: 'EMPLOYEE_NOT_FOUND'
+        }, { status: 404 })
+      } catch (listError) {
+        console.error('Error fetching employee suggestions:', listError.message)
+        return NextResponse.json({ 
+          error: 'Employee not found',
+          message: `No employee found with ID ${requestId}. Please refresh the employee list.`,
+          code: 'EMPLOYEE_NOT_FOUND'
+        }, { status: 404 })
+      }
     }
 
     // Prepare update data (only include fields that should be updated)

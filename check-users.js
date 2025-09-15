@@ -4,14 +4,17 @@ async function checkUsers() {
   const prisma = new PrismaClient();
   
   try {
-    const users = await prisma.user.findMany({
+    const users = await prisma.users.findMany({
       select: {
         id: true,
         email: true,
         firstName: true,
         lastName: true,
         role: true,
+        roles: true,
         department: true,
+        position: true,
+        supervisorId: true,
         isActive: true
       }
     });

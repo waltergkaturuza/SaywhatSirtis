@@ -108,9 +108,22 @@ export async function GET() {
 
   } catch (error) {
     console.error('Error fetching supervisors:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
+    
+    // Check if it's a database connectivity issue
+    if (error.message?.includes("Can't reach database server")) {
+      return NextResponse.json({
+        success: false,
+        error: 'Database connection failed',
+        message: 'Unable to connect to the database. Please check your internet connection and try again.',
+        code: 'DB_CONNECTION_FAILED'
+      }, { status: 503 })
+    }
+    
+    return NextResponse.json({
+      success: false,
+      error: 'Internal server error',
+      message: 'An unexpected error occurred while fetching supervisors.',
+      code: 'INTERNAL_ERROR'
+    }, { status: 500 })
   }
 }

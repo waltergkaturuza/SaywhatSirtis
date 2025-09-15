@@ -11,41 +11,54 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user has HR permissions
-    const user = await prisma.users.findUnique({
-      where: { email: session.user.email! }
-    })
-
-    if (!user || !['HR', 'ADMIN'].includes(user.department || '')) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
-    }
-
-    // Get employees who can act as supervisors (managers and senior positions)
+    // Get all users who are supervisors or have supervisor role
     const supervisors = await prisma.users.findMany({
       where: {
         OR: [
-          { position: { contains: 'Manager' } },
-          { position: { contains: 'Director' } },
-          { position: { contains: 'Lead' } },
-          { position: { contains: 'Supervisor' } },
-          { position: { contains: 'Head' } },
-          { department: 'HR' },
-          { department: 'ADMIN' }
-        ]
+          { roles: { has: 'supervisor' } },
+          { role: 'ADMIN' },
+          { 
+            supervisees: {
+              some: {}
+            }
+          }
+        ],
+        isActive: true
       },
-      orderBy: {
-        lastName: 'asc'
-      }
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        department: true,
+        position: true,
+        roles: true,
+        _count: {
+          select: {
+            supervisees: true
+          }
+        }
+      },
+      orderBy: [
+        { firstName: 'asc' },
+        { lastName: 'asc' }
+      ]
     })
 
     const supervisorData = supervisors.map(supervisor => ({
       id: supervisor.id,
       name: `${supervisor.firstName} ${supervisor.lastName}`,
+      email: supervisor.email,
       department: supervisor.department || 'Unassigned',
-      position: supervisor.position || 'Employee'
+      position: supervisor.position || 'Employee',
+      subordinateCount: supervisor._count.supervisees,
+      isHR: supervisor.roles?.includes('hr') || supervisor.role === 'ADMIN'
     }))
 
-    return NextResponse.json(supervisorData)
+    return NextResponse.json({
+      supervisors: supervisorData,
+      message: 'Supervisors retrieved successfully'
+    })
   } catch (error) {
     console.error('Error fetching supervisors:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

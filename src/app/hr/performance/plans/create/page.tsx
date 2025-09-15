@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircleIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline"
 
@@ -17,6 +17,18 @@ export default function CreatePerformancePlanPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<PerformancePlanFormData>(defaultPlanFormData)
+  
+  // New state for dynamic data
+  const [employees, setEmployees] = useState<any[]>([])
+  const [departments, setDepartments] = useState<any[]>([])
+  const [supervisors, setSupervisors] = useState<any[]>([])
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
+  const [loading, setLoading] = useState({
+    employees: false,
+    departments: false,
+    supervisors: false
+  })
+  const [error, setError] = useState<string | null>(null)
 
   const metadata = {
     title: "Create Performance Plan",
@@ -46,6 +58,90 @@ export default function CreatePerformancePlanPage() {
       }
     }))
   }
+
+  // Fetch employees from API
+  const fetchEmployees = async () => {
+    try {
+      setLoading(prev => ({ ...prev, employees: true }))
+      const response = await fetch('/api/hr/employees')
+      if (response.ok) {
+        const data = await response.json()
+        setEmployees(data.data || [])
+      } else {
+        setError('Failed to load employees')
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error)
+      setError('Failed to load employees')
+    } finally {
+      setLoading(prev => ({ ...prev, employees: false }))
+    }
+  }
+
+  // Fetch departments from API
+  const fetchDepartments = async () => {
+    try {
+      setLoading(prev => ({ ...prev, departments: true }))
+      const response = await fetch('/api/hr/departments')
+      if (response.ok) {
+        const data = await response.json()
+        setDepartments(data.departments || [])
+      } else {
+        setError('Failed to load departments')
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+      setError('Failed to load departments')
+    } finally {
+      setLoading(prev => ({ ...prev, departments: false }))
+    }
+  }
+
+  // Fetch supervisors from API
+  const fetchSupervisors = async () => {
+    try {
+      setLoading(prev => ({ ...prev, supervisors: true }))
+      const response = await fetch('/api/hr/supervisors')
+      if (response.ok) {
+        const data = await response.json()
+        setSupervisors(data.supervisors || [])
+      } else {
+        setError('Failed to load supervisors')
+      }
+    } catch (error) {
+      console.error('Error fetching supervisors:', error)
+      setError('Failed to load supervisors')
+    } finally {
+      setLoading(prev => ({ ...prev, supervisors: false }))
+    }
+  }
+
+  // Handle employee selection
+  const handleEmployeeSelect = (employeeId: string) => {
+    const employee = employees.find(emp => emp.id === employeeId)
+    if (employee) {
+      setSelectedEmployee(employee)
+      
+      // Auto-populate employee details
+      setFormData(prev => ({
+        ...prev,
+        employee: {
+          id: employee.employeeId,
+          name: employee.name,
+          position: employee.position,
+          department: employee.department
+        },
+        supervisor: employee.supervisor?.id || ''
+      }))
+    }
+  }
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchEmployees()
+    fetchDepartments()
+    fetchSupervisors()
+  }, [])
 
   const handleDeepNestedInputChange = (parentField: keyof PerformancePlanFormData, nestedField: string, childField: string, value: any) => {
     setFormData(prev => ({
@@ -172,18 +268,32 @@ export default function CreatePerformancePlanPage() {
       case 1:
         return (
           <div className="space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                <div className="text-sm text-red-600">{error}</div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Employee Name
+                  Select Employee *
                 </label>
-                <input
-                  type="text"
-                  value={formData.employee.name}
-                  onChange={(e) => handleNestedInputChange("employee", "name", e.target.value)}
+                <select
+                  value={selectedEmployee?.id || ''}
+                  onChange={(e) => handleEmployeeSelect(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter employee name"
-                />
+                  disabled={loading.employees}
+                >
+                  <option value="">
+                    {loading.employees ? 'Loading employees...' : 'Choose an employee'}
+                  </option>
+                  {employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name} - {employee.position} ({employee.department})
+                    </option>
+                  ))}
+                </select>
               </div>
               
               <div>
@@ -193,9 +303,22 @@ export default function CreatePerformancePlanPage() {
                 <input
                   type="text"
                   value={formData.employee.id}
-                  onChange={(e) => handleNestedInputChange("employee", "id", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter employee ID"
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none"
+                  placeholder="Auto-filled when employee is selected"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employee Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.employee.name}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none"
+                  placeholder="Auto-filled when employee is selected"
                 />
               </div>
 
@@ -206,9 +329,9 @@ export default function CreatePerformancePlanPage() {
                 <input
                   type="text"
                   value={formData.employee.position}
-                  onChange={(e) => handleNestedInputChange("employee", "position", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter position"
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none"
+                  placeholder="Auto-filled when employee is selected"
                 />
               </div>
 
@@ -220,14 +343,16 @@ export default function CreatePerformancePlanPage() {
                   value={formData.employee.department}
                   onChange={(e) => handleNestedInputChange("employee", "department", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading.departments}
                 >
-                  <option value="">Select Department</option>
-                  <option value="programs">Programs</option>
-                  <option value="finance">Finance</option>
-                  <option value="hr">Human Resources</option>
-                  <option value="operations">Operations</option>
-                  <option value="communications">Communications</option>
-                  <option value="monitoring">M&E</option>
+                  <option value="">
+                    {loading.departments ? 'Loading departments...' : 'Select Department'}
+                  </option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.name}>
+                      {dept.name} ({dept.employeeCount} employees)
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -239,13 +364,27 @@ export default function CreatePerformancePlanPage() {
                   value={formData.supervisor}
                   onChange={(e) => handleInputChange("supervisor", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={loading.supervisors}
                 >
-                  <option value="">Select Supervisor</option>
-                  <option value="john.doe">John Doe - Programs Director</option>
-                  <option value="jane.smith">Jane Smith - HR Manager</option>
-                  <option value="mike.johnson">Mike Johnson - Operations Manager</option>
-                  <option value="sarah.williams">Sarah Williams - Finance Manager</option>
+                  <option value="">
+                    {loading.supervisors ? 'Loading supervisors...' : 'Select Supervisor'}
+                  </option>
+                  {supervisors.map((supervisor) => (
+                    <option key={supervisor.id} value={supervisor.id}>
+                      {supervisor.name} - {supervisor.position} ({supervisor.department})
+                      {supervisor.subordinateCount > 0 && ` - ${supervisor.subordinateCount} reports`}
+                    </option>
+                  ))}
                 </select>
+                {selectedEmployee?.supervisor && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <div className="text-sm text-blue-800">
+                      <strong>Current Supervisor:</strong> {selectedEmployee.supervisor.name}
+                      <br />
+                      <span className="text-blue-600">{selectedEmployee.supervisor.position}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -257,9 +396,19 @@ export default function CreatePerformancePlanPage() {
                   onChange={(e) => handleInputChange("planYear", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
-                  <option value="2026">2026</option>
+                  {(() => {
+                    const currentYear = new Date().getFullYear();
+                    const years = [];
+                    // Generate years from current year to 20 years in the future for long-term planning
+                    for (let year = currentYear; year <= currentYear + 20; year++) {
+                      years.push(
+                        <option key={year} value={year.toString()}>
+                          {year} {year === currentYear ? '(Current Year)' : ''}
+                        </option>
+                      );
+                    }
+                    return years;
+                  })()}
                 </select>
               </div>
             </div>

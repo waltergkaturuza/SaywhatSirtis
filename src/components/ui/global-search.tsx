@@ -98,7 +98,7 @@ export function GlobalSearch({
       {
         id: '2',
         title: 'John Doe',
-        description: 'Software Engineer - IT Department',
+        description: 'Software Engineer - HR Department',
         type: 'user',
         url: '/hr/employees/john-doe'
       },

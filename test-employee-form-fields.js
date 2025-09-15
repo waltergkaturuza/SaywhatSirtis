@@ -25,7 +25,7 @@ async function testEmployeeFormFields() {
 
     // Step 3: Employment
     employeeId: "EMP-TEST-001",
-    department: "IT Department",
+    department: "HR",
     departmentId: "dept-1",
     position: "Software Developer",
     supervisorId: null,

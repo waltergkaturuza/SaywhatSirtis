@@ -8,7 +8,7 @@ const developmentUsers = [
     email: "admin@saywhat.org",
     password: "admin123",
     name: "System Administrator",
-    department: "IT",
+    department: "HR",
     position: "System Administrator",
     roles: ["admin"],
     permissions: [

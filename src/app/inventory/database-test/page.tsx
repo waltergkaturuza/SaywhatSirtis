@@ -237,7 +237,7 @@ export default function DatabaseTestPage() {
                   value={formData.allocation}
                   onChange={(e) => setFormData({ ...formData, allocation: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="e.g., IT Department"
+                  placeholder="e.g., HR Department"
                 />
               </div>
 

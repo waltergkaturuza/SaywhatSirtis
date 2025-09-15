@@ -304,7 +304,7 @@ export default function AddDeliverablePage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Department</option>
-                  <option value="IT Department, Training Unit">IT Department, Training Unit</option>
+                  <option value="HR, Training Unit">HR, Training Unit</option>
                   <option value="Finance Department">Finance Department</option>
                   <option value="HR Department">HR Department</option>
                   <option value="Operations Department">Operations Department</option>
