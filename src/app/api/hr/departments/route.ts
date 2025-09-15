@@ -31,11 +31,11 @@ export async function GET(request: NextRequest) {
               performance_plans: {
                 where: {
                   status: 'ACTIVE',
-                  year: new Date().getFullYear()
+                  planYear: new Date().getFullYear()
                 },
                 select: {
                   id: true,
-                  completionRate: true
+                  status: true
                 }
               }
             }
@@ -55,7 +55,8 @@ export async function GET(request: NextRequest) {
               .filter(emp => emp.performance_plans.length > 0)
               .reduce((acc, emp) => {
                 const latestPlan = emp.performance_plans[0]
-                return acc + (latestPlan?.completionRate || 0)
+                const isCompleted = latestPlan?.status === 'completed' ? 100 : 0
+                return acc + isCompleted
               }, 0) / Math.max(employeesWithPlans, 1)
           : 0
 
@@ -76,15 +77,31 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform departments data with actual performance statistics
-    const departmentCounts = departments.map(dept => ({
-      id: dept.id,
-      name: dept.name,
-      code: dept.code,
-      employeeCount: dept.totalEmployees || 0,
-      completionRate: dept.completionRate || 0,
-      totalPlans: dept.employeesWithPlans || 0,
-      completedPlans: Math.floor((dept.employeesWithPlans || 0) * (dept.completionRate || 0) / 100)
-    }))
+    const departmentCounts = departments.map(dept => {
+      const totalEmployees = dept.employees?.length || 0
+      const employeesWithPlans = dept.employees?.filter(emp => emp.performance_plans?.length > 0).length || 0
+      
+      // Calculate completion rate based on completed performance plans
+      const avgCompletionRate = employeesWithPlans > 0 
+        ? Math.round(dept.employees
+            .filter(emp => emp.performance_plans?.length > 0)
+            .reduce((acc, emp) => {
+              const latestPlan = emp.performance_plans?.[0]
+              const isCompleted = latestPlan?.status === 'completed' ? 100 : 0
+              return acc + isCompleted
+            }, 0) / employeesWithPlans)
+        : 0
+      
+      return {
+        id: dept.id,
+        name: dept.name,
+        code: dept.code,
+        employeeCount: totalEmployees,
+        completionRate: avgCompletionRate,
+        totalPlans: employeesWithPlans,
+        completedPlans: Math.floor(employeesWithPlans * avgCompletionRate / 100)
+      }
+    })
 
     // Sort by completion rate descending
     departmentCounts.sort((a, b) => b.completionRate - a.completionRate)

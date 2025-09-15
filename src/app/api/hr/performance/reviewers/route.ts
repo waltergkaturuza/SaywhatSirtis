@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       email: reviewer.email,
       department: reviewer.department,
       position: reviewer.position,
-      isHR: reviewer.roles?.includes('hr') || reviewer.role === 'ADMIN',
+      isHR: reviewer.roles?.includes('hr') || reviewer.roles?.includes('ADMIN'),
       currentWorkload: reviewer._count.performance_plans_reviewed,
       availability: reviewer._count.performance_plans_reviewed < 10 ? 'available' : 
                    reviewer._count.performance_plans_reviewed < 20 ? 'busy' : 'overloaded'

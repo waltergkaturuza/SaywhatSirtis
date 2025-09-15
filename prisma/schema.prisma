@@ -1077,6 +1077,7 @@ model users {
   id                                                   String                       @id
   email                                                String                       @unique
   username                                             String?                      @unique
+  passwordHash                                         String?
   role                                                 UserRole                     @default(USER)
   department                                           String?
   position                                             String?

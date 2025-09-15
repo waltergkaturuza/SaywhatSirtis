@@ -59,10 +59,10 @@ export async function GET(request: NextRequest) {
     })
 
     // Categorize performance ratings
-    const excellent = performanceReviews.filter(p => p.overallRating >= 4.5).length
-    const satisfactory = performanceReviews.filter(p => p.overallRating >= 3.5 && p.overallRating < 4.5).length
-    const needsImprovement = performanceReviews.filter(p => p.overallRating >= 2.0 && p.overallRating < 3.5).length
-    const unsatisfactory = performanceReviews.filter(p => p.overallRating < 2.0).length
+    const excellent = performanceReviews.filter(p => p.overallRating !== null && p.overallRating! >= 4.5).length
+    const satisfactory = performanceReviews.filter(p => p.overallRating !== null && p.overallRating! >= 3.5 && p.overallRating! < 4.5).length
+    const needsImprovement = performanceReviews.filter(p => p.overallRating !== null && p.overallRating! >= 2.0 && p.overallRating! < 3.5).length
+    const unsatisfactory = performanceReviews.filter(p => p.overallRating !== null && p.overallRating! < 2.0).length
     
     const total = performanceReviews.length || 1 // Avoid division by zero
 

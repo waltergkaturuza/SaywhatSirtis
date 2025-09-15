@@ -110,7 +110,7 @@ export async function GET() {
     console.error('Error fetching supervisors:', error)
     
     // Check if it's a database connectivity issue
-    if (error.message?.includes("Can't reach database server")) {
+    if (error instanceof Error && error.message?.includes("Can't reach database server")) {
       return NextResponse.json({
         success: false,
         error: 'Database connection failed',

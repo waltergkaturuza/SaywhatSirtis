@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       department: supervisor.department || 'Unassigned',
       position: supervisor.position || 'Employee',
       subordinateCount: supervisor._count.supervisees,
-      isHR: supervisor.roles?.includes('hr') || supervisor.role === 'ADMIN'
+      isHR: supervisor.roles?.includes('hr') || supervisor.roles?.includes('ADMIN')
     }))
 
     return NextResponse.json({

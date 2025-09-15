@@ -83,7 +83,7 @@ function getDepartmentPermissions(department: string): string[] {
     'DOCUMENTS': ['document_classification', 'archive_management', 'version_control']
   }
   
-  return departmentPermissions[department] || []
+  return departmentPermissions[department as keyof typeof departmentPermissions] || []
 }
 
 // Enhanced function to combine role and department permissions  
@@ -352,7 +352,7 @@ export async function POST(request: NextRequest) {
               role: userData.role || 'BASIC_USER_1',
               department: userData.department || 'Unassigned',
               position: userData.position || 'No Position',
-              password: hashedPassword,
+              passwordHash: hashedPassword,
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),

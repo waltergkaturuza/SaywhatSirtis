@@ -3,14 +3,14 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function POST(request: NextRequest, { params }: { params: { planId: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ planId: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const { planId } = params
+    const { planId } = await params
     const { action, comment, reviewerId } = await request.json()
 
     const user = await prisma.users.findUnique({

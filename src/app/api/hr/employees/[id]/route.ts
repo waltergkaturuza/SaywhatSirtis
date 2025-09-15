@@ -135,7 +135,7 @@ export async function GET(
           }, { status: 404 })
         }
       } catch (suggestionError) {
-        console.log('Could not fetch suggestions:', suggestionError.message)
+        console.log('Could not fetch suggestions:', suggestionError instanceof Error ? suggestionError.message : 'Unknown error')
       }
 
       return NextResponse.json({ 
@@ -301,7 +301,7 @@ export async function PUT(
           code: 'EMPLOYEE_NOT_FOUND'
         }, { status: 404 })
       } catch (listError) {
-        console.error('Error fetching employee suggestions:', listError.message)
+        console.error('Error fetching employee suggestions:', listError instanceof Error ? listError.message : 'Unknown error')
         return NextResponse.json({ 
           error: 'Employee not found',
           message: `No employee found with ID ${requestId}. Please refresh the employee list.`,

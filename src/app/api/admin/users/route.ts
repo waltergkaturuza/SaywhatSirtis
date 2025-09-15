@@ -68,7 +68,7 @@ function getRolePermissions(role: string): string[] {
 }
 
 function getDepartmentPermissions(department: string): string[] {
-  const departmentPermissions = {
+  const departmentPermissions: Record<string, string[]> = {
     'EXECUTIVE_LEADERSHIP': ['strategic_planning', 'executive_reports', 'board_communications'],
     'FINANCE_AND_ADMINISTRATION': ['financial_management', 'budget_oversight', 'admin_operations'],
     'PROGRAMS_AND_OPERATIONS': ['program_management', 'field_operations', 'beneficiary_management'],
@@ -352,7 +352,7 @@ export async function POST(request: NextRequest) {
               role: userData.role || 'BASIC_USER_1',
               department: userData.department || 'Unassigned',
               position: userData.position || 'No Position',
-              password: hashedPassword,
+              passwordHash: hashedPassword,
               isActive: true,
               createdAt: new Date(),
               updatedAt: new Date(),
