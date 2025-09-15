@@ -126,10 +126,16 @@ export default function CreatePerformancePlanPage() {
       setFormData(prev => ({
         ...prev,
         employee: {
-          id: employee.employeeId,
+          id: employee.employeeId || employee.id,
           name: employee.name,
-          position: employee.position,
-          department: employee.department
+          email: employee.email || '',
+          position: employee.position || '',
+          department: employee.department || '',
+          manager: employee.supervisor?.name || employee.manager || '',
+          planPeriod: {
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          }
         },
         supervisor: employee.supervisor?.id || ''
       }))
