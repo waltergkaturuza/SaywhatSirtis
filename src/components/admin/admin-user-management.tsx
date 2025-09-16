@@ -10,7 +10,8 @@ import {
   PencilIcon,
   EyeIcon,
   UserPlusIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
 import LoadingSpinner from '@/components/ui/loading-spinner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -24,19 +25,29 @@ interface User {
   firstName: string
   lastName: string
   email: string
+  role: string
   department: string
   position: string
   employeeId: string
   isActive: boolean
-  lastLogin: string
+  lastLogin: string | null
   createdAt: string
   updatedAt: string
+  employmentType?: string
+  startDate?: string
+  salary?: number | null
+  isSupervisor?: boolean
+  isReviewer?: boolean
+  isSystemUser?: boolean
+  isEmployee?: boolean
+  employeeStatus?: string
   roles: Array<{
     role: {
       name: string
       description: string
     }
   }>
+  permissions?: string[]
 }
 
 interface UserManagementProps {
@@ -61,6 +72,7 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
+  const [migrating, setMigrating] = useState(false)
   const [departments, setDepartments] = useState<Array<{id: string, name: string, code: string, displayName?: string}>>([])
   const [newUser, setNewUser] = useState({
     firstName: '',
@@ -76,15 +88,20 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
   const fetchUsers = async () => {
     try {
       setLoading(true)
+      console.log('🔄 Fetching users from /api/admin/users...')
       const response = await fetch('/api/admin/users')
       
       if (!response.ok) {
-        throw new Error('Failed to fetch users')
+        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`)
       }
       
       const data = await response.json()
+      console.log('✅ Users fetched successfully:', data)
+      console.log('📊 Setting users array:', data.data?.users || [])
       setUsers(data.data?.users || [])
+      setError(null) // Clear any previous errors
     } catch (err) {
+      console.error('❌ Error fetching users:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch users')
     } finally {
       setLoading(false)
@@ -286,6 +303,39 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
     })
   }
 
+  const handleMigrateRoles = async () => {
+    try {
+      setMigrating(true)
+      setError(null)
+
+      const response = await fetch('/api/admin/migrate-roles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'migrate_roles' }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Migration failed')
+      }
+
+      const result = await response.json()
+      setSuccessMessage(`Successfully migrated ${result.results?.filter((r: any) => r.status === 'success').length || 0} users to new role system`)
+      
+      // Refresh users after migration
+      await fetchUsers()
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to migrate roles')
+    } finally {
+      setMigrating(false)
+    }
+  }
+
   const fetchUserPermissions = async (userId: string) => {
     try {
       setLoadingPermissions(true)
@@ -308,13 +358,16 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' || 
-      user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.department.toLowerCase().includes(searchTerm.toLowerCase())
+      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.department?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesRole = selectedRole === '' || 
-      user.roles.some(ur => ur.role.name === selectedRole)
+      user.role === selectedRole ||
+      (user.roles && user.roles.some && user.roles.some(ur => 
+        ur.role?.name === selectedRole
+      ))
     
     return matchesSearch && matchesRole
   })
@@ -374,27 +427,42 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
             <p className="text-sm text-gray-600">Manage system users and their permissions</p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            setError(null) // Clear any errors
-            setEditingUserId(null)
-            setNewUser({
-              firstName: '',
-              lastName: '',
-              email: '',
-              department: '',
-              position: '',
-              employeeId: '',
-              password: '',
-              role: 'BASIC_USER_1'
-            })
-            setShowAddDialog(true)
-          }}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center space-x-2"
-        >
-          <PlusIcon className="h-5 w-5" />
-          <span>Add User</span>
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => {
+              setError(null) // Clear any errors
+              setEditingUserId(null)
+              setNewUser({
+                firstName: '',
+                lastName: '',
+                email: '',
+                department: '',
+                position: '',
+                employeeId: '',
+                password: '',
+                role: 'BASIC_USER_1'
+              })
+              setShowAddDialog(true)
+            }}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center space-x-2"
+          >
+            <PlusIcon className="h-5 w-5" />
+            <span>Add User</span>
+          </button>
+          
+          <button
+            onClick={handleMigrateRoles}
+            disabled={migrating}
+            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 disabled:bg-orange-400 flex items-center space-x-2"
+          >
+            {migrating ? (
+              <ArrowPathIcon className="h-5 w-5 animate-spin" />
+            ) : (
+              <ArrowPathIcon className="h-5 w-5" />
+            )}
+            <span>{migrating ? 'Migrating...' : 'Migrate Roles'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -466,6 +534,11 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
             onChange={(e) => setSelectedRole(e.target.value)}
           >
             <option value="">All Roles</option>
+            {/* Legacy Roles */}
+            <option value="USER">User (Legacy)</option>
+            <option value="PROJECT_MANAGER">Project Manager (Legacy)</option>
+            <option value="ADMIN">Admin (Legacy)</option>
+            {/* New Role System */}
             <option value="BASIC_USER_1">Basic User 1</option>
             <option value="BASIC_USER_2">Basic User 2</option>
             <option value="ADVANCE_USER_1">Advanced User 1</option>

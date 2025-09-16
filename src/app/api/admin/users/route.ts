@@ -151,7 +151,8 @@ export async function GET(request: Request) {
       }
     }
 
-    // Fetch users from database
+    // Fetch ALL system users with optional employee data
+    // This shows all users who can log into the system, regardless of employment status
     const users = await prisma.users.findMany({
       select: {
         id: true,
@@ -164,34 +165,99 @@ export async function GET(request: Request) {
         isActive: true,
         lastLogin: true,
         createdAt: true,
+        updatedAt: true,
+        employee: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            department: true,
+            position: true,
+            status: true,
+            employmentType: true,
+            startDate: true,
+            salary: true,
+            is_supervisor: true,
+            is_reviewer: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
       }
+    }).catch(async (error) => {
+      console.error("Database connection failed, trying users only:", error)
+      // Fallback: try to fetch just users if employee relation fails
+      return await prisma.users.findMany({
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          role: true,
+          department: true,
+          position: true,
+          isActive: true,
+          lastLogin: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
     })
 
-    // Transform data to match frontend interface
-    const transformedUsers = users.map(user => ({
-      id: user.id,
-      firstName: user.firstName || 'Unknown',
-      lastName: user.lastName || 'User',
-      email: user.email,
-      role: user.role || 'BASIC_USER_1',
-      department: user.department || 'Unassigned',
-      position: user.position || 'No Position',
-      employeeId: user.id, // Using user ID as employee ID for now
-      isActive: user.isActive,
-      lastLogin: user.lastLogin ? user.lastLogin.toISOString() : null,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.createdAt.toISOString(),
-      roles: [{
-        role: {
-          name: user.role || 'BASIC_USER_1',
-          description: getRoleDisplayName(user.role || 'BASIC_USER_1')
-        }
-      }],
-      permissions: getCombinedPermissions(user.role || 'BASIC_USER_1', user.department || '')
-    }))
+    // Transform data to match frontend interface, clearly distinguishing system users and employees
+    const transformedUsers = users.map(user => {
+      const employeeData = ('employee' in user) ? user.employee : null
+      const isEmployee = !!employeeData
+      
+      // For system users, prioritize user table data; for employees, show employee data
+      const displayName = user.firstName || employeeData?.firstName || 'Unknown'
+      const displayLastName = user.lastName || employeeData?.lastName || 'User'
+      const displayDepartment = user.department || employeeData?.department || 'System'
+      const displayPosition = user.position || employeeData?.position || 'System User'
+      
+      return {
+        id: user.id,
+        firstName: displayName,
+        lastName: displayLastName,
+        email: user.email,
+        role: user.role || 'USER',
+        department: displayDepartment,
+        position: displayPosition,
+        employeeId: employeeData?.employeeId || `SYS-${user.id.slice(-6)}`,
+        isActive: user.isActive,
+        lastLogin: user.lastLogin ? user.lastLogin.toISOString() : null,
+        createdAt: user.createdAt ? user.createdAt.toISOString() : new Date().toISOString(),
+        updatedAt: (user as any).updatedAt ? (user as any).updatedAt.toISOString() : (user.createdAt ? user.createdAt.toISOString() : new Date().toISOString()),
+        
+        // Employee-specific fields (null/default if not an employee)
+        employmentType: employeeData?.employmentType || null,
+        startDate: employeeData?.startDate?.toISOString() || null,
+        salary: employeeData?.salary || null,
+        isSupervisor: employeeData?.is_supervisor || false,
+        isReviewer: employeeData?.is_reviewer || false,
+        
+        // Clear distinction between system access and employment
+        isSystemUser: true, // All users in this list have system access
+        isEmployee: isEmployee,
+        employeeStatus: employeeData?.status || (isEmployee ? 'UNKNOWN' : 'NOT_EMPLOYEE'),
+        
+        // Legacy role structure for backward compatibility
+        roles: [{
+          role: {
+            name: user.role || 'USER',
+            description: getRoleDisplayName(user.role || 'USER')
+          }
+        }],
+        permissions: getCombinedPermissions(user.role || 'USER', displayDepartment)
+      }
+    })
 
     return NextResponse.json({
       success: true,

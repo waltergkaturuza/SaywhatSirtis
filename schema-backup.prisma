@@ -1,0 +1,82 @@
+// DATABASE_URL="file:./dev.db"
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model users {
+  id                                                   String                       @id @default(cuid())
+  email                                                String                       @unique
+  username                                             String?                      @unique
+  passwordHash                                         String?
+  role                                                 String                       @default("USER")
+  department                                           String?
+  position                                             String?
+  supervisorId                                         String?
+  isActive                                             Boolean                      @default(true)
+  lastLogin                                            DateTime?
+  createdAt                                            DateTime                     @default(now())
+  updatedAt                                            DateTime                     @updatedAt
+  emailVerified                                        DateTime?
+  firstName                                            String?
+  lastName                                             String?
+  roles                                                String                       @default("[]")
+  phoneNumber                                          String?
+  profileImage                                         String?
+  bio                                                  String?
+  location                                             String?
+  twoFactorEnabled                                     Boolean                      @default(false)
+  
+  supervisor                                           users?                       @relation("SupervisorEmployee", fields: [supervisorId], references: [id])
+  supervisees                                          users[]                      @relation("SupervisorEmployee")
+  employee                                             employees?
+}
+
+model employees {
+  id                   String                 @id @default(cuid())
+  userId               String                 @unique
+  user                 users                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeId           String                 @unique
+  firstName            String
+  lastName             String
+  middleName           String?
+  dateOfBirth          DateTime?
+  gender               String?
+  nationality          String?
+  nationalId           String?                @unique
+  passportNumber       String?
+  email                String                 @unique
+  phoneNumber          String?
+  alternativePhone     String?
+  address              String?
+  emergencyContact     String?
+  emergencyPhone       String?
+  department           String?
+  position             String
+  employmentType       String                 @default("FULL_TIME")
+  startDate            DateTime
+  endDate              DateTime?
+  salary               Float?
+  currency             String?                @default("USD")
+  status               String                 @default("ACTIVE")
+  supervisor_id        String?
+  is_supervisor        Boolean                @default(false)
+  is_reviewer          Boolean                @default(false)
+  medical_aid          Boolean                @default(false)
+  funeral_cover        Boolean                @default(false)
+  vehicle_benefit      Boolean                @default(false)
+  fuel_allowance       Boolean                @default(false)
+  airtime_allowance    Boolean                @default(false)
+  other_benefits       String                 @default("[]")
+  archived_at          DateTime?
+  archive_reason       String?
+  access_revoked       Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  hireDate             DateTime?
+  departmentId         String?
+}

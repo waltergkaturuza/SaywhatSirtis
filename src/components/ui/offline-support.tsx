@@ -255,9 +255,12 @@ export function useOfflineFetch() {
         
         addToQueue(action)
         
-        // Return a mock response for offline scenarios
-        return new Response(JSON.stringify({ offline: true }), {
-          status: 200,
+        // Return proper offline response indicating service unavailable
+        return new Response(JSON.stringify({ 
+          error: 'Service temporarily unavailable - request queued for retry when online',
+          offline: true 
+        }), {
+          status: 503,
           headers: { 'Content-Type': 'application/json' }
         })
       }

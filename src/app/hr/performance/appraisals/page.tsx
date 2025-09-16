@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import {
@@ -27,6 +27,10 @@ export default function PerformanceAppraisalsPage() {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState("my-appraisals")
   const [selectedPeriod, setSelectedPeriod] = useState("Q1-2024")
+  const [performanceAppraisals, setPerformanceAppraisals] = useState<any[]>([])
+  const [planDeliverables, setPlanDeliverables] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const metadata = {
     title: "Performance Appraisals",
@@ -59,6 +63,38 @@ export default function PerformanceAppraisalsPage() {
   const isHRStaff = userPermissions.includes('hr.full_access')
   const isSecretariatMember = userPermissions.includes('hr.secretariat_access')
   const canViewAllAppraisals = isHRStaff || userPermissions.includes('hr.view_all_performance')
+
+  // Fetch performance appraisals data
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!session?.user?.id) return
+      
+      setLoading(true)
+      try {
+        const [appraisalsRes, deliverablesRes] = await Promise.all([
+          fetch('/api/hr/performance/appraisals'),
+          fetch('/api/hr/performance/deliverables')
+        ])
+        
+        if (appraisalsRes.ok) {
+          const appraisalsData = await appraisalsRes.json()
+          setPerformanceAppraisals(appraisalsData.appraisals || [])
+        }
+        
+        if (deliverablesRes.ok) {
+          const deliverablesData = await deliverablesRes.json()
+          setPlanDeliverables(deliverablesData.deliverables || [])
+        }
+      } catch (error) {
+        console.error('Error fetching appraisal data:', error)
+        setError('Failed to load appraisal data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchData()
+  }, [session?.user?.id, canViewAllAppraisals])
 
   const sidebar = (
     <div className="space-y-6">
@@ -174,126 +210,9 @@ export default function PerformanceAppraisalsPage() {
     </div>
   )
 
-  const performanceAppraisals = [
-    {
-      id: 1,
-      employeeName: session?.user?.name || "Current User",
-      employeeId: session?.user?.id || "EMP001",
-      department: session?.user?.department || "Operations",
-      position: session?.user?.position || "Operations Manager",
-      period: "Q1 2024",
-      overallRating: 4.5,
-      status: "completed",
-      submittedAt: "2024-01-28T14:30:00Z",
-      reviewedAt: "2024-01-30T16:45:00Z",
-      supervisor: "Mark Wilson",
-      reviewer: "Sarah Johnson",
-      planProgress: 85,
-      strengths: "Excellent leadership skills, proactive problem-solving",
-      areasImprovement: "Time management, delegation",
-      goals: "Focus on strategic planning and team development",
-      lastUpdated: "2024-01-30T16:45:00Z"
-    },
-    // Add conditional data based on user permissions
-    ...(canViewAllAppraisals ? [
-      {
-        id: 2,
-        employeeName: "Michael Adebayo",
-        employeeId: "EMP002",
-        department: "Healthcare",
-        position: "Healthcare Coordinator",
-        period: "Q1 2024",
-        overallRating: null,
-        status: "in-progress",
-        submittedAt: null,
-        reviewedAt: null,
-        supervisor: "Dr. Amina Hassan",
-        reviewer: "Sarah Johnson",
-        planProgress: 65,
-        strengths: "",
-        areasImprovement: "",
-        goals: "",
-        lastUpdated: "2024-01-25T10:15:00Z"
-      },
-      {
-        id: 3,
-        employeeName: "David Okonkwo",
-        employeeId: "EMP004",
-        department: "Finance",
-        position: "Financial Analyst",
-        period: "Q1 2024",
-        overallRating: 4.2,
-        status: "completed",
-        submittedAt: "2024-01-26T11:20:00Z",
-        reviewedAt: "2024-01-29T09:30:00Z",
-        supervisor: "Jennifer Smith",
-        reviewer: "Mark Wilson",
-        planProgress: 78,
-        strengths: "Strong analytical skills, attention to detail",
-        areasImprovement: "Communication, presentation skills",
-        goals: "Develop advanced financial modeling expertise",
-        lastUpdated: "2024-01-29T09:30:00Z"
-      },
-      {
-        id: 4,
-        employeeName: "Fatima Bello",
-        employeeId: "EMP005",
-        department: "HR",
-        position: "HR Specialist",
-        period: "Q1 2024",
-        overallRating: null,
-        status: "overdue",
-        submittedAt: null,
-        reviewedAt: null,
-        supervisor: "Sarah Johnson",
-        reviewer: "Mark Wilson",
-        planProgress: 45,
-        strengths: "",
-        areasImprovement: "",
-        goals: "",
-        lastUpdated: "2024-01-20T14:00:00Z"
-      }
-    ] : [])
-  ]
+  // Data is now loaded via useEffect and stored in state
 
-  const planDeliverables = [
-    {
-      id: 1,
-      keyDeliverable: "Improve Team Productivity",
-      activity: "Implement workflow automation",
-      planProgress: 85,
-      currentUpdate: "Successfully implemented automation tools, team training completed",
-      timeline: "Q1-Q2 2024",
-      successIndicator: "20% increase in productivity",
-      actualProgress: "22% increase achieved",
-      status: "completed",
-      lastUpdate: "2024-01-28T09:00:00Z"
-    },
-    {
-      id: 2,
-      keyDeliverable: "Reduce Operational Costs",
-      activity: "Cost analysis and optimization",
-      planProgress: 60,
-      currentUpdate: "Completed cost analysis, implementing optimization strategies",
-      timeline: "Q1-Q3 2024",
-      successIndicator: "15% cost reduction",
-      actualProgress: "8% reduction so far, on track for target",
-      status: "on-track",
-      lastUpdate: "2024-01-25T15:30:00Z"
-    },
-    {
-      id: 3,
-      keyDeliverable: "Customer Satisfaction Enhancement",
-      activity: "Feedback system implementation",
-      planProgress: 40,
-      currentUpdate: "Feedback system deployed, analyzing initial responses",
-      timeline: "Q2-Q4 2024",
-      successIndicator: "90% satisfaction score",
-      actualProgress: "Initial deployment completed, data collection ongoing",
-      status: "in-progress",
-      lastUpdate: "2024-01-22T11:45:00Z"
-    }
-  ]
+  // planDeliverables data is now loaded via useEffect and stored in state
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -536,7 +455,7 @@ export default function PerformanceAppraisalsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(appraisal.status)}`}>
-                              {appraisal.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              {appraisal.status.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -603,7 +522,7 @@ export default function PerformanceAppraisalsPage() {
                           </div>
                         </div>
                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getDeliverableStatusColor(deliverable.status)}`}>
-                          {deliverable.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          {deliverable.status.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                         </span>
                       </div>
 

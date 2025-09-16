@@ -67,19 +67,25 @@ export async function GET() {
       }
     }
 
-    // Get all active users (employees) with their details
-    const employees = await prisma.users.findMany({
-      where: whereClause,
+    // Get all employees with their user details
+    const employees = await prisma.employees.findMany({
+      where: {
+        status: { in: ['ACTIVE', 'ON_LEAVE', 'SUSPENDED'] } // Show active employees
+      },
       include: {
-        employee: {
+        user: {
           select: {
             id: true,
-            employeeId: true,
-            startDate: true,
-            status: true
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true
           }
         },
-        supervisor: {
+        employees: {
           select: {
             id: true,
             firstName: true,
@@ -97,7 +103,7 @@ export async function GET() {
       return {
         // Basic employee info
         id: emp.id,
-        employeeId: emp.employee?.employeeId || `EMP${emp.id.slice(-4).toUpperCase()}`,
+        employeeId: emp.employeeId || `EMP${emp.id.slice(-6).toUpperCase()}`,
         name: `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.email,
         firstName: emp.firstName,
         lastName: emp.lastName,
@@ -115,15 +121,23 @@ export async function GET() {
         } : null,
         
         // Employee-specific data
-        startDate: emp.employee?.startDate,
-        status: emp.employee?.status || 'active',
-        roles: emp.roles || [],
-        role: emp.role,
-        isActive: emp.isActive,
+        startDate: emp.startDate || emp.createdAt,
+        status: emp.status?.toLowerCase() || 'active',
+        employmentType: emp.employmentType,
+        salary: emp.salary,
+        isSupervisor: emp.isSupervisor || false,
+        isReviewer: emp.isReviewer || false,
+        
+        // System user data (if linked)
+        user: emp.user ? {
+          id: emp.user.id,
+          role: emp.user.role,
+          isActive: emp.user.isActive,
+          email: emp.user.email
+        } : null,
+        isSystemUser: !!emp.user,
         
         // Additional info
-        location: emp.location,
-        bio: emp.bio,
         createdAt: emp.createdAt,
         updatedAt: emp.updatedAt
       }

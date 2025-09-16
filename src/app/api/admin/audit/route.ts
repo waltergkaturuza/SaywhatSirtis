@@ -45,15 +45,18 @@ export async function GET() {
     // Transform data to match frontend interface
     const transformedLogs = auditLogs.map((log: any) => ({
       id: log.id,
-      userId: log.userId,
-      userName: log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() || log.user.email : 'Unknown',
+      userId: log.userId || 'system',
+      userName: log.users ? `${log.users.firstName || ''} ${log.users.lastName || ''}`.trim() || log.users.email : 'System User',
+      userEmail: log.users?.email || 'system@saywhat.org',
       action: log.action,
       resource: log.resource,
       timestamp: log.timestamp.toISOString(),
-      ipAddress: log.ipAddress,
-      userAgent: log.userAgent,
-      details: typeof log.details === 'string' ? log.details : JSON.stringify(log.details),
-      severity: 'info' // Default severity, could be enhanced with proper categorization
+      ipAddress: log.ipAddress || '127.0.0.1',
+      userAgent: log.userAgent || 'Unknown',
+      details: typeof log.details === 'string' ? log.details : JSON.stringify(log.details || {}),
+      severity: log.action?.includes('ERROR') || log.action?.includes('FAIL') ? 'error' : 
+                log.action?.includes('WARN') ? 'warning' : 'info',
+      outcome: log.action?.includes('ERROR') || log.action?.includes('FAIL') ? 'failure' : 'success'
     }))
 
     return NextResponse.json({
@@ -64,70 +67,80 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching audit logs:", error)
     
-    // Fallback to mock audit logs when database is unavailable
-    console.log("Database unavailable, returning mock audit data for development")
-    const mockAuditLogs = [
-      {
-        id: "1",
-        userId: "1",
-        userName: "System Administrator",
-        action: "USER_LOGIN",
-        resource: "Authentication",
-        timestamp: new Date().toISOString(),
-        ipAddress: "192.168.1.100",
-        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        details: "Successful login to admin panel",
-        severity: "info"
-      },
-      {
-        id: "2",
-        userId: "2",
-        userName: "HR Manager",
-        action: "USER_CREATED",
-        resource: "User Management",
-        timestamp: new Date(Date.now() - 86400000).toISOString(),
-        ipAddress: "192.168.1.101",
-        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        details: "Created new user: john.doe@saywhat.org",
-        severity: "info"
-      }
-    ]
-
     return NextResponse.json({
-      success: true,
-      logs: mockAuditLogs,
-      total: mockAuditLogs.length,
-      note: "Using mock data - database unavailable"
-    })
+      success: false,
+      error: "Failed to fetch audit logs",
+      logs: [],
+      total: 0
+    }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    const body = await request.json()
+    
+    // For audit log creation, we allow broader access (not just admins) since various parts of the system need to log
+    const { action, userId, details, resource, resourceId, ipAddress: clientIP } = body
+    
+    // Get client information
+    const ipAddress = clientIP || request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '127.0.0.1'
+    const userAgent = request.headers.get('user-agent') || 'Unknown'
+    
+    // Handle special admin actions that require admin privileges
+    if (action === 'clear_logs') {
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      // Check if user has admin privileges
+      if (!session.user?.email?.includes("admin") && !session.user?.email?.includes("john.doe")) {
+        return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+      }
+
+      // Clear audit logs (keep last 10 for reference)
+      try {
+        const logsToKeep = await prisma.audit_logs.findMany({
+          orderBy: { timestamp: 'desc' },
+          take: 10,
+          select: { id: true }
+        })
+        
+        await prisma.audit_logs.deleteMany({
+          where: {
+            id: {
+              notIn: logsToKeep.map(log => log.id)
+            }
+          }
+        })
+
+        return NextResponse.json({
+          success: true,
+          message: "Audit logs cleared successfully"
+        })
+      } catch (error) {
+        console.error("Error clearing audit logs:", error)
+        return NextResponse.json(
+          { error: "Failed to clear audit logs" },
+          { status: 500 }
+        )
+      }
     }
 
-    // Check if user has admin privileges
-    if (!session.user?.email?.includes("admin") && !session.user?.email?.includes("john.doe")) {
-      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
-    }
-
-    const { action, userId, details, resource, ipAddress } = await request.json()
-
+    // Create new audit log entry
     try {
-      // Create new audit log entry
       const newLog = await prisma.audit_logs.create({
         data: {
           id: randomUUID(),
-          userId: userId || session.user?.id,
+          userId: userId || session?.user?.id || null,
           action,
           resource,
-          details: typeof details === 'string' ? details : JSON.stringify(details),
+          resourceId: resourceId || null,
+          details: details || {},
           ipAddress,
-          userAgent: request.headers.get('user-agent'),
+          userAgent,
+          timestamp: new Date()
         },
         include: {
           users: {
@@ -143,14 +156,16 @@ export async function POST(request: NextRequest) {
       const transformedLog = {
         id: newLog.id,
         userId: newLog.userId,
-        userName: newLog.users ? `${newLog.users.firstName || ''} ${newLog.users.lastName || ''}`.trim() || newLog.users.email : 'Unknown',
+        userName: newLog.users ? `${newLog.users.firstName || ''} ${newLog.users.lastName || ''}`.trim() || newLog.users.email : 'System User',
+        userEmail: newLog.users?.email || 'system@saywhat.org',
         action: newLog.action,
         resource: newLog.resource,
         timestamp: newLog.timestamp.toISOString(),
         ipAddress: newLog.ipAddress,
         userAgent: newLog.userAgent,
-        details: typeof newLog.details === 'string' ? newLog.details : JSON.stringify(newLog.details),
-        severity: 'info'
+        details: typeof newLog.details === 'string' ? newLog.details : JSON.stringify(newLog.details || {}),
+        severity: newLog.action?.includes('ERROR') || newLog.action?.includes('FAIL') ? 'error' : 'info',
+        outcome: newLog.action?.includes('ERROR') || newLog.action?.includes('FAIL') ? 'failure' : 'success'
       }
 
       return NextResponse.json({
@@ -161,7 +176,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error("Error creating audit log:", error)
       return NextResponse.json(
-        { error: "Failed to create audit log" },
+        { error: "Failed to create audit log", details: error instanceof Error ? error.message : 'Unknown error' },
         { status: 500 }
       )
     }

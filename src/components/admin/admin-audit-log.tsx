@@ -17,12 +17,14 @@ interface AuditLogEntry {
   id: string
   timestamp: string
   userId: string
+  userName: string
   userEmail: string
   action: string
   resource: string
   details: string
   ipAddress: string
   userAgent: string
+  severity: string
   outcome: 'success' | 'failure' | 'warning'
 }
 
@@ -49,7 +51,7 @@ export function AdminAuditLog({ className = '' }: AuditLogProps) {
       }
       
       const data = await response.json()
-      setLogs(data.data?.logs || [])
+      setLogs(data.logs || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch audit logs')
     } finally {
@@ -289,6 +291,9 @@ export function AdminAuditLog({ className = '' }: AuditLogProps) {
                   Resource
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Details
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Outcome
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -326,7 +331,16 @@ export function AdminAuditLog({ className = '' }: AuditLogProps) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{log.resource}</div>
-                    <div className="text-sm text-gray-500">{log.details}</div>
+                  </td>
+                  <td className="px-6 py-4 max-w-xs">
+                    <div className="text-sm text-gray-900 truncate" title={log.details}>
+                      {log.details.length > 100 ? `${log.details.substring(0, 100)}...` : log.details}
+                    </div>
+                    {log.userAgent && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        {log.userAgent.length > 50 ? `${log.userAgent.substring(0, 50)}...` : log.userAgent}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getOutcomeColor(log.outcome)}`}>

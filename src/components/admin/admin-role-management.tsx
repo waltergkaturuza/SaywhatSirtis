@@ -106,6 +106,17 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
   const [editingItem, setEditingItem] = useState<Role | User | UserGroup | null>(null)
   const [draggedItem, setDraggedItem] = useState<any>(null)
   const [dragOverItem, setDragOverItem] = useState<any>(null)
+  const [departmentsList, setDepartmentsList] = useState<Array<{id: string, name: string, code: string}>>([])
+  const [departmentsLoading, setDepartmentsLoading] = useState(false)
+
+  // Helper function to find department by code or name
+  const findDepartment = (identifier: string) => {
+    return departmentsList.find(dept => 
+      dept.code === identifier || 
+      dept.name === identifier ||
+      dept.id === identifier
+    )
+  }
 
   // Departments and their modules
   const departments: Record<DepartmentKey, Department> = {
@@ -243,163 +254,199 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
 
   // Generate role name based on department and supervisory level
   const generateRoleName = (department: DepartmentKey, supervisoryLevel: SupervisoryLevelKey): string => {
-    return `${departments[department]?.name || department} ${supervisoryLevels[supervisoryLevel]?.name || supervisoryLevel}`
+    const dept = findDepartment(department)
+    return `${dept?.name || department} ${supervisoryLevels[supervisoryLevel]?.name || supervisoryLevel}`
   }
 
   // Available permissions organized by module
   const availablePermissions = modulePermissions
 
+  // Fetch departments from backend
+  const fetchDepartments = async () => {
+    try {
+      setDepartmentsLoading(true)
+      const response = await fetch('/api/hr/department/list')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch departments')
+      }
+      
+      const data = await response.json()
+      if (data.success && data.data) {
+        setDepartmentsList(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+      // Fallback to empty array on error
+      setDepartmentsList([])
+    } finally {
+      setDepartmentsLoading(false)
+    }
+  }
+
   const fetchData = async () => {
     try {
       setLoading(true)
+      setError(null)
       
-      // Generate mock roles based on department + supervisory level combinations
-      const mockRoles: Role[] = []
+      // Fetch real users from backend
+      let backendUsers: any[] = []
+      const usersResponse = await fetch('/api/admin/users')
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json()
+        if (usersData.success && usersData.data?.users) {
+          backendUsers = usersData.data.users
+          // Transform backend users to component format
+          const transformedUsers: User[] = usersData.data.users.map((user: any) => ({
+            id: user.id,
+            name: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            department: user.department || 'Unassigned',
+            supervisoryLevel: user.isSupervisor ? 'Supervisor' : 'Staff',
+            customRoles: [user.role], // Current role
+            groups: [],
+            isActive: user.isActive,
+            createdAt: user.createdAt
+          }))
+          setUsers(transformedUsers)
+        }
+      }
       
-      // Generate some sample departmental roles
-      const roleCombinations = [
-        { dept: 'HR' as DepartmentKey, level: 'Manager' as SupervisoryLevelKey },
-        { dept: 'HR' as DepartmentKey, level: 'Staff' as SupervisoryLevelKey },
-        { dept: 'Finance' as DepartmentKey, level: 'Director' as SupervisoryLevelKey },
-        { dept: 'Finance' as DepartmentKey, level: 'Manager' as SupervisoryLevelKey },
-        { dept: 'Operations' as DepartmentKey, level: 'Supervisor' as SupervisoryLevelKey },
-        { dept: 'IT' as DepartmentKey, level: 'Manager' as SupervisoryLevelKey },
-        { dept: 'Call Centre' as DepartmentKey, level: 'Supervisor' as SupervisoryLevelKey },
-        { dept: 'Management' as DepartmentKey, level: 'Director' as SupervisoryLevelKey },
-      ]
-      
-      roleCombinations.forEach(({ dept, level }, index) => {
-        const permissions = getRolePermissions(dept, level)
-        const roleName = generateRoleName(dept, level)
-        
-        mockRoles.push({
-          id: (index + 1).toString(),
-          name: roleName,
-          description: `Auto-generated role for ${departments[dept].name} at ${supervisoryLevels[level].name}`,
-          department: dept,
-          supervisoryLevel: level,
-          permissions: permissions,
-          userCount: Math.floor(Math.random() * 10) + 1,
+      // Create roles based on actual backend role system
+      const realRoles: Role[] = [
+        {
+          id: 'BASIC_USER_1',
+          name: 'Basic User 1',
+          description: 'Call Center View, Documents View',
+          department: 'Call Centre',
+          supervisoryLevel: 'Staff',
+          permissions: [
+            { id: 'call_center_view', name: 'Call Center View', description: 'View call center data', category: 'call_center', module: 'call_center' },
+            { id: 'documents_view', name: 'Documents View', description: 'View documents', category: 'documents', module: 'documents' },
+            { id: 'dashboard_view', name: 'Dashboard View', description: 'View dashboard', category: 'dashboard', module: 'dashboard' }
+          ],
+          userCount: backendUsers.filter((u: any) => u.role === 'BASIC_USER_1').length || 0,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          isSystem: false,
-          isGenerated: true
-        })
-      })
-      
-      // Add a system admin role
-      mockRoles.push({
-        id: '999',
-        name: 'System Administrator',
-        description: 'Full system access with all permissions',
-        department: 'IT',
-        supervisoryLevel: 'Director',
-        permissions: Object.values(modulePermissions).flat().map(perm => ({
-          id: perm.id,
-          name: perm.name,
-          description: perm.description,
-          category: 'System Administration',
-          module: 'IT',
-          actions: perm.actions
-        })),
-        userCount: 2,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isSystem: true,
-        isGenerated: false
-      })
-
-      const mockUsers: User[] = [
+          isSystem: true,
+          isGenerated: false
+        },
         {
-          id: '1',
-          name: 'John Doe',
-          email: 'john.doe@saywhat.com',
+          id: 'BASIC_USER_2',
+          name: 'Basic User 2',
+          description: 'Programs View, Inventory View',
+          department: 'Programs',
+          supervisoryLevel: 'Staff',
+          permissions: [
+            { id: 'programs_view', name: 'Programs View', description: 'View programs', category: 'programs', module: 'programs' },
+            { id: 'inventory_view', name: 'Inventory View', description: 'View inventory', category: 'inventory', module: 'inventory' },
+            { id: 'dashboard_view', name: 'Dashboard View', description: 'View dashboard', category: 'dashboard', module: 'dashboard' }
+          ],
+          userCount: backendUsers.filter((u: any) => u.role === 'BASIC_USER_2').length || 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isSystem: true,
+          isGenerated: false
+        },
+        {
+          id: 'ADVANCE_USER_1',
+          name: 'Advanced User 1',
+          description: 'Call Center Full, Programs Edit, Risks Edit',
+          department: 'Programs',
+          supervisoryLevel: 'Manager',
+          permissions: [
+            { id: 'call_center_full', name: 'Call Center Full', description: 'Full call center access', category: 'call_center', module: 'call_center' },
+            { id: 'programs_edit', name: 'Programs Edit', description: 'Edit programs', category: 'programs', module: 'programs' },
+            { id: 'risks_edit', name: 'Risks Edit', description: 'Edit risks', category: 'risks', module: 'risks' }
+          ],
+          userCount: backendUsers.filter((u: any) => u.role === 'ADVANCE_USER_1').length || 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isSystem: true,
+          isGenerated: false
+        },
+        {
+          id: 'ADVANCE_USER_2',
+          name: 'Advanced User 2',
+          description: 'Programs Full, Documents Edit',
+          department: 'Programs',
+          supervisoryLevel: 'Manager',
+          permissions: [
+            { id: 'programs_full', name: 'Programs Full', description: 'Full programs access', category: 'programs', module: 'programs' },
+            { id: 'documents_edit', name: 'Documents Edit', description: 'Edit documents', category: 'documents', module: 'documents' }
+          ],
+          userCount: backendUsers.filter((u: any) => u.role === 'ADVANCE_USER_2').length || 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isSystem: true,
+          isGenerated: false
+        },
+        {
+          id: 'HR',
+          name: 'HR Manager',
+          description: 'HR Full Access, View Others Profiles',
           department: 'HR',
           supervisoryLevel: 'Manager',
-          customRoles: [],
-          groups: ['1'],
-          isActive: true,
-          createdAt: new Date().toISOString()
+          permissions: [
+            { id: 'hr_full', name: 'HR Full Access', description: 'Full HR access', category: 'hr', module: 'hr' },
+            { id: 'view_others_profiles', name: 'View Others Profiles', description: 'View other employee profiles', category: 'hr', module: 'hr' }
+          ],
+          userCount: backendUsers.filter((u: any) => u.role === 'HR').length || 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isSystem: true,
+          isGenerated: false
         },
         {
-          id: '2',
-          name: 'Jane Smith',
-          email: 'jane.smith@saywhat.com',
-          department: 'Finance',
-          supervisoryLevel: 'Director',
-          customRoles: [],
-          groups: ['2'],
-          isActive: true,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          name: 'Bob Johnson',
-          email: 'bob.johnson@saywhat.com',
-          department: 'Operations',
-          supervisoryLevel: 'Supervisor',
-          customRoles: [],
-          groups: ['3'],
-          isActive: true,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '4',
-          name: 'Alice Brown',
-          email: 'alice.brown@saywhat.com',
+          id: 'SYSTEM_ADMINISTRATOR',
+          name: 'System Administrator',
+          description: 'Full Access to Everything',
           department: 'IT',
-          supervisoryLevel: 'Manager',
-          customRoles: ['999'], // Has system admin role
-          groups: [],
-          isActive: true,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '5',
-          name: 'Charlie Wilson',
-          email: 'charlie.wilson@saywhat.com',
-          department: 'Call Centre',
-          supervisoryLevel: 'Supervisor',
-          customRoles: [],
-          groups: [],
-          isActive: true,
-          createdAt: new Date().toISOString()
+          supervisoryLevel: 'Director',
+          permissions: [
+            { id: 'full_access', name: 'Full System Access', description: 'Complete system access', category: 'admin', module: 'system' },
+            { id: 'user_management', name: 'User Management', description: 'Manage users', category: 'admin', module: 'users' },
+            { id: 'system_settings', name: 'System Settings', description: 'Configure system', category: 'admin', module: 'settings' }
+          ],
+          userCount: backendUsers.filter((u: any) => u.role === 'SYSTEM_ADMINISTRATOR').length || 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isSystem: true,
+          isGenerated: false
         }
       ]
 
-      const mockGroups: UserGroup[] = [
+      // Set the real roles and users
+      setRoles(realRoles)
+      // Users are already set above from API
+      
+      // Create basic groups (can be empty initially)
+      const basicGroups: UserGroup[] = [
         {
           id: '1',
-          name: 'HR Management Team',
-          description: 'Human Resources management group',
-          permissions: getRolePermissions('HR', 'Manager'),
-          users: ['1'],
-          roles: ['1'],
+          name: 'Administrators',
+          description: 'System administrators with full access',
+          permissions: [
+            { id: 'admin_full', name: 'Full Admin Access', description: 'Complete administrative access', category: 'admin', module: 'system' }
+          ],
+          users: backendUsers.filter((u: any) => u.role === 'SYSTEM_ADMINISTRATOR').map((u: any) => u.id) || [],
+          roles: ['SYSTEM_ADMINISTRATOR'],
           createdAt: new Date().toISOString()
         },
         {
           id: '2',
-          name: 'Finance Leadership',
-          description: 'Financial leadership and oversight group',
-          permissions: getRolePermissions('Finance', 'Director'),
-          users: ['2'],
-          roles: ['3'],
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          name: 'Operations Team',
-          description: 'Operations management group',
-          permissions: getRolePermissions('Operations', 'Supervisor'),
-          users: ['3'],
-          roles: ['5'],
+          name: 'HR Team',
+          description: 'Human Resources team members',
+          permissions: [
+            { id: 'hr_access', name: 'HR Access', description: 'Human resources access', category: 'hr', module: 'hr' }
+          ],
+          users: backendUsers.filter((u: any) => u.role === 'HR').map((u: any) => u.id) || [],
+          roles: ['HR'],
           createdAt: new Date().toISOString()
         }
       ]
       
-      setRoles(mockRoles)
-      setUsers(mockUsers)
-      setGroups(mockGroups)
+      setGroups(basicGroups)
       
       // Flatten permissions from module permissions
       const allPermissions = Object.entries(modulePermissions).flatMap(([module, perms]) =>
@@ -420,6 +467,7 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
 
   useEffect(() => {
     fetchData()
+    fetchDepartments()
   }, [])
 
   const handleCreateRole = async (roleData: any) => {
@@ -434,7 +482,7 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
         newRole = {
           id: Date.now().toString(),
           name: roleName,
-          description: roleData.description || `Auto-generated role for ${departments[roleData.department as DepartmentKey].name} at ${supervisoryLevels[roleData.supervisoryLevel as SupervisoryLevelKey].name}`,
+          description: roleData.description || `Auto-generated role for ${findDepartment(roleData.department)?.name || roleData.department} at ${supervisoryLevels[roleData.supervisoryLevel as SupervisoryLevelKey].name}`,
           department: roleData.department,
           supervisoryLevel: roleData.supervisoryLevel,
           permissions: permissions,
@@ -874,6 +922,9 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
           roles={roles}
           getRolePermissions={getRolePermissions}
           generateRoleName={generateRoleName}
+          departmentsList={departmentsList}
+          departmentsLoading={departmentsLoading}
+          findDepartment={findDepartment}
         />
       )}
 
@@ -892,6 +943,8 @@ export function AdminRoleManagement({ className = '' }: RoleManagementProps) {
           departments={departments}
           supervisoryLevels={supervisoryLevels}
           roles={roles}
+          departmentsList={departmentsList}
+          departmentsLoading={departmentsLoading}
         />
       )}
     </div>
@@ -1245,9 +1298,12 @@ interface CreateModalProps {
   roles: Role[]
   getRolePermissions: (department: DepartmentKey, supervisoryLevel: SupervisoryLevelKey) => Permission[]
   generateRoleName: (department: DepartmentKey, supervisoryLevel: SupervisoryLevelKey) => string
+  departmentsList: Array<{id: string, name: string, code: string}>
+  departmentsLoading: boolean
+  findDepartment: (identifier: string) => {id: string, name: string, code: string} | undefined
 }
 
-function CreateModalComponent({ type, onClose, onCreate, availablePermissions, departments, supervisoryLevels, roles, getRolePermissions, generateRoleName }: CreateModalProps) {
+function CreateModalComponent({ type, onClose, onCreate, availablePermissions, departments, supervisoryLevels, roles, getRolePermissions, generateRoleName, departmentsList, departmentsLoading, findDepartment }: CreateModalProps) {
   const [formData, setFormData] = useState<any>({
     name: '',
     description: '',
@@ -1274,7 +1330,7 @@ function CreateModalComponent({ type, onClose, onCreate, availablePermissions, d
       setFormData({
         ...formData,
         name: roleName,
-        description: `Auto-generated role for ${departments[department as DepartmentKey]?.name} at ${supervisoryLevels[supervisoryLevel as SupervisoryLevelKey]?.name}`,
+        description: `Auto-generated role for ${findDepartment(department)?.name || department} at ${supervisoryLevels[supervisoryLevel as SupervisoryLevelKey]?.name}`,
         permissions: permissions,
         autoGenerate: true
       })
@@ -1350,9 +1406,13 @@ function CreateModalComponent({ type, onClose, onCreate, availablePermissions, d
                 }}
               >
                 <option value="">Select Department</option>
-                {Object.entries(departments).map(([key, dept]) => (
-                  <option key={key} value={key}>{dept.name}</option>
-                ))}
+                {departmentsLoading ? (
+                  <option disabled>Loading departments...</option>
+                ) : (
+                  departmentsList.map((dept) => (
+                    <option key={dept.id} value={dept.code || dept.name}>{dept.name}</option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -1495,9 +1555,11 @@ interface EditModalProps {
   departments: Record<DepartmentKey, Department>
   supervisoryLevels: Record<SupervisoryLevelKey, SupervisoryLevel>
   roles: Role[]
+  departmentsList: Array<{id: string, name: string, code: string}>
+  departmentsLoading: boolean
 }
 
-function EditModalComponent({ type, item, onClose, onUpdate, availablePermissions, departments, supervisoryLevels, roles }: EditModalProps) {
+function EditModalComponent({ type, item, onClose, onUpdate, availablePermissions, departments, supervisoryLevels, roles, departmentsList, departmentsLoading }: EditModalProps) {
   const [formData, setFormData] = useState<any>({
     name: item.name || '',
     description: item.description || '',
@@ -1579,9 +1641,13 @@ function EditModalComponent({ type, item, onClose, onUpdate, availablePermission
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
               >
                 <option value="">Select Department</option>
-                {Object.entries(departments).map(([key, dept]) => (
-                  <option key={key} value={key}>{dept.name}</option>
-                ))}
+                {departmentsLoading ? (
+                  <option disabled>Loading departments...</option>
+                ) : (
+                  departmentsList.map((dept) => (
+                    <option key={dept.id} value={dept.code || dept.name}>{dept.name}</option>
+                  ))
+                )}
               </select>
             </div>
 

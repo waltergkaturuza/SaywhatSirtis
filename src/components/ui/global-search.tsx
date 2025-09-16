@@ -86,50 +86,20 @@ export function GlobalSearch({
 
   // Default search implementation
   const defaultSearch = useCallback(async (searchQuery: string): Promise<SearchResult[]> => {
-    // Mock search data - in real app, this would be an API call
-    const mockResults: SearchResult[] = [
-      {
-        id: '1',
-        title: 'Dashboard',
-        description: 'Main dashboard with analytics and overview',
-        type: 'page',
-        url: '/dashboard'
-      },
-      {
-        id: '2',
-        title: 'John Doe',
-        description: 'Software Engineer - HR Department',
-        type: 'user',
-        url: '/hr/employees/john-doe'
-      },
-      {
-        id: '3',
-        title: 'Project Alpha',
-        description: 'Infrastructure improvement project',
-        type: 'project',
-        url: '/programs/project-alpha'
-      },
-      {
-        id: '4',
-        title: 'User Manual.pdf',
-        description: 'System user documentation',
-        type: 'document',
-        url: '/documents/user-manual'
-      },
-      {
-        id: '5',
-        title: 'System Settings',
-        description: 'Configure system preferences',
-        type: 'setting',
-        url: '/settings'
+    try {
+      // Call real search API
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+      if (!response.ok) {
+        throw new Error('Search API failed')
       }
-    ]
-
-    // Filter results based on query
-    return mockResults.filter(result => 
-      result.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      result.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+      
+      const data = await response.json()
+      return data.results || []
+    } catch (error) {
+      console.error('Search error:', error)
+      // Return empty results on error instead of mock data
+      return []
+    }
   }, [])
 
   // Debounced search

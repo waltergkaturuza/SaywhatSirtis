@@ -1,65 +1,91 @@
 // API utilities for HR module
 export const hrApi = {
   async createAppraisal(data: { formData: any; isDraft: boolean }) {
-    // Mock API call - replace with actual implementation
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: data.isDraft 
-            ? 'Draft saved successfully' 
-            : 'Appraisal created successfully',
-          id: Math.random().toString(36).substr(2, 9)
-        })
-      }, 1000)
-    })
+    try {
+      const response = await fetch('/api/hr/appraisals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error creating appraisal:', error)
+      throw error
+    }
   },
 
   async getAppraisals() {
-    // Mock API call - replace with actual implementation
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          data: []
-        })
-      }, 500)
-    })
+    try {
+      const response = await fetch('/api/hr/appraisals')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching appraisals:', error)
+      throw error
+    }
   },
 
   async getAppraisal(id: string) {
-    // Mock API call - replace with actual implementation
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          data: null
-        })
-      }, 500)
-    })
+    try {
+      const response = await fetch(`/api/hr/appraisals/${id}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching appraisal:', error)
+      throw error
+    }
   },
 
   async updateAppraisal(id: string, data: any) {
-    // Mock API call - replace with actual implementation
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: 'Appraisal updated successfully'
-        })
-      }, 1000)
-    })
+    try {
+      const response = await fetch(`/api/hr/appraisals/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error updating appraisal:', error)
+      throw error
+    }
   },
 
   async deleteAppraisal(id: string) {
-    // Mock API call - replace with actual implementation
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: 'Appraisal deleted successfully'
-        })
-      }, 500)
-    })
+    try {
+      const response = await fetch(`/api/hr/appraisals/${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error deleting appraisal:', error)
+      throw error
+    }
   }
 }
