@@ -300,12 +300,12 @@ function PerformancePlansContent() {
 
   const actions = (
     <>
-      <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+      <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
         <DocumentTextIcon className="h-4 w-4 mr-2" />
         Export Plans
       </button>
       <Link href="/hr/performance/plans/create">
-        <button className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700">
+        <button className="inline-flex items-center px-4 py-2 bg-orange-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-orange-700 transition-colors">
           <PlusIcon className="h-4 w-4 mr-2" />
           Create Plan
         </button>
@@ -321,12 +321,12 @@ function PerformancePlansContent() {
 
   const sidebar = (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Plan Overview</h3>
+      <div className="bg-white p-4 rounded-lg border-l-4 border-orange-500 shadow-sm">
+        <h3 className="text-lg font-semibold text-black mb-4">Plan Overview</h3>
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Total Plans</span>
-            <span className="font-semibold text-blue-600">
+            <span className="font-semibold text-orange-600">
               {loading ? "..." : statistics.total}
             </span>
           </div>
@@ -344,7 +344,7 @@ function PerformancePlansContent() {
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Reviewer Review</span>
-            <span className="font-semibold text-yellow-600">
+            <span className="font-semibold text-gray-600">
               {loading ? "..." : statistics.reviewerReview}
             </span>
           </div>
@@ -358,8 +358,8 @@ function PerformancePlansContent() {
       </div>
       
       {userRole.isHR && (
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Workflow Status</h3>
+        <div className="bg-white p-4 rounded-lg border-l-4 border-green-500 shadow-sm">
+          <h3 className="text-lg font-semibold text-black mb-4">Workflow Status</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Pending Approval</span>
@@ -369,13 +369,13 @@ function PerformancePlansContent() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Supervisor Approved</span>
-              <span className="font-medium text-blue-600">
+              <span className="font-medium text-orange-600">
                 {loading ? "..." : statistics.supervisorApproved}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Reviewer Approved</span>
-              <span className="font-medium text-indigo-600">
+              <span className="font-medium text-gray-600">
                 {loading ? "..." : statistics.reviewerApproved}
               </span>
             </div>
@@ -383,12 +383,12 @@ function PerformancePlansContent() {
         </div>
       )}
 
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Planning Year</h3>
+      <div className="bg-white p-4 rounded-lg border-l-4 border-gray-500 shadow-sm">
+        <h3 className="text-lg font-semibold text-black mb-4">Planning Year</h3>
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm max-h-32 overflow-y-auto"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm max-h-32 overflow-y-auto focus:border-orange-500 focus:ring-orange-500"
         >
           {availableYears.map((year) => (
             <option key={year} value={year.toString()}>
@@ -399,15 +399,15 @@ function PerformancePlansContent() {
       </div>
 
       {canViewAllPlans && (
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Department Summary</h3>
+        <div className="bg-white p-4 rounded-lg border-l-4 border-black shadow-sm">
+          <h3 className="text-lg font-semibold text-black mb-4">Department Summary</h3>
           <div className="space-y-3">
             {departments.length > 0 ? (
               departments.map((dept, index) => {
                 const getProgressColor = (rate: number) => {
                   if (rate >= 90) return 'bg-green-500'
-                  if (rate >= 70) return 'bg-blue-500'
-                  if (rate >= 50) return 'bg-yellow-500'
+                  if (rate >= 70) return 'bg-orange-500'
+                  if (rate >= 50) return 'bg-gray-500'
                   return 'bg-red-500'
                 }
                 
@@ -655,7 +655,7 @@ function PerformancePlansContent() {
       actions={actions}
       sidebar={sidebar}
     >
-      <div className="space-y-6">
+      <div className="w-full space-y-6">
         {/* Performance Plans Stats Cards */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -683,41 +683,41 @@ function PerformancePlansContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white rounded-lg border p-6">
+            <div className="bg-white rounded-lg border border-l-4 border-l-orange-500 p-6 shadow-sm">
               <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <ClipboardDocumentListIcon className="w-6 h-6 text-blue-600" />
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <ClipboardDocumentListIcon className="w-6 h-6 text-orange-600" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-black">
                     {statistics.totalPlans}
                   </h3>
-                  <p className="text-sm text-gray-500">Total Plans</p>
+                  <p className="text-sm text-gray-600">Total Plans</p>
                 </div>
               </div>
               <div className="mt-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">{selectedYear} Planning Year</span>
-                  <span className="text-blue-600 font-medium">Active</span>
+                  <span className="text-gray-600">{selectedYear} Planning Year</span>
+                  <span className="text-orange-600 font-medium">Active</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg border p-6">
+            <div className="bg-white rounded-lg border border-l-4 border-l-green-500 p-6 shadow-sm">
               <div className="flex items-center">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <CheckCircleIcon className="w-6 h-6 text-green-600" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-black">
                     {statistics.approved}
                   </h3>
-                  <p className="text-sm text-gray-500">Approved</p>
+                  <p className="text-sm text-gray-600">Approved</p>
                 </div>
               </div>
               <div className="mt-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Approval rate</span>
+                  <span className="text-gray-600">Approval rate</span>
                   <span className="text-green-600 font-medium">
                     {statistics.approvalRate}%
                   </span>
@@ -725,44 +725,44 @@ function PerformancePlansContent() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg border p-6">
+            <div className="bg-white rounded-lg border border-l-4 border-l-gray-500 p-6 shadow-sm">
               <div className="flex items-center">
-                <div className="p-2 bg-yellow-100 rounded-lg">
-                  <ClockIcon className="w-6 h-6 text-yellow-600" />
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <ClockIcon className="w-6 h-6 text-gray-600" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-black">
                     {statistics.pendingReview}
                   </h3>
-                  <p className="text-sm text-gray-500">Pending Review</p>
+                  <p className="text-sm text-gray-600">Pending Review</p>
                 </div>
               </div>
               <div className="mt-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Awaiting approval</span>
-                  <span className="text-yellow-600 font-medium">
+                  <span className="text-gray-600">Awaiting approval</span>
+                  <span className="text-gray-600 font-medium">
                     {statistics.pendingReview > 0 ? 'Review' : 'None'}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg border p-6">
+            <div className="bg-white rounded-lg border border-l-4 border-l-red-500 p-6 shadow-sm">
               <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <ChartBarIcon className="w-6 h-6 text-purple-600" />
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <ChartBarIcon className="w-6 h-6 text-red-600" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-black">
                     {statistics.avgProgress}%
                   </h3>
-                  <p className="text-sm text-gray-500">Avg Progress</p>
+                  <p className="text-sm text-gray-600">Avg Progress</p>
                 </div>
               </div>
               <div className="mt-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Overall completion</span>
-                  <span className="text-purple-600 font-medium">
+                  <span className="text-gray-600">Overall completion</span>
+                  <span className="text-red-600 font-medium">
                     {statistics.avgProgress >= 80 ? 'Excellent' : 
                      statistics.avgProgress >= 60 ? 'Good' : 
                      statistics.avgProgress >= 40 ? 'Fair' : 'Needs Improvement'}
@@ -781,9 +781,9 @@ function PerformancePlansContent() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-6 text-sm font-medium border-b-2 flex items-center space-x-2 ${
+                  className={`py-4 px-6 text-sm font-medium border-b-2 flex items-center space-x-2 transition-colors ${
                     activeTab === tab.id
-                      ? "border-blue-500 text-blue-600"
+                      ? "border-orange-500 text-orange-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
@@ -798,7 +798,7 @@ function PerformancePlansContent() {
             {(activeTab === "my-plans" || activeTab === "all-plans") && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-black">
                     {activeTab === "my-plans" ? "My Performance Plans" : "All Performance Plans"} - {selectedYear}
                   </h3>
                   <div className="flex space-x-2">
@@ -820,31 +820,31 @@ function PerformancePlansContent() {
 
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 border-t-2 border-orange-500">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Next Action</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Supervisor</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Employee</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Department</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Next Action</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Supervisor</th>
                         {userRole.isHR && (
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reviewer</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Reviewer</th>
                         )}
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Updated</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Last Updated</th>
                         <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {performancePlans.map((plan) => (
-                        <tr key={plan.id} className="hover:bg-gray-50">
+                        <tr key={plan.id} className="hover:bg-orange-50 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                <UserIcon className="h-4 w-4 text-indigo-600" />
+                              <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
+                                <UserIcon className="h-4 w-4 text-orange-600" />
                               </div>
                               <div className="ml-3">
-                                <div className="text-sm font-medium text-gray-900">{plan.employeeName}</div>
-                                <div className="text-sm text-gray-500">{plan.position}</div>
+                                <div className="text-sm font-medium text-black">{plan.employeeName}</div>
+                                <div className="text-sm text-gray-600">{plan.position}</div>
                               </div>
                             </div>
                           </td>
@@ -893,13 +893,13 @@ function PerformancePlansContent() {
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center space-x-2">
                               <Link href={`/hr/performance/plans/${plan.id}`}>
-                                <button className="text-blue-600 hover:text-blue-900">
+                                <button className="text-orange-600 hover:text-orange-900 transition-colors">
                                   <EyeIcon className="h-4 w-4" />
                                 </button>
                               </Link>
                               {(plan.employeeId === session?.user?.id || userRole.canSeeAllPlans) && (
                                 <Link href={`/hr/performance/plans/${plan.id}/edit`}>
-                                  <button className="text-gray-600 hover:text-gray-900">
+                                  <button className="text-gray-600 hover:text-black transition-colors">
                                     <PencilIcon className="h-4 w-4" />
                                   </button>
                                 </Link>
@@ -907,7 +907,7 @@ function PerformancePlansContent() {
                               {plan.canUserAct && (
                                 <button
                                   onClick={() => handleWorkflowAction(plan, getActionFromNextAction(plan.nextAction))}
-                                  className="text-green-600 hover:text-green-900"
+                                  className="text-green-600 hover:text-green-900 transition-colors"
                                 >
                                   <CheckCircleIcon className="h-4 w-4" />
                                 </button>

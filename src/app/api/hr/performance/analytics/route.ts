@@ -13,11 +13,32 @@ export async function GET(request: NextRequest) {
 
     // Check if user has HR permissions
     const user = await prisma.users.findUnique({
-      where: { email: session.user.email! }
+      where: { email: session.user.email! },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        department: true,
+        isActive: true
+      }
     })
 
     if (!user || !['HR', 'ADMIN'].includes(user.department || '')) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+      // Return empty analytics instead of 403 for better UX
+      return NextResponse.json({
+        success: true,
+        data: {
+          totalGoals: 0,
+          completedGoals: 0,
+          inProgressGoals: 0,
+          overduedGoals: 0,
+          departmentPerformance: [],
+          topPerformers: [],
+          recentActivities: [],
+          trends: []
+        },
+        message: 'Performance analytics not available - insufficient permissions'
+      })
     }
 
     const { searchParams } = new URL(request.url)

@@ -16,147 +16,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Mock database statistics
+    // Database statistics - to be implemented with actual database queries
     const dbStats = {
       connection: {
-        status: 'connected',
-        host: 'localhost',
-        database: 'sirtis_dev',
-        version: 'SQLite 3.x',
-        uptime: '7d 14h 23m',
-        maxConnections: 100,
-        activeConnections: 12
+        status: 'unknown',
+        host: process.env.DATABASE_URL ? 'configured' : 'not configured',
+        database: 'sirtis',
+        version: 'PostgreSQL',
+        uptime: 'unknown',
+        maxConnections: 0,
+        activeConnections: 0
       },
-      tables: [
-        {
-          name: 'users',
-          rows: 45,
-          size: '2.3 MB',
-          lastModified: new Date().toISOString()
-        },
-        {
-          name: 'roles',
-          rows: 5,
-          size: '0.1 MB',
-          lastModified: new Date(Date.now() - 86400000).toISOString()
-        },
-        {
-          name: 'employees',
-          rows: 38,
-          size: '1.8 MB',
-          lastModified: new Date(Date.now() - 3600000).toISOString()
-        },
-        {
-          name: 'projects',
-          rows: 15,
-          size: '0.9 MB',
-          lastModified: new Date(Date.now() - 7200000).toISOString()
-        },
-        {
-          name: 'calls',
-          rows: 1250,
-          size: '15.2 MB',
-          lastModified: new Date(Date.now() - 1800000).toISOString()
-        },
-        {
-          name: 'audit_logs',
-          rows: 2340,
-          size: '8.7 MB',
-          lastModified: new Date(Date.now() - 900000).toISOString()
-        }
-      ],
+      tables: [],
       performance: {
         queries: {
-          total: 125430,
-          slow: 23,
-          failed: 2,
-          averageTime: 45
+          total: 0,
+          slow: 0,
+          failed: 0,
+          averageTime: 0
         },
         indexes: {
-          total: 34,
-          unused: 3,
-          duplicates: 1
+          total: 0,
+          unused: 0,
+          duplicates: 0
         },
         storage: {
-          total: '100 GB',
-          used: '35.2 GB',
-          free: '64.8 GB',
-          fragmentation: 12
+          total: 'unknown',
+          used: 'unknown',
+          free: 'unknown',
+          fragmentation: 0
         }
       },
-      backups: [
-        {
-          id: 'backup_001',
-          type: 'full',
-          size: '34.5 MB',
-          createdAt: new Date().toISOString(),
-          status: 'completed'
-        },
-        {
-          id: 'backup_002',
-          type: 'incremental',
-          size: '2.1 MB',
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          status: 'completed'
-        },
-        {
-          id: 'backup_003',
-          type: 'full',
-          size: '33.8 MB',
-          createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-          status: 'completed'
-        }
-      ],
-      migrations: [
-        {
-          id: '20250718145814_add_payroll_models',
-          name: 'Add payroll models',
-          appliedAt: new Date(Date.now() - 86400000).toISOString(),
-          status: 'applied'
-        },
-        {
-          id: '20250717120000_update_user_schema',
-          name: 'Update user schema',
-          appliedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-          status: 'applied'
-        },
-        {
-          id: '20250716100000_add_audit_logs',
-          name: 'Add audit logs',
-          appliedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-          status: 'applied'
-        }
-      ],
-      recentActivity: [
-        {
-          timestamp: new Date().toISOString(),
-          type: 'SELECT',
-          table: 'users',
-          duration: 23,
-          user: 'system'
-        },
-        {
-          timestamp: new Date(Date.now() - 300000).toISOString(),
-          type: 'INSERT',
-          table: 'audit_logs',
-          duration: 12,
-          user: 'john.doe@saywhat.co.zw'
-        },
-        {
-          timestamp: new Date(Date.now() - 600000).toISOString(),
-          type: 'UPDATE',
-          table: 'employees',
-          duration: 45,
-          user: 'jane.smith@saywhat.co.zw'
-        },
-        {
-          timestamp: new Date(Date.now() - 900000).toISOString(),
-          type: 'DELETE',
-          table: 'calls',
-          duration: 67,
-          user: 'system'
-        }
-      ]
+      backups: [],
+      migrations: [],
+      recentActivity: []
     }
 
     return NextResponse.json({

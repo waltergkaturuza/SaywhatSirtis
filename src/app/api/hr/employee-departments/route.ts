@@ -34,16 +34,8 @@ export async function GET(request: NextRequest) {
         .sort()
 
     } catch (dbError: any) {
-      console.warn('Database connection failed, using fallback departments:', dbError?.message || 'Unknown error')
-      // Fallback departments when database is not accessible
-      departments = [
-        'Human Resources',
-        'Programs', 
-        'Executive Directors Office - Research and Development',
-        'IT',
-        'Finance and Administration',
-        'Communications and Advocacy'
-      ]
+      console.error('Database connection failed for employee departments:', dbError?.message || 'Unknown error')
+      departments = []
     }
 
     return NextResponse.json(departments)
@@ -52,14 +44,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to fetch employee departments',
-        fallback: [
-          'Human Resources',
-          'Programs', 
-          'Executive Directors Office - Research and Development',
-          'IT',
-          'Finance and Administration',
-          'Communications and Advocacy'
-        ]
+        departments: []
       },
       { status: 500 }
     )

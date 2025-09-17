@@ -288,7 +288,7 @@ export default function CreatePerformancePlanPage() {
                 <select
                   value={selectedEmployee?.id || ''}
                   onChange={(e) => handleEmployeeSelect(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   disabled={loading.employees}
                 >
                   <option value="">
@@ -348,7 +348,7 @@ export default function CreatePerformancePlanPage() {
                 <select
                   value={formData.employee.department}
                   onChange={(e) => handleNestedInputChange("employee", "department", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   disabled={loading.departments}
                 >
                   <option value="">
@@ -369,7 +369,7 @@ export default function CreatePerformancePlanPage() {
                 <select
                   value={formData.supervisor}
                   onChange={(e) => handleInputChange("supervisor", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   disabled={loading.supervisors}
                 >
                   <option value="">
@@ -383,11 +383,11 @@ export default function CreatePerformancePlanPage() {
                   ))}
                 </select>
                 {selectedEmployee?.supervisor && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                    <div className="text-sm text-blue-800">
+                  <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                    <div className="text-sm text-orange-800">
                       <strong>Current Supervisor:</strong> {selectedEmployee.supervisor.name}
                       <br />
-                      <span className="text-blue-600">{selectedEmployee.supervisor.position}</span>
+                      <span className="text-orange-600">{selectedEmployee.supervisor.position}</span>
                     </div>
                   </div>
                 )}
@@ -400,7 +400,7 @@ export default function CreatePerformancePlanPage() {
                 <select
                   value={formData.planYear}
                   onChange={(e) => handleInputChange("planYear", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   {(() => {
                     const currentYear = new Date().getFullYear();
@@ -429,7 +429,7 @@ export default function CreatePerformancePlanPage() {
                   <select
                     value={formData.planType}
                     onChange={(e) => handleInputChange("planType", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
                     <option value="annual">Annual Plan</option>
                     <option value="quarterly">Quarterly Plan</option>
@@ -446,7 +446,7 @@ export default function CreatePerformancePlanPage() {
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => handleInputChange("startDate", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
 
@@ -458,7 +458,7 @@ export default function CreatePerformancePlanPage() {
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => handleInputChange("endDate", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
               </div>
@@ -469,9 +469,9 @@ export default function CreatePerformancePlanPage() {
       case 2:
         return (
           <div className="space-y-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">Strategic Goals</h3>
-              <p className="text-blue-700">Define key strategic objectives that align with organizational goals and priorities.</p>
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-orange-900 mb-2">Strategic Goals</h3>
+              <p className="text-orange-700">Define key strategic objectives that align with organizational goals and priorities.</p>
             </div>
 
             <div className="flex justify-between items-center">
@@ -490,7 +490,7 @@ export default function CreatePerformancePlanPage() {
                   resources: [],
                   comments: ""
                 })}
-                className="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="inline-flex items-center px-3 py-1 bg-orange-600 text-white rounded-md hover:bg-orange-700"
               >
                 <PlusIcon className="h-4 w-4 mr-1" />
                 Add Goal
@@ -519,7 +519,7 @@ export default function CreatePerformancePlanPage() {
                     type="text"
                     value={goal.title}
                     onChange={(e) => handleArrayChange("goals", index, "title", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="Enter clear, specific goal title..."
                   />
                 </div>
@@ -532,7 +532,7 @@ export default function CreatePerformancePlanPage() {
                     value={goal.description}
                     onChange={(e) => handleArrayChange("goals", index, "description", e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="Provide detailed description of the goal and its importance..."
                   />
                 </div>
@@ -545,7 +545,7 @@ export default function CreatePerformancePlanPage() {
                     <select
                       value={goal.priority}
                       onChange={(e) => handleArrayChange("goals", index, "priority", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
                       <option value="high">High Priority</option>
                       <option value="medium">Medium Priority</option>
@@ -561,7 +561,7 @@ export default function CreatePerformancePlanPage() {
                       type="date"
                       value={goal.targetDate}
                       onChange={(e) => handleArrayChange("goals", index, "targetDate", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                   </div>
 
@@ -572,7 +572,7 @@ export default function CreatePerformancePlanPage() {
                     <select
                       value={goal.status}
                       onChange={(e) => handleArrayChange("goals", index, "status", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     >
                       <option value="not-started">Not Started</option>
                       <option value="in-progress">In Progress</option>
@@ -590,7 +590,7 @@ export default function CreatePerformancePlanPage() {
                     value={goal.comments}
                     onChange={(e) => handleArrayChange("goals", index, "comments", e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="Define how success will be measured and any additional comments..."
                   />
                 </div>
@@ -751,9 +751,9 @@ export default function CreatePerformancePlanPage() {
               </div>
             ))}
 
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-blue-900 mb-2">Total Weight</h4>
-              <p className="text-blue-700">
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-orange-900 mb-2">Total Weight</h4>
+              <p className="text-orange-700">
                 Current total: {formData.kpis.reduce((sum, kpi) => sum + kpi.weight, 0)}% 
                 {formData.kpis.reduce((sum, kpi) => sum + kpi.weight, 0) !== 100 && (
                   <span className="text-orange-600 ml-2">
@@ -1199,7 +1199,7 @@ export default function CreatePerformancePlanPage() {
 
                 <div className="flex items-center">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    milestone.reviewType === 'formal' ? 'bg-blue-100 text-blue-800' :
+                    milestone.reviewType === 'formal' ? 'bg-orange-100 text-orange-800' :
                     milestone.reviewType === '360' ? 'bg-purple-100 text-purple-800' :
                     milestone.reviewType === 'self-assessment' ? 'bg-green-100 text-green-800' :
                     milestone.reviewType === 'peer-review' ? 'bg-yellow-100 text-yellow-800' :
@@ -1211,9 +1211,9 @@ export default function CreatePerformancePlanPage() {
               </div>
             ))}
 
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-blue-900 mb-2">Review Schedule Guidelines</h4>
-              <ul className="text-blue-700 text-sm space-y-1">
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-orange-900 mb-2">Review Schedule Guidelines</h4>
+              <ul className="text-orange-700 text-sm space-y-1">
                 <li>• Plan regular intervals (monthly, quarterly, etc.)</li>
                 <li>• Include both formal and informal check-ins</li>
                 <li>• Allow time for course corrections and adjustments</li>
@@ -1286,7 +1286,7 @@ export default function CreatePerformancePlanPage() {
                       <span className="px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-medium">
                         Target: {kpi.target}
                       </span>
-                      <span className="px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-medium">
+                      <span className="px-2 py-1 rounded bg-orange-100 text-orange-800 text-xs font-medium">
                         {kpi.weight}%
                       </span>
                     </div>
@@ -1371,7 +1371,7 @@ export default function CreatePerformancePlanPage() {
                     value={formData.employeeComments}
                     onChange={(e) => handleInputChange("employeeComments", e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="Employee's comments on the performance plan..."
                   />
                 </div>
@@ -1384,7 +1384,7 @@ export default function CreatePerformancePlanPage() {
                     value={formData.supervisorComments}
                     onChange={(e) => handleInputChange("supervisorComments", e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="Supervisor's comments and expectations..."
                   />
                 </div>
@@ -1395,7 +1395,7 @@ export default function CreatePerformancePlanPage() {
                     id="employeeAgreement"
                     checked={formData.employeeAgreement}
                     onChange={(e) => handleInputChange("employeeAgreement", e.target.checked)}
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                   />
                   <label htmlFor="employeeAgreement" className="ml-2 block text-sm text-gray-700">
                     Employee agrees with the performance plan and understands the expectations
@@ -1424,15 +1424,17 @@ export default function CreatePerformancePlanPage() {
 
   return (
     <ModulePage metadata={metadata}>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto px-6">
         {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             {performancePlanSteps.map((step, index) => (
               <div key={step.id} className="flex items-center">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                  step.id <= currentStep 
-                    ? 'bg-blue-600 border-blue-600 text-white' 
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors ${
+                  step.id < currentStep
+                    ? 'bg-green-600 border-green-600 text-white'
+                  : step.id === currentStep 
+                    ? 'bg-orange-600 border-orange-600 text-white' 
                     : 'border-gray-300 text-gray-500'
                 }`}>
                   {step.id < currentStep ? (
@@ -1443,7 +1445,7 @@ export default function CreatePerformancePlanPage() {
                 </div>
                 <div className="ml-3 min-w-0">
                   <p className={`text-sm font-medium ${
-                    step.id <= currentStep ? 'text-blue-600' : 'text-gray-500'
+                    step.id < currentStep ? 'text-green-600' : step.id === currentStep ? 'text-orange-600' : 'text-gray-500'
                   }`}>
                     {step.title}
                   </p>
@@ -1451,7 +1453,7 @@ export default function CreatePerformancePlanPage() {
                 </div>
                 {index < performancePlanSteps.length - 1 && (
                   <div className={`flex-1 h-0.5 mx-4 ${
-                    step.id < currentStep ? 'bg-blue-600' : 'bg-gray-300'
+                    step.id < currentStep ? 'bg-orange-600' : 'bg-gray-300'
                   }`} />
                 )}
               </div>
@@ -1495,14 +1497,14 @@ export default function CreatePerformancePlanPage() {
                 <button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Plan'}
                 </button>
               ) : (
                 <button
                   onClick={handleNext}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
                 >
                   Next
                 </button>

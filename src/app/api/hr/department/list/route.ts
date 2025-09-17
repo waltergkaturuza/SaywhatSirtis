@@ -36,16 +36,11 @@ export async function GET() {
     })
   } catch (error) {
     console.error('Error fetching department list:', error)
-    // Return fallback departments on any error
-    const fallbackDepartments = [
-      { id: 'hr-dept', name: 'Human Resources', code: 'HR', level: 0, parentId: null, status: 'ACTIVE' },
-      { id: 'hr-dept', name: 'Human Resources', code: 'HR', level: 0, parentId: null, status: 'ACTIVE' },
-      { id: 'finance-dept', name: 'Finance & Administration', code: 'FIN', level: 0, parentId: null, status: 'ACTIVE' }
-    ]
     
     return NextResponse.json({ 
-      success: true,
-      data: fallbackDepartments
-    }, { status: 200 })
+      success: false,
+      data: [],
+      error: 'Failed to fetch department list'
+    }, { status: 500 })
   }
 }

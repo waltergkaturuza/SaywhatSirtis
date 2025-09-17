@@ -31,7 +31,15 @@ export async function GET() {
 
     // Get current user to check permissions
     const currentUser = await prisma.users.findUnique({
-      where: { email: session.user.email }
+      where: { email: session.user.email },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        department: true,
+        position: true,
+        isActive: true
+      }
     })
 
     if (!currentUser) {
@@ -220,7 +228,11 @@ export async function POST(request: Request) {
 
     // Check if user email already exists
     const existingUser = await prisma.users.findUnique({
-      where: { email: formData.email }
+      where: { email: formData.email },
+      select: {
+        id: true,
+        email: true
+      }
     })
 
     if (existingUser) {

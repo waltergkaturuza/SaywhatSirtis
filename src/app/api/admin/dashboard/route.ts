@@ -89,46 +89,35 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching admin dashboard data:", error)
     
-    // Fallback to mock data when services are unavailable
-    console.log("Services unavailable, returning mock dashboard data for development")
-    const mockSystemStats = {
-      totalUsers: 156,
-      activeUsers: 142,
-      totalDocuments: 2847,
-      systemUptime: "99.8%",
-      storageUsed: "4.2 GB",
-      apiCalls: 12543,
-      errorRate: 0.2,
-      responseTime: 245
-    }
-
-    const mockServiceStatus = {
-      database: { status: 'offline', lastCheck: new Date().toISOString(), responseTime: 0 },
-      api: { status: 'online', lastCheck: new Date().toISOString(), responseTime: 120 },
-      storage: { status: 'online', lastCheck: new Date().toISOString(), responseTime: 80 },
-      cache: { status: 'offline', lastCheck: new Date().toISOString(), responseTime: 0 }
-    }
-
-    const mockAlerts = [
-      {
-        id: "db_offline",
-        type: "error",
-        title: "Database Connection Lost",
-        message: "Unable to connect to the database server",
-        timestamp: new Date().toISOString(),
-        severity: "high"
-      }
-    ]
-
+    // Return empty data when services are unavailable
     return createSafeJsonResponse({
-      success: true,
+      success: false,
       data: {
-        stats: mockSystemStats,
-        serviceStatus: mockServiceStatus,
+        stats: {
+          totalUsers: 0,
+          activeUsers: 0,
+          totalDocuments: 0,
+          systemUptime: "0%",
+          storageUsed: "0 GB",
+          apiCalls: 0,
+          errorRate: 0,
+          responseTime: 0
+        },
+        serviceStatus: {
+          database: { status: 'offline', lastCheck: new Date().toISOString(), responseTime: 0 },
+          api: { status: 'offline', lastCheck: new Date().toISOString(), responseTime: 0 },
+          storage: { status: 'offline', lastCheck: new Date().toISOString(), responseTime: 0 },
+          cache: { status: 'offline', lastCheck: new Date().toISOString(), responseTime: 0 }
+        },
         securityEvents: [],
-        alerts: mockAlerts,
+        alerts: [],
+        deploymentData: {
+          current: { platform: 'unknown', environment: 'unknown', region: 'unknown', url: 'unknown' },
+          database: { provider: 'unknown', connectionString: 'disconnected', sharedAccess: false },
+          deployments: { vercel: { status: 'unknown' }, render: { status: 'unknown' } }
+        },
         timestamp: new Date().toISOString(),
-        note: "Using mock data - services unavailable"
+        error: "Dashboard data unavailable - database connection failed"
       }
     })
   }

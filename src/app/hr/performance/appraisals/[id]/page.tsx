@@ -19,7 +19,9 @@ import {
   LightBulbIcon,
   ArrowPathIcon,
   PrinterIcon,
-  ShareIcon
+  ShareIcon,
+  EyeIcon,
+  BuildingOfficeIcon
 } from "@heroicons/react/24/outline"
 
 interface AppraisalData {
@@ -65,174 +67,19 @@ interface AppraisalData {
   improvementPlan: string
 }
 
-// Sample data - in real app this would come from API
-const getSampleAppraisal = (id: string): AppraisalData => {
-  const sampleData: Record<string, AppraisalData> = {
-    "1": {
-      id: 1,
-      employeeName: "John Doe",
-      employeeId: "EMP001",
-      department: "Operations",
-      position: "Operations Manager",
-      period: "Q1 2024",
-      overallRating: 4.5,
-      status: "completed",
-      submittedAt: "2024-01-28T14:30:00Z",
-      reviewedAt: "2024-01-30T16:45:00Z",
-      supervisor: "Mark Wilson",
-      reviewer: "Sarah Johnson",
-      planProgress: 85,
-      strengths: "Excellent leadership skills, proactive problem-solving, strong team management",
-      areasImprovement: "Time management, delegation, strategic planning documentation",
-      goals: "Focus on strategic planning and team development for next quarter",
-      lastUpdated: "2024-01-30T16:45:00Z",
-      performanceAreas: [
-        {
-          area: "Job Knowledge & Technical Skills",
-          rating: 4,
-          weight: 20,
-          comments: "Demonstrates strong technical competency and stays updated with industry trends",
-          evidence: "Successfully implemented new workflow system, completed advanced training"
-        },
-        {
-          area: "Quality of Work",
-          rating: 5,
-          weight: 20,
-          comments: "Consistently delivers high-quality results with attention to detail",
-          evidence: "Zero defects in quarterly deliverables, positive client feedback"
-        },
-        {
-          area: "Communication Skills",
-          rating: 4,
-          weight: 15,
-          comments: "Clear and effective communication with team and stakeholders",
-          evidence: "Led successful stakeholder presentations, improved team communication protocols"
-        },
-        {
-          area: "Team Collaboration",
-          rating: 5,
-          weight: 15,
-          comments: "Excellent team player, promotes collaborative environment",
-          evidence: "Facilitated cross-departmental projects, mentored junior staff"
-        },
-        {
-          area: "Initiative & Innovation",
-          rating: 4,
-          weight: 15,
-          comments: "Proactive in identifying improvements and implementing solutions",
-          evidence: "Proposed and implemented cost-saving automation, led innovation workshop"
-        },
-        {
-          area: "Leadership & Management",
-          rating: 5,
-          weight: 15,
-          comments: "Outstanding leadership qualities, effective team management",
-          evidence: "Improved team productivity by 22%, successful team expansion"
-        }
-      ],
-      achievements: [
-        {
-          achievement: "Implemented Workflow Automation System",
-          impact: "Increased team productivity by 22% and reduced processing time by 35%",
-          evidence: "System metrics, team feedback surveys, time tracking data"
-        },
-        {
-          achievement: "Led Cross-Departmental Cost Reduction Initiative",
-          impact: "Identified and implemented cost savings of $50,000 annually",
-          evidence: "Financial reports, process documentation, stakeholder approval"
-        },
-        {
-          achievement: "Developed Team Training Program",
-          impact: "Improved team skills and reduced onboarding time by 40%",
-          evidence: "Training materials, skill assessments, onboarding metrics"
-        }
-      ],
-      developmentPlans: [
-        {
-          area: "Strategic Planning",
-          currentLevel: "Intermediate",
-          targetLevel: "Advanced",
-          timeline: "6 months",
-          resources: "Strategic planning course, mentorship with senior leadership"
-        },
-        {
-          area: "Time Management",
-          currentLevel: "Good",
-          targetLevel: "Excellent",
-          timeline: "3 months",
-          resources: "Time management training, productivity tools, coaching sessions"
-        }
-      ],
-      supervisorComments: "John has consistently exceeded expectations and demonstrated exceptional leadership. His initiative in implementing the workflow automation system resulted in significant productivity gains. Areas for development include enhancing strategic planning skills and improving delegation to better leverage team capabilities.",
-      employeeComments: "I appreciate the feedback and am committed to the development areas identified. The workflow automation project was very rewarding, and I look forward to taking on more strategic initiatives. I would benefit from additional mentorship in strategic planning.",
-      nextSteps: "1. Enroll in strategic planning certification program by March 2024\\n2. Begin weekly mentorship sessions with senior leadership\\n3. Implement time management system and tools\\n4. Lead next quarter's strategic planning session",
-      improvementPlan: "Focus on developing strategic thinking skills through formal training and mentorship. Implement structured time management system to improve efficiency and create more time for strategic activities."
-    },
-    "2": {
-      id: 2,
-      employeeName: "Michael Adebayo",
-      employeeId: "EMP002",
-      department: "Healthcare",
-      position: "Healthcare Coordinator",
-      period: "Q1 2024",
-      overallRating: null,
-      status: "in-progress",
-      submittedAt: null,
-      reviewedAt: null,
-      supervisor: "Dr. Amina Hassan",
-      reviewer: "Sarah Johnson",
-      planProgress: 65,
-      strengths: "",
-      areasImprovement: "",
-      goals: "",
-      lastUpdated: "2024-01-25T10:15:00Z",
-      performanceAreas: [
-        {
-          area: "Healthcare Program Management",
-          rating: 0,
-          weight: 25,
-          comments: "",
-          evidence: ""
-        },
-        {
-          area: "Community Engagement",
-          rating: 0,
-          weight: 20,
-          comments: "",
-          evidence: ""
-        },
-        {
-          area: "Data Management & Reporting",
-          rating: 0,
-          weight: 20,
-          comments: "",
-          evidence: ""
-        },
-        {
-          area: "Quality Assurance",
-          rating: 0,
-          weight: 15,
-          comments: "",
-          evidence: ""
-        },
-        {
-          area: "Professional Development",
-          rating: 0,
-          weight: 20,
-          comments: "",
-          evidence: ""
-        }
-      ],
-      achievements: [],
-      developmentPlans: [],
-      supervisorComments: "",
-      employeeComments: "",
-      nextSteps: "",
-      improvementPlan: ""
+// Fetch appraisal data from API
+const fetchAppraisalData = async (id: string): Promise<AppraisalData | null> => {
+  try {
+    const response = await fetch(`/api/hr/performance/appraisals/${id}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch appraisal: ${response.status}`);
     }
+    const result = await response.json();
+    return result.success ? result.data : null;
+  } catch (error) {
+    console.error('Error fetching appraisal data:', error);
+    return null;
   }
-  
-  return sampleData[id] || sampleData["1"]
 }
 
 export default function ViewAppraisalPage() {
@@ -242,11 +89,33 @@ export default function ViewAppraisalPage() {
   
   const [appraisal, setAppraisal] = useState<AppraisalData | null>(null)
   const [activeSection, setActiveSection] = useState("overview")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Load appraisal data
-    const appraisalData = getSampleAppraisal(appraisalId)
-    setAppraisal(appraisalData)
+    // Load appraisal data from API
+    const loadAppraisalData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const appraisalData = await fetchAppraisalData(appraisalId)
+        
+        if (appraisalData) {
+          setAppraisal(appraisalData)
+        } else {
+          setError('Appraisal not found')
+        }
+      } catch (err) {
+        setError('Failed to load appraisal data')
+        console.error('Error loading appraisal:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (appraisalId) {
+      loadAppraisalData()
+    }
   }, [appraisalId])
 
   const metadata = {
@@ -306,13 +175,37 @@ export default function ViewAppraisalPage() {
     return totalWeight > 0 ? (weightedScore / totalWeight).toFixed(1) : "0.0"
   }
 
-  if (!appraisal) {
+  if (loading) {
     return (
       <ModulePage metadata={metadata}>
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-2 text-gray-600">Loading appraisal...</p>
+          </div>
+        </div>
+      </ModulePage>
+    )
+  }
+
+  if (error || !appraisal) {
+    return (
+      <ModulePage metadata={metadata}>
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {error || 'Appraisal Not Found'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              The performance appraisal you're looking for could not be loaded.
+            </p>
+            <button
+              onClick={() => router.back()}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm text-white hover:bg-blue-700"
+            >
+              Go Back
+            </button>
           </div>
         </div>
       </ModulePage>

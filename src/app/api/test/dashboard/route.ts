@@ -9,11 +9,11 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
 
-    // Create some mock data if database is empty
+    // Check if database has data
     const projectCount = await prisma.projects.count()
     
     if (projectCount === 0) {
-      // Return mock data for empty database
+      // Return empty data for empty database
       return NextResponse.json({
         success: true,
         data: {

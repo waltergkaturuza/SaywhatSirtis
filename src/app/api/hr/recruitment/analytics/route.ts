@@ -10,28 +10,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Mock recruitment analytics
-    const mockAnalytics = {
-      totalJobPostings: 12,
-      totalApplications: 45,
-      statusBreakdown: [
-        { status: "PENDING", _count: { id: 15 } },
-        { status: "INTERVIEW", _count: { id: 8 } },
-        { status: "ACCEPTED", _count: { id: 5 } },
-        { status: "REJECTED", _count: { id: 17 } }
-      ],
-      departmentBreakdown: [
-        { department: "HR", _count: { id: 6 } },
-        { department: "Sales", _count: { id: 3 } },
-        { department: "Marketing", _count: { id: 2 } },
-        { department: "HR", _count: { id: 1 } }
-      ],
-      conversionRate: "37.50"
+    // Return empty recruitment analytics - module not yet implemented
+    const emptyAnalytics = {
+      totalJobPostings: 0,
+      totalApplications: 0,
+      statusBreakdown: [],
+      departmentBreakdown: [],
+      conversionRate: "0.00"
     }
 
     return NextResponse.json({
       success: true,
-      data: mockAnalytics,
+      data: emptyAnalytics,
       message: "Recruitment analytics module not yet implemented"
     })
   } catch (error) {

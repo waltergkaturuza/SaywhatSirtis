@@ -52,47 +52,12 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching system configs:", error)
     
-    // Fallback to mock system configurations when database is unavailable
-    console.log("Database unavailable, returning mock config data for development")
-    const mockConfigs = [
-      {
-        id: "1",
-        key: "SYSTEM_NAME",
-        value: "SIRTIS Management System",
-        description: "The name displayed in the application header",
-        category: "General",
-        type: "string" as const,
-        lastModified: new Date().toISOString(),
-        modifiedBy: "System"
-      },
-      {
-        id: "2",
-        key: "MAX_FILE_SIZE",
-        value: "10485760",
-        description: "Maximum file upload size in bytes (10MB)",
-        category: "Upload",
-        type: "number" as const,
-        lastModified: new Date().toISOString(),
-        modifiedBy: "System"
-      },
-      {
-        id: "3",
-        key: "ENABLE_NOTIFICATIONS",
-        value: "true",
-        description: "Enable system-wide notifications",
-        category: "Notifications",
-        type: "boolean" as const,
-        lastModified: new Date().toISOString(),
-        modifiedBy: "System"
-      }
-    ]
-
     return NextResponse.json({
-      success: true,
-      configs: mockConfigs,
-      total: mockConfigs.length,
-      note: "Using mock data - database unavailable"
-    })
+      success: false,
+      configs: [],
+      total: 0,
+      error: "Failed to fetch system configurations"
+    }, { status: 500 })
   }
 }
 

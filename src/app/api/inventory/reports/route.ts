@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 
-// Mock database for reports
+// Empty reports database - integration needed
 const reports = new Map()
 
 export async function GET(request: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     const assetIds = searchParams.get('assetIds')?.split(',') || []
 
-    // Generate sample report data
+    // Generate empty report - database integration needed
     const reportData = {
       id: Date.now().toString(),
       type: type || 'asset-register',
@@ -24,9 +24,9 @@ export async function GET(request: NextRequest) {
       generatedBy: session.user?.name || 'System',
       assetIds,
       summary: {
-        totalAssets: assetIds.length,
-        totalValue: Math.floor(Math.random() * 1000000),
-        avgValue: Math.floor(Math.random() * 10000)
+        totalAssets: 0,
+        totalValue: 0,
+        avgValue: 0
       },
       data: assetIds.map(id => ({
         assetId: id,

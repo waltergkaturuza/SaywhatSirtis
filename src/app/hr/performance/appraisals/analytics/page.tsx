@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   ChartBarIcon,
   ArrowTrendingUpIcon,
@@ -48,88 +48,74 @@ interface AnalyticsData {
   }>
 }
 
-// Sample analytics data
-const analyticsData: AnalyticsData = {
-  totalAppraisals: 125,
-  completedAppraisals: 98,
-  averageRating: 4.2,
-  onTimeCompletion: 87,
-  departmentStats: [
-    {
-      department: "Operations",
-      total: 25,
-      completed: 22,
-      averageRating: 4.4,
-      onTime: 88
-    },
-    {
-      department: "Healthcare",
-      total: 30,
-      completed: 28,
-      averageRating: 4.3,
-      onTime: 93
-    },
-    {
-      department: "Education",
-      total: 20,
-      completed: 18,
-      averageRating: 4.1,
-      onTime: 90
-    },
-    {
-      department: "Water & Sanitation",
-      total: 15,
-      completed: 13,
-      averageRating: 4.0,
-      onTime: 80
-    },
-    {
-      department: "Nutrition",
-      total: 18,
-      completed: 17,
-      averageRating: 4.5,
-      onTime: 85
-    },
-    {
-      department: "Protection",
-      total: 17,
-      completed: 15,
-      averageRating: 4.2,
-      onTime: 88
-    }
-  ],
-  ratingDistribution: [
-    { rating: 5, count: 35, percentage: 36 },
-    { rating: 4, count: 28, percentage: 29 },
-    { rating: 3, count: 20, percentage: 20 },
-    { rating: 2, count: 10, percentage: 10 },
-    { rating: 1, count: 5, percentage: 5 }
-  ],
-  monthlyTrends: [
-    { month: "Jan", completed: 32, averageRating: 4.1 },
-    { month: "Feb", completed: 28, averageRating: 4.3 },
-    { month: "Mar", completed: 38, averageRating: 4.2 },
-    { month: "Apr", completed: 25, averageRating: 4.4 }
-  ],
-  topPerformers: [
-    { name: "Ahmed Hassan", department: "Nutrition", rating: 4.9, period: "Q1 2024" },
-    { name: "Sarah Johnson", department: "Education", rating: 4.8, period: "Q1 2024" },
-    { name: "John Doe", department: "Operations", rating: 4.7, period: "Q1 2024" },
-    { name: "Dr. Amina Hassan", department: "Healthcare", rating: 4.6, period: "Q1 2024" },
-    { name: "Fatima Al-Zahra", department: "Water & Sanitation", rating: 4.5, period: "Q1 2024" }
-  ],
-  improvementAreas: [
-    { area: "Strategic Planning", averageRating: 3.2, count: 45 },
-    { area: "Time Management", averageRating: 3.4, count: 38 },
-    { area: "Delegation", averageRating: 3.6, count: 32 },
-    { area: "Innovation", averageRating: 3.8, count: 28 },
-    { area: "Mentoring", averageRating: 3.9, count: 25 }
-  ]
-}
-
 export default function AppraisalAnalyticsPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all')
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('Q1 2024')
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('all')
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
+  const [departments, setDepartments] = useState<any[]>([])
+  const [periods, setPeriods] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch departments and periods
+  useEffect(() => {
+    const fetchFilters = async () => {
+      try {
+        const [deptResponse, periodsResponse] = await Promise.all([
+          fetch('/api/hr/departments'),
+          fetch('/api/hr/performance/periods')
+        ])
+
+        if (deptResponse.ok) {
+          const deptData = await deptResponse.json()
+          setDepartments(deptData.success ? deptData.data : [])
+        }
+
+        if (periodsResponse.ok) {
+          const periodsData = await periodsResponse.json()
+          setPeriods(periodsData.success ? periodsData.data : [])
+        }
+      } catch (error) {
+        console.error('Error fetching filters:', error)
+      }
+    }
+
+    fetchFilters()
+  }, [])
+
+  // Fetch analytics data
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const params = new URLSearchParams()
+        if (selectedDepartment !== 'all') {
+          params.append('department', selectedDepartment)
+        }
+        if (selectedPeriod !== 'all') {
+          params.append('period', selectedPeriod)
+        }
+
+        const response = await fetch(`/api/hr/performance/appraisals/analytics?${params}`)
+        const data = await response.json()
+
+        if (data.success) {
+          setAnalyticsData(data.data)
+        } else {
+          setError(data.error || 'Failed to load analytics data')
+        }
+      } catch (error) {
+        console.error('Error fetching analytics:', error)
+        setError('Failed to load analytics data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAnalyticsData()
+  }, [selectedDepartment, selectedPeriod])
 
   const metadata = {
     title: "Analytics - Performance Appraisals",
@@ -142,8 +128,6 @@ export default function AppraisalAnalyticsPage() {
       { name: "Analytics" }
     ]
   }
-
-  const completionRate = Math.round((analyticsData.completedAppraisals / analyticsData.totalAppraisals) * 100)
 
   const getRatingColor = (rating: number) => {
     if (rating >= 4.5) return 'text-green-600'
@@ -191,10 +175,14 @@ export default function AppraisalAnalyticsPage() {
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  disabled={loading}
                 >
-                  <option value="Q1 2024">Q1 2024</option>
-                  <option value="Q4 2023">Q4 2023</option>
-                  <option value="Q3 2023">Q3 2023</option>
+                  <option value="all">All Periods</option>
+                  {periods && periods.map((period) => (
+                    <option key={period.value} value={period.value}>
+                      {period.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -203,11 +191,12 @@ export default function AppraisalAnalyticsPage() {
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  disabled={loading}
                 >
                   <option value="all">All Departments</option>
-                  {analyticsData.departmentStats.map((dept) => (
-                    <option key={dept.department} value={dept.department}>
-                      {dept.department}
+                  {departments && departments.map((dept) => (
+                    <option key={dept.id} value={dept.name}>
+                      {dept.name}
                     </option>
                   ))}
                 </select>
@@ -216,248 +205,280 @@ export default function AppraisalAnalyticsPage() {
           </div>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white shadow-sm rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <UsersIcon className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Appraisals</p>
-                <p className="text-2xl font-semibold text-gray-900">{analyticsData.totalAppraisals}</p>
-                <div className="flex items-center mt-1">
-                  {getTrendIcon(125, 118)}
-                  <span className="text-xs text-gray-500 ml-1">vs last period</span>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Loading analytics data...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">
+                  Error loading analytics data
+                </h3>
+                <div className="mt-2 text-sm text-red-700">
+                  {error}
                 </div>
               </div>
             </div>
           </div>
+        )}
 
-          <div className="bg-white shadow-sm rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <ChartBarIcon className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Completion Rate</p>
-                <p className="text-2xl font-semibold text-gray-900">{completionRate}%</p>
-                <div className="flex items-center mt-1">
-                  {getTrendIcon(completionRate, 82)}
-                  <span className="text-xs text-gray-500 ml-1">vs last period</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white shadow-sm rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <StarIcon className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Average Rating</p>
-                <p className="text-2xl font-semibold text-gray-900">{analyticsData.averageRating}/5</p>
-                <div className="flex items-center mt-1">
-                  {getTrendIcon(4.2, 4.0)}
-                  <span className="text-xs text-gray-500 ml-1">vs last period</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white shadow-sm rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <ClockIcon className="h-6 w-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">On-Time Completion</p>
-                <p className="text-2xl font-semibold text-gray-900">{analyticsData.onTimeCompletion}%</p>
-                <div className="flex items-center mt-1">
-                  {getTrendIcon(87, 84)}
-                  <span className="text-xs text-gray-500 ml-1">vs last period</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Department Performance */}
-        <div className="bg-white shadow-sm rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Department Performance</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Department</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-700">Total</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-700">Completed</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-700">Completion Rate</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-700">Avg Rating</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-700">On-Time %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analyticsData.departmentStats.map((dept) => {
-                  const completionRate = Math.round((dept.completed / dept.total) * 100)
-                  return (
-                    <tr key={dept.department} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center">
-                          <BuildingOfficeIcon className="h-5 w-5 text-gray-400 mr-2" />
-                          {dept.department}
-                        </div>
-                      </td>
-                      <td className="text-center py-3 px-4">{dept.total}</td>
-                      <td className="text-center py-3 px-4">{dept.completed}</td>
-                      <td className="text-center py-3 px-4">
-                        <div className="flex items-center justify-center">
-                          <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                            <div 
-                              className={`h-2 rounded-full ${getProgressColor(completionRate)}`}
-                              style={{ width: `${completionRate}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm">{completionRate}%</span>
-                        </div>
-                      </td>
-                      <td className="text-center py-3 px-4">
-                        <span className={`font-semibold ${getRatingColor(dept.averageRating)}`}>
-                          {dept.averageRating}/5
-                        </span>
-                      </td>
-                      <td className="text-center py-3 px-4">{dept.onTime}%</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Rating Distribution */}
-          <div className="bg-white shadow-sm rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Rating Distribution</h2>
-            <div className="space-y-4">
-              {analyticsData.ratingDistribution.map((rating) => (
-                <div key={rating.rating} className="flex items-center">
-                  <div className="flex items-center w-16">
-                    <span className="text-sm font-medium mr-2">{rating.rating}</span>
-                    <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
-                  </div>
-                  <div className="flex-1 mx-4">
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div 
-                        className="bg-blue-600 h-3 rounded-full"
-                        style={{ width: `${rating.percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="w-20 text-right">
-                    <span className="text-sm text-gray-600">{rating.count} ({rating.percentage}%)</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Monthly Trends */}
-          <div className="bg-white shadow-sm rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Monthly Trends</h2>
-            <div className="space-y-4">
-              {analyticsData.monthlyTrends.map((month, index) => (
-                <div key={month.month} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        {/* Analytics Content */}
+        {!loading && !error && analyticsData && (
+          <>
+            {/* Key Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-white shadow-sm rounded-lg p-6">
                   <div className="flex items-center">
-                    <CalendarIcon className="h-5 w-5 text-gray-400 mr-3" />
-                    <span className="font-medium">{month.month} 2024</span>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="text-center">
-                      <div className="text-sm text-gray-600">Completed</div>
-                      <div className="font-semibold">{month.completed}</div>
+                    <div className="p-3 bg-blue-100 rounded-lg">
+                      <UsersIcon className="h-6 w-6 text-blue-600" />
                     </div>
-                    <div className="text-center">
-                      <div className="text-sm text-gray-600">Avg Rating</div>
-                      <div className={`font-semibold ${getRatingColor(month.averageRating)}`}>
-                        {month.averageRating}
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Total Appraisals</p>
+                      <p className="text-2xl font-semibold text-gray-900">{analyticsData.totalAppraisals}</p>
+                      <div className="flex items-center mt-1">
+                        {getTrendIcon(analyticsData.totalAppraisals, analyticsData.totalAppraisals - 7)}
+                        <span className="text-xs text-gray-500 ml-1">vs last period</span>
                       </div>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Performers */}
-          <div className="bg-white shadow-sm rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Top Performers</h2>
-            <div className="space-y-4">
-              {analyticsData.topPerformers.map((performer, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg">
-                  <div>
-                    <div className="font-semibold text-gray-900">{performer.name}</div>
-                    <div className="text-sm text-gray-600">{performer.department}</div>
-                    <div className="text-xs text-gray-500">{performer.period}</div>
-                  </div>
+                <div className="bg-white shadow-sm rounded-lg p-6">
                   <div className="flex items-center">
-                    <StarIcon className="h-5 w-5 text-yellow-400 fill-current mr-1" />
-                    <span className="font-bold text-green-600">{performer.rating}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Common Improvement Areas */}
-          <div className="bg-white shadow-sm rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Common Improvement Areas</h2>
-            <div className="space-y-4">
-              {analyticsData.improvementAreas.map((area, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                  <div>
-                    <div className="font-semibold text-gray-900">{area.area}</div>
-                    <div className="text-sm text-gray-600">{area.count} employees need improvement</div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-bold ${getRatingColor(area.averageRating)}`}>
-                      {area.averageRating}/5
+                    <div className="p-3 bg-green-100 rounded-lg">
+                      <ChartBarIcon className="h-6 w-6 text-green-600" />
                     </div>
-                    <div className="text-xs text-gray-500">Avg Rating</div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Completion Rate</p>
+                      <p className="text-2xl font-semibold text-gray-900">{analyticsData.totalAppraisals > 0 ? Math.round((analyticsData.completedAppraisals / analyticsData.totalAppraisals) * 100) : 0}%</p>
+                      <div className="flex items-center mt-1">
+                        {getTrendIcon(analyticsData.totalAppraisals > 0 ? Math.round((analyticsData.completedAppraisals / analyticsData.totalAppraisals) * 100) : 0, 85)}
+                        <span className="text-xs text-gray-500 ml-1">vs last period</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Action Items */}
-        <div className="bg-white shadow-sm rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Recommended Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-semibold text-blue-900 mb-2">Schedule Training</h3>
-              <p className="text-sm text-blue-700">
-                Strategic Planning training for 45 employees with ratings below 3.5
-              </p>
-            </div>
-            <div className="p-4 bg-yellow-50 rounded-lg">
-              <h3 className="font-semibold text-yellow-900 mb-2">Follow-up Required</h3>
-              <p className="text-sm text-yellow-700">
-                27 appraisals are pending completion and need immediate attention
-              </p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <h3 className="font-semibold text-green-900 mb-2">Recognition Program</h3>
-              <p className="text-sm text-green-700">
-                5 top performers should be considered for recognition or promotion
-              </p>
-            </div>
-          </div>
-        </div>
+                <div className="bg-white shadow-sm rounded-lg p-6">
+                  <div className="flex items-center">
+                    <div className="p-3 bg-yellow-100 rounded-lg">
+                      <StarIcon className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">Average Rating</p>
+                      <p className="text-2xl font-semibold text-gray-900">{analyticsData.averageRating}/5</p>
+                      <div className="flex items-center mt-1">
+                        {getTrendIcon(analyticsData.averageRating, analyticsData.averageRating - 0.2)}
+                        <span className="text-xs text-gray-500 ml-1">vs last period</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white shadow-sm rounded-lg p-6">
+                  <div className="flex items-center">
+                    <div className="p-3 bg-purple-100 rounded-lg">
+                      <ClockIcon className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-600">On-Time Completion</p>
+                      <p className="text-2xl font-semibold text-gray-900">{analyticsData.onTimeCompletion}%</p>
+                      <div className="flex items-center mt-1">
+                        {getTrendIcon(analyticsData.onTimeCompletion, analyticsData.onTimeCompletion - 3)}
+                        <span className="text-xs text-gray-500 ml-1">vs last period</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Department Performance */}
+              <div className="bg-white shadow-sm rounded-lg p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Department Performance</h2>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 font-medium text-gray-700">Department</th>
+                        <th className="text-center py-3 px-4 font-medium text-gray-700">Total</th>
+                        <th className="text-center py-3 px-4 font-medium text-gray-700">Completed</th>
+                        <th className="text-center py-3 px-4 font-medium text-gray-700">Completion Rate</th>
+                        <th className="text-center py-3 px-4 font-medium text-gray-700">Avg Rating</th>
+                        <th className="text-center py-3 px-4 font-medium text-gray-700">On-Time %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analyticsData.departmentStats.map((dept) => {
+                        const deptCompletionRate = dept.total > 0 ? Math.round((dept.completed / dept.total) * 100) : 0
+                        return (
+                          <tr key={dept.department} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center">
+                                <BuildingOfficeIcon className="h-5 w-5 text-gray-400 mr-2" />
+                                {dept.department}
+                              </div>
+                            </td>
+                            <td className="text-center py-3 px-4">{dept.total}</td>
+                            <td className="text-center py-3 px-4">{dept.completed}</td>
+                            <td className="text-center py-3 px-4">
+                              <div className="flex items-center justify-center">
+                                <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                  <div 
+                                    className={`h-2 rounded-full ${getProgressColor(deptCompletionRate)}`}
+                                    style={{ width: `${deptCompletionRate}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-sm">{deptCompletionRate}%</span>
+                              </div>
+                            </td>
+                            <td className="text-center py-3 px-4">
+                              <span className={`font-semibold ${getRatingColor(dept.averageRating)}`}>
+                                {dept.averageRating}/5
+                              </span>
+                            </td>
+                            <td className="text-center py-3 px-4">{dept.onTime}%</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Rating Distribution */}
+                <div className="bg-white shadow-sm rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Rating Distribution</h2>
+                  <div className="space-y-4">
+                    {analyticsData.ratingDistribution.map((rating) => (
+                      <div key={rating.rating} className="flex items-center">
+                        <div className="flex items-center w-16">
+                          <span className="text-sm font-medium mr-2">{rating.rating}</span>
+                          <StarIcon className="h-4 w-4 text-yellow-400 fill-current" />
+                        </div>
+                        <div className="flex-1 mx-4">
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div 
+                              className="bg-blue-600 h-3 rounded-full"
+                              style={{ width: `${rating.percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        <div className="w-20 text-right">
+                          <span className="text-sm text-gray-600">{rating.count} ({rating.percentage}%)</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Monthly Trends */}
+                <div className="bg-white shadow-sm rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Monthly Trends</h2>
+                  <div className="space-y-4">
+                    {analyticsData.monthlyTrends.map((month, index) => (
+                      <div key={month.month} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center">
+                          <CalendarIcon className="h-5 w-5 text-gray-400 mr-3" />
+                          <span className="font-medium">{month.month}</span>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <div className="text-center">
+                            <div className="text-sm text-gray-600">Completed</div>
+                            <div className="font-semibold">{month.completed}</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-gray-600">Avg Rating</div>
+                            <div className={`font-semibold ${getRatingColor(month.averageRating)}`}>
+                              {month.averageRating}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top Performers */}
+                <div className="bg-white shadow-sm rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Top Performers</h2>
+                  <div className="space-y-4">
+                      {analyticsData.topPerformers.map((performer, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg">
+                          <div>
+                            <div className="font-semibold text-gray-900">{performer.name}</div>
+                            <div className="text-sm text-gray-600">{performer.department}</div>
+                            <div className="text-xs text-gray-500">{performer.period}</div>
+                          </div>
+                          <div className="flex items-center">
+                            <StarIcon className="h-5 w-5 text-yellow-400 fill-current mr-1" />
+                            <span className="font-bold text-green-600">{performer.rating}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Common Improvement Areas */}
+                  <div className="bg-white shadow-sm rounded-lg p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-6">Common Improvement Areas</h2>
+                    <div className="space-y-4">
+                      {analyticsData.improvementAreas.map((area, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                          <div>
+                            <div className="font-semibold text-gray-900">{area.area}</div>
+                            <div className="text-sm text-gray-600">{area.count} employees need improvement</div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`font-bold ${getRatingColor(area.averageRating)}`}>
+                              {area.averageRating}/5
+                            </div>
+                            <div className="text-xs text-gray-500">Avg Rating</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Items */}
+                <div className="bg-white shadow-sm rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Recommended Actions</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <h3 className="font-semibold text-blue-900 mb-2">Schedule Training</h3>
+                      <p className="text-sm text-blue-700">
+                        {analyticsData.improvementAreas.length > 0 
+                          ? `${analyticsData.improvementAreas[0].area} training needed for employees with low ratings`
+                          : 'Training programs available for skill development'
+                        }
+                      </p>
+                    </div>
+                    <div className="p-4 bg-yellow-50 rounded-lg">
+                      <h3 className="font-semibold text-yellow-900 mb-2">Follow-up Required</h3>
+                      <p className="text-sm text-yellow-700">
+                        {analyticsData.totalAppraisals - analyticsData.completedAppraisals} appraisals are pending completion and need immediate attention
+                      </p>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <h3 className="font-semibold text-green-900 mb-2">Recognition Program</h3>
+                      <p className="text-sm text-green-700">
+                        {analyticsData.topPerformers.length} top performers should be considered for recognition or promotion
+                      </p>
+                    </div>
+                  </div>
+                </div>
+            </>
+        )}
       </div>
     </ModulePage>
   )

@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   CheckCircleIcon,
   ClockIcon,
@@ -27,84 +27,48 @@ interface BulkAppraisal {
   completionPercentage: number
 }
 
-// Sample data for bulk review
-const sampleAppraisals: BulkAppraisal[] = [
-  {
-    id: 1,
-    employeeName: "John Doe",
-    employeeId: "EMP001",
-    department: "Operations",
-    position: "Operations Manager",
-    period: "Q1 2024",
-    overallRating: 4.5,
-    status: "completed",
-    supervisor: "Mark Wilson",
-    dueDate: "2024-03-31",
-    lastUpdated: "2024-03-28",
-    completionPercentage: 100
-  },
-  {
-    id: 2,
-    employeeName: "Michael Adebayo",
-    employeeId: "EMP002",
-    department: "Healthcare",
-    position: "Healthcare Coordinator",
-    period: "Q1 2024",
-    overallRating: null,
-    status: "in-progress",
-    supervisor: "Dr. Amina Hassan",
-    dueDate: "2024-04-15",
-    lastUpdated: "2024-04-02",
-    completionPercentage: 65
-  },
-  {
-    id: 3,
-    employeeName: "Sarah Johnson",
-    employeeId: "EMP003",
-    department: "Education",
-    position: "Education Program Manager",
-    period: "Q1 2024",
-    overallRating: null,
-    status: "pending-review",
-    supervisor: "Prof. Ibrahim Musa",
-    dueDate: "2024-04-10",
-    lastUpdated: "2024-04-01",
-    completionPercentage: 90
-  },
-  {
-    id: 4,
-    employeeName: "Fatima Al-Zahra",
-    employeeId: "EMP004",
-    department: "Water & Sanitation",
-    position: "WASH Specialist",
-    period: "Q1 2024",
-    overallRating: null,
-    status: "overdue",
-    supervisor: "Eng. Hassan Ali",
-    dueDate: "2024-03-25",
-    lastUpdated: "2024-03-20",
-    completionPercentage: 30
-  },
-  {
-    id: 5,
-    employeeName: "Ahmed Hassan",
-    employeeId: "EMP005",
-    department: "Nutrition",
-    position: "Nutrition Coordinator",
-    period: "Q1 2024",
-    overallRating: null,
-    status: "draft",
-    supervisor: "Dr. Khadija Omar",
-    dueDate: "2024-04-20",
-    lastUpdated: "2024-03-15",
-    completionPercentage: 15
-  }
-]
+// Empty - data will be fetched from API
 
 export default function BulkReviewPage() {
   const [selectedAppraisals, setSelectedAppraisals] = useState<number[]>([])
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('dueDate')
+  const [appraisals, setAppraisals] = useState<BulkAppraisal[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch appraisals data from API
+  useEffect(() => {
+    fetchAppraisals()
+  }, [filterStatus])
+
+  const fetchAppraisals = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const queryParams = new URLSearchParams()
+      if (filterStatus !== 'all') {
+        queryParams.append('status', filterStatus)
+      }
+      
+      const response = await fetch(`/api/hr/performance/appraisals/bulk?${queryParams}`)
+      const data = await response.json()
+      
+      if (data.success) {
+        setAppraisals(data.data || [])
+      } else {
+        setError('Failed to fetch appraisals')
+        setAppraisals([])
+      }
+    } catch (err) {
+      console.error('Error fetching appraisals:', err)
+      setError('Failed to load appraisals')
+      setAppraisals([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const metadata = {
     title: "Bulk Review - Performance Appraisals",
@@ -118,7 +82,7 @@ export default function BulkReviewPage() {
     ]
   }
 
-  const filteredAppraisals = sampleAppraisals.filter(appraisal => {
+  const filteredAppraisals = appraisals.filter(appraisal => {
     if (filterStatus === 'all') return true
     return appraisal.status === filterStatus
   })
@@ -174,9 +138,9 @@ export default function BulkReviewPage() {
       case 'completed':
         return 'bg-green-100 text-green-800'
       case 'in-progress':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-orange-100 text-orange-800'
       case 'pending-review':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-gray-100 text-gray-800'
       case 'overdue':
         return 'bg-red-100 text-red-800'
       default:
@@ -186,8 +150,8 @@ export default function BulkReviewPage() {
 
   const getProgressColor = (percentage: number) => {
     if (percentage >= 90) return 'bg-green-500'
-    if (percentage >= 70) return 'bg-blue-500'
-    if (percentage >= 50) return 'bg-yellow-500'
+    if (percentage >= 70) return 'bg-orange-500'
+    if (percentage >= 50) return 'bg-gray-500'
     return 'bg-red-500'
   }
 
@@ -197,26 +161,26 @@ export default function BulkReviewPage() {
   }
 
   const statusCounts = {
-    all: sampleAppraisals.length,
-    draft: sampleAppraisals.filter(a => a.status === 'draft').length,
-    'in-progress': sampleAppraisals.filter(a => a.status === 'in-progress').length,
-    'pending-review': sampleAppraisals.filter(a => a.status === 'pending-review').length,
-    completed: sampleAppraisals.filter(a => a.status === 'completed').length,
-    overdue: sampleAppraisals.filter(a => a.status === 'overdue').length,
+    all: appraisals.length,
+    draft: appraisals.filter(a => a.status === 'draft').length,
+    'in-progress': appraisals.filter(a => a.status === 'in-progress').length,
+    'pending-review': appraisals.filter(a => a.status === 'pending-review').length,
+    completed: appraisals.filter(a => a.status === 'completed').length,
+    overdue: appraisals.filter(a => a.status === 'overdue').length,
   }
 
   return (
     <ModulePage metadata={metadata}>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="w-full px-4 space-y-6">
         {/* Header */}
-        <div className="bg-white shadow-sm rounded-lg p-6">
+        <div className="bg-white shadow-sm rounded-lg p-6 border-l-4 border-orange-500">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <DocumentCheckIcon className="h-8 w-8 text-blue-600" />
+              <div className="p-3 bg-orange-100 rounded-lg">
+                <DocumentCheckIcon className="h-8 w-8 text-orange-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Bulk Review</h1>
+                <h1 className="text-2xl font-bold text-black">Bulk Review</h1>
                 <p className="text-gray-600">Review and manage multiple performance appraisals</p>
               </div>
             </div>
@@ -229,19 +193,19 @@ export default function BulkReviewPage() {
                 <div className="flex space-x-2">
                   <button 
                     onClick={() => handleBulkAction('approve')}
-                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
                   >
                     Approve Selected
                   </button>
                   <button 
                     onClick={() => handleBulkAction('reject')}
-                    className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                    className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
                   >
                     Send Back
                   </button>
                   <button 
                     onClick={() => handleBulkAction('export')}
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                    className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 transition-colors"
                   >
                     Export
                   </button>
@@ -265,16 +229,16 @@ export default function BulkReviewPage() {
               <button
                 key={filter.key}
                 onClick={() => setFilterStatus(filter.key)}
-                className={`px-4 py-2 rounded-full text-sm font-medium flex items-center space-x-2 ${
+                className={`px-4 py-2 rounded-full text-sm font-medium flex items-center space-x-2 transition-colors ${
                   filterStatus === filter.key
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-orange-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 <span>{filter.label}</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs ${
                   filterStatus === filter.key
-                    ? 'bg-blue-500 text-white'
+                    ? 'bg-orange-500 text-white'
                     : 'bg-gray-300 text-gray-600'
                 }`}>
                   {filter.count}
@@ -319,8 +283,34 @@ export default function BulkReviewPage() {
 
         {/* Appraisals Table */}
         <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-sm text-gray-600">Loading appraisals...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
+              <h3 className="mt-2 text-sm font-medium text-black">Error loading appraisals</h3>
+              <p className="mt-1 text-sm text-gray-600">{error}</p>
+              <button
+                onClick={fetchAppraisals}
+                className="mt-4 px-4 py-2 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : appraisals.length === 0 ? (
+            <div className="text-center py-12">
+              <DocumentCheckIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-black">No appraisals found</h3>
+              <p className="mt-1 text-sm text-gray-600">No performance appraisals match your current filters.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -417,13 +407,13 @@ export default function BulkReviewPage() {
                       <div className="flex items-center space-x-2">
                         <Link 
                           href={`/hr/performance/appraisals/${appraisal.id}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-orange-600 hover:text-orange-900 transition-colors"
                         >
                           <EyeIcon className="h-4 w-4" />
                         </Link>
                         <Link 
                           href={`/hr/performance/appraisals/${appraisal.id}/edit`}
-                          className="text-yellow-600 hover:text-yellow-900"
+                          className="text-gray-600 hover:text-black transition-colors"
                         >
                           <PencilIcon className="h-4 w-4" />
                         </Link>
@@ -434,54 +424,55 @@ export default function BulkReviewPage() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
 
         {/* Summary Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white shadow-sm rounded-lg p-6">
+          <div className="bg-white shadow-sm rounded-lg p-6 border-l-4 border-green-500">
             <div className="flex items-center">
               <div className="p-3 bg-green-100 rounded-lg">
                 <CheckCircleIcon className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Completed</p>
-                <p className="text-2xl font-semibold text-gray-900">{statusCounts.completed}</p>
+                <p className="text-2xl font-semibold text-black">{statusCounts.completed}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white shadow-sm rounded-lg p-6">
+          <div className="bg-white shadow-sm rounded-lg p-6 border-l-4 border-orange-500">
             <div className="flex items-center">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <ClockIcon className="h-6 w-6 text-blue-600" />
+              <div className="p-3 bg-orange-100 rounded-lg">
+                <ClockIcon className="h-6 w-6 text-orange-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">In Progress</p>
-                <p className="text-2xl font-semibold text-gray-900">{statusCounts['in-progress']}</p>
+                <p className="text-2xl font-semibold text-black">{statusCounts['in-progress']}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white shadow-sm rounded-lg p-6">
+          <div className="bg-white shadow-sm rounded-lg p-6 border-l-4 border-gray-500">
             <div className="flex items-center">
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <DocumentCheckIcon className="h-6 w-6 text-yellow-600" />
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <DocumentCheckIcon className="h-6 w-6 text-gray-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Pending Review</p>
-                <p className="text-2xl font-semibold text-gray-900">{statusCounts['pending-review']}</p>
+                <p className="text-2xl font-semibold text-black">{statusCounts['pending-review']}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white shadow-sm rounded-lg p-6">
+          <div className="bg-white shadow-sm rounded-lg p-6 border-l-4 border-red-500">
             <div className="flex items-center">
               <div className="p-3 bg-red-100 rounded-lg">
                 <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Overdue</p>
-                <p className="text-2xl font-semibold text-gray-900">{statusCounts.overdue}</p>
+                <p className="text-2xl font-semibold text-black">{statusCounts.overdue}</p>
               </div>
             </div>
           </div>

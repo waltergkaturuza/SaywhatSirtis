@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       // Database table doesn't exist or connection issue
       console.error('Database error in call-centre summary:', dbError)
       
-      // Return mock data when database is not available
+      // Return empty data when database is not available
       return NextResponse.json({
         overview: {
           totalCalls: 0,

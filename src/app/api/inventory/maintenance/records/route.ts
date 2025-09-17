@@ -1,27 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 
-// Mock database for maintenance records
+// Empty maintenance records - database integration needed
 const maintenanceRecords = new Map()
 const maintenanceSchedules = new Map()
-
-// Initialize sample data
-maintenanceRecords.set('1', {
-  id: '1',
-  assetId: '1',
-  type: 'preventive',
-  status: 'completed',
-  title: 'Quarterly System Maintenance',
-  description: 'Regular cleaning and software updates',
-  scheduledDate: '2024-07-15',
-  completedDate: '2024-07-15',
-  estimatedCost: 50,
-  actualCost: 45,
-  technician: 'John Tech',
-  notes: 'All systems running optimally',
-  createdAt: '2024-07-10T10:00:00Z',
-  updatedAt: '2024-07-15T15:30:00Z'
-})
 
 export async function GET(request: NextRequest) {
   try {

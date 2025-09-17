@@ -73,7 +73,9 @@ export async function GET(request: NextRequest) {
         
     } catch (dbError: any) {
       console.error('Database connection failed:', dbError?.message || 'Unknown error')
-      throw new Error('Database connection failed')
+      
+      // Return empty departments array when database is unavailable
+      departments = []
     }
 
     // Transform departments data with actual performance statistics

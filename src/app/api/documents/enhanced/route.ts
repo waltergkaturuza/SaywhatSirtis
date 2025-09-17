@@ -445,12 +445,12 @@ async function getAdminData(session: any) {
   }
 
   const adminStats = {
-    totalUsers: 156,
-    activeUsers: 134,
-    storageQuota: 500, // GB
-    storageUsed: 342.5, // GB
-    documentsCreatedThisMonth: 67,
-    auditLogEntries: 2345
+    totalUsers: 0,
+    activeUsers: 0,
+    storageQuota: 0, // GB
+    storageUsed: 0, // GB
+    documentsCreatedThisMonth: 0,
+    auditLogEntries: 0
   }
 
   return NextResponse.json({

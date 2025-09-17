@@ -195,19 +195,19 @@ export default function CreateAppraisalPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto p-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Create Performance Appraisal</h1>
+      <div className="w-full px-6 py-6">
+        <h1 className="text-3xl font-bold text-black mb-8">Create Performance Appraisal</h1>
 
         {/* Progress */}
-        <Card className="mb-8">
+        <Card className="mb-8 border-l-4 border-l-orange-500 shadow-sm">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Step {currentStep} of {appraisalSteps.length}</h3>
-              <span className="text-sm text-gray-600">
+              <h3 className="text-lg font-semibold text-black">Step {currentStep} of {appraisalSteps.length}</h3>
+              <span className="text-sm text-orange-600 font-medium">
                 {Math.round((currentStep / appraisalSteps.length) * 100)}% Complete
               </span>
             </div>
-            <Progress value={(currentStep / appraisalSteps.length) * 100} className="mb-4" />
+            <Progress value={(currentStep / appraisalSteps.length) * 100} className="mb-4 [&>div]:bg-orange-500" />
             
             <div className="grid grid-cols-6 gap-4">
               {appraisalSteps.map((step, index) => (
@@ -215,7 +215,7 @@ export default function CreateAppraisalPage() {
                   key={step.id}
                   className={`text-center p-3 rounded-lg transition-colors ${
                     currentStep === step.id
-                      ? 'bg-blue-100 border-2 border-blue-500'
+                      ? 'bg-orange-100 border-2 border-orange-500'
                       : currentStep > step.id
                       ? 'bg-green-100 border-2 border-green-500'
                       : 'bg-gray-100 border-2 border-gray-300'
@@ -223,7 +223,7 @@ export default function CreateAppraisalPage() {
                 >
                   <div className={`text-sm font-medium ${
                     currentStep === step.id
-                      ? 'text-blue-700'
+                      ? 'text-orange-700'
                       : currentStep > step.id
                       ? 'text-green-700'
                       : 'text-gray-600'
@@ -232,7 +232,7 @@ export default function CreateAppraisalPage() {
                   </div>
                   <div className={`text-xs mt-1 ${
                     currentStep === step.id
-                      ? 'text-blue-600'
+                      ? 'text-orange-600'
                       : currentStep > step.id
                       ? 'text-green-600'
                       : 'text-gray-500'
@@ -246,9 +246,9 @@ export default function CreateAppraisalPage() {
         </Card>
 
         {/* Step Content */}
-        <Card className="mb-8">
+        <Card className="mb-8 border-l-4 border-l-gray-500 shadow-sm">
           <CardHeader>
-            <CardTitle>{appraisalSteps[currentStep - 1]?.title}</CardTitle>
+            <CardTitle className="text-black">{appraisalSteps[currentStep - 1]?.title}</CardTitle>
           </CardHeader>
           <CardContent>
             {renderStepContent()}
@@ -261,7 +261,7 @@ export default function CreateAppraisalPage() {
             variant="outline"
             onClick={prevStep}
             disabled={currentStep === 1}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Previous
@@ -272,7 +272,7 @@ export default function CreateAppraisalPage() {
               variant="outline"
               onClick={handleSaveDraft}
               disabled={isSavingDraft}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <Save className="w-4 h-4" />
               {isSavingDraft ? 'Saving...' : 'Save Draft'}
@@ -282,14 +282,14 @@ export default function CreateAppraisalPage() {
               <Button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white transition-colors"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Appraisal'}
               </Button>
             ) : (
               <Button
                 onClick={nextStep}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white transition-colors"
               >
                 Next
                 <ArrowRight className="w-4 h-4" />
