@@ -37,7 +37,7 @@ export interface RolePermissions {
   risks: 'none' | 'view' | 'edit' | 'full'
   
   // Document Security Levels
-  documentLevel: 'public' | 'confidential' | 'secret' | 'top_secret'
+  documentLevel: 'PUBLIC' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET'
   
   // Special Permissions
   canViewOthersProfiles: boolean
@@ -56,7 +56,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
     inventory: 'none', // No inventory access
     hr: 'none', // No HR access
     risks: 'view', // View Risk only
-    documentLevel: 'confidential',
+    documentLevel: 'CONFIDENTIAL',
     canViewOthersProfiles: false,
     canManageUsers: false,
     fullAccess: false
@@ -71,7 +71,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
     inventory: 'view', // Inventory Module access
     hr: 'none', // No HR access
     risks: 'view', // Same risk access
-    documentLevel: 'confidential',
+    documentLevel: 'CONFIDENTIAL',
     canViewOthersProfiles: false,
     canManageUsers: false,
     fullAccess: false
@@ -86,7 +86,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
     inventory: 'view', // Same inventory access
     hr: 'none', // No HR module access
     risks: 'edit', // Edit and Delete Risk
-    documentLevel: 'secret',
+    documentLevel: 'SECRET',
     canViewOthersProfiles: false,
     canManageUsers: false,
     fullAccess: false
@@ -101,7 +101,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
     inventory: 'view', // Same inventory access
     hr: 'none', // No HR access
     risks: 'view', // View risks only
-    documentLevel: 'secret',
+    documentLevel: 'SECRET',
     canViewOthersProfiles: false,
     canManageUsers: false,
     fullAccess: false
@@ -116,7 +116,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
     inventory: 'view', // Inventory access
     hr: 'full', // HR Module - See other People's Profile
     risks: 'view', // View risks
-    documentLevel: 'top_secret',
+    documentLevel: 'TOP_SECRET',
     canViewOthersProfiles: true,
     canManageUsers: false,
     fullAccess: false
@@ -131,7 +131,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
     inventory: 'full', // Full inventory access
     hr: 'full', // Full HR access
     risks: 'full', // Full risk management
-    documentLevel: 'top_secret',
+    documentLevel: 'TOP_SECRET',
     canViewOthersProfiles: true,
     canManageUsers: true,
     fullAccess: true
@@ -179,10 +179,10 @@ export function hasPermission(
   }
 }
 
-export function canAccessDocument(userRole: UserRole, documentLevel: 'public' | 'confidential' | 'secret' | 'top_secret'): boolean {
+export function canAccessDocument(userRole: UserRole, documentLevel: 'PUBLIC' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET'): boolean {
   const userDocumentLevel = ROLE_DEFINITIONS[userRole].documentLevel
   
-  const levelHierarchy = ['public', 'confidential', 'secret', 'top_secret']
+  const levelHierarchy = ['PUBLIC', 'CONFIDENTIAL', 'SECRET', 'TOP_SECRET']
   const userLevelIndex = levelHierarchy.indexOf(userDocumentLevel)
   const documentLevelIndex = levelHierarchy.indexOf(documentLevel)
   

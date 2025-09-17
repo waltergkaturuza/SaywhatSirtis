@@ -327,31 +327,66 @@ export async function POST(request: Request) {
       employeeId,
       firstName: sanitizeInput(formData.firstName),
       lastName: sanitizeInput(formData.lastName),
+      middleName: formData.middleName ? sanitizeInput(formData.middleName) : null,
       email: formData.email.toLowerCase().trim(),
       phoneNumber: formData.phoneNumber ? sanitizeInput(formData.phoneNumber) : null,
+      alternativePhone: formData.alternativePhone ? sanitizeInput(formData.alternativePhone) : null,
+      address: formData.address ? sanitizeInput(formData.address) : null,
+      emergencyContact: formData.emergencyContact ? sanitizeInput(formData.emergencyContact) : null,
+      emergencyPhone: formData.emergencyPhone ? sanitizeInput(formData.emergencyPhone) : null,
       department: sanitizeInput(departmentName || ''), // Keep for backward compatibility
       departmentId: validDepartmentId, // Use validated departmentId for proper relation
       position: sanitizeInput(formData.position),
+      employmentType: formData.employmentType || 'FULL_TIME',
       startDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
       hireDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
-      salary: formData.salary ? parseFloat(formData.salary) : null,
+      // Compensation fields
+      salary: formData.baseSalary ? parseFloat(formData.baseSalary) : null,
+      currency: formData.currency || 'USD',
       status: 'ACTIVE' as const,
       // Supervisor and role fields
       supervisorId: formData.supervisorId || null,
       isSupervisor: formData.isSupervisor || false,
       isReviewer: formData.isReviewer || false,
-      // Benefits fields
+      // Benefits fields - map form fields to database fields
       medicalAid: formData.medicalAid || false,
       funeralCover: formData.funeralCover || false,
       vehicleBenefit: formData.vehicleBenefit || false,
       fuelAllowance: formData.fuelAllowance || false,
       airtimeAllowance: formData.airtimeAllowance || false,
-      otherBenefits: formData.otherBenefits || []
+      otherBenefits: formData.otherBenefits ? [formData.otherBenefits] : [],
+      // Job Description data
+      jobDescription: formData.jobDescription ? {
+        jobTitle: sanitizeInput(formData.jobDescription.jobTitle || ''),
+        location: sanitizeInput(formData.jobDescription.location || ''),
+        jobSummary: sanitizeInput(formData.jobDescription.jobSummary || ''),
+        keyResponsibilities: formData.jobDescription.keyResponsibilities?.map((resp: any) => ({
+          description: sanitizeInput(resp.description || ''),
+          weight: resp.weight || 0,
+          tasks: sanitizeInput(resp.tasks || '')
+        })) || [],
+        essentialExperience: sanitizeInput(formData.jobDescription.essentialExperience || ''),
+        essentialSkills: sanitizeInput(formData.jobDescription.essentialSkills || ''),
+        acknowledgment: formData.jobDescription.acknowledgment || false,
+        signatureFileName: formData.jobDescription.signatureFile?.name || null
+      } : null
     }
 
     // Create user and employee in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create user account first
+      // Create user account first with appropriate roles
+      const userRoles = ['user'] // Base role for all users
+      if (sanitizedData.isSupervisor) {
+        userRoles.push('supervisor')
+      }
+      if (sanitizedData.isReviewer) {
+        userRoles.push('reviewer')
+      }
+      
+      // Handle role-based data from the form
+      const userRole = formData.role || formData.userRole || 'BASIC_USER_1'
+      const permissions = formData.permissions || {}
+      
       const newUser = await tx.users.create({
         data: {
           id: randomUUID(),
@@ -360,7 +395,13 @@ export async function POST(request: Request) {
           lastName: sanitizedData.lastName,
           department: sanitizedData.department,
           position: sanitizedData.position,
-          role: 'USER',
+          role: userRole, // Use the selected role from the form
+          roles: userRoles, // Set the roles array for supervisor/reviewer functionality
+          permissions: permissions, // Store role-based permissions
+          supervisorId: sanitizedData.supervisorId, // Set supervisor relationship
+          canViewOthersProfiles: formData.canViewOthersProfiles || false,
+          canManageUsers: formData.canManageUsers || false,
+          documentSecurityClearance: formData.documentSecurityClearance || 'PUBLIC',
           updatedAt: new Date()
         }
       })
@@ -373,14 +414,21 @@ export async function POST(request: Request) {
           employeeId: sanitizedData.employeeId,
           firstName: sanitizedData.firstName,
           lastName: sanitizedData.lastName,
+          middleName: sanitizedData.middleName,
           email: sanitizedData.email,
           phoneNumber: sanitizedData.phoneNumber,
+          alternativePhone: sanitizedData.alternativePhone,
+          address: sanitizedData.address,
+          emergencyContact: sanitizedData.emergencyContact,
+          emergencyPhone: sanitizedData.emergencyPhone,
           department: sanitizedData.department,
           departmentId: sanitizedData.departmentId,
           position: sanitizedData.position,
+          employmentType: sanitizedData.employmentType,
           startDate: sanitizedData.startDate,
           hireDate: sanitizedData.hireDate,
           salary: sanitizedData.salary,
+          currency: sanitizedData.currency,
           status: sanitizedData.status,
           supervisor_id: sanitizedData.supervisorId,
           is_supervisor: sanitizedData.isSupervisor,
@@ -395,10 +443,70 @@ export async function POST(request: Request) {
         }
       })
 
-      return { newUser, newEmployee }
+      // Create job description record if provided
+      let jobDescriptionRecord = null
+      if (sanitizedData.jobDescription && sanitizedData.jobDescription.jobTitle) {
+        jobDescriptionRecord = await tx.job_descriptions.create({
+          data: {
+            id: randomUUID(),
+            employeeId: newEmployee.id,
+            jobTitle: sanitizedData.jobDescription.jobTitle,
+            location: sanitizedData.jobDescription.location,
+            jobSummary: sanitizedData.jobDescription.jobSummary || '',
+            keyResponsibilities: sanitizedData.jobDescription.keyResponsibilities || [],
+            essentialExperience: sanitizedData.jobDescription.essentialExperience || '',
+            essentialSkills: sanitizedData.jobDescription.essentialSkills || '',
+            acknowledgment: sanitizedData.jobDescription.acknowledgment || false,
+            signatureFileName: sanitizedData.jobDescription.signatureFileName || null,
+            updatedAt: new Date()
+          }
+        })
+      }
+
+      // Create education qualification if provided
+      let educationQualification = null
+      if (formData.education && formData.education !== '') {
+        educationQualification = await tx.qualifications.create({
+          data: {
+            id: randomUUID(),
+            employeeId: newEmployee.id,
+            type: 'EDUCATION',
+            title: formData.education,
+            institution: null,
+            description: `Highest Education Level: ${formData.education}`,
+            dateObtained: new Date(), // Use current date as we don't have specific date
+            skillsGained: formData.skills ? formData.skills.split(',').map(skill => skill.trim()) : []
+          }
+        })
+      }
+
+      // Create certification qualifications if provided
+      let certificationQualifications = []
+      if (formData.certifications && formData.certifications !== '') {
+        const certifications = formData.certifications.split(',').map(cert => cert.trim())
+        for (const cert of certifications) {
+          if (cert) {
+            const certQualification = await tx.qualifications.create({
+              data: {
+                id: randomUUID(),
+                employeeId: newEmployee.id,
+                type: 'CERTIFICATION',
+                title: cert,
+                institution: null,
+                description: `Professional Certification: ${cert}`,
+                dateObtained: new Date(), // Use current date as we don't have specific date
+                skillsGained: []
+              }
+            })
+            certificationQualifications.push(certQualification)
+          }
+        }
+      }
+
+      return { newUser, newEmployee, educationQualification, certificationQualifications, jobDescriptionRecord }
     })
 
-    const { newEmployee } = result
+    const { newEmployee, educationQualification, certificationQualifications, jobDescriptionRecord } = result
 
     const response = createSuccessResponse({
       id: newEmployee.id,
@@ -407,9 +515,14 @@ export async function POST(request: Request) {
       email: newEmployee.email,
       department: newEmployee.department,
       position: newEmployee.position,
-      status: newEmployee.status
+      status: newEmployee.status,
+      qualifications: {
+        education: educationQualification,
+        certifications: certificationQualifications,
+        jobDescription: jobDescriptionRecord
+      }
     }, {
-      message: `Employee ${newEmployee.firstName} ${newEmployee.lastName} created successfully`
+      message: `Employee ${newEmployee.firstName} ${newEmployee.lastName} created successfully with ${certificationQualifications.length} certifications`
     })
 
     return NextResponse.json(response, { status: HttpStatus.CREATED })

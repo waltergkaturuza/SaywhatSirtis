@@ -546,6 +546,29 @@ model employees {
   @@index([is_supervisor])
   @@index([status])
   @@index([supervisor_id])
+  job_descriptions     job_descriptions[]
+}
+
+model job_descriptions {
+  id                   String   @id
+  employeeId           String   @unique
+  employee             employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  jobTitle             String
+  location             String
+  jobSummary           String?
+  keyResponsibilities  Json     // Array of {description, weight, tasks}
+  essentialExperience  String?
+  essentialSkills      String?
+  acknowledgment       Boolean  @default(false)
+  signatureFileName    String?
+  signatureFileUrl     String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime
+  version              Int      @default(1)
+  isActive             Boolean  @default(true)
+  
+  @@index([employeeId])
+  @@index([isActive])
 }
 
 model event_registrations {

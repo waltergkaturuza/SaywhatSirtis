@@ -16,6 +16,29 @@ import {
   CloudArrowUpIcon
 } from "@heroicons/react/24/outline"
 
+interface RolePermissions {
+  callCenter: 'none' | 'view' | 'edit' | 'full'
+  programs: 'none' | 'view' | 'edit' | 'full'
+  hr: 'none' | 'view' | 'edit' | 'full'
+  documents: 'none' | 'view' | 'edit' | 'full'
+  inventory: 'none' | 'view' | 'edit' | 'full'
+  risks: 'none' | 'view' | 'edit' | 'full'
+  dashboard: 'none' | 'view' | 'edit' | 'full'
+  personalProfile: 'none' | 'view' | 'edit' | 'full'
+}
+
+interface SystemRole {
+  id: string
+  name: string
+  value: string
+  permissions: RolePermissions
+  documentLevel: 'PUBLIC' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET'
+  canViewOthersProfiles: boolean
+  canManageUsers: boolean
+  fullAccess: boolean
+  description: string
+}
+
 interface EmployeeFormData {
   // Personal Information
   firstName: string
@@ -80,6 +103,22 @@ interface EmployeeFormData {
   systemAccess: string[]
   documentSecurityClearance: string
 
+  // Job Description
+  jobDescription: {
+    jobTitle: string
+    location: string
+    jobSummary: string
+    keyResponsibilities: Array<{
+      description: string
+      weight: number
+      tasks: string
+    }>
+    essentialExperience: string
+    essentialSkills: string
+    acknowledgment: boolean
+    signatureFile: File | null
+  }
+
   // Documents
   contractSigned: boolean
   backgroundCheckCompleted: boolean
@@ -91,7 +130,7 @@ interface EmployeeFormData {
 export default function AddEmployeePage() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1)
   const [departments, setDepartments] = useState<Array<{
     id: string
     name: string
@@ -125,12 +164,14 @@ export default function AddEmployeePage() {
     name: string
     code: string
   }>>([])
+  const [roles, setRoles] = useState<SystemRole[]>([])
   const [loading, setLoading] = useState({
     departments: false,
     supervisors: false,
     reviewers: false,
     countries: false,
-    provinces: false
+    provinces: false,
+    roles: false
   })
   
   const [formData, setFormData] = useState<EmployeeFormData>({
@@ -190,7 +231,21 @@ export default function AddEmployeePage() {
     accessLevel: "basic",
     userRole: "",
     systemAccess: [],
-    documentSecurityClearance: "public",
+    documentSecurityClearance: "PUBLIC",
+    
+    // Job Description
+    jobDescription: {
+      jobTitle: "",
+      location: "",
+      jobSummary: "",
+      keyResponsibilities: [
+        { description: "", weight: 0, tasks: "" }
+      ],
+      essentialExperience: "",
+      essentialSkills: "",
+      acknowledgment: false,
+      signatureFile: null
+    },
     
     // Documents
     contractSigned: false,
@@ -200,7 +255,7 @@ export default function AddEmployeePage() {
     additionalNotes: ""
   })
 
-  const totalSteps = 6
+  const totalSteps = 7
 
   useEffect(() => {
     setMounted(true)
@@ -208,6 +263,7 @@ export default function AddEmployeePage() {
     fetchSupervisors()
     fetchReviewers()
     fetchCountries()
+    fetchRoles()
   }, [])
 
   // Fetch departments
@@ -274,6 +330,83 @@ export default function AddEmployeePage() {
     }
   }
 
+  // Fetch roles
+  const fetchRoles = async () => {
+    setLoading(prev => ({ ...prev, roles: true }))
+    try {
+      const response = await fetch('/api/hr/roles')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data?.roles) {
+          setRoles(data.data.roles)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error)
+    } finally {
+      setLoading(prev => ({ ...prev, roles: false }))
+    }
+  }
+
+  // Helper function to get permission display color
+  const getPermissionColor = (permission: string) => {
+    switch (permission) {
+      case 'none': return 'text-gray-600'
+      case 'view': return 'text-blue-600'
+      case 'edit': return 'text-yellow-600'
+      case 'full': return 'text-green-600'
+      default: return 'text-gray-600'
+    }
+  }
+
+  // Helper function to get role border color
+  const getRoleBorderColor = (role: SystemRole) => {
+    if (role.fullAccess) return 'border-green-200 bg-green-50'
+    if (role.permissions.hr === 'full') return 'border-purple-200 bg-purple-50'
+    if (role.permissions.callCenter === 'full' || role.permissions.programs === 'full') return 'border-blue-200 bg-blue-50'
+    return 'border-gray-200'
+  }
+
+  // Helper functions for key responsibilities management
+  const addKeyResponsibility = () => {
+    if (formData.jobDescription.keyResponsibilities.length < 10) {
+      const newResponsibilities = [...formData.jobDescription.keyResponsibilities, {
+        description: "",
+        weight: 0,
+        tasks: ""
+      }]
+      handleInputChange("jobDescription", { 
+        ...formData.jobDescription, 
+        keyResponsibilities: newResponsibilities 
+      })
+    }
+  }
+
+  const removeKeyResponsibility = (index: number) => {
+    if (formData.jobDescription.keyResponsibilities.length > 1) {
+      const newResponsibilities = formData.jobDescription.keyResponsibilities.filter((_, i) => i !== index)
+      handleInputChange("jobDescription", { 
+        ...formData.jobDescription, 
+        keyResponsibilities: newResponsibilities 
+      })
+    }
+  }
+
+  const updateKeyResponsibility = (index: number, field: 'description' | 'weight' | 'tasks', value: string | number) => {
+    const newResponsibilities = formData.jobDescription.keyResponsibilities.map((resp, i) => 
+      i === index ? { ...resp, [field]: value } : resp
+    )
+    handleInputChange("jobDescription", { 
+      ...formData.jobDescription, 
+      keyResponsibilities: newResponsibilities 
+    })
+  }
+
+  // Calculate total weight percentage
+  const getTotalWeight = (responsibilities: Array<{description: string, weight: number, tasks: string}>) => {
+    return responsibilities.reduce((total, resp) => total + (resp.weight || 0), 0)
+  }
+
   // Fetch provinces when country changes
   const fetchProvinces = async (countryCode: string) => {
     if (!countryCode) {
@@ -309,8 +442,182 @@ export default function AddEmployeePage() {
   }
 
   const handleSubmit = async () => {
-    console.log("Submitting employee data:", formData)
-    // Add submit logic here
+    try {
+      // Basic validation
+      if (!formData.firstName || !formData.lastName || !formData.email || !formData.position) {
+        alert("Please fill in all required fields (First Name, Last Name, Email, Position)")
+        return
+      }
+
+      // Job Description validation
+      if (!formData.jobDescription.jobTitle) {
+        alert("Please enter a job title in the Job Description section")
+        return
+      }
+
+      if (!formData.jobDescription.location) {
+        alert("Please enter a job location in the Job Description section")
+        return
+      }
+
+      if (!formData.jobDescription.jobSummary) {
+        alert("Please provide a job summary in the Job Description section")
+        return
+      }
+
+      if (formData.jobDescription.keyResponsibilities.length === 0) {
+        alert("Please add at least one key responsibility in the Job Description section")
+        return
+      }
+
+      // Validate key responsibilities
+      const totalWeight = getTotalWeight(formData.jobDescription.keyResponsibilities)
+      if (totalWeight !== 100) {
+        alert(`Key responsibilities weights must total 100%. Current total: ${totalWeight}%`)
+        return
+      }
+
+      // Check if all responsibilities have descriptions
+      const emptyResponsibilities = formData.jobDescription.keyResponsibilities.filter(resp => !resp.description.trim())
+      if (emptyResponsibilities.length > 0) {
+        alert("Please provide descriptions for all key responsibilities")
+        return
+      }
+
+      if (!formData.jobDescription.essentialExperience) {
+        alert("Please provide essential experience requirements in the Job Description section")
+        return
+      }
+
+      if (!formData.jobDescription.essentialSkills) {
+        alert("Please provide essential skills requirements in the Job Description section")
+        return
+      }
+
+      if (!formData.jobDescription.acknowledgment) {
+        alert("Please acknowledge the job description declaration")
+        return
+      }
+
+      console.log("Submitting employee data:", formData)
+      console.log("Supervisor status:", formData.isSupervisor)
+      console.log("Reviewer status:", formData.isReviewer)
+      
+      // Get selected role data for enhanced submission
+      const selectedRole = roles.find(r => r.id === formData.userRole)
+      
+      // Prepare the data for submission with role-based enhancements
+      const submissionData = {
+        formData: {
+          ...formData,
+          // Ensure supervisor and reviewer flags are included
+          isSupervisor: formData.isSupervisor || false,
+          isReviewer: formData.isReviewer || false,
+          // Map form fields to API expected fields
+          hireDate: formData.startDate,
+          salary: formData.baseSalary,
+          // Additional mappings for proper data structure
+          department: formData.departmentId ? undefined : formData.department, // Let API handle department resolution
+          medicalAid: formData.medicalAid || false,
+          funeralCover: formData.funeralCover || false,
+          vehicleBenefit: formData.vehicleBenefit || false,
+          fuelAllowance: formData.fuelAllowance || false,
+          airtimeAllowance: formData.airtimeAllowance || false,
+          otherBenefits: formData.otherBenefits ? [formData.otherBenefits] : [],
+          // Role-based data
+          role: formData.userRole, // Primary role ID
+          permissions: selectedRole?.permissions || {},
+          canViewOthersProfiles: selectedRole?.canViewOthersProfiles || false,
+          canManageUsers: selectedRole?.canManageUsers || false,
+          fullAccess: selectedRole?.fullAccess || false,
+          roleDescription: selectedRole?.description || ''
+        }
+      }
+      
+      console.log("Final submission data:", submissionData)
+      
+      const response = await fetch('/api/hr/employees', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submissionData)
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        console.log("Employee created successfully:", result)
+        alert("Employee created successfully!")
+        // Redirect to employees list or show success message
+        router.push('/hr/employees')
+      } else {
+        console.error("Error creating employee:", result)
+        alert(`Error creating employee: ${result.message || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error("Submit error:", error)
+      alert("An error occurred while creating the employee. Please try again.")
+    }
+  }
+
+  // Step validation function
+  const validateStep = (step: number): { isValid: boolean; message?: string } => {
+    switch (step) {
+      case 1: // Personal Info
+        if (!formData.firstName.trim()) return { isValid: false, message: "First name is required" }
+        if (!formData.lastName.trim()) return { isValid: false, message: "Last name is required" }
+        if (!formData.email.trim()) return { isValid: false, message: "Email is required" }
+        if (!formData.phoneNumber.trim()) return { isValid: false, message: "Phone number is required" }
+        return { isValid: true }
+      
+      case 2: // Employment
+        if (!formData.position.trim()) return { isValid: false, message: "Position is required" }
+        if (!formData.startDate) return { isValid: false, message: "Start date is required" }
+        return { isValid: true }
+      
+      case 3: // Compensation
+        if (!formData.baseSalary) return { isValid: false, message: "Base salary is required" }
+        return { isValid: true }
+      
+      case 4: // Education
+        // Education is optional
+        return { isValid: true }
+      
+      case 5: // Access & Security
+        if (!formData.userRole) return { isValid: false, message: "User role is required" }
+        if (!formData.documentSecurityClearance) return { isValid: false, message: "Document security clearance is required" }
+        return { isValid: true }
+      
+      case 6: // Job Description
+        if (!formData.jobDescription.jobTitle.trim()) return { isValid: false, message: "Job title is required" }
+        if (!formData.jobDescription.location.trim()) return { isValid: false, message: "Job location is required" }
+        if (!formData.jobDescription.jobSummary.trim()) return { isValid: false, message: "Job summary is required" }
+        if (formData.jobDescription.keyResponsibilities.length === 0) return { isValid: false, message: "At least one key responsibility is required" }
+        
+        const totalWeight = getTotalWeight(formData.jobDescription.keyResponsibilities)
+        if (totalWeight !== 100) return { isValid: false, message: `Key responsibilities weights must total 100%. Current: ${totalWeight}%` }
+        
+        const emptyResponsibilities = formData.jobDescription.keyResponsibilities.filter(resp => !resp.description.trim())
+        if (emptyResponsibilities.length > 0) return { isValid: false, message: "All key responsibilities must have descriptions" }
+        
+        if (!formData.jobDescription.essentialExperience.trim()) return { isValid: false, message: "Essential experience is required" }
+        if (!formData.jobDescription.essentialSkills.trim()) return { isValid: false, message: "Essential skills are required" }
+        if (!formData.jobDescription.acknowledgment) return { isValid: false, message: "Job description acknowledgment is required" }
+        return { isValid: true }
+      
+      default:
+        return { isValid: true }
+    }
+  }
+
+  const handleNextStep = () => {
+    const validation = validateStep(currentStep)
+    if (!validation.isValid) {
+      alert(validation.message)
+      return
+    }
+    setCurrentStep((currentStep + 1) as 1 | 2 | 3 | 4 | 5 | 6 | 7)
   }
 
   const steps = [
@@ -319,7 +626,8 @@ export default function AddEmployeePage() {
     { id: 3, name: "Compensation", icon: BanknotesIcon },
     { id: 4, name: "Education", icon: AcademicCapIcon },
     { id: 5, name: "Access & Security", icon: ShieldCheckIcon },
-    { id: 6, name: "Documents", icon: DocumentTextIcon }
+    { id: 6, name: "Job Description", icon: DocumentTextIcon },
+    { id: 7, name: "Documents", icon: DocumentTextIcon }
   ]
 
   if (!mounted) {
@@ -328,7 +636,7 @@ export default function AddEmployeePage() {
 
   return (
     <EnhancedLayout>
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="w-full px-6">
         
         {/* Progress Steps */}
         <div className="mb-8">
@@ -370,7 +678,7 @@ export default function AddEmployeePage() {
         </div>
 
         {/* Form Content */}
-        <div className="bg-white shadow rounded-lg p-8">
+        <div className="bg-white shadow rounded-lg p-8 w-full">
           
           {/* Step 1: Personal Information */}
           {currentStep === 1 && (
@@ -383,7 +691,7 @@ export default function AddEmployeePage() {
                 <p className="text-gray-600 text-sm mt-1">Employee's basic personal details</p>
               </div>
                 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     First Name *
@@ -468,7 +776,7 @@ export default function AddEmployeePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Work Email *
@@ -576,7 +884,7 @@ export default function AddEmployeePage() {
                 <p className="text-gray-600 text-sm mt-1">Job details and department assignment</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Employee ID *
@@ -613,7 +921,7 @@ export default function AddEmployeePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Position/Job Title *
@@ -839,11 +1147,16 @@ export default function AddEmployeePage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
                     <option value="">Select Pay Grade</option>
-                    <option value="1">Grade 1</option>
-                    <option value="2">Grade 2</option>
-                    <option value="3">Grade 3</option>
-                    <option value="4">Grade 4</option>
-                    <option value="5">Grade 5</option>
+                    <option value="PO6">PO6 Highest</option>
+                    <option value="PO4">PO4</option>
+                    <option value="PO3">PO3</option>
+                    <option value="PO2">PO2</option>
+                    <option value="PO1">PO1</option>
+                    <option value="SO2">SO2</option>
+                    <option value="SO1">SO1</option>
+                    <option value="Scale5">Scale 5</option>
+                    <option value="Scale4">Scale 4</option>
+                    <option value="M1M2">M1/M2 Lowest</option>
                   </select>
                 </div>
 
@@ -1110,139 +1423,74 @@ export default function AddEmployeePage() {
                     User Role & Access Level *
                   </label>
                   
-                  <div className="space-y-4">
-                    {/* Basic User 1 */}
-                    <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
-                      <div className="flex items-center mb-2">
-                        <input
-                          type="radio"
-                          id="basicUser1"
-                          name="userRole"
-                          value="basicUser1"
-                          checked={formData.userRole === "basicUser1"}
-                          onChange={(e) => handleInputChange("userRole", e.target.value)}
-                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label htmlFor="basicUser1" className="text-sm font-medium text-gray-900">Basic User 1</label>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs ml-7">
-                        <span className="text-blue-600">Call Centre: view</span>
-                        <span className="text-gray-600">Programs: none</span>
-                        <span className="text-gray-600">HR: none</span>
-                        <span className="text-blue-600">Documents: view</span>
-                      </div>
+                  {loading.roles ? (
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                      <span className="ml-2 text-gray-600">Loading roles...</span>
                     </div>
-
-                    {/* Basic User 2 */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center mb-2">
-                        <input
-                          type="radio"
-                          id="basicUser2"
-                          name="userRole"
-                          value="basicUser2"
-                          checked={formData.userRole === "basicUser2"}
-                          onChange={(e) => handleInputChange("userRole", e.target.value)}
-                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label htmlFor="basicUser2" className="text-sm font-medium text-gray-900">Basic User 2</label>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs ml-7">
-                        <span className="text-gray-600">Call Centre: none</span>
-                        <span className="text-blue-600">Programs: view</span>
-                        <span className="text-gray-600">HR: none</span>
-                        <span className="text-blue-600">Documents: view</span>
-                      </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {roles.map((role) => (
+                        <div key={role.id} className={`border rounded-lg p-4 ${getRoleBorderColor(role)}`}>
+                          <div className="flex items-start mb-3">
+                            <input
+                              type="radio"
+                              id={role.id}
+                              name="userRole"
+                              value={role.id}
+                              checked={formData.userRole === role.id}
+                              onChange={(e) => {
+                                handleInputChange("userRole", e.target.value)
+                                // Automatically set document security clearance based on role
+                                handleInputChange("documentSecurityClearance", role.documentLevel)
+                                // Set access level based on role permissions
+                                const accessLevel = role.fullAccess ? 'full' : 
+                                                   (role.permissions.hr === 'full' || role.permissions.callCenter === 'full') ? 'advanced' : 'basic'
+                                handleInputChange("accessLevel", accessLevel)
+                              }}
+                              className="mr-3 h-4 w-4 text-orange-600 focus:ring-orange-500 mt-1"
+                            />
+                            <div className="flex-1">
+                              <label htmlFor={role.id} className="text-sm font-medium text-gray-900 block mb-1">
+                                {role.name}
+                                {role.fullAccess && <span className=" ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Full Access</span>}
+                              </label>
+                              <p className="text-xs text-gray-600 mb-3">{role.description}</p>
+                              
+                              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                                <span className={`${getPermissionColor(role.permissions.callCenter)} font-medium`}>
+                                  Call Centre: {role.permissions.callCenter}
+                                </span>
+                                <span className={`${getPermissionColor(role.permissions.programs)} font-medium`}>
+                                  Programs: {role.permissions.programs}
+                                </span>
+                                <span className={`${getPermissionColor(role.permissions.hr)} font-medium`}>
+                                  HR: {role.permissions.hr}
+                                </span>
+                                <span className={`${getPermissionColor(role.permissions.documents)} font-medium`}>
+                                  Documents: {role.permissions.documents}
+                                </span>
+                                <span className={`${getPermissionColor(role.permissions.inventory)} font-medium`}>
+                                  Inventory: {role.permissions.inventory}
+                                </span>
+                                <span className={`${getPermissionColor(role.permissions.risks)} font-medium`}>
+                                  Risks: {role.permissions.risks}
+                                </span>
+                                <span className="text-gray-700 font-medium">
+                                  Max Doc Level: <span className="text-sm">{role.documentLevel.replace('_', ' ')}</span>
+                                </span>
+                                {role.canViewOthersProfiles && (
+                                  <span className="text-purple-600 font-medium text-xs">
+                                    ✓ View Others' Profiles
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-
-                    {/* Advanced User 1 */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center mb-2">
-                        <input
-                          type="radio"
-                          id="advancedUser1"
-                          name="userRole"
-                          value="advancedUser1"
-                          checked={formData.userRole === "advancedUser1"}
-                          onChange={(e) => handleInputChange("userRole", e.target.value)}
-                          className="mr-3 h-4 w-4 text-green-600 focus:ring-green-500"
-                        />
-                        <label htmlFor="advancedUser1" className="text-sm font-medium text-gray-900">Advanced User 1</label>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs ml-7">
-                        <span className="text-green-600">Call Centre: full</span>
-                        <span className="text-yellow-600">Programs: edit</span>
-                        <span className="text-gray-600">HR: none</span>
-                        <span className="text-yellow-600">Documents: edit</span>
-                      </div>
-                    </div>
-
-                    {/* Advanced User 2 */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center mb-2">
-                        <input
-                          type="radio"
-                          id="advancedUser2"
-                          name="userRole"
-                          value="advancedUser2"
-                          checked={formData.userRole === "advancedUser2"}
-                          onChange={(e) => handleInputChange("userRole", e.target.value)}
-                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label htmlFor="advancedUser2" className="text-sm font-medium text-gray-900">Advanced User 2</label>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs ml-7">
-                        <span className="text-blue-600">Call Centre: view</span>
-                        <span className="text-green-600">Programs: full</span>
-                        <span className="text-gray-600">HR: none</span>
-                        <span className="text-yellow-600">Documents: edit</span>
-                      </div>
-                    </div>
-
-                    {/* HR */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center mb-2">
-                        <input
-                          type="radio"
-                          id="hr"
-                          name="userRole"
-                          value="hr"
-                          checked={formData.userRole === "hr"}
-                          onChange={(e) => handleInputChange("userRole", e.target.value)}
-                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label htmlFor="hr" className="text-sm font-medium text-gray-900">Hr</label>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs ml-7">
-                        <span className="text-blue-600">Call Centre: view</span>
-                        <span className="text-blue-600">Programs: view</span>
-                        <span className="text-green-600">HR: full</span>
-                        <span className="text-yellow-600">Documents: edit</span>
-                      </div>
-                    </div>
-
-                    {/* System Administrator */}
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex items-center mb-2">
-                        <input
-                          type="radio"
-                          id="systemAdmin"
-                          name="userRole"
-                          value="systemAdmin"
-                          checked={formData.userRole === "systemAdmin"}
-                          onChange={(e) => handleInputChange("userRole", e.target.value)}
-                          className="mr-3 h-4 w-4 text-green-600 focus:ring-green-500"
-                        />
-                        <label htmlFor="systemAdmin" className="text-sm font-medium text-gray-900">System Administrator</label>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs ml-7">
-                        <span className="text-green-600">Call Centre: full</span>
-                        <span className="text-green-600">Programs: full</span>
-                        <span className="text-green-600">HR: full</span>
-                        <span className="text-green-600">Documents: full</span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* SAYWHAT Department Structure */}
@@ -1283,63 +1531,82 @@ export default function AddEmployeePage() {
                     onChange={(e) => handleInputChange("documentSecurityClearance", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   >
-                    <option value="public">Public (Public documents only)</option>
-                    <option value="internal">Internal (Internal documents)</option>
-                    <option value="confidential">Confidential</option>
-                    <option value="restricted">Restricted</option>
+                    <option value="PUBLIC">PUBLIC (Public documents only)</option>
+                    <option value="CONFIDENTIAL">CONFIDENTIAL (Internal and confidential documents)</option>
+                    <option value="SECRET">SECRET (Up to secret level documents)</option>
+                    <option value="TOP_SECRET">TOP SECRET (All document levels)</option>
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">Determines the highest level of classified documents this user can access.</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Determines the highest level of classified documents this user can access. 
+                    {formData.userRole && roles.find(r => r.id === formData.userRole) && (
+                      <span className="text-orange-600 font-medium ml-1">
+                        (Automatically set to {roles.find(r => r.id === formData.userRole)?.documentLevel.replace('_', ' ')} based on selected role)
+                      </span>
+                    )}
+                  </p>
                 </div>
 
                 {/* System Module Access */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-gray-900">System Module Access (Based on Role):</h3>
+                  <h3 className="text-sm font-medium text-gray-900">System Module Access (Based on Selected Role):</h3>
                   
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Call Center</div>
-                        <div className="text-sm text-blue-600">view</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Dashboard</div>
-                        <div className="text-sm text-blue-600">view</div>
-                      </div>
+                  {formData.userRole && roles.find(r => r.id === formData.userRole) ? (
+                    <div className="space-y-3">
+                      {(() => {
+                        const selectedRole = roles.find(r => r.id === formData.userRole)!
+                        const moduleNames = [
+                          { key: 'callCenter', label: 'Call Center' },
+                          { key: 'dashboard', label: 'Dashboard' },
+                          { key: 'personalProfile', label: 'Personal Profile' },
+                          { key: 'programs', label: 'Programs' },
+                          { key: 'documents', label: 'Documents' },
+                          { key: 'inventory', label: 'Inventory' },
+                          { key: 'hr', label: 'HR' },
+                          { key: 'risks', label: 'Risks' }
+                        ]
+                        
+                        return (
+                          <>
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                              {moduleNames.map(({ key, label }) => {
+                                const permission = selectedRole.permissions[key as keyof RolePermissions]
+                                return (
+                                  <div key={key} className="flex flex-col">
+                                    <div className="text-sm font-medium text-gray-700 mb-1">{label}</div>
+                                    <div className={`text-sm font-medium ${getPermissionColor(permission)} capitalize`}>
+                                      {permission}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                            
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <div className="text-sm text-blue-800">
+                                <strong>Special Permissions:</strong>
+                                <div className="mt-1 space-y-1">
+                                  {selectedRole.canViewOthersProfiles && (
+                                    <div>✓ Can view other employees' profiles</div>
+                                  )}
+                                  {selectedRole.canManageUsers && (
+                                    <div>✓ Can manage user accounts</div>
+                                  )}
+                                  {selectedRole.fullAccess && (
+                                    <div>✓ Full system administrator access</div>
+                                  )}
+                                  <div>✓ Maximum document clearance: <span className="font-medium">{selectedRole.documentLevel.replace('_', ' ')}</span></div>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Personal Profile</div>
-                        <div className="text-sm text-green-600">full</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Programs</div>
-                        <div className="text-sm text-red-600">none</div>
-                      </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 italic">
+                      Please select a user role above to see the system module access permissions.
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Documents</div>
-                        <div className="text-sm text-blue-600">view</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Inventory</div>
-                        <div className="text-sm text-red-600">none</div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-6">
-                      <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Hr</div>
-                        <div className="text-sm text-red-600">none</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-700 mb-2">Risks</div>
-                        <div className="text-sm text-blue-600">view</div>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Required Security Setup Tasks */}
@@ -1376,8 +1643,246 @@ export default function AddEmployeePage() {
             </div>
           )}
 
-          {/* Step 6: Documents */}
+          {/* Step 6: Job Description */}
           {currentStep === 6 && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Job Description</h2>
+
+              <div className="space-y-6">
+                {/* Job Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.jobDescription.jobTitle}
+                    onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, jobTitle: e.target.value })}
+                    placeholder="Enter the official job title"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+
+                {/* Location */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Location *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.jobDescription.location}
+                    onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, location: e.target.value })}
+                    placeholder="Enter work location (e.g., Kampala Office, Remote, Field-based)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+
+                {/* Job Summary */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Job Summary *
+                  </label>
+                  <textarea
+                    value={formData.jobDescription.jobSummary}
+                    onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, jobSummary: e.target.value })}
+                    placeholder="Provide a comprehensive overview of the role's purpose, scope, and main objectives..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+
+                {/* Key Responsibilities */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Key Responsibilities & Tasks
+                    </label>
+                    <div className="text-sm text-gray-600">
+                      Total Weight: {getTotalWeight(formData.jobDescription.keyResponsibilities)}%
+                      <span className={getTotalWeight(formData.jobDescription.keyResponsibilities) === 100 ? 'text-green-600 ml-2' : 'text-red-600 ml-2'}>
+                        {getTotalWeight(formData.jobDescription.keyResponsibilities) === 100 ? '✓' : '⚠️'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {formData.jobDescription.keyResponsibilities.map((responsibility, index) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-medium text-gray-900">Responsibility {index + 1}</h4>
+                          {formData.jobDescription.keyResponsibilities.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeKeyResponsibility(index)}
+                              className="text-red-600 hover:text-red-800 text-sm"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                          <div className="lg:col-span-2">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Responsibility Description *
+                            </label>
+                            <textarea
+                              value={responsibility.description}
+                              onChange={(e) => updateKeyResponsibility(index, 'description', e.target.value)}
+                              placeholder="Describe the responsibility and associated tasks..."
+                              rows={3}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Weight (%) *
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={responsibility.weight}
+                              onChange={(e) => updateKeyResponsibility(index, 'weight', parseInt(e.target.value) || 0)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Percentage of time/effort for this responsibility
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Specific Tasks
+                          </label>
+                          <textarea
+                            value={responsibility.tasks}
+                            onChange={(e) => updateKeyResponsibility(index, 'tasks', e.target.value)}
+                            placeholder="List specific tasks and deliverables for this responsibility..."
+                            rows={2}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                          />
+                        </div>
+                      </div>
+                    ))}
+
+                    {formData.jobDescription.keyResponsibilities.length < 10 && (
+                      <button
+                        type="button"
+                        onClick={addKeyResponsibility}
+                        className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-orange-500 hover:text-orange-600 transition-colors"
+                      >
+                        + Add Another Responsibility (Max 10)
+                      </button>
+                    )}
+
+                    {getTotalWeight(formData.jobDescription.keyResponsibilities) !== 100 && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-center">
+                          <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500 mr-2" />
+                          <p className="text-sm text-yellow-800">
+                            Total weight must equal 100%. Current total: {getTotalWeight(formData.jobDescription.keyResponsibilities)}%
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Person Specification - Essential Experience */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Essential Experience *
+                  </label>
+                  <textarea
+                    value={formData.jobDescription.essentialExperience}
+                    onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, essentialExperience: e.target.value })}
+                    placeholder="List the essential work experience, qualifications, and background required for this role..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+
+                {/* Person Specification - Essential Skills */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Essential Skills *
+                  </label>
+                  <textarea
+                    value={formData.jobDescription.essentialSkills}
+                    onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, essentialSkills: e.target.value })}
+                    placeholder="List the essential technical skills, competencies, and abilities required for this role..."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+
+                {/* Declaration and Acknowledgment */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">Declaration and Acknowledgment</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="jobDescriptionAcknowledgment"
+                        checked={formData.jobDescription.acknowledgment}
+                        onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, acknowledgment: e.target.checked })}
+                        className="mr-3 h-4 w-4 text-orange-600 focus:ring-orange-500 mt-1"
+                      />
+                      <label htmlFor="jobDescriptionAcknowledgment" className="text-sm text-gray-700">
+                        I acknowledge that this job description accurately reflects the role's responsibilities, requirements, and expectations. 
+                        I understand that this will be used for performance planning and evaluation purposes.
+                      </label>
+                    </div>
+
+                    {/* Electronic Signature */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Electronic Signature Upload
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            handleInputChange("jobDescription", { ...formData.jobDescription, signatureFile: file })
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Upload an image or PDF file containing your electronic signature (Max 5MB)
+                      </p>
+                      {formData.jobDescription.signatureFile && (
+                        <p className="text-sm text-green-600 mt-2">
+                          ✓ Signature file selected: {formData.jobDescription.signatureFile.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Performance Planning Integration Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <DocumentTextIcon className="w-5 h-5 text-blue-600 mr-2" />
+                    <h3 className="text-sm font-medium text-blue-900">Performance Planning Integration</h3>
+                  </div>
+                  <p className="text-sm text-blue-800">
+                    This job description will be integrated with the HR Performance Planning system. The key responsibilities 
+                    and their weights will be used to set performance targets and conduct evaluations.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 7: Documents */}
+          {currentStep === 7 && (
             <div className="space-y-8">
               {/* Required Documents Checklist */}
               <div className="space-y-4">
@@ -1536,7 +2041,7 @@ export default function AddEmployeePage() {
           <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
             {currentStep > 1 ? (
               <button
-                onClick={() => setCurrentStep((currentStep - 1) as 1 | 2 | 3 | 4 | 5 | 6)}
+                onClick={() => setCurrentStep((currentStep - 1) as 1 | 2 | 3 | 4 | 5 | 6 | 7)}
                 className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 Previous
@@ -1560,7 +2065,7 @@ export default function AddEmployeePage() {
               
               {currentStep < totalSteps ? (
                 <button
-                  onClick={() => setCurrentStep((currentStep + 1) as 1 | 2 | 3 | 4 | 5 | 6)}
+                  onClick={handleNextStep}
                   className="px-6 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
                 >
                   Next

@@ -18,10 +18,7 @@ export async function GET(request: NextRequest) {
           { roles: { has: 'reviewer' } },
           { roles: { has: 'supervisor' } },
           { roles: { has: 'hr_manager' } },
-          { role: 'ADMIN' },
-          { 
-            canReview: true 
-          }
+          { role: 'ADMIN' }
         ],
         isActive: true
       },
@@ -35,8 +32,7 @@ export async function GET(request: NextRequest) {
         roles: true,
         _count: {
           select: {
-            supervisees: true,
-            reviewsAssigned: true
+            supervisees: true
           }
         }
       },
@@ -53,7 +49,7 @@ export async function GET(request: NextRequest) {
       department: reviewer.department || 'Unassigned',
       position: reviewer.position || 'Employee',
       subordinateCount: reviewer._count.supervisees,
-      reviewCount: reviewer._count.reviewsAssigned || 0,
+      reviewCount: 0, // Will be calculated based on actual review assignments
       isHR: reviewer.roles?.includes('hr_manager') || reviewer.roles?.includes('ADMIN'),
       isSupervisor: reviewer.roles?.includes('supervisor')
     }))
@@ -65,82 +61,12 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error fetching reviewers:', error)
-    
-    // Fallback data when database is not available
-    const fallbackReviewers = [
-      {
-        id: 'rev-001',
-        name: 'John Mukamuri',
-        email: 'j.mukamuri@saywhat.org',
-        department: 'Human Resources',
-        position: 'HR Director',
-        subordinateCount: 5,
-        reviewCount: 12,
-        isHR: true,
-        isSupervisor: true
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch reviewers',
+        message: error instanceof Error ? error.message : 'Database connection failed'
       },
-      {
-        id: 'rev-002', 
-        name: 'Grace Nyamayaro',
-        email: 'g.nyamayaro@saywhat.org',
-        department: 'Information Technology',
-        position: 'IT Manager',
-        subordinateCount: 4,
-        reviewCount: 8,
-        isHR: false,
-        isSupervisor: true
-      },
-      {
-        id: 'rev-003',
-        name: 'Tendai Moyo',
-        email: 't.moyo@saywhat.org',
-        department: 'Finance',
-        position: 'Finance Manager',
-        subordinateCount: 3,
-        reviewCount: 6,
-        isHR: false,
-        isSupervisor: true
-      },
-      {
-        id: 'rev-004',
-        name: 'Chipo Zvobgo',
-        email: 'c.zvobgo@saywhat.org',
-        department: 'Operations',
-        position: 'Operations Manager',
-        subordinateCount: 8,
-        reviewCount: 15,
-        isHR: false,
-        isSupervisor: true
-      },
-      {
-        id: 'rev-005',
-        name: 'Blessing Chikwanha',
-        email: 'b.chikwanha@saywhat.org',
-        department: 'Programs',
-        position: 'Program Director',
-        subordinateCount: 6,
-        reviewCount: 10,
-        isHR: false,
-        isSupervisor: true
-      },
-      {
-        id: 'rev-006',
-        name: 'Farai Ndoro',
-        email: 'f.ndoro@saywhat.org',
-        department: 'Human Resources',
-        position: 'Senior HR Officer',
-        subordinateCount: 0,
-        reviewCount: 8,
-        isHR: true,
-        isSupervisor: false
-      }
-    ];
-
-    return NextResponse.json({
-      reviewers: fallbackReviewers,
-      data: fallbackReviewers,
-      message: 'Reviewers retrieved successfully (fallback data - database unavailable)',
-      warning: 'Using fallback data due to database connectivity issues'
-    })
+      { status: 500 }
+    )
   }
 }

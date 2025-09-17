@@ -61,70 +61,12 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error fetching supervisors:', error)
-    
-    // Fallback data when database is not available
-    const fallbackSupervisors = [
-      {
-        id: 'sup-001',
-        name: 'John Mukamuri',
-        email: 'j.mukamuri@saywhat.org',
-        department: 'Human Resources',
-        position: 'HR Director',
-        subordinateCount: 5,
-        isHR: true
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch supervisors',
+        message: error instanceof Error ? error.message : 'Database connection failed'
       },
-      {
-        id: 'sup-002', 
-        name: 'Grace Nyamayaro',
-        email: 'g.nyamayaro@saywhat.org',
-        department: 'Information Technology',
-        position: 'IT Manager',
-        subordinateCount: 4,
-        isHR: false
-      },
-      {
-        id: 'sup-003',
-        name: 'Tendai Moyo',
-        email: 't.moyo@saywhat.org',
-        department: 'Finance',
-        position: 'Finance Manager',
-        subordinateCount: 3,
-        isHR: false
-      },
-      {
-        id: 'sup-004',
-        name: 'Chipo Zvobgo',
-        email: 'c.zvobgo@saywhat.org',
-        department: 'Operations',
-        position: 'Operations Manager',
-        subordinateCount: 8,
-        isHR: false
-      },
-      {
-        id: 'sup-005',
-        name: 'Blessing Chikwanha',
-        email: 'b.chikwanha@saywhat.org',
-        department: 'Programs',
-        position: 'Program Director',
-        subordinateCount: 6,
-        isHR: false
-      },
-      {
-        id: 'sup-006',
-        name: 'Rufaro Sithole',
-        email: 'r.sithole@saywhat.org',
-        department: 'Communications',
-        position: 'Communications Manager',
-        subordinateCount: 2,
-        isHR: false
-      }
-    ];
-
-    return NextResponse.json({
-      supervisors: fallbackSupervisors,
-      data: fallbackSupervisors,
-      message: 'Supervisors retrieved successfully (fallback data - database unavailable)',
-      warning: 'Using fallback data due to database connectivity issues'
-    })
+      { status: 500 }
+    )
   }
 }
