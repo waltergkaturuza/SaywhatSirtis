@@ -11,16 +11,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all users who are supervisors or have supervisor role
-    const supervisors = await prisma.users.findMany({
+    // Get all users who can conduct performance reviews
+    const reviewers = await prisma.users.findMany({
       where: {
         OR: [
+          { roles: { has: 'reviewer' } },
           { roles: { has: 'supervisor' } },
+          { roles: { has: 'hr_manager' } },
           { role: 'ADMIN' },
           { 
-            supervisees: {
-              some: {}
-            }
+            canReview: true 
           }
         ],
         isActive: true
@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
         roles: true,
         _count: {
           select: {
-            supervisees: true
+            supervisees: true,
+            reviewsAssigned: true
           }
         }
       },
@@ -45,85 +46,100 @@ export async function GET(request: NextRequest) {
       ]
     })
 
-    const supervisorData = supervisors.map(supervisor => ({
-      id: supervisor.id,
-      name: `${supervisor.firstName} ${supervisor.lastName}`,
-      email: supervisor.email,
-      department: supervisor.department || 'Unassigned',
-      position: supervisor.position || 'Employee',
-      subordinateCount: supervisor._count.supervisees,
-      isHR: supervisor.roles?.includes('hr') || supervisor.roles?.includes('ADMIN')
+    const reviewerData = reviewers.map(reviewer => ({
+      id: reviewer.id,
+      name: `${reviewer.firstName} ${reviewer.lastName}`,
+      email: reviewer.email,
+      department: reviewer.department || 'Unassigned',
+      position: reviewer.position || 'Employee',
+      subordinateCount: reviewer._count.supervisees,
+      reviewCount: reviewer._count.reviewsAssigned || 0,
+      isHR: reviewer.roles?.includes('hr_manager') || reviewer.roles?.includes('ADMIN'),
+      isSupervisor: reviewer.roles?.includes('supervisor')
     }))
 
     return NextResponse.json({
-      supervisors: supervisorData,
-      message: 'Supervisors retrieved successfully'
+      reviewers: reviewerData,
+      data: reviewerData,
+      message: 'Reviewers retrieved successfully'
     })
   } catch (error) {
-    console.error('Error fetching supervisors:', error)
+    console.error('Error fetching reviewers:', error)
     
     // Fallback data when database is not available
-    const fallbackSupervisors = [
+    const fallbackReviewers = [
       {
-        id: 'sup-001',
+        id: 'rev-001',
         name: 'John Mukamuri',
         email: 'j.mukamuri@saywhat.org',
         department: 'Human Resources',
         position: 'HR Director',
         subordinateCount: 5,
-        isHR: true
+        reviewCount: 12,
+        isHR: true,
+        isSupervisor: true
       },
       {
-        id: 'sup-002', 
+        id: 'rev-002', 
         name: 'Grace Nyamayaro',
         email: 'g.nyamayaro@saywhat.org',
         department: 'Information Technology',
         position: 'IT Manager',
         subordinateCount: 4,
-        isHR: false
+        reviewCount: 8,
+        isHR: false,
+        isSupervisor: true
       },
       {
-        id: 'sup-003',
+        id: 'rev-003',
         name: 'Tendai Moyo',
         email: 't.moyo@saywhat.org',
         department: 'Finance',
         position: 'Finance Manager',
         subordinateCount: 3,
-        isHR: false
+        reviewCount: 6,
+        isHR: false,
+        isSupervisor: true
       },
       {
-        id: 'sup-004',
+        id: 'rev-004',
         name: 'Chipo Zvobgo',
         email: 'c.zvobgo@saywhat.org',
         department: 'Operations',
         position: 'Operations Manager',
         subordinateCount: 8,
-        isHR: false
+        reviewCount: 15,
+        isHR: false,
+        isSupervisor: true
       },
       {
-        id: 'sup-005',
+        id: 'rev-005',
         name: 'Blessing Chikwanha',
         email: 'b.chikwanha@saywhat.org',
         department: 'Programs',
         position: 'Program Director',
         subordinateCount: 6,
-        isHR: false
+        reviewCount: 10,
+        isHR: false,
+        isSupervisor: true
       },
       {
-        id: 'sup-006',
-        name: 'Rufaro Sithole',
-        email: 'r.sithole@saywhat.org',
-        department: 'Communications',
-        position: 'Communications Manager',
-        subordinateCount: 2,
-        isHR: false
+        id: 'rev-006',
+        name: 'Farai Ndoro',
+        email: 'f.ndoro@saywhat.org',
+        department: 'Human Resources',
+        position: 'Senior HR Officer',
+        subordinateCount: 0,
+        reviewCount: 8,
+        isHR: true,
+        isSupervisor: false
       }
     ];
 
     return NextResponse.json({
-      supervisors: fallbackSupervisors,
-      data: fallbackSupervisors,
-      message: 'Supervisors retrieved successfully (fallback data - database unavailable)',
+      reviewers: fallbackReviewers,
+      data: fallbackReviewers,
+      message: 'Reviewers retrieved successfully (fallback data - database unavailable)',
       warning: 'Using fallback data due to database connectivity issues'
     })
   }

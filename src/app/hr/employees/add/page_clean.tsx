@@ -1,0 +1,747 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { EnhancedLayout } from "@/components/layout/enhanced-layout"
+import {
+  UserIcon,
+  BuildingOfficeIcon,
+  CheckCircleIcon,
+  BanknotesIcon,
+  AcademicCapIcon,
+  ShieldCheckIcon,
+  DocumentTextIcon,
+  PhoneIcon
+} from "@heroicons/react/24/outline"
+
+interface EmployeeFormData {
+  firstName: string
+  lastName: string
+  middleName: string
+  dateOfBirth: string
+  gender: string
+  phoneNumber: string
+  email: string
+  personalEmail: string
+  address: string
+  emergencyContactName: string
+  emergencyContactPhone: string
+  emergencyContactRelationship: string
+  employeeId: string
+  department: string
+  departmentId: string
+  position: string
+  supervisorId: string
+  startDate: string
+  employmentType: string
+  workLocation: string
+  isSupervisor: boolean
+  isReviewer: boolean
+  baseSalary: string
+  currency: string
+  payGrade: string
+  payFrequency: string
+  education: string
+  skills: string[]
+  certifications: string[]
+  accessLevel: string
+  systemAccess: string[]
+  contractSigned: boolean
+  backgroundCheckCompleted: boolean
+  additionalNotes: string
+}
+
+export default function AddEmployeePage() {
+  const router = useRouter()
+  const [mounted, setMounted] = useState(false)
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
+  const [departments, setDepartments] = useState<Array<{
+    id: string
+    name: string
+    code?: string
+    level: number
+    parentId?: string
+  }>>([])
+  
+  const [formData, setFormData] = useState<EmployeeFormData>({
+    firstName: "",
+    lastName: "",
+    middleName: "",
+    dateOfBirth: "",
+    gender: "",
+    phoneNumber: "",
+    email: "",
+    personalEmail: "",
+    address: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
+    emergencyContactRelationship: "",
+    employeeId: "",
+    department: "",
+    departmentId: "",
+    position: "",
+    supervisorId: "",
+    startDate: "",
+    employmentType: "",
+    workLocation: "",
+    isSupervisor: false,
+    isReviewer: false,
+    baseSalary: "",
+    currency: "USD",
+    payGrade: "",
+    payFrequency: "monthly",
+    education: "",
+    skills: [],
+    certifications: [],
+    accessLevel: "basic",
+    systemAccess: [],
+    contractSigned: false,
+    backgroundCheckCompleted: false,
+    additionalNotes: ""
+  })
+
+  const totalSteps = 6
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const handleInputChange = (field: keyof EmployeeFormData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleSubmit = async () => {
+    console.log("Submitting employee data:", formData)
+    // Add submit logic here
+  }
+
+  const steps = [
+    { id: 1, name: "Personal Info", icon: UserIcon },
+    { id: 2, name: "Employment", icon: DocumentTextIcon },
+    { id: 3, name: "Compensation", icon: BanknotesIcon },
+    { id: 4, name: "Education", icon: AcademicCapIcon },
+    { id: 5, name: "Access & Security", icon: ShieldCheckIcon },
+    { id: 6, name: "Documents", icon: DocumentTextIcon }
+  ]
+
+  if (!mounted) {
+    return null
+  }
+
+  return (
+    <EnhancedLayout>
+      <div className="max-w-7xl mx-auto px-6">
+        
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => (
+              <div key={step.id} className="flex items-center">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
+                  step.id < currentStep
+                    ? 'bg-green-500 text-white'
+                  : step.id === currentStep 
+                    ? 'bg-orange-500 text-white' 
+                    : 'bg-gray-300 text-gray-600'
+                }`}>
+                  {step.id < currentStep ? (
+                    <CheckCircleIcon className="w-5 h-5" />
+                  ) : (
+                    step.id
+                  )}
+                </div>
+                <div className="ml-3 min-w-0">
+                  <p className={`text-sm font-medium ${
+                    step.id < currentStep ? 'text-green-600' : step.id === currentStep ? 'text-orange-600' : 'text-gray-500'
+                  }`}>
+                    {step.name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {step.id === 1 && "Current"}
+                    {step.id === 2 && "Current"}
+                  </p>
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`flex-1 h-1 mx-4 ${
+                    step.id < currentStep ? 'bg-green-500' : step.id === currentStep ? 'bg-orange-500' : 'bg-gray-300'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="bg-white shadow rounded-lg p-8">
+          
+          {/* Step 1: Personal Information */}
+          {currentStep === 1 && (
+            <div className="space-y-6">
+              <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500">
+                <div className="flex items-center">
+                  <UserIcon className="w-5 h-5 text-red-500 mr-2" />
+                  <h3 className="text-lg font-semibold text-gray-900">Personal Information</h3>
+                </div>
+                <p className="text-gray-600 text-sm mt-1">Employee's basic personal details</p>
+              </div>
+                
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange("firstName", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Middle Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.middleName}
+                    onChange={(e) => handleInputChange("middleName", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date of Birth
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="dd/mm/yyyy"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender
+                  </label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => handleInputChange("gender", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Work Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Personal Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.personalEmail}
+                    onChange={(e) => handleInputChange("personalEmail", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+                
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Address
+                </label>
+                <textarea
+                  value={formData.address}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Enter full address"
+                />
+              </div>
+
+              <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500 mt-6">
+                <div className="flex items-center">
+                  <PhoneIcon className="w-5 h-5 text-red-500 mr-2" />
+                  <h3 className="text-lg font-semibold text-gray-900">Emergency Contact</h3>
+                </div>
+                <p className="text-gray-600 text-sm mt-1">Contact person in case of emergency</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.emergencyContactName}
+                    onChange={(e) => handleInputChange("emergencyContactName", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Phone *
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.emergencyContactPhone}
+                    onChange={(e) => handleInputChange("emergencyContactPhone", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Relationship
+                  </label>
+                  <select
+                    value={formData.emergencyContactRelationship}
+                    onChange={(e) => handleInputChange("emergencyContactRelationship", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Select Relationship</option>
+                    <option value="spouse">Spouse</option>
+                    <option value="parent">Parent</option>
+                    <option value="sibling">Sibling</option>
+                    <option value="child">Child</option>
+                    <option value="friend">Friend</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Employment Information */}
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+                <div className="flex items-center">
+                  <BuildingOfficeIcon className="w-5 h-5 text-green-500 mr-2" />
+                  <h3 className="text-lg font-semibold text-gray-900">Employment Information</h3>
+                </div>
+                <p className="text-gray-600 text-sm mt-1">Job details and department assignment</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employee ID *
+                  </label>
+                  <input
+                    type="text"  
+                    value={formData.employeeId}
+                    onChange={(e) => handleInputChange("employeeId", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Enter employee ID"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Department *
+                  </label>
+                  <select
+                    value={formData.departmentId}
+                    onChange={(e) => handleInputChange("departmentId", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  >
+                    <option value="">Select Department</option>
+                    <option value="hr">Human Resources</option>
+                    <option value="it">Information Technology</option>
+                    <option value="finance">Finance</option>
+                    <option value="operations">Operations</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Position/Job Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.position}
+                    onChange={(e) => handleInputChange("position", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Supervisor
+                  </label>
+                  <select
+                    value={formData.supervisorId}
+                    onChange={(e) => handleInputChange("supervisorId", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Select Supervisor</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Start Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => handleInputChange("startDate", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employment Type
+                  </label>
+                  <select
+                    value={formData.employmentType}
+                    onChange={(e) => handleInputChange("employmentType", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Select Type</option>
+                    <option value="full-time">Full Time</option>
+                    <option value="part-time">Part Time</option>
+                    <option value="contract">Contract</option>
+                    <option value="temporary">Temporary</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Work Location
+                  </label>
+                  <select
+                    value={formData.workLocation}
+                    onChange={(e) => handleInputChange("workLocation", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Select Location</option>
+                    <option value="office">Office</option>
+                    <option value="remote">Remote</option>
+                    <option value="hybrid">Hybrid</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.isSupervisor}
+                    onChange={(e) => handleInputChange("isSupervisor", e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label className="text-sm text-gray-700">This employee is a supervisor</label>
+                </div>
+                
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.isReviewer}
+                    onChange={(e) => handleInputChange("isReviewer", e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label className="text-sm text-gray-700">This employee can conduct performance reviews</label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Compensation */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                <div className="flex items-center">
+                  <BanknotesIcon className="w-5 h-5 text-blue-500 mr-2" />
+                  <h3 className="text-lg font-semibold text-gray-900">Compensation</h3>
+                </div>
+                <p className="text-gray-600 text-sm mt-1">Salary and benefits details</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Base Salary *
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.baseSalary}
+                    onChange={(e) => handleInputChange("baseSalary", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Enter base salary"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Currency
+                  </label>
+                  <select
+                    value={formData.currency}
+                    onChange={(e) => handleInputChange("currency", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pay Frequency
+                  </label>
+                  <select
+                    value={formData.payFrequency}
+                    onChange={(e) => handleInputChange("payFrequency", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="bi-weekly">Bi-weekly</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Pay Grade
+                </label>
+                <input
+                  type="text"
+                  value={formData.payGrade}
+                  onChange={(e) => handleInputChange("payGrade", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Enter pay grade"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Education */}
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
+                <div className="flex items-center">
+                  <AcademicCapIcon className="w-5 h-5 text-purple-500 mr-2" />
+                  <h3 className="text-lg font-semibold text-gray-900">Education</h3>
+                </div>
+                <p className="text-gray-600 text-sm mt-1">Educational background and skills</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Highest Education Level
+                </label>
+                <select
+                  value={formData.education}
+                  onChange={(e) => handleInputChange("education", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="">Select Education Level</option>
+                  <option value="high-school">High School</option>
+                  <option value="diploma">Diploma</option>
+                  <option value="bachelor">Bachelor's Degree</option>
+                  <option value="master">Master's Degree</option>
+                  <option value="phd">PhD</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Access & Security */}
+          {currentStep === 5 && (
+            <div className="space-y-6">
+              <div className="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500">
+                <div className="flex items-center">
+                  <ShieldCheckIcon className="w-5 h-5 text-yellow-500 mr-2" />
+                  <h3 className="text-lg font-semibold text-gray-900">Access & Security</h3>
+                </div>
+                <p className="text-gray-600 text-sm mt-1">System access and permissions</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Access Level
+                </label>
+                <select
+                  value={formData.accessLevel}
+                  onChange={(e) => handleInputChange("accessLevel", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="basic">Basic</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Step 6: Documents */}
+          {currentStep === 6 && (
+            <div className="space-y-6">
+              <div className="bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-500">
+                <div className="flex items-center">
+                  <DocumentTextIcon className="w-5 h-5 text-indigo-500 mr-2" />
+                  <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
+                </div>
+                <p className="text-gray-600 text-sm mt-1">Required documents and contracts</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.contractSigned}
+                    onChange={(e) => handleInputChange("contractSigned", e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label className="text-sm text-gray-700">Contract Signed</label>
+                </div>
+                
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.backgroundCheckCompleted}
+                    onChange={(e) => handleInputChange("backgroundCheckCompleted", e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label className="text-sm text-gray-700">Background Check Completed</label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Additional Notes
+                </label>
+                <textarea
+                  value={formData.additionalNotes}
+                  onChange={(e) => handleInputChange("additionalNotes", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  rows={4}
+                  placeholder="Enter any additional notes or comments about this employee"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Additional steps would go here */}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+            {currentStep > 1 ? (
+              <button
+                onClick={() => setCurrentStep((currentStep - 1) as 1 | 2 | 3 | 4 | 5 | 6)}
+                className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Previous
+              </button>
+            ) : (
+              <button
+                onClick={() => router.back()}
+                className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Previous
+              </button>
+            )}
+            
+            <div className="flex space-x-4">
+              <button
+                onClick={() => router.back()}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              
+              {currentStep < totalSteps ? (
+                <button
+                  onClick={() => setCurrentStep((currentStep + 1) as 1 | 2 | 3 | 4 | 5 | 6)}
+                  className="px-6 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                >
+                  Next
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  className="px-6 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                >
+                  Create Employee
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </EnhancedLayout>
+  )
+}

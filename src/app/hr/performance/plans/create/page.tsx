@@ -273,134 +273,147 @@ export default function CreatePerformancePlanPage() {
     switch (currentStep) {
       case 1:
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <div className="text-sm text-red-600">{error}</div>
+              <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
+                <div className="flex items-center">
+                  <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-white text-sm font-bold">!</span>
+                  </div>
+                  <div className="text-sm text-red-700 font-medium">{error}</div>
+                </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Employee *
-                </label>
-                <select
-                  value={selectedEmployee?.id || ''}
-                  onChange={(e) => handleEmployeeSelect(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  disabled={loading.employees}
-                >
-                  <option value="">
-                    {loading.employees ? 'Loading employees...' : 'Choose an employee'}
-                  </option>
-                  {employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.name} - {employee.position} ({employee.department})
+            <div className="bg-gradient-to-br from-white via-orange-25 to-white p-8 rounded-2xl shadow-lg border border-orange-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500 rounded-full mr-2"></div>
+                    Select Employee *
+                  </label>
+                  <select
+                    value={selectedEmployee?.id || ''}
+                    onChange={(e) => handleEmployeeSelect(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                    disabled={loading.employees}
+                  >
+                    <option value="">
+                      {loading.employees ? 'Loading employees...' : 'Choose an employee'}
                     </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Employee ID
-                </label>
-                <input
-                  type="text"
-                  value={formData.employee.id}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none"
-                  placeholder="Auto-filled when employee is selected"
-                />
-              </div>
+                    {employees.map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.name} - {employee.position} ({employee.department})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mr-2"></div>
+                    Employee ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.employee.id}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                    placeholder="Auto-filled when employee is selected"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Employee Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.employee.name}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none"
-                  placeholder="Auto-filled when employee is selected"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-2"></div>
+                    Employee Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.employee.name}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                    placeholder="Auto-filled when employee is selected"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Position/Job Title
-                </label>
-                <input
-                  type="text"
-                  value={formData.employee.position}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none"
-                  placeholder="Auto-filled when employee is selected"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full mr-2"></div>
+                    Position/Job Title
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.employee.position}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                    placeholder="Auto-filled when employee is selected"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Department
-                </label>
-                <select
-                  value={formData.employee.department}
-                  onChange={(e) => handleNestedInputChange("employee", "department", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  disabled={loading.departments}
-                >
-                  <option value="">
-                    {loading.departments ? 'Loading departments...' : 'Select Department'}
-                  </option>
-                  {departments.map((dept) => (
-                    <option key={dept.id} value={dept.name}>
-                      {dept.name} ({dept.employeeCount} employees)
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full mr-2"></div>
+                    Department
+                  </label>
+                  <select
+                    value={formData.employee.department}
+                    onChange={(e) => handleNestedInputChange("employee", "department", e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                    disabled={loading.departments}
+                  >
+                    <option value="">
+                      {loading.departments ? 'Loading departments...' : 'Select Department'}
                     </option>
-                  ))}
-                </select>
-              </div>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.name}>
+                        {dept.name} ({dept.employeeCount} employees)
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Direct Supervisor
-                </label>
-                <select
-                  value={formData.supervisor}
-                  onChange={(e) => handleInputChange("supervisor", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  disabled={loading.supervisors}
-                >
-                  <option value="">
-                    {loading.supervisors ? 'Loading supervisors...' : 'Select Supervisor'}
-                  </option>
-                  {supervisors.map((supervisor) => (
-                    <option key={supervisor.id} value={supervisor.id}>
-                      {supervisor.name} - {supervisor.position} ({supervisor.department})
-                      {supervisor.subordinateCount > 0 && ` - ${supervisor.subordinateCount} reports`}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full mr-2"></div>
+                    Direct Supervisor
+                  </label>
+                  <select
+                    value={formData.supervisor}
+                    onChange={(e) => handleInputChange("supervisor", e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                    disabled={loading.supervisors}
+                  >
+                    <option value="">
+                      {loading.supervisors ? 'Loading supervisors...' : 'Select Supervisor'}
                     </option>
-                  ))}
-                </select>
-                {selectedEmployee?.supervisor && (
-                  <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-md">
-                    <div className="text-sm text-orange-800">
-                      <strong>Current Supervisor:</strong> {selectedEmployee.supervisor.name}
-                      <br />
-                      <span className="text-orange-600">{selectedEmployee.supervisor.position}</span>
+                    {supervisors.map((supervisor) => (
+                      <option key={supervisor.id} value={supervisor.id}>
+                        {supervisor.name} - {supervisor.position} ({supervisor.department})
+                        {supervisor.subordinateCount > 0 && ` - ${supervisor.subordinateCount} reports`}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedEmployee?.supervisor && (
+                    <div className="mt-3 p-4 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl shadow-sm">
+                      <div className="text-sm text-orange-800">
+                        <strong>Current Supervisor:</strong> {selectedEmployee.supervisor.name}
+                        <br />
+                        <span className="text-orange-600">{selectedEmployee.supervisor.position}</span>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Plan Year
-                </label>
-                <select
-                  value={formData.planYear}
-                  onChange={(e) => handleInputChange("planYear", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full mr-2"></div>
+                    Plan Year
+                  </label>
+                  <select
+                    value={formData.planYear}
+                    onChange={(e) => handleInputChange("planYear", e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
                 >
                   {(() => {
                     const currentYear = new Date().getFullYear();
@@ -414,22 +427,29 @@ export default function CreatePerformancePlanPage() {
                       );
                     }
                     return years;
-                  })()}
-                </select>
+                    })()}
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Plan Period</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gradient-to-br from-white via-blue-25 to-white p-8 rounded-2xl shadow-lg border border-blue-100 mt-8">
+              <div className="flex items-center mb-6">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mr-3">
+                  <span className="text-white text-sm font-bold">📅</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Plan Period</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full mr-2"></div>
                     Plan Type
                   </label>
                   <select
                     value={formData.planType}
                     onChange={(e) => handleInputChange("planType", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
                   >
                     <option value="annual">Annual Plan</option>
                     <option value="quarterly">Quarterly Plan</option>
@@ -439,26 +459,28 @@ export default function CreatePerformancePlanPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-2"></div>
                     Start Date
                   </label>
                   <input
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => handleInputChange("startDate", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-red-400 to-pink-500 rounded-full mr-2"></div>
                     End Date
                   </label>
                   <input
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => handleInputChange("endDate", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
                   />
                 </div>
               </div>
@@ -468,145 +490,168 @@ export default function CreatePerformancePlanPage() {
 
       case 2:
         return (
-          <div className="space-y-6">
-            <div className="bg-orange-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-orange-900 mb-2">Strategic Goals</h3>
-              <p className="text-orange-700">Define key strategic objectives that align with organizational goals and priorities.</p>
+          <div className="space-y-8">
+            <div className="bg-gradient-to-r from-orange-50 via-orange-100 to-red-50 p-8 rounded-2xl shadow-lg border border-orange-200">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-white text-lg font-bold">🎯</span>
+                </div>
+                <h3 className="text-2xl font-bold text-orange-900">Strategic Goals</h3>
+              </div>
+              <p className="text-orange-800 text-lg leading-relaxed">Define key strategic objectives that align with organizational goals and priorities.</p>
             </div>
 
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">Goals</h3>
-              <button
-                onClick={() => addArrayItem("goals", {
-                  id: Date.now().toString(),
-                  title: "",
-                  description: "",
-                  category: "professional",
-                  priority: "medium",
-                  status: "not-started",
-                  targetDate: "",
+            <div className="bg-gradient-to-br from-white via-gray-25 to-white p-8 rounded-2xl shadow-lg border border-gray-100">
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-white text-sm font-bold">⭐</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">Goals</h3>
+                </div>
+                <button
+                  onClick={() => addArrayItem("goals", {
+                    id: Date.now().toString(),
+                    title: "",
+                    description: "",
+                    category: "professional",
+                    priority: "medium",
+                    status: "not-started",
+                    targetDate: "",
                   progress: 0,
                   metrics: [],
                   resources: [],
                   comments: ""
-                })}
-                className="inline-flex items-center px-3 py-1 bg-orange-600 text-white rounded-md hover:bg-orange-700"
-              >
-                <PlusIcon className="h-4 w-4 mr-1" />
-                Add Goal
-              </button>
+                  })}
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:from-orange-600 hover:to-red-600 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
+                >
+                  <PlusIcon className="h-5 w-5 mr-2" />
+                  Add Goal
+                </button>
+              </div>
             </div>
 
-            {formData.goals.map((goal, index) => (
-              <div key={index} className="border rounded-lg p-6 space-y-4">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-lg font-semibold text-gray-900">Goal {index + 1}</h4>
-                  {formData.goals.length > 1 && (
-                    <button
-                      onClick={() => removeArrayItem("goals", index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Goal Title
-                  </label>
-                  <input
-                    type="text"
-                    value={goal.title}
-                    onChange={(e) => handleArrayChange("goals", index, "title", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="Enter clear, specific goal title..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Detailed Description
-                  </label>
-                  <textarea
-                    value={goal.description}
-                    onChange={(e) => handleArrayChange("goals", index, "description", e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="Provide detailed description of the goal and its importance..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Priority Level
-                    </label>
-                    <select
-                      value={goal.priority}
-                      onChange={(e) => handleArrayChange("goals", index, "priority", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    >
-                      <option value="high">High Priority</option>
-                      <option value="medium">Medium Priority</option>
-                      <option value="low">Low Priority</option>
-                    </select>
+              {formData.goals.map((goal, index) => (
+                <div key={index} className="bg-gradient-to-br from-white via-blue-25 to-purple-25 border-2 border-gray-200 rounded-2xl p-8 space-y-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-white text-sm font-bold">{index + 1}</span>
+                      </div>
+                      <h4 className="text-xl font-bold text-gray-900">Goal {index + 1}</h4>
+                    </div>
+                    {formData.goals.length > 1 && (
+                      <button
+                        onClick={() => removeArrayItem("goals", index)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all duration-300"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Target Date
+                    <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                      <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mr-2"></div>
+                      Goal Title
                     </label>
                     <input
-                      type="date"
-                      value={goal.targetDate}
-                      onChange={(e) => handleArrayChange("goals", index, "targetDate", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      type="text"
+                      value={goal.title}
+                      onChange={(e) => handleArrayChange("goals", index, "title", e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                      placeholder="Enter clear, specific goal title..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Status
+                    <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                      <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-2"></div>
+                      Detailed Description
                     </label>
-                    <select
-                      value={goal.status}
-                      onChange={(e) => handleArrayChange("goals", index, "status", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    >
-                      <option value="not-started">Not Started</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="on-hold">On Hold</option>
-                      <option value="completed">Completed</option>
-                    </select>
+                    <textarea
+                      value={goal.description}
+                      onChange={(e) => handleArrayChange("goals", index, "description", e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm resize-none"
+                      placeholder="Provide detailed description of the goal and its importance..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mr-2"></div>
+                        Priority Level
+                      </label>
+                      <select
+                        value={goal.priority}
+                        onChange={(e) => handleArrayChange("goals", index, "priority", e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                      >
+                        <option value="high">High Priority</option>
+                        <option value="medium">Medium Priority</option>
+                        <option value="low">Low Priority</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full mr-2"></div>
+                        Target Date
+                      </label>
+                      <input
+                        type="date"
+                        value={goal.targetDate}
+                        onChange={(e) => handleArrayChange("goals", index, "targetDate", e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full mr-2"></div>
+                        Status
+                      </label>
+                      <select
+                        value={goal.status}
+                        onChange={(e) => handleArrayChange("goals", index, "status", e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                      >
+                        <option value="not-started">Not Started</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="on-hold">On Hold</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                      <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full mr-2"></div>
+                      Success Metrics & Comments
+                    </label>
+                    <textarea
+                      value={goal.comments}
+                      onChange={(e) => handleArrayChange("goals", index, "comments", e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm resize-none"
+                      placeholder="Define how success will be measured and any additional comments..."
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-4 pt-4 border-t border-gray-200">
+                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-sm ${getPriorityColor(goal.priority)}`}>
+                      {goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1)} Priority
+                    </span>
+                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-sm ${getStatusColor(goal.status)}`}>
+                      {goal.status.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    </span>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Success Metrics & Comments
-                  </label>
-                  <textarea
-                    value={goal.comments}
-                    onChange={(e) => handleArrayChange("goals", index, "comments", e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="Define how success will be measured and any additional comments..."
-                  />
-                </div>
-
-                <div className="flex items-center space-x-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(goal.priority)}`}>
-                    {goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1)} Priority
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(goal.status)}`}>
-                    {goal.status.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
+              ))}
+            </div>
+        );
 
       case 3:
         return (
@@ -1424,91 +1469,139 @@ export default function CreatePerformancePlanPage() {
 
   return (
     <ModulePage metadata={metadata}>
-      <div className="max-w-7xl mx-auto px-6">
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            {performancePlanSteps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors ${
-                  step.id < currentStep
-                    ? 'bg-green-600 border-green-600 text-white'
-                  : step.id === currentStep 
-                    ? 'bg-orange-600 border-orange-600 text-white' 
-                    : 'border-gray-300 text-gray-500'
-                }`}>
-                  {step.id < currentStep ? (
-                    <CheckCircleIcon className="w-5 h-5" />
-                  ) : (
-                    step.id
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          
+          {/* Header Section with SAYWHAT Branding */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-2xl font-bold text-white">S</span>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                  Performance Plan Creation
+                </h1>
+                <p className="text-gray-600 text-sm">SAYWHAT Integrated Real-Time Information System</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Clean Progress Steps */}
+          <div className="mb-10">
+            <div className="flex items-center justify-between max-w-4xl mx-auto">
+              {performancePlanSteps.map((step, index) => (
+                <div key={step.id} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center">
+                    <div className={`flex items-center justify-center w-12 h-12 rounded-full border-3 transition-all duration-300 shadow-lg ${
+                      step.id < currentStep
+                        ? 'bg-gradient-to-br from-green-500 to-green-600 border-green-500 text-white'
+                      : step.id === currentStep 
+                        ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-500 text-white' 
+                        : 'bg-white border-gray-300 text-gray-400'
+                    }`}>
+                      {step.id < currentStep ? (
+                        <CheckCircleIcon className="w-6 h-6" />
+                      ) : (
+                        <span className="text-lg font-bold">{step.id}</span>
+                      )}
+                    </div>
+                    <div className="mt-3 text-center">
+                      <p className={`text-sm font-semibold ${
+                        step.id < currentStep ? 'text-green-600' : step.id === currentStep ? 'text-orange-600' : 'text-gray-400'
+                      }`}>
+                        {step.title}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1 max-w-24">{step.description}</p>
+                    </div>
+                  </div>
+                  {index < performancePlanSteps.length - 1 && (
+                    <div className={`flex-1 h-1 mx-6 rounded-full transition-all duration-300 ${
+                      step.id < currentStep ? 'bg-gradient-to-r from-green-400 to-green-500' : 'bg-gray-200'
+                    }`} />
                   )}
                 </div>
-                <div className="ml-3 min-w-0">
-                  <p className={`text-sm font-medium ${
-                    step.id < currentStep ? 'text-green-600' : step.id === currentStep ? 'text-orange-600' : 'text-gray-500'
-                  }`}>
-                    {step.title}
-                  </p>
-                  <p className="text-xs text-gray-500">{step.description}</p>
+              ))}
+            </div>
+          </div>
+
+          {/* Clean Form Container */}
+          <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+            {/* Form Header */}
+            <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-b border-gray-200">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-md">
+                  <span className="text-white font-bold text-lg">{currentStep}</span>
                 </div>
-                {index < performancePlanSteps.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-4 ${
-                    step.id < currentStep ? 'bg-orange-600' : 'bg-gray-300'
-                  }`} />
-                )}
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{performancePlanSteps[currentStep - 1].title}</h2>
+                  <p className="text-gray-600 text-sm mt-1">{performancePlanSteps[currentStep - 1].description}</p>
+                </div>
               </div>
-            ))}
+            </div>
+
+            {/* Form Content */}
+            <div className="px-8 py-8">
+              {renderStepContent()}
+            </div>
+
+            {/* Navigation Footer */}
+            <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-t border-gray-200">
+              <div className="flex justify-between items-center">
+                {currentStep > 1 ? (
+                  <button
+                    onClick={handlePrevious}
+                    className="flex items-center space-x-2 px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    <span>← Previous</span>
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+                
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-500">
+                    Step {currentStep} of {performancePlanSteps.length}
+                  </span>
+                </div>
+                
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleSaveDraft}
+                    disabled={isSavingDraft}
+                    className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
+                  >
+                    <span>{isSavingDraft ? 'Saving...' : '💾 Save Draft'}</span>
+                  </button>
+                  
+                  {currentStep < performancePlanSteps.length ? (
+                    <button
+                      onClick={handleNext}
+                      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    >
+                      <span>Next →</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
+                    >
+                      <span>{isSubmitting ? 'Submitting...' : '✓ Create Plan'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Form Content */}
-        <div className="bg-white shadow-lg rounded-lg p-6">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">{performancePlanSteps[currentStep - 1].title}</h2>
-            <p className="text-gray-600">{performancePlanSteps[currentStep - 1].description}</p>
-          </div>
-
-          {renderStepContent()}
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between pt-6 border-t">
-            <button
-              onClick={handlePrevious}
-              disabled={currentStep === 1}
-              className={`px-4 py-2 border rounded-md ${
-                currentStep === 1 
-                  ? 'border-gray-300 text-gray-400 cursor-not-allowed' 
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Previous
-            </button>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={handleSaveDraft}
-                disabled={isSavingDraft}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSavingDraft ? 'Saving...' : 'Save as Draft'}
-              </button>
-
-              {currentStep === performancePlanSteps.length ? (
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Plan'}
-                </button>
-              ) : (
-                <button
-                  onClick={handleNext}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
-                >
-                  Next
-                </button>
-              )}
+          {/* Footer Branding */}
+          <div className="text-center mt-8">
+            <div className="inline-flex items-center space-x-2 text-gray-500 text-sm">
+              <div className="w-6 h-6 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
+                <span className="text-xs font-bold text-white">S</span>
+              </div>
+              <span>SAYWHAT Human Resource Management System</span>
             </div>
           </div>
         </div>
