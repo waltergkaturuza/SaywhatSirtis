@@ -641,7 +641,7 @@ export default function AddEmployeePage() {
                   <option value="basic">Basic</option>
                   <option value="intermediate">Intermediate</option>
                   <option value="advanced">Advanced</option>
-                  <option value="admin">Admin</option>
+                  <option value="superuser">Superuser</option>
                 </select>
               </div>
             </div>

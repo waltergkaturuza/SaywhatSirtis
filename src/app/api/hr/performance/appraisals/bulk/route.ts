@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       const performanceReviews = await prisma.performance_reviews.findMany({
         where: whereClause,
         include: {
-          users_performance_reviews_employeeIdTousers: {
+          employees: {
             select: {
               id: true,
               firstName: true,
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
               position: true
             }
           },
-          users_performance_reviews_supervisorIdTousers: {
+          supervisor: {
             select: {
               id: true,
               firstName: true,
@@ -100,26 +100,26 @@ export async function GET(request: NextRequest) {
           }
         },
         orderBy: {
-          dueDate: 'asc'
+          reviewDate: 'asc'
         }
       });
 
       // Transform data to match frontend interface
       const transformedAppraisals = performanceReviews.map(review => ({
         id: review.id,
-        employeeName: review.users_performance_reviews_employeeIdTousers 
-          ? `${review.users_performance_reviews_employeeIdTousers.firstName || ''} ${review.users_performance_reviews_employeeIdTousers.lastName || ''}`.trim()
+        employeeName: review.employees 
+          ? `${review.employees.firstName || ''} ${review.employees.lastName || ''}`.trim()
           : 'Unknown Employee',
-        employeeId: review.users_performance_reviews_employeeIdTousers?.id || review.employeeId,
-        department: review.users_performance_reviews_employeeIdTousers?.department || 'Unknown',
-        position: review.users_performance_reviews_employeeIdTousers?.position || 'Unknown',
+        employeeId: review.employees?.id || review.employeeId,
+        department: review.employees?.department || 'Unknown',
+        position: review.employees?.position || 'Unknown',
         period: review.reviewPeriod || 'Unknown',
         overallRating: review.overallRating,
-        status: review.status?.toLowerCase() || 'draft',
-        supervisor: review.users_performance_reviews_supervisorIdTousers 
-          ? `${review.users_performance_reviews_supervisorIdTousers.firstName || ''} ${review.users_performance_reviews_supervisorIdTousers.lastName || ''}`.trim()
+        status: review.reviewStatus?.toLowerCase() || 'draft',
+        supervisor: review.supervisor 
+          ? `${review.supervisor.firstName || ''} ${review.supervisor.lastName || ''}`.trim()
           : 'Unknown Supervisor',
-        dueDate: review.dueDate?.toISOString().split('T')[0] || null,
+        dueDate: review.reviewDate?.toISOString().split('T')[0] || null,
         lastUpdated: review.updatedAt?.toISOString().split('T')[0] || review.createdAt?.toISOString().split('T')[0] || null,
         completionPercentage: calculateCompletionPercentage(review)
       }));
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
             }
           },
           data: {
-            status: 'COMPLETED',
+            reviewStatus: 'COMPLETED',
             updatedAt: new Date()
           }
         });
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
             }
           },
           data: {
-            status: data.status.toUpperCase(),
+            reviewStatus: data.status.toUpperCase(),
             updatedAt: new Date()
           }
         });

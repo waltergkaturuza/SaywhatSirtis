@@ -61,22 +61,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       error: 'This endpoint is deprecated. Use /api/hr/performance/appraisals instead' 
     }, { status: 410 })
-
-    // If not a draft, also save to documents repository
-    if (!isDraft) {
-      try {
-        await saveToDocumentRepository(newAppraisal)
-      } catch (docError) {
-        console.warn('Failed to save to document repository:', docError)
-        // Continue with the response even if document save fails
-      }
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      appraisal: newAppraisal,
-      message: isDraft ? 'Draft saved successfully' : 'Appraisal submitted successfully'
-    })
   } catch (error) {
     console.error('Error creating appraisal:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })

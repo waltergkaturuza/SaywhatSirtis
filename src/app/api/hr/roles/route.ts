@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
 
     // Check if user has HR permissions
     const userRoles = (session.user.roles as string[]) || []
-    const hasPermission = userRoles.includes('SYSTEM_ADMINISTRATOR') || 
+    const hasPermission = userRoles.includes('SUPERUSER') || 
+                         userRoles.includes('SYSTEM_ADMINISTRATOR') || 
                          userRoles.includes('HR') ||
                          session.user?.permissions?.includes('hr.read') ||
                          session.user?.permissions?.includes('hr.full_access')
@@ -68,6 +69,7 @@ export async function GET(request: NextRequest) {
 // Helper function to get role descriptions
 function getRoleDescription(role: UserRole): string {
   const descriptions: Record<UserRole, string> = {
+    [UserRole.SUPERUSER]: 'Ultimate system control, all permissions, user management, all modules and security levels',
     [UserRole.BASIC_USER_1]: 'Call Center access (view), personal profile management, document viewing (up to CONFIDENTIAL)',
     [UserRole.BASIC_USER_2]: 'Programs viewing, inventory access, personal profile management, document viewing (up to CONFIDENTIAL)', 
     [UserRole.ADVANCE_USER_1]: 'Full call center access, programs and document editing (up to SECRET), risk management',

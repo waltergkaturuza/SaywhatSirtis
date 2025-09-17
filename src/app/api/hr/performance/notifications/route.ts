@@ -86,7 +86,7 @@ export async function GET() {
       };
     } else {
       // Regular employees can only see their own notifications
-      const employeeId = user.employeeId;
+      const employeeId = user.id;
       
       if (!employeeId) {
         notifications = {

@@ -5,8 +5,9 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await context.params;
   try {
     const session = await getServerSession(authOptions);
     
@@ -32,28 +33,20 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const canViewAllAppraisals = ['ADMIN', 'HR_MANAGER', 'HR_SPECIALIST'].includes(user.role);
+    const canViewAllAppraisals = ['SUPERUSER', 'HR_MANAGER', 'HR_SPECIALIST'].includes(user.role);
 
     // Fetch the performance review with all related data
     const performanceReview = await prisma.performance_reviews.findUnique({
-      where: { id: parseInt(appraisalId) },
+      where: { id: appraisalId },
       include: {
-        employee: {
+        employees: {
           include: {
-            department: true,
+            departments: true,
             user: true
           }
         },
-        supervisor: {
-          include: {
-            user: true
-          }
-        },
-        reviewer: {
-          include: {
-            user: true
-          }
-        }
+        supervisor: true,
+        reviewer: true
       }
     });
 
@@ -63,37 +56,29 @@ export async function GET(
 
     // Check access permissions
     if (!canViewAllAppraisals && 
-        performanceReview.employeeId !== user.employeeId && 
-        performanceReview.supervisorId !== user.employeeId &&
-        performanceReview.reviewerId !== user.employeeId) {
+        performanceReview.employeeId !== user.id && 
+        performanceReview.supervisorId !== user.id &&
+        performanceReview.reviewerId !== user.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Get performance areas/criteria for this review
     const performanceAreas = await prisma.performance_criteria.findMany({
-      where: { 
-        reviewId: performanceReview.id 
-      },
       orderBy: { weight: 'desc' }
     });
 
-    // Get achievements for this review
+    // Get achievements for this employee
     const achievements = await prisma.performance_achievements.findMany({
       where: { 
-        reviewId: performanceReview.id 
+        employeeId: performanceReview.employeeId 
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    // Get development plans for this employee
+    // Get development plans (general ones since no employee association in schema)
     const developmentPlans = await prisma.development_plans.findMany({
       where: { 
-        employeeId: performanceReview.employeeId,
-        // Get plans from this review period or active ones
-        OR: [
-          { reviewId: performanceReview.id },
-          { status: 'ACTIVE' }
-        ]
+        status: 'ACTIVE'
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -103,45 +88,42 @@ export async function GET(
       where: { 
         reviewId: performanceReview.id 
       },
-      include: {
-        author: {
-          include: {
-            user: true
-          }
-        }
-      },
       orderBy: { createdAt: 'desc' }
     });
 
     // Calculate overall rating from performance areas
     const calculateOverallRating = () => {
-      if (performanceAreas.length === 0) return null;
-      
-      const totalWeight = performanceAreas.reduce((sum, area) => sum + (area.weight || 0), 0);
-      const weightedScore = performanceAreas.reduce((sum, area) => 
-        sum + ((area.rating || 0) * (area.weight || 0)), 0
-      );
-      
-      return totalWeight > 0 ? +(weightedScore / totalWeight).toFixed(2) : null;
+      // Return the stored rating since individual area ratings aren't available in the current schema
+      return performanceReview.overallRating || null;
+    };
+
+    // Calculate development plan progress
+    const calculatePlanProgress = (plans: any[]) => {
+      if (plans.length === 0) return 0;
+      const totalProgress = plans.reduce((sum, plan) => sum + (plan.progress || 0), 0);
+      return Math.round(totalProgress / plans.length);
     };
 
     // Format the response data
     const appraisalData = {
       id: performanceReview.id,
-      employeeName: performanceReview.employee.user?.name || 
-                   `${performanceReview.employee.firstName} ${performanceReview.employee.lastName}`,
-      employeeId: performanceReview.employee.employeeId,
-      department: performanceReview.employee.department?.name || 'Unknown',
-      position: performanceReview.employee.position || 'Unknown',
+      employeeName: performanceReview.employees.user?.firstName && performanceReview.employees.user?.lastName
+                   ? `${performanceReview.employees.user.firstName} ${performanceReview.employees.user.lastName}`
+                   : `${performanceReview.employees.firstName} ${performanceReview.employees.lastName}`,
+      employeeId: performanceReview.employees.employeeId,
+      department: performanceReview.employees.departments?.name || 'Unknown',
+      position: performanceReview.employees.position || 'Unknown',
       period: formatReviewPeriod(performanceReview.reviewType, performanceReview.reviewDate),
       overallRating: performanceReview.overallRating || calculateOverallRating(),
       status: performanceReview.reviewStatus,
       submittedAt: performanceReview.submittedAt,
       reviewedAt: performanceReview.reviewedAt,
-      supervisor: performanceReview.supervisor?.user?.name || 
-                  `${performanceReview.supervisor?.firstName} ${performanceReview.supervisor?.lastName}`,
-      reviewer: performanceReview.reviewer?.user?.name || 
-               `${performanceReview.reviewer?.firstName} ${performanceReview.reviewer?.lastName}`,
+      supervisor: performanceReview.supervisor?.firstName && performanceReview.supervisor?.lastName
+                  ? `${performanceReview.supervisor.firstName} ${performanceReview.supervisor.lastName}`
+                  : performanceReview.supervisor?.email || 'Unknown',
+      reviewer: performanceReview.reviewer?.firstName && performanceReview.reviewer?.lastName
+               ? `${performanceReview.reviewer.firstName} ${performanceReview.reviewer.lastName}`
+               : performanceReview.reviewer?.email || 'Unknown',
       planProgress: calculatePlanProgress(developmentPlans),
       strengths: performanceReview.strengths || '',
       areasImprovement: performanceReview.areasForImprovement || '',
@@ -149,25 +131,25 @@ export async function GET(
       lastUpdated: performanceReview.updatedAt,
       
       performanceAreas: performanceAreas.map(area => ({
-        area: area.criteriaName,
-        rating: area.rating || 0,
+        area: area.name,
+        rating: 0, // No individual ratings in current schema
         weight: area.weight || 0,
-        comments: area.comments || '',
-        evidence: area.evidence || ''
+        comments: area.description || '',
+        evidence: '' // No evidence field in current schema
       })),
       
       achievements: achievements.map(achievement => ({
         achievement: achievement.title,
         impact: achievement.impact || '',
-        evidence: achievement.evidence || ''
+        evidence: '' // No evidence field in current schema
       })),
       
       developmentPlans: developmentPlans.map(plan => ({
-        area: plan.skillArea,
-        currentLevel: plan.currentLevel || '',
-        targetLevel: plan.targetLevel || '',
-        timeline: plan.timeline || '',
-        resources: plan.resources || ''
+        area: plan.goal, // Use goal as the area
+        currentLevel: plan.description || '',
+        targetLevel: plan.goal,
+        timeline: plan.targetDate?.toISOString() || '',
+        resources: '' // No resources field in current schema
       })),
       
       supervisorComments: feedback.find(f => f.feedbackType === 'supervisor')?.content || '',

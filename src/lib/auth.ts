@@ -10,7 +10,7 @@ const developmentUsers = [
     name: "System Administrator",
     department: "HR",
     position: "System Administrator",
-    roles: ["admin"],
+    roles: ["superuser"],
     permissions: [
       // HR Module - Full Access
       "hr.full_access", "hr.view", "hr.create", "hr.edit", "hr.delete", 

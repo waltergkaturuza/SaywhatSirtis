@@ -1592,7 +1592,7 @@ export default function AddEmployeePage() {
                                     <div>✓ Can manage user accounts</div>
                                   )}
                                   {selectedRole.fullAccess && (
-                                    <div>✓ Full system administrator access</div>
+                                    <div>✓ Full superuser access</div>
                                   )}
                                   <div>✓ Maximum document clearance: <span className="font-medium">{selectedRole.documentLevel.replace('_', ' ')}</span></div>
                                 </div>

@@ -57,6 +57,7 @@ interface RoleManagementData {
 }
 
 const ROLE_COLORS: Record<UserRole, string> = {
+  SUPERUSER: 'bg-red-200 text-red-900 border-red-300',
   BASIC_USER_1: 'bg-gray-100 text-gray-800 border-gray-200',
   BASIC_USER_2: 'bg-slate-100 text-slate-800 border-slate-200',
   ADVANCE_USER_1: 'bg-blue-100 text-blue-800 border-blue-200',

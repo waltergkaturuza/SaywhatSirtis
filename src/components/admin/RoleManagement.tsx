@@ -171,6 +171,7 @@ export default function RoleManagement() {
 
   const getRoleColor = (role: UserRole) => {
     const colors = {
+      [UserRole.SUPERUSER]: 'bg-red-200 text-red-900 border-red-300',
       [UserRole.SYSTEM_ADMINISTRATOR]: 'bg-red-100 text-red-800 border-red-200',
       [UserRole.HR]: 'bg-purple-100 text-purple-800 border-purple-200',
       [UserRole.ADVANCE_USER_1]: 'bg-blue-100 text-blue-800 border-blue-200',

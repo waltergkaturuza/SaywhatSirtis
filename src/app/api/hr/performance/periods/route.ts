@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     // Get all unique periods from performance reviews
-    let periodsResult;
+    let periodsResult: any[] = [];
     try {
       periodsResult = await prisma.performance_reviews.findMany({
         select: {

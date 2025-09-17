@@ -50,8 +50,7 @@ export async function GET() {
       return NextResponse.json(response, { status })
     }
 
-    const isHR = currentUser.roles?.includes('hr') || currentUser.role === 'ADMIN'
-    const isSupervisor = currentUser.roles?.includes('supervisor')
+    const isHR = currentUser.role === 'HR' || currentUser.role === 'SUPERUSER'
 
     // Build query based on permissions
     let whereClause: any = {
@@ -60,19 +59,8 @@ export async function GET() {
 
     // If user is not HR, limit to their scope
     if (!isHR) {
-      if (isSupervisor) {
-        // Supervisors can see their subordinates and themselves
-        const subordinates = await prisma.users.findMany({
-          where: { supervisorId: currentUser.id },
-          select: { id: true }
-        })
-        
-        const allowedIds = [currentUser.id, ...subordinates.map(sub => sub.id)]
-        whereClause.id = { in: allowedIds }
-      } else {
-        // Regular employees can only see themselves
-        whereClause.id = currentUser.id
-      }
+      // Regular users can only see themselves
+      whereClause.id = currentUser.id
     }
 
     // Get all employees with their user details
@@ -396,12 +384,7 @@ export async function POST(request: Request) {
           department: sanitizedData.department,
           position: sanitizedData.position,
           role: userRole, // Use the selected role from the form
-          roles: userRoles, // Set the roles array for supervisor/reviewer functionality
-          permissions: permissions, // Store role-based permissions
           supervisorId: sanitizedData.supervisorId, // Set supervisor relationship
-          canViewOthersProfiles: formData.canViewOthersProfiles || false,
-          canManageUsers: formData.canManageUsers || false,
-          documentSecurityClearance: formData.documentSecurityClearance || 'PUBLIC',
           updatedAt: new Date()
         }
       })
@@ -475,7 +458,8 @@ export async function POST(request: Request) {
             institution: null,
             description: `Highest Education Level: ${formData.education}`,
             dateObtained: new Date(), // Use current date as we don't have specific date
-            skillsGained: formData.skills ? formData.skills.split(',').map(skill => skill.trim()) : []
+            skillsGained: formData.skills ? formData.skills.split(',').map((skill: string) => skill.trim()) : [],
+            updatedAt: new Date()
           }
         })
       }
@@ -483,7 +467,7 @@ export async function POST(request: Request) {
       // Create certification qualifications if provided
       let certificationQualifications = []
       if (formData.certifications && formData.certifications !== '') {
-        const certifications = formData.certifications.split(',').map(cert => cert.trim())
+        const certifications = formData.certifications.split(',').map((cert: string) => cert.trim())
         for (const cert of certifications) {
           if (cert) {
             const certQualification = await tx.qualifications.create({
@@ -495,7 +479,8 @@ export async function POST(request: Request) {
                 institution: null,
                 description: `Professional Certification: ${cert}`,
                 dateObtained: new Date(), // Use current date as we don't have specific date
-                skillsGained: []
+                skillsGained: [],
+                updatedAt: new Date()
               }
             })
             certificationQualifications.push(certQualification)

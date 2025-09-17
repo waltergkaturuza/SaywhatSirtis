@@ -161,6 +161,7 @@ model departments {
   location          String?
   manager           String?
   status            String        @default("ACTIVE")
+  isActive          Boolean       @default(true)
   parentId          String?
   level             Int           @default(0)
   parent            departments?  @relation("departmentsTodepartments", fields: [parentId], references: [id])
@@ -534,6 +535,7 @@ model employees {
   performance_reviews  performance_reviews[]
   performance_plans    performance_plans[]
   performance_appraisals performance_appraisals[]
+  performance_achievements performance_achievements[] @relation("PerformanceAchievements")
   training_attendance  training_attendance[]
   training_enrollments training_enrollments[]
   qualifications       qualifications[]
@@ -651,21 +653,87 @@ model notifications {
 }
 
 model performance_reviews {
-  id             String    @id
-  employeeId     String
-  reviewPeriod   String
-  reviewType     String
-  overallRating  Float?
-  goals          Json?
-  feedback       String?
-  reviewDate     DateTime
-  nextReviewDate DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime
-  employees      employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id                    String    @id
+  employeeId            String
+  supervisorId          String?
+  reviewerId            String?
+  reviewPeriod          String
+  reviewType            String
+  overallRating         Float?
+  goals                 Json?
+  feedback              String?
+  reviewDate            DateTime
+  nextReviewDate        DateTime?
+  reviewStatus          String    @default("draft") // draft, submitted, completed
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  strengths             String?
+  areasForImprovement   String?
+  nextSteps             String?
+  improvementPlan       String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime
+  employees             employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  supervisor            users?    @relation("ReviewSupervisor", fields: [supervisorId], references: [id])
+  reviewer              users?    @relation("ReviewReviewer", fields: [reviewerId], references: [id])
 
   @@index([employeeId])
   @@index([reviewDate])
+  @@index([reviewStatus])
+}
+
+model performance_criteria {
+  id          String   @id
+  name        String
+  description String?
+  weight      Float    @default(0)
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+
+  @@index([category])
+}
+
+model performance_achievements {
+  id          String   @id
+  employeeId  String
+  title       String
+  description String?
+  dateAchieved DateTime
+  impact      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  employees   employees @relation("PerformanceAchievements", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([dateAchieved])
+}
+
+model development_plans {
+  id          String   @id
+  goal        String
+  description String?
+  targetDate  DateTime?
+  status      String   @default("pending")
+  progress    Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+
+  @@index([status])
+  @@index([targetDate])
+}
+
+model performance_feedback {
+  id           String   @id
+  reviewId     String
+  feedbackType String   // 'supervisor', 'self', 'peer', etc.
+  content      String
+  rating       Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+
+  @@index([reviewId])
+  @@index([feedbackType])
 }
 
 model performance_plans {
@@ -1105,6 +1173,7 @@ model users {
   department                                           String?
   position                                             String?
   supervisorId                                         String?
+  employeeId                                           String?
   isActive                                             Boolean                      @default(true)
   lastLogin                                            DateTime?
   createdAt                                            DateTime                     @default(now())
@@ -1145,6 +1214,8 @@ model users {
   performance_appraisals_reviewed                      performance_appraisals[]     @relation("AppraisalReviewer")
   performance_plans_reviewed                           performance_plans[]          @relation("PerformancePlanReviewer")
   performance_plan_comments                            performance_plan_comments[]  @relation("PerformancePlanComments")
+  performance_reviews_supervised                       performance_reviews[]        @relation("ReviewSupervisor")
+  performance_reviews_reviewed                         performance_reviews[]        @relation("ReviewReviewer")
   employee                                             employees?
 }
 
@@ -1418,6 +1489,7 @@ enum TaskStatus {
 }
 
 enum UserRole {
+  SUPERUSER
   SUPER_ADMIN
   ADMIN
   HR_MANAGER

@@ -293,6 +293,7 @@ export async function POST(request: NextRequest) {
 // Helper function to get role descriptions
 function getRoleDescription(role: UserRole): string {
   const descriptions: Record<UserRole, string> = {
+    [UserRole.SUPERUSER]: 'Ultimate system control, all permissions, user management, all modules and security levels',
     [UserRole.BASIC_USER_1]: 'Call Center access, personal profile management, document viewing (up to confidential)',
     [UserRole.BASIC_USER_2]: 'Programs viewing, inventory access, personal profile management, document viewing (up to confidential)', 
     [UserRole.ADVANCE_USER_1]: 'Full call center access, programs and document editing (up to secret), risk management',

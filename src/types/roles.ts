@@ -1,6 +1,7 @@
 // Role-Based Access Control Types for SIRTIS
 
 export enum UserRole {
+  SUPERUSER = 'SUPERUSER',
   BASIC_USER_1 = 'BASIC_USER_1',
   BASIC_USER_2 = 'BASIC_USER_2', 
   ADVANCE_USER_1 = 'ADVANCE_USER_1',
@@ -121,6 +122,21 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
     canManageUsers: false,
     fullAccess: false
   },
+
+  [UserRole.SUPERUSER]: {
+    callCenter: 'full', // Full Access to everything
+    dashboard: 'full', // Full dashboard access
+    personalProfile: 'full', // Full personal profile access
+    programs: 'full', // Full programs access  
+    documents: 'full', // Full document access
+    inventory: 'full', // Full inventory access
+    hr: 'full', // Full HR access
+    risks: 'full', // Full risk management
+    documentLevel: 'TOP_SECRET',
+    canViewOthersProfiles: true,
+    canManageUsers: true,
+    fullAccess: true
+  },
   
   [UserRole.SYSTEM_ADMINISTRATOR]: {
     callCenter: 'full', // Full Access to everything
@@ -141,7 +157,7 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
 // Department to default role mapping based on SAYWHAT organizational structure
 export const DEPARTMENT_DEFAULT_ROLES: Record<Department, UserRole> = {
   // Main SAYWHAT Departments
-  [Department.EXECUTIVE_DIRECTORS_OFFICE]: UserRole.SYSTEM_ADMINISTRATOR,
+  [Department.EXECUTIVE_DIRECTORS_OFFICE]: UserRole.SUPERUSER,
   [Department.HUMAN_RESOURCE_MANAGEMENT]: UserRole.HR,
   [Department.FINANCE_AND_ADMINISTRATION]: UserRole.ADVANCE_USER_2,
   [Department.PROGRAMS]: UserRole.ADVANCE_USER_1, 
@@ -151,7 +167,7 @@ export const DEPARTMENT_DEFAULT_ROLES: Record<Department, UserRole> = {
   [Department.CALL_CENTER]: UserRole.BASIC_USER_1,
   [Department.HR]: UserRole.HR,
   [Department.FINANCE]: UserRole.ADVANCE_USER_1,
-  [Department.ADMIN]: UserRole.SYSTEM_ADMINISTRATOR,
+  [Department.ADMIN]: UserRole.SUPERUSER,
   [Department.INVENTORY]: UserRole.BASIC_USER_2,
   [Department.DOCUMENTS]: UserRole.ADVANCE_USER_1
 }
