@@ -539,6 +539,7 @@ model employees {
   training_attendance  training_attendance[]
   training_enrollments training_enrollments[]
   qualifications       qualifications[]
+  notifications        notifications[]
 
   @@index([archived_at])
   @@index([department])
@@ -637,19 +638,81 @@ model maintenance_records {
 }
 
 model notifications {
-  id        String           @id
-  userId    String?
-  title     String
-  message   String
-  type      NotificationType @default(INFO)
-  isRead    Boolean          @default(false)
-  actionUrl String?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime
+  id              String           @id @default(cuid())
+  userId          String?
+  title           String
+  message         String
+  type            NotificationType @default(INFO)
+  isRead          Boolean          @default(false)
+  actionUrl       String?
+  priority        String           @default("normal") // low, normal, high, urgent
+  status          String           @default("pending") // pending, sent, delivered, acknowledged, escalated
+  employeeId      String?          // Subject employee
+  employee        employees?       @relation(fields: [employeeId], references: [id])
+  senderId        String?          // Who sent the notification
+  sender          users?           @relation("NotificationSender", fields: [senderId], references: [id])
+  recipientId     String?          // Who receives the notification
+  recipient       users?           @relation("NotificationRecipient", fields: [recipientId], references: [id])
+  metadata        Json?            // Additional data
+  deadline        DateTime?        // When action is due
+  scheduledAt     DateTime?        // When to send
+  sentAt          DateTime?        // When actually sent
+  acknowledgedAt  DateTime?        // When acknowledged
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
 
   @@index([createdAt])
   @@index([isRead])
   @@index([userId])
+  @@index([type])
+  @@index([priority])
+  @@index([status])
+  @@index([deadline])
+}
+
+// Notification routing rules
+model notification_routing_rules {
+  id            String               @id @default(cuid())
+  name          String
+  description   String?
+  trigger       String               // What triggers this rule
+  isActive      Boolean              @default(true)
+  successRate   Float                @default(0)
+  lastTriggered DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @default(now()) @updatedAt
+  createdBy     String
+  creator       users                @relation("NotificationRuleCreator", fields: [createdBy], references: [id])
+  routes        notification_routes[]
+
+  @@index([trigger])
+  @@index([isActive])
+}
+
+// Individual routes within a routing rule
+model notification_routes {
+  id        String                     @id @default(cuid())
+  ruleId    String
+  recipient String                     // Direct Supervisor, HR Department, etc.
+  action    String                     // Review & Approve, Monitor Progress, etc.
+  deadline  String                     // 3 days, immediate, etc.
+  order     Int                        @default(0)
+  rule      notification_routing_rules @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+}
+
+// Notification categories for organization
+model notification_categories {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  color       String?
+  count       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 }
 
 model performance_reviews {
@@ -1216,6 +1279,9 @@ model users {
   performance_plan_comments                            performance_plan_comments[]  @relation("PerformancePlanComments")
   performance_reviews_supervised                       performance_reviews[]        @relation("ReviewSupervisor")
   performance_reviews_reviewed                         performance_reviews[]        @relation("ReviewReviewer")
+  notification_rules_created                           notification_routing_rules[] @relation("NotificationRuleCreator")
+  notifications_received                               notifications[]              @relation("NotificationRecipient")
+  notifications_sent                                   notifications[]              @relation("NotificationSender")
   employee                                             employees?
 }
 
@@ -1426,6 +1492,15 @@ enum NotificationType {
   WARNING
   ERROR
   SUCCESS
+  PERFORMANCE_PLAN
+  APPRAISAL
+  TRAINING
+  DEADLINE
+  ESCALATION
+  APPROVAL
+  EMERGENCY_LEAVE
+  LEAVE_EXTENSION
+  MEDICAL_LEAVE
 }
 
 enum ProjectPriority {
@@ -1513,3 +1588,5 @@ enum QualificationType {
   LICENSE
   AWARD
 }
+
+

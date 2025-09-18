@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     // Use a simple build ID to avoid issues
     return 'build-id'
   },
+  // Ensure proper port and host binding for production
   /* config options here */
 };
 
