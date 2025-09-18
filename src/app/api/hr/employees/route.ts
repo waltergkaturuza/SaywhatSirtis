@@ -30,17 +30,19 @@ export async function GET() {
     }
 
     // Get current user to check permissions
-    const currentUser = await prisma.users.findUnique({
-      where: { email: session.user.email },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        department: true,
-        position: true,
-        isActive: true
-      }
-    })
+    const currentUser = await executeQuery(async (prisma) => 
+      prisma.users.findUnique({
+        where: { email: session.user.email },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          department: true,
+          position: true,
+          isActive: true
+        }
+      })
+    )
 
     if (!currentUser) {
       const { response, status } = createErrorResponse(
@@ -64,35 +66,28 @@ export async function GET() {
     }
 
     // Get all employees with their user details
-    const employees = await prisma.employees.findMany({
-      where: {
-        status: { in: ['ACTIVE', 'ON_LEAVE', 'SUSPENDED'] } // Show active employees
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            role: true,
-            isActive: true,
-            createdAt: true,
-            updatedAt: true
+    const employees = await executeQuery(async (prisma) => 
+      prisma.employees.findMany({
+        where: {
+          status: { in: ['ACTIVE', 'ON_LEAVE', 'SUSPENDED'] } // Show active employees
+        },
+        include: {
+          users: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true,
+              isActive: true,
+              createdAt: true,
+              updatedAt: true
+            }
           }
         },
-        employees: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            position: true
-          }
-        }
-      },
-      orderBy: { firstName: 'asc' }
-    })
+        orderBy: { firstName: 'asc' }
+      })
+    )
 
     // Transform employee data for frontend
     const transformedEmployees = employees.map((emp: any) => {
@@ -108,13 +103,8 @@ export async function GET() {
         position: emp.position || 'N/A',
         phone: emp.phoneNumber || 'N/A',
         
-        // Supervisor info
-        supervisor: emp.employees ? {
-          id: emp.employees.id,
-          name: `${emp.employees.firstName} ${emp.employees.lastName}`,
-          email: emp.employees.email,
-          position: emp.employees.position
-        } : null,
+        // Supervisor info - Note: This would need to be fetched separately if needed
+        supervisor: null,
         
         // Employee-specific data
         startDate: emp.startDate || emp.hireDate || emp.createdAt,
@@ -125,13 +115,13 @@ export async function GET() {
         isReviewer: emp.isReviewer || false,
         
         // System user data (if linked)
-        user: emp.user ? {
-          id: emp.user.id,
-          role: emp.user.role,
-          isActive: emp.user.isActive,
-          email: emp.user.email
+        user: emp.users ? {
+          id: emp.users.id,
+          role: emp.users.role,
+          isActive: emp.users.isActive,
+          email: emp.users.email
         } : null,
-        isSystemUser: !!emp.user,
+        isSystemUser: !!emp.users,
         
         // Additional info
         createdAt: emp.createdAt,
@@ -201,9 +191,11 @@ export async function POST(request: Request) {
     }
 
     // Check if employee email already exists
-    const existingEmployee = await prisma.employees.findUnique({
-      where: { email: formData.email }
-    })
+    const existingEmployee = await executeQuery(async (prisma) => 
+      prisma.employees.findUnique({
+        where: { email: formData.email }
+      })
+    )
 
     if (existingEmployee) {
       const { response, status } = createErrorResponse(
@@ -215,13 +207,15 @@ export async function POST(request: Request) {
     }
 
     // Check if user email already exists
-    const existingUser = await prisma.users.findUnique({
-      where: { email: formData.email },
-      select: {
-        id: true,
-        email: true
-      }
-    })
+    const existingUser = await executeQuery(async (prisma) => 
+      prisma.users.findUnique({
+        where: { email: formData.email },
+        select: {
+          id: true,
+          email: true
+        }
+      })
+    )
 
     if (existingUser) {
       const { response, status } = createErrorResponse(
@@ -238,10 +232,12 @@ export async function POST(request: Request) {
 
     if (formData.departmentId) {
       // Validate that the departmentId exists
-      const department = await prisma.departments.findUnique({
-        where: { id: formData.departmentId },
-        select: { id: true, name: true, status: true }
-      })
+      const department = await executeQuery(async (prisma) => 
+        prisma.departments.findUnique({
+          where: { id: formData.departmentId },
+          select: { id: true, name: true, status: true }
+        })
+      )
       
       if (!department) {
         const { response, status } = createErrorResponse(
@@ -265,13 +261,15 @@ export async function POST(request: Request) {
       departmentName = department.name
     } else if (formData.department) {
       // Try to find department by name if only name is provided
-      const department = await prisma.departments.findFirst({
-        where: { 
-          name: formData.department,
-          status: 'ACTIVE'
-        },
-        select: { id: true, name: true }
-      })
+      const department = await executeQuery(async (prisma) => 
+        prisma.departments.findFirst({
+          where: { 
+            name: formData.department,
+            status: 'ACTIVE'
+          },
+          select: { id: true, name: true }
+        })
+      )
       
       if (department) {
         validDepartmentId = department.id
@@ -290,13 +288,17 @@ export async function POST(request: Request) {
     let attempts = 0
     
     while (!isUnique && attempts < 10) {
-      const employeeCount = await prisma.employees.count()
+      const employeeCount = await executeQuery(async (prisma) => 
+        prisma.employees.count()
+      )
       employeeId = `EMP${(employeeCount + 1 + attempts).toString().padStart(4, '0')}`
       
-      const existingEmployeeId = await prisma.employees.findUnique({
-        where: { employeeId },
-        select: { id: true }
-      })
+      const existingEmployeeId = await executeQuery(async (prisma) => 
+        prisma.employees.findUnique({
+          where: { employeeId },
+          select: { id: true }
+        })
+      )
       
       if (!existingEmployeeId) {
         isUnique = true
@@ -350,7 +352,7 @@ export async function POST(request: Request) {
       vehicleBenefit: formData.vehicleBenefit || false,
       fuelAllowance: formData.fuelAllowance || false,
       airtimeAllowance: formData.airtimeAllowance || false,
-      otherBenefits: Array.isArray(formData.otherBenefits) ? formData.otherBenefits.filter(benefit => benefit && benefit.trim() !== '') : [],
+      otherBenefits: Array.isArray(formData.otherBenefits) ? formData.otherBenefits.filter((benefit: any) => benefit && benefit.trim() !== '') : [],
       // Job Description data
       jobDescription: formData.jobDescription ? {
         jobTitle: sanitizeInput(formData.jobDescription.jobTitle || ''),
@@ -369,7 +371,8 @@ export async function POST(request: Request) {
     }
 
     // Create user and employee in a transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await executeQuery(async (prisma) => 
+      prisma.$transaction(async (tx) => {
       // Create user account first with appropriate roles
       const userRoles = ['user'] // Base role for all users
       if (sanitizedData.isSupervisor) {
@@ -501,8 +504,9 @@ export async function POST(request: Request) {
         }
       }
 
-      return { newUser, newEmployee, educationQualification, certificationQualifications, jobDescriptionRecord }
-    })
+        return { newUser, newEmployee, educationQualification, certificationQualifications, jobDescriptionRecord }
+      })
+    )
 
     const { newEmployee, educationQualification, certificationQualifications, jobDescriptionRecord } = result
 
