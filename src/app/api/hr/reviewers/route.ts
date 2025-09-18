@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,35 +12,32 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all users who can conduct performance reviews
-    const reviewers = await prisma.users.findMany({
-      where: {
-        OR: [
-          { roles: { has: 'reviewer' } },
-          { roles: { has: 'supervisor' } },
-          { roles: { has: 'hr_manager' } },
-          { role: 'ADMIN' }
-        ],
-        isActive: true
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        department: true,
-        position: true,
-        roles: true,
-        _count: {
-          select: {
-            supervisees: true
-          }
-        }
-      },
-      orderBy: [
-        { firstName: 'asc' },
-        { lastName: 'asc' }
-      ]
-    })
+    const reviewers = await executeQuery(async (prisma) =>
+      prisma.users.findMany({
+        where: {
+          OR: [
+            { roles: { has: 'reviewer' } },
+            { roles: { has: 'supervisor' } },
+            { roles: { has: 'hr_manager' } },
+            { role: 'ADMIN' }
+          ],
+          isActive: true
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          department: true,
+          position: true,
+          roles: true
+        },
+        orderBy: [
+          { firstName: 'asc' },
+          { lastName: 'asc' }
+        ]
+      })
+    )
 
     const reviewerData = reviewers.map(reviewer => ({
       id: reviewer.id,
@@ -48,7 +45,7 @@ export async function GET(request: NextRequest) {
       email: reviewer.email,
       department: reviewer.department || 'Unassigned',
       position: reviewer.position || 'Employee',
-      subordinateCount: reviewer._count.supervisees,
+      subordinateCount: 0, // TODO: Implement count query
       reviewCount: 0, // Will be calculated based on actual review assignments
       isHR: reviewer.roles?.includes('hr_manager') || reviewer.roles?.includes('ADMIN'),
       isSupervisor: reviewer.roles?.includes('supervisor')

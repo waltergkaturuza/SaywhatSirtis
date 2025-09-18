@@ -32,12 +32,8 @@ export async function GET(request: NextRequest) {
       include: {
         _count: {
           select: {
-            subunits: true,
-            employees: {
-              where: {
-                status: 'ACTIVE'
-              }
-            }
+            other_departments: true,
+            employees: true
           }
         }
       },
@@ -53,7 +49,7 @@ export async function GET(request: NextRequest) {
         name: dept.name,
         code: dept.code,
         manager: dept.manager,
-        subunitCount: dept._count.subunits,
+        subunitCount: dept._count.other_departments,
         employeeCount: dept._count.employees
       })),
       message: `Found ${mainDepartments.length} main departments`
@@ -173,7 +169,7 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       },
       include: {
-        parent: {
+        departments: {
           select: {
             id: true,
             name: true,
@@ -207,7 +203,7 @@ export async function POST(request: NextRequest) {
         status: newSubunit.status,
         level: newSubunit.level,
         parentId: newSubunit.parentId,
-        parent: newSubunit.parent,
+        parent: newSubunit.departments,
         employeeCount: newSubunit._count.employees,
         createdAt: newSubunit.createdAt.toISOString(),
         updatedAt: newSubunit.updatedAt.toISOString()

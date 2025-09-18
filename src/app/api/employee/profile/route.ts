@@ -20,7 +20,7 @@ export async function GET() {
     const employee = await prisma.users.findUnique({
       where: { email: session.user.email },
       include: {
-        supervisor: {
+        users: {
           select: {
             id: true,
             firstName: true,
@@ -55,10 +55,10 @@ export async function GET() {
       isActive: employee.isActive,
       lastLogin: employee.lastLogin?.toISOString() || null,
       createdAt: employee.createdAt?.toISOString() || null,
-      supervisor: employee.supervisor ? {
-        id: employee.supervisor.id,
-        name: `${employee.supervisor.firstName} ${employee.supervisor.lastName}`,
-        email: employee.supervisor.email
+      supervisor: employee.users ? {
+        id: employee.users.id,
+        name: `${employee.users.firstName} ${employee.users.lastName}`,
+        email: employee.users.email
       } : null
     };
 
@@ -123,7 +123,7 @@ export async function PUT(request: NextRequest) {
       where: { id: employee.id },
       data: updateData,
       include: {
-        supervisor: {
+        users: {
           select: {
             id: true,
             firstName: true,
@@ -172,10 +172,10 @@ export async function PUT(request: NextRequest) {
       isActive: updatedEmployee.isActive,
       lastLogin: updatedEmployee.lastLogin?.toISOString() || null,
       createdAt: updatedEmployee.createdAt?.toISOString() || null,
-      supervisor: updatedEmployee.supervisor ? {
-        id: updatedEmployee.supervisor.id,
-        name: `${updatedEmployee.supervisor.firstName} ${updatedEmployee.supervisor.lastName}`,
-        email: updatedEmployee.supervisor.email
+      supervisor: updatedEmployee.users ? {
+        id: updatedEmployee.users.id,
+        name: `${updatedEmployee.users.firstName} ${updatedEmployee.users.lastName}`,
+        email: updatedEmployee.users.email
       } : null
     };
 

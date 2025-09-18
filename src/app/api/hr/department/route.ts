@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 
 // GET /api/hr/department - Get all departments
@@ -25,51 +25,25 @@ export async function GET(request: NextRequest) {
 
     try {
       // Get all departments with employee counts and hierarchical structure
-      const departments = await prisma.departments.findMany({
-        include: {
-          _count: {
-            select: {
-              employees: {
-                where: {
-                  status: 'ACTIVE'
-                }
-              },
-              subunits: true
-            }
-          },
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              code: true
-            }
-          },
-          subunits: {
-            include: {
-              _count: {
-                select: {
-                  employees: {
-                    where: {
-                      status: 'ACTIVE'
-                    }
-                  }
-                }
+      const departments = await executeQuery(async (prisma) => 
+        prisma.departments.findMany({
+          include: {
+            _count: {
+              select: {
+                employees: true,
+                documents: true
               }
+            }
+          },
+          orderBy: [
+            {
+              level: 'asc'
             },
-            orderBy: {
+            {
               name: 'asc'
             }
-          }
-        },
-        orderBy: [
-          {
-            level: 'asc'
-          },
-          {
-            name: 'asc'
-          }
-        ]
-      });
+          ]
+        }));
 
       // Transform the data to match the expected format
       const transformedDepartments = departments.map((dept: any) => ({
@@ -84,15 +58,7 @@ export async function GET(request: NextRequest) {
         level: dept.level || 0,
         parentId: dept.parentId,
         parent: dept.parent,
-        subunits: dept.subunits.map((sub: any) => ({
-          id: sub.id,
-          name: sub.name,
-          code: sub.code || '',
-          manager: sub.manager || '',
-          employeeCount: sub._count?.employees || 0,
-          status: sub.status || 'ACTIVE',
-          level: sub.level || 0
-        })),
+        subunits: [], // TODO: Implement hierarchical department structure
         employeeCount: dept._count?.employees || 0,
         subunitCount: dept._count?.subunits || 0,
         createdAt: dept.createdAt?.toISOString() || new Date().toISOString(),
@@ -159,9 +125,11 @@ export async function POST(request: NextRequest) {
     let level = 0;
     
     if (parentId) {
-      parentDept = await prisma.departments.findUnique({
-        where: { id: parentId }
-      });
+      parentDept = await executeQuery(async (prisma) => 
+        prisma.departments.findUnique({
+          where: { id: parentId }
+        })
+      );
       
       if (!parentDept) {
         return NextResponse.json(
@@ -189,9 +157,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if department name already exists
-    const existingDept = await prisma.departments.findUnique({
-      where: { name: name.trim() }
-    });
+    const existingDept = await executeQuery(async (prisma) => 
+      prisma.departments.findUnique({
+        where: { name: name.trim() }
+      })
+    );
 
     if (existingDept) {
       return NextResponse.json(
@@ -205,9 +175,11 @@ export async function POST(request: NextRequest) {
 
     // Check if department code already exists (if provided)
     if (code?.trim()) {
-      const existingCode = await prisma.departments.findUnique({
-        where: { code: code.trim().toUpperCase() }
-      });
+      const existingCode = await executeQuery(async (prisma) => 
+        prisma.departments.findUnique({
+          where: { code: code.trim().toUpperCase() }
+        })
+      );
 
       if (existingCode) {
         return NextResponse.json(
@@ -221,40 +193,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the department
-    const newDepartment = await prisma.departments.create({
-      data: {
-        id: randomUUID(),
-        name: name.trim(),
-        description: description?.trim() || `${name.trim()} Department`,
-        code: code?.trim().toUpperCase() || name.trim().substring(0, 3).toUpperCase(),
-        manager: manager?.trim() || null,
-        budget: budget ? parseFloat(budget) : null,
-        location: location?.trim() || null,
-        status: status || 'ACTIVE',
-        parentId: parentId || null,
-        level: level,
-        updatedAt: new Date()
-      },
-      include: {
-        _count: {
-          select: {
-            employees: {
-              where: {
-                status: 'ACTIVE'
-              }
-            },
-            subunits: true
-          }
+    const newDepartment = await executeQuery(async (prisma) => 
+      prisma.departments.create({
+        data: {
+          id: randomUUID(),
+          name: name.trim(),
+          description: description?.trim() || `${name.trim()} Department`,
+          code: code?.trim().toUpperCase() || name.trim().substring(0, 3).toUpperCase(),
+          manager: manager?.trim() || null,
+          budget: budget ? parseFloat(budget) : null,
+          location: location?.trim() || null,
+          status: status || 'ACTIVE',
+          parentId: parentId || null,
+          level: level,
+          updatedAt: new Date()
         },
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            code: true
+        include: {
+          _count: {
+            select: {
+              employees: true,
+              other_departments: true
+            }
+          },
+          departments: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
           }
         }
-      }
-    });
+      })
+    );
 
     return NextResponse.json({
       success: true,
@@ -270,9 +240,9 @@ export async function POST(request: NextRequest) {
         status: newDepartment.status,
         level: newDepartment.level,
         parentId: newDepartment.parentId,
-        parent: newDepartment.parent,
+        parent: newDepartment.departments,
         employeeCount: newDepartment._count.employees,
-        subunitCount: newDepartment._count.subunits,
+        subunitCount: newDepartment._count.other_departments,
         createdAt: newDepartment.createdAt.toISOString(),
         updatedAt: newDepartment.updatedAt.toISOString()
       }
@@ -323,9 +293,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if department exists
-    const existingDept = await prisma.departments.findUnique({
-      where: { id }
-    });
+    const existingDept = await executeQuery(async (prisma) => 
+      prisma.departments.findUnique({
+        where: { id }
+      })
+    );
 
     if (!existingDept) {
       return NextResponse.json(
@@ -339,9 +311,11 @@ export async function PUT(request: NextRequest) {
 
     // Check if new name conflicts (if name is being changed)
     if (name && name.trim() !== existingDept.name) {
-      const nameConflict = await prisma.departments.findUnique({
-        where: { name: name.trim() }
-      });
+      const nameConflict = await executeQuery(async (prisma) => 
+        prisma.departments.findUnique({
+          where: { name: name.trim() }
+        })
+      );
 
       if (nameConflict) {
         return NextResponse.json(
@@ -356,9 +330,11 @@ export async function PUT(request: NextRequest) {
 
     // Check if new code conflicts (if code is being changed)
     if (code && code.trim() !== existingDept.code) {
-      const codeConflict = await prisma.departments.findUnique({
-        where: { code: code.trim().toUpperCase() }
-      });
+      const codeConflict = await executeQuery(async (prisma) => 
+        prisma.departments.findUnique({
+          where: { code: code.trim().toUpperCase() }
+        })
+      );
 
       if (codeConflict) {
         return NextResponse.json(
@@ -372,29 +348,28 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update department
-    const updatedDepartment = await prisma.departments.update({
-      where: { id },
-      data: {
-        name: name?.trim() || existingDept.name,
-        description: description?.trim() || existingDept.description,
-        code: code?.trim().toUpperCase() || existingDept.code,
-        manager: manager?.trim() || existingDept.manager,
-        budget: budget !== undefined ? (budget ? parseFloat(budget) : null) : existingDept.budget,
-        location: location?.trim() || existingDept.location,
-        status: status || existingDept.status
-      },
-      include: {
-        _count: {
-          select: {
-            employees: {
-              where: {
-                status: 'ACTIVE'
-              }
+    const updatedDepartment = await executeQuery(async (prisma) => 
+      prisma.departments.update({
+        where: { id },
+        data: {
+          name: name?.trim() || existingDept.name,
+          description: description?.trim() || existingDept.description,
+          code: code?.trim().toUpperCase() || existingDept.code,
+          manager: manager?.trim() || existingDept.manager,
+          budget: budget !== undefined ? (budget ? parseFloat(budget) : null) : existingDept.budget,
+          location: location?.trim() || existingDept.location,
+          status: status || existingDept.status,
+          updatedAt: new Date()
+        },
+        include: {
+          _count: {
+            select: {
+              employees: true
             }
           }
         }
-      }
-    });
+      })
+    );
 
     return NextResponse.json({
       success: true,
@@ -460,9 +435,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if department exists
-    const department = await prisma.departments.findUnique({
-      where: { id: departmentId }
-    });
+    const department = await executeQuery(async (prisma) => 
+      prisma.departments.findUnique({
+        where: { id: departmentId }
+      })
+    );
 
     if (!department) {
       return NextResponse.json(
@@ -475,11 +452,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Count employees in this department
-    const employeeCount = await prisma.users.count({
-      where: {
-        department: department.name
-      }
-    });
+    const employeeCount = await executeQuery(async (prisma) => 
+      prisma.users.count({
+        where: {
+          department: department.name
+        }
+      })
+    );
 
     if (employeeCount > 0 && !reassignTo) {
       return NextResponse.json(
@@ -493,20 +472,24 @@ export async function DELETE(request: NextRequest) {
 
     if (employeeCount > 0 && reassignTo) {
       // Reassign employees to new department
-      await prisma.users.updateMany({
-        where: {
-          department: department.name
-        },
-        data: {
-          department: reassignTo
-        }
-      });
+      await executeQuery(async (prisma) => 
+        prisma.users.updateMany({
+          where: {
+            department: department.name
+          },
+          data: {
+            department: reassignTo
+          }
+        })
+      );
     }
 
     // Delete the department
-    await prisma.departments.delete({
-      where: { id: departmentId }
-    });
+    await executeQuery(async (prisma) => 
+      prisma.departments.delete({
+        where: { id: departmentId }
+      })
+    );
 
     return NextResponse.json({
       success: true,

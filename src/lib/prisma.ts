@@ -10,24 +10,36 @@ const createPrismaClient = () => {
     throw new Error('DATABASE_URL environment variable is not set')
   }
 
-  // Use the database URL as provided without modification
-  let connectionUrl = process.env.DATABASE_URL
-  
-  // Ensure connection parameters for Supabase
-  if (!connectionUrl.includes('prepared_statements=false')) {
-    connectionUrl += connectionUrl.includes('?') ? '&' : '?'
-    connectionUrl += 'prepared_statements=false&connection_limit=5'
+  let connectionUrl = process.env.DATABASE_URL.trim()
+
+  // Ensure prepared_statements=false is set exactly once (needed for pgbouncer pooler)
+  if (!/prepared_statements=false/.test(connectionUrl)) {
+    connectionUrl += (connectionUrl.includes('?') ? '&' : '?') + 'prepared_statements=false'
   }
 
-  return new PrismaClient({
+  // If multiple connection_limit params exist (from prior hot reloads), keep the first only.
+  // Prefer small conservative pool size in serverless / edge-like environments.
+  const parts = connectionUrl.split('?')
+  if (parts[1]) {
+    const params = new URLSearchParams(parts[1])
+    // Normalize connection_limit to 6 if not explicitly provided
+    if (!params.has('connection_limit')) {
+      params.set('connection_limit', '6')
+    }
+    // Remove any duplicate keys implicitly handled by URLSearchParams
+    connectionUrl = parts[0] + '?' + params.toString()
+  }
+
+  const client = new PrismaClient({
     log: ['error', 'warn'],
     errorFormat: 'pretty',
-    datasources: {
-      db: {
-        url: connectionUrl
-      }
-    }
+    datasources: { db: { url: connectionUrl } }
   })
+
+  // Lightweight health flag
+  ;(client as any)._healthy = false
+
+  return client
 }
 
 // Use a singleton pattern to ensure only one Prisma client instance
@@ -39,48 +51,52 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Enhanced connection management with retry logic
 export async function connectPrisma() {
-  try {
-    await prisma.$connect()
-    return true
-  } catch (error) {
-    console.error('Failed to connect to database:', error)
-    return false
+  const maxAttempts = 4
+  let attempt = 0
+  while (attempt < maxAttempts) {
+    attempt++
+    try {
+      await prisma.$connect()
+      // Run a trivial query to confirm connectivity (avoids lazy connect edge cases)
+      await prisma.$queryRaw`SELECT 1`
+      ;(prisma as any)._healthy = true
+      return true
+    } catch (error: any) {
+      const isInitErr = /P1001|ECONNREFUSED|timeout|Could not connect|Can't reach database/i.test(error?.message || '')
+      console.error(`Prisma connect attempt ${attempt} failed`, error)
+      if (attempt >= maxAttempts || !isInitErr) {
+        return false
+      }
+      const backoff = 300 * Math.pow(2, attempt - 1)
+      await new Promise(r => setTimeout(r, backoff))
+    }
   }
+  return false
 }
 
 // Safe query execution with automatic reconnection and prepared statement cleanup
 export async function executeQuery<T>(queryFn: (prisma: PrismaClient) => Promise<T>): Promise<T> {
-  let retries = 3
-  
-  while (retries > 0) {
+  const maxRetries = 4
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Use the main prisma client for queries
+      if (!(prisma as any)._healthy) {
+        await connectPrisma()
+      }
       const result = await queryFn(prisma)
       return result
     } catch (error: any) {
-      console.error(`Query failed (${retries} retries left):`, error)
-      
-      // Check if it's a connection-related error
-      if (
-        error?.code === '26000' || 
-        error?.code === '42P05' || 
-        error?.message?.includes('prepared statement') || 
-        error?.message?.includes('connection') ||
-        error?.message?.includes('already exists')
-      ) {
-        retries--
-        if (retries > 0) {
-          console.log('Attempting to retry with fresh connection...')
-          await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
-          continue
-        }
+      const transient = /P1001|P2024|timeout|ECONNRESET|ECONNREFUSED|read ECONNRESET|Could not connect|reset by peer|prepared statement/i.test(error?.message || '')
+      if (attempt < maxRetries && transient) {
+        const backoff = 250 * Math.pow(2, attempt - 1)
+        console.warn(`Transient DB error (attempt ${attempt}/${maxRetries}), backing off ${backoff}ms`, error?.code || '')
+        await new Promise(r => setTimeout(r, backoff))
+        continue
       }
-      
+      console.error('Non-retryable or max attempts reached for DB query')
       throw error
     }
   }
-  
-  throw new Error('Max retries reached')
+  throw new Error('Unreachable code in executeQuery')
 }
 
 // Alternative safe query that uses the callback pattern
@@ -89,13 +105,16 @@ export async function safeQuery<T>(callback: (prisma: PrismaClient) => Promise<T
 }
 
 // Ensure proper cleanup on hot reload
+// Vite / Webpack HMR guard (Next.js App Router typically not using module.hot, but keep for safety)
 if (process.env.NODE_ENV === 'development' && (module as any).hot) {
-  (module as any).hot.dispose(() => {
-    prisma.$disconnect()
-  })
+  try {
+    (module as any).hot.dispose(() => {
+      prisma.$disconnect().catch(() => {})
+    })
+  } catch {}
 }
 
 // Ensure clean disconnection
 process.on('beforeExit', async () => {
-  await prisma.$disconnect()
+  try { await prisma.$disconnect() } catch {}
 })

@@ -161,11 +161,11 @@ model departments {
   location          String?
   manager           String?
   status            String        @default("ACTIVE")
-  isActive          Boolean       @default(true)
   parentId          String?
   level             Int           @default(0)
-  parent            departments?  @relation("departmentsTodepartments", fields: [parentId], references: [id])
-  subunits          departments[] @relation("departmentsTodepartments")
+  isActive          Boolean       @default(true)
+  departments       departments?  @relation("departmentsTodepartments", fields: [parentId], references: [id])
+  other_departments departments[] @relation("departmentsTodepartments")
   documents         documents[]
   employees         employees[]
 
@@ -173,6 +173,20 @@ model departments {
   @@index([name])
   @@index([parentId])
   @@index([status])
+}
+
+model development_plans {
+  id          String    @id
+  goal        String
+  description String?
+  targetDate  DateTime?
+  status      String    @default("pending")
+  progress    Float     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+
+  @@index([status])
+  @@index([targetDate])
 }
 
 model document_activities {
@@ -487,59 +501,60 @@ model documents {
 }
 
 model employees {
-  id                   String                 @id
-  userId               String                 @unique
-  user                 users                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  employeeId           String                 @unique
-  firstName            String
-  lastName             String
-  middleName           String?
-  dateOfBirth          DateTime?
-  gender               String?
-  nationality          String?
-  nationalId           String?                @unique
-  passportNumber       String?
-  email                String                 @unique
-  phoneNumber          String?
-  alternativePhone     String?
-  address              String?
-  emergencyContact     String?
-  emergencyPhone       String?
-  department           String?
-  position             String
-  employmentType       String                 @default("FULL_TIME")
-  startDate            DateTime
-  endDate              DateTime?
-  salary               Float?
-  currency             String?                @default("USD")
-  status               String                 @default("ACTIVE")
-  supervisor_id        String?
-  is_supervisor        Boolean                @default(false)
-  is_reviewer          Boolean                @default(false)
-  medical_aid          Boolean                @default(false)
-  funeral_cover        Boolean                @default(false)
-  vehicle_benefit      Boolean                @default(false)
-  fuel_allowance       Boolean                @default(false)
-  airtime_allowance    Boolean                @default(false)
-  other_benefits       String[]               @default([])
-  archived_at          DateTime?
-  archive_reason       String?
-  access_revoked       Boolean                @default(false)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime
-  hireDate             DateTime?
-  departmentId         String?
-  departments          departments?           @relation(fields: [departmentId], references: [id])
-  employees            employees?             @relation("employeesToemployees", fields: [supervisor_id], references: [id])
-  other_employees      employees[]            @relation("employeesToemployees")
-  performance_reviews  performance_reviews[]
-  performance_plans    performance_plans[]
-  performance_appraisals performance_appraisals[]
-  performance_achievements performance_achievements[] @relation("PerformanceAchievements")
-  training_attendance  training_attendance[]
-  training_enrollments training_enrollments[]
-  qualifications       qualifications[]
-  notifications        notifications[]
+  id                       String                     @id
+  userId                   String                     @unique
+  employeeId               String                     @unique
+  firstName                String
+  lastName                 String
+  middleName               String?
+  dateOfBirth              DateTime?
+  gender                   String?
+  nationality              String?
+  nationalId               String?                    @unique
+  passportNumber           String?
+  email                    String                     @unique
+  phoneNumber              String?
+  alternativePhone         String?
+  address                  String?
+  emergencyContact         String?
+  emergencyPhone           String?
+  department               String?
+  position                 String
+  employmentType           String                     @default("FULL_TIME")
+  startDate                DateTime
+  endDate                  DateTime?
+  salary                   Float?
+  currency                 String?                    @default("USD")
+  status                   String                     @default("ACTIVE")
+  supervisor_id            String?
+  is_supervisor            Boolean                    @default(false)
+  is_reviewer              Boolean                    @default(false)
+  medical_aid              Boolean                    @default(false)
+  funeral_cover            Boolean                    @default(false)
+  vehicle_benefit          Boolean                    @default(false)
+  fuel_allowance           Boolean                    @default(false)
+  airtime_allowance        Boolean                    @default(false)
+  other_benefits           String[]                   @default([])
+  archived_at              DateTime?
+  archive_reason           String?
+  access_revoked           Boolean                    @default(false)
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime
+  hireDate                 DateTime?
+  departmentId             String?
+  departments              departments?               @relation(fields: [departmentId], references: [id])
+  employees                employees?                 @relation("employeesToemployees", fields: [supervisor_id], references: [id])
+  other_employees          employees[]                @relation("employeesToemployees")
+  users                    users                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job_descriptions         job_descriptions?
+  notifications            notifications[]
+  performance_achievements performance_achievements[]
+  performance_appraisals   performance_appraisals[]
+  performance_plans        performance_plans[]
+  performance_reviews      performance_reviews[]
+  qualifications           qualifications[]
+  training_attendance      training_attendance[]
+  training_enrollments     training_enrollments[]
 
   @@index([archived_at])
   @@index([department])
@@ -549,29 +564,6 @@ model employees {
   @@index([is_supervisor])
   @@index([status])
   @@index([supervisor_id])
-  job_descriptions     job_descriptions[]
-}
-
-model job_descriptions {
-  id                   String   @id
-  employeeId           String   @unique
-  employee             employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  jobTitle             String
-  location             String
-  jobSummary           String?
-  keyResponsibilities  Json     // Array of {description, weight, tasks}
-  essentialExperience  String?
-  essentialSkills      String?
-  acknowledgment       Boolean  @default(false)
-  signatureFileName    String?
-  signatureFileUrl     String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime
-  version              Int      @default(1)
-  isActive             Boolean  @default(true)
-  
-  @@index([employeeId])
-  @@index([isActive])
 }
 
 model event_registrations {
@@ -620,6 +612,28 @@ model events {
   @@index([type])
 }
 
+model job_descriptions {
+  id                  String    @id
+  employeeId          String    @unique
+  jobTitle            String
+  location            String
+  jobSummary          String?
+  keyResponsibilities Json
+  essentialExperience String?
+  essentialSkills     String?
+  acknowledgment      Boolean   @default(false)
+  signatureFileName   String?
+  signatureFileUrl    String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime
+  version             Int       @default(1)
+  isActive            Boolean   @default(true)
+  employees           employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([isActive])
+}
+
 model maintenance_records {
   id              String    @id
   assetId         String
@@ -637,74 +651,8 @@ model maintenance_records {
   @@index([performedDate])
 }
 
-model notifications {
-  id              String           @id @default(cuid())
-  userId          String?
-  title           String
-  message         String
-  type            NotificationType @default(INFO)
-  isRead          Boolean          @default(false)
-  actionUrl       String?
-  priority        String           @default("normal") // low, normal, high, urgent
-  status          String           @default("pending") // pending, sent, delivered, acknowledged, escalated
-  employeeId      String?          // Subject employee
-  employee        employees?       @relation(fields: [employeeId], references: [id])
-  senderId        String?          // Who sent the notification
-  sender          users?           @relation("NotificationSender", fields: [senderId], references: [id])
-  recipientId     String?          // Who receives the notification
-  recipient       users?           @relation("NotificationRecipient", fields: [recipientId], references: [id])
-  metadata        Json?            // Additional data
-  deadline        DateTime?        // When action is due
-  scheduledAt     DateTime?        // When to send
-  sentAt          DateTime?        // When actually sent
-  acknowledgedAt  DateTime?        // When acknowledged
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @default(now()) @updatedAt
-
-  @@index([createdAt])
-  @@index([isRead])
-  @@index([userId])
-  @@index([type])
-  @@index([priority])
-  @@index([status])
-  @@index([deadline])
-}
-
-// Notification routing rules
-model notification_routing_rules {
-  id            String               @id @default(cuid())
-  name          String
-  description   String?
-  trigger       String               // What triggers this rule
-  isActive      Boolean              @default(true)
-  successRate   Float                @default(0)
-  lastTriggered DateTime?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @default(now()) @updatedAt
-  createdBy     String
-  creator       users                @relation("NotificationRuleCreator", fields: [createdBy], references: [id])
-  routes        notification_routes[]
-
-  @@index([trigger])
-  @@index([isActive])
-}
-
-// Individual routes within a routing rule
-model notification_routes {
-  id        String                     @id @default(cuid())
-  ruleId    String
-  recipient String                     // Direct Supervisor, HR Department, etc.
-  action    String                     // Review & Approve, Monitor Progress, etc.
-  deadline  String                     // 3 days, immediate, etc.
-  order     Int                        @default(0)
-  rule      notification_routing_rules @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-
-  @@index([ruleId])
-}
-
-// Notification categories for organization
 model notification_categories {
-  id          String   @id @default(cuid())
+  id          String   @id
   name        String   @unique
   description String?
   icon        String?
@@ -712,37 +660,131 @@ model notification_categories {
   count       Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  updatedAt   DateTime @default(now())
 }
 
-model performance_reviews {
-  id                    String    @id
-  employeeId            String
-  supervisorId          String?
-  reviewerId            String?
-  reviewPeriod          String
-  reviewType            String
-  overallRating         Float?
-  goals                 Json?
-  feedback              String?
-  reviewDate            DateTime
-  nextReviewDate        DateTime?
-  reviewStatus          String    @default("draft") // draft, submitted, completed
-  submittedAt           DateTime?
-  reviewedAt            DateTime?
-  strengths             String?
-  areasForImprovement   String?
-  nextSteps             String?
-  improvementPlan       String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime
-  employees             employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  supervisor            users?    @relation("ReviewSupervisor", fields: [supervisorId], references: [id])
-  reviewer              users?    @relation("ReviewReviewer", fields: [reviewerId], references: [id])
+model notification_routes {
+  id                         String                     @id
+  ruleId                     String
+  recipient                  String
+  action                     String
+  deadline                   String
+  order                      Int                        @default(0)
+  notification_routing_rules notification_routing_rules @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+}
+
+model notification_routing_rules {
+  id                  String                @id
+  name                String
+  description         String?
+  trigger             String
+  isActive            Boolean               @default(true)
+  successRate         Float                 @default(0)
+  lastTriggered       DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @default(now())
+  createdBy           String
+  notification_routes notification_routes[]
+  users               users                 @relation(fields: [createdBy], references: [id])
+
+  @@index([isActive])
+  @@index([trigger])
+}
+
+model notifications {
+  id                                     String           @id
+  userId                                 String?
+  title                                  String
+  message                                String
+  type                                   NotificationType @default(INFO)
+  isRead                                 Boolean          @default(false)
+  actionUrl                              String?
+  createdAt                              DateTime         @default(now())
+  updatedAt                              DateTime         @default(now())
+  acknowledgedAt                         DateTime?
+  deadline                               DateTime?
+  employeeId                             String?
+  metadata                               Json?
+  priority                               String           @default("normal")
+  recipientId                            String?
+  scheduledAt                            DateTime?
+  senderId                               String?
+  sentAt                                 DateTime?
+  status                                 String           @default("pending")
+  employees                              employees?       @relation(fields: [employeeId], references: [id])
+  users_notifications_recipientIdTousers users?           @relation("notifications_recipientIdTousers", fields: [recipientId], references: [id])
+  users_notifications_senderIdTousers    users?           @relation("notifications_senderIdTousers", fields: [senderId], references: [id])
+
+  @@index([createdAt])
+  @@index([deadline])
+  @@index([isRead])
+  @@index([priority])
+  @@index([status])
+  @@index([type])
+  @@index([userId])
+}
+
+model performance_achievements {
+  id           String    @id
+  employeeId   String
+  title        String
+  description  String?
+  dateAchieved DateTime
+  impact       String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime
+  employees    employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([dateAchieved])
+  @@index([employeeId])
+}
+
+model performance_activities {
+  id                           String                       @id
+  responsibilityId             String
+  title                        String
+  description                  String?
+  targetDate                   DateTime?
+  status                       String                       @default("pending")
+  completedAt                  DateTime?
+  createdAt                    DateTime                     @default(now())
+  updatedAt                    DateTime
+  performance_responsibilities performance_responsibilities @relation(fields: [responsibilityId], references: [id], onDelete: Cascade)
+
+  @@index([responsibilityId])
+  @@index([targetDate])
+}
+
+model performance_appraisals {
+  id                                               String                                   @id
+  planId                                           String
+  employeeId                                       String
+  supervisorId                                     String
+  reviewerId                                       String?
+  appraisalType                                    String
+  overallRating                                    Float?
+  selfAssessments                                  Json?
+  supervisorAssessments                            Json?
+  valueGoalsAssessments                            Json?
+  electronicSignature                              String?
+  status                                           String                                   @default("draft")
+  submittedAt                                      DateTime?
+  approvedAt                                       DateTime?
+  createdAt                                        DateTime                                 @default(now())
+  updatedAt                                        DateTime
+  employees                                        employees                                @relation(fields: [employeeId], references: [id])
+  performance_plans                                performance_plans                        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  users_performance_appraisals_reviewerIdTousers   users?                                   @relation("performance_appraisals_reviewerIdTousers", fields: [reviewerId], references: [id])
+  users_performance_appraisals_supervisorIdTousers users                                    @relation("performance_appraisals_supervisorIdTousers", fields: [supervisorId], references: [id])
+  performance_responsibility_assessments           performance_responsibility_assessments[]
+  performance_value_assessments                    performance_value_assessments[]
 
   @@index([employeeId])
-  @@index([reviewDate])
-  @@index([reviewStatus])
+  @@index([planId])
+  @@index([reviewerId])
+  @@index([supervisorId])
 }
 
 model performance_criteria {
@@ -757,185 +799,140 @@ model performance_criteria {
   @@index([category])
 }
 
-model performance_achievements {
-  id          String   @id
-  employeeId  String
-  title       String
-  description String?
-  dateAchieved DateTime
-  impact      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime
-  employees   employees @relation("PerformanceAchievements", fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@index([employeeId])
-  @@index([dateAchieved])
-}
-
-model development_plans {
-  id          String   @id
-  goal        String
-  description String?
-  targetDate  DateTime?
-  status      String   @default("pending")
-  progress    Float    @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime
-
-  @@index([status])
-  @@index([targetDate])
-}
-
 model performance_feedback {
   id           String   @id
   reviewId     String
-  feedbackType String   // 'supervisor', 'self', 'peer', etc.
+  feedbackType String
   content      String
   rating       Float?
   createdAt    DateTime @default(now())
   updatedAt    DateTime
 
-  @@index([reviewId])
   @@index([feedbackType])
-}
-
-model performance_plans {
-  id                    String                      @id
-  employeeId            String
-  supervisorId          String
-  reviewerId            String?
-  planYear              Int
-  planPeriod            String
-  status                String                      @default("draft") // draft, supervisor-review, supervisor-approved, reviewer-review, reviewer-approved, completed
-  supervisorComments    String?
-  reviewerComments      String?
-  submittedAt           DateTime?
-  supervisorApprovedAt  DateTime?
-  reviewerApprovedAt    DateTime?
-  createdAt             DateTime                    @default(now())
-  updatedAt             DateTime
-  employees             employees                   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  supervisor            users                       @relation("PerformancePlanSupervisor", fields: [supervisorId], references: [id])
-  reviewer              users?                      @relation("PerformancePlanReviewer", fields: [reviewerId], references: [id])
-  keyResponsibilities   performance_responsibilities[]
-  appraisals            performance_appraisals[]
-  comments              performance_plan_comments[]
-
-  @@index([employeeId])
-  @@index([supervisorId])
-  @@index([reviewerId])
-  @@index([planYear])
-  @@index([status])
+  @@index([reviewId])
 }
 
 model performance_plan_comments {
-  id               String                      @id
-  planId           String
-  userId           String
-  comment          String
-  commentType      String                      // submit, supervisor-approve, supervisor-reject, reviewer-approve, reviewer-reject, general
-  createdAt        DateTime                    @default(now())
-  performancePlan  performance_plans           @relation(fields: [planId], references: [id], onDelete: Cascade)
-  user             users                       @relation("PerformancePlanComments", fields: [userId], references: [id])
+  id                String            @id
+  planId            String
+  userId            String
+  comment           String
+  commentType       String
+  createdAt         DateTime          @default(now())
+  performance_plans performance_plans @relation(fields: [planId], references: [id], onDelete: Cascade)
+  users             users             @relation(fields: [userId], references: [id])
 
-  @@index([planId])
-  @@index([userId])
   @@index([commentType])
   @@index([createdAt])
+  @@index([planId])
+  @@index([userId])
+}
+
+model performance_plans {
+  id                                          String                         @id
+  employeeId                                  String
+  supervisorId                                String
+  planYear                                    Int
+  planPeriod                                  String
+  status                                      String                         @default("draft")
+  createdAt                                   DateTime                       @default(now())
+  updatedAt                                   DateTime
+  reviewerApprovedAt                          DateTime?
+  reviewerComments                            String?
+  reviewerId                                  String?
+  submittedAt                                 DateTime?
+  supervisorApprovedAt                        DateTime?
+  supervisorComments                          String?
+  performance_appraisals                      performance_appraisals[]
+  performance_plan_comments                   performance_plan_comments[]
+  employees                                   employees                      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  users_performance_plans_reviewerIdTousers   users?                         @relation("performance_plans_reviewerIdTousers", fields: [reviewerId], references: [id])
+  users_performance_plans_supervisorIdTousers users                          @relation("performance_plans_supervisorIdTousers", fields: [supervisorId], references: [id])
+  performance_responsibilities                performance_responsibilities[]
+
+  @@index([employeeId])
+  @@index([planYear])
+  @@index([reviewerId])
+  @@index([status])
+  @@index([supervisorId])
 }
 
 model performance_responsibilities {
-  id                  String                         @id
-  planId              String
-  title               String
-  description         String?
-  weight              Float?                         @default(0)
-  createdAt           DateTime                       @default(now())
-  updatedAt           DateTime
-  performancePlan     performance_plans              @relation(fields: [planId], references: [id], onDelete: Cascade)
-  activities          performance_activities[]
-  assessments         performance_responsibility_assessments[]
+  id                                     String                                   @id
+  planId                                 String
+  title                                  String
+  description                            String?
+  weight                                 Float?                                   @default(0)
+  createdAt                              DateTime                                 @default(now())
+  updatedAt                              DateTime
+  performance_activities                 performance_activities[]
+  performance_plans                      performance_plans                        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  performance_responsibility_assessments performance_responsibility_assessments[]
 
   @@index([planId])
-}
-
-model performance_activities {
-  id                    String                      @id
-  responsibilityId      String
-  title                 String
-  description           String?
-  targetDate            DateTime?
-  status                String                      @default("pending")
-  completedAt           DateTime?
-  createdAt             DateTime                    @default(now())
-  updatedAt             DateTime
-  responsibility        performance_responsibilities @relation(fields: [responsibilityId], references: [id], onDelete: Cascade)
-
-  @@index([responsibilityId])
-  @@index([targetDate])
 }
 
 model performance_responsibility_assessments {
-  id              String                 @id
-  appraisalId     String
-  responsibilityId String
-  selfRating      String?
-  supervisorRating String?
-  reviewerRating  String?
-  comments        String?
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime
-  appraisal       performance_appraisals @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
-  responsibility  performance_responsibilities @relation(fields: [responsibilityId], references: [id])
+  id                           String                       @id
+  appraisalId                  String
+  responsibilityId             String
+  selfRating                   String?
+  supervisorRating             String?
+  reviewerRating               String?
+  comments                     String?
+  createdAt                    DateTime                     @default(now())
+  updatedAt                    DateTime
+  performance_appraisals       performance_appraisals       @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
+  performance_responsibilities performance_responsibilities @relation(fields: [responsibilityId], references: [id])
 
   @@index([appraisalId])
   @@index([responsibilityId])
 }
 
-model performance_value_assessments {
-  id              String                 @id
-  appraisalId     String
-  valueType       String
-  valueTitle      String
-  selfRating      String?
-  supervisorRating String?
-  reviewerRating  String?
-  comments        String?
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime
-  appraisal       performance_appraisals @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
+model performance_reviews {
+  id                                            String    @id
+  employeeId                                    String
+  reviewPeriod                                  String
+  reviewType                                    String
+  overallRating                                 Float?
+  goals                                         Json?
+  feedback                                      String?
+  reviewDate                                    DateTime
+  nextReviewDate                                DateTime?
+  createdAt                                     DateTime  @default(now())
+  updatedAt                                     DateTime
+  areasForImprovement                           String?
+  improvementPlan                               String?
+  nextSteps                                     String?
+  reviewStatus                                  String    @default("draft")
+  reviewedAt                                    DateTime?
+  reviewerId                                    String?
+  strengths                                     String?
+  submittedAt                                   DateTime?
+  supervisorId                                  String?
+  employees                                     employees @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  users_performance_reviews_reviewerIdTousers   users?    @relation("performance_reviews_reviewerIdTousers", fields: [reviewerId], references: [id])
+  users_performance_reviews_supervisorIdTousers users?    @relation("performance_reviews_supervisorIdTousers", fields: [supervisorId], references: [id])
 
-  @@index([appraisalId])
+  @@index([employeeId])
+  @@index([reviewDate])
+  @@index([reviewStatus])
 }
 
-model performance_appraisals {
-  id                      String                         @id
-  planId                  String
-  employeeId              String
-  supervisorId            String
-  reviewerId              String?
-  appraisalType           String
-  overallRating           Float?
-  selfAssessments         Json?
-  supervisorAssessments   Json?
-  valueGoalsAssessments   Json?
-  electronicSignature     String?
-  status                  String                         @default("draft")
-  submittedAt             DateTime?
-  approvedAt              DateTime?
-  createdAt               DateTime                       @default(now())
-  updatedAt               DateTime
-  performancePlan         performance_plans              @relation(fields: [planId], references: [id], onDelete: Cascade)
-  employee                employees                      @relation(fields: [employeeId], references: [id])
-  supervisor              users                          @relation("AppraisalSupervisor", fields: [supervisorId], references: [id])
-  reviewer                users?                         @relation("AppraisalReviewer", fields: [reviewerId], references: [id])
-  responsibilityAssessments performance_responsibility_assessments[]
-  valueAssessments        performance_value_assessments[]
+model performance_value_assessments {
+  id                     String                 @id
+  appraisalId            String
+  valueType              String
+  valueTitle             String
+  selfRating             String?
+  supervisorRating       String?
+  reviewerRating         String?
+  comments               String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime
+  performance_appraisals performance_appraisals @relation(fields: [appraisalId], references: [id], onDelete: Cascade)
 
-  @@index([planId])
-  @@index([employeeId])
-  @@index([supervisorId])
-  @@index([reviewerId])
+  @@index([appraisalId])
 }
 
 model projects {
@@ -964,6 +961,31 @@ model projects {
   users_projects_managerIdTousers users?       @relation("projects_managerIdTousers", fields: [managerId], references: [id])
 
   @@index([status])
+}
+
+model qualifications {
+  id                 String            @id
+  employeeId         String
+  type               QualificationType
+  title              String
+  institution        String?
+  description        String?
+  dateObtained       DateTime
+  expiryDate         DateTime?
+  grade              String?
+  certificateUrl     String?
+  verificationStatus String            @default("pending")
+  isVerified         Boolean           @default(false)
+  creditsEarned      Float?
+  skillsGained       String[]          @default([])
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime
+  employees          employees         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([dateObtained])
+  @@index([employeeId])
+  @@index([expiryDate])
+  @@index([type])
 }
 
 model risk_assessments {
@@ -1228,61 +1250,61 @@ model training_sessions {
 }
 
 model users {
-  id                                                   String                       @id
-  email                                                String                       @unique
-  username                                             String?                      @unique
-  passwordHash                                         String?
-  role                                                 UserRole                     @default(USER)
-  department                                           String?
-  position                                             String?
-  supervisorId                                         String?
-  employeeId                                           String?
-  isActive                                             Boolean                      @default(true)
-  lastLogin                                            DateTime?
-  createdAt                                            DateTime                     @default(now())
-  updatedAt                                            DateTime
-  emailVerified                                        DateTime?
-  firstName                                            String?
-  lastName                                             String?
-  roles                                                String[]                     @default([])
-  phoneNumber                                          String?
-  profileImage                                         String?
-  bio                                                  String?
-  location                                             String?
-  twoFactorEnabled                                     Boolean                      @default(false)
-  accounts                                             accounts[]
-  audit_logs                                           audit_logs[]
-  batch_analyses                                       batch_analyses[]
-  document_activities                                  document_activities[]
-  document_analysis                                    document_analysis[]
-  document_classification_ai                           document_classification_ai[]
-  document_content                                     document_content[]
-  projects_projects_creatorIdTousers                   projects[]                   @relation("projects_creatorIdTousers")
-  projects_projects_managerIdTousers                   projects[]                   @relation("projects_managerIdTousers")
-  risk_assessments_risk_assessments_assessorIdTousers  risk_assessments[]           @relation("risk_assessments_assessorIdTousers")
-  risk_assessments_risk_assessments_reviewerIdTousers  risk_assessments[]           @relation("risk_assessments_reviewerIdTousers")
-  risk_audit_logs                                      risk_audit_logs[]
-  risk_documents                                       risk_documents[]
-  risk_mitigations_risk_mitigations_createdByIdTousers risk_mitigations[]           @relation("risk_mitigations_createdByIdTousers")
-  risk_mitigations_risk_mitigations_ownerIdTousers     risk_mitigations[]           @relation("risk_mitigations_ownerIdTousers")
-  risk_notifications                                   risk_notifications[]
-  risks_risks_createdByIdTousers                       risks[]                      @relation("risks_createdByIdTousers")
-  risks_risks_ownerIdTousers                           risks[]                      @relation("risks_ownerIdTousers")
-  search_logs                                          search_logs[]
-  sessions                                             sessions[]
-  supervisor                                           users?                       @relation("SupervisorEmployee", fields: [supervisorId], references: [id])
-  supervisees                                          users[]                      @relation("SupervisorEmployee")
-  performance_plans_supervised                         performance_plans[]          @relation("PerformancePlanSupervisor")
-  performance_appraisals_supervised                    performance_appraisals[]     @relation("AppraisalSupervisor")
-  performance_appraisals_reviewed                      performance_appraisals[]     @relation("AppraisalReviewer")
-  performance_plans_reviewed                           performance_plans[]          @relation("PerformancePlanReviewer")
-  performance_plan_comments                            performance_plan_comments[]  @relation("PerformancePlanComments")
-  performance_reviews_supervised                       performance_reviews[]        @relation("ReviewSupervisor")
-  performance_reviews_reviewed                         performance_reviews[]        @relation("ReviewReviewer")
-  notification_rules_created                           notification_routing_rules[] @relation("NotificationRuleCreator")
-  notifications_received                               notifications[]              @relation("NotificationRecipient")
-  notifications_sent                                   notifications[]              @relation("NotificationSender")
-  employee                                             employees?
+  id                                                                String                       @id
+  email                                                             String                       @unique
+  username                                                          String?                      @unique
+  role                                                              UserRole                     @default(USER)
+  department                                                        String?
+  position                                                          String?
+  isActive                                                          Boolean                      @default(true)
+  lastLogin                                                         DateTime?
+  createdAt                                                         DateTime                     @default(now())
+  updatedAt                                                         DateTime
+  emailVerified                                                     DateTime?
+  firstName                                                         String?
+  lastName                                                          String?
+  roles                                                             String[]                     @default([])
+  phoneNumber                                                       String?
+  profileImage                                                      String?
+  bio                                                               String?
+  location                                                          String?
+  twoFactorEnabled                                                  Boolean                      @default(false)
+  supervisorId                                                      String?
+  employeeId                                                        String?
+  passwordHash                                                      String?
+  accounts                                                          accounts[]
+  audit_logs                                                        audit_logs[]
+  batch_analyses                                                    batch_analyses[]
+  document_activities                                               document_activities[]
+  document_analysis                                                 document_analysis[]
+  document_classification_ai                                        document_classification_ai[]
+  document_content                                                  document_content[]
+  employees                                                         employees?
+  notification_routing_rules                                        notification_routing_rules[]
+  notifications_notifications_recipientIdTousers                    notifications[]              @relation("notifications_recipientIdTousers")
+  notifications_notifications_senderIdTousers                       notifications[]              @relation("notifications_senderIdTousers")
+  performance_appraisals_performance_appraisals_reviewerIdTousers   performance_appraisals[]     @relation("performance_appraisals_reviewerIdTousers")
+  performance_appraisals_performance_appraisals_supervisorIdTousers performance_appraisals[]     @relation("performance_appraisals_supervisorIdTousers")
+  performance_plan_comments                                         performance_plan_comments[]
+  performance_plans_performance_plans_reviewerIdTousers             performance_plans[]          @relation("performance_plans_reviewerIdTousers")
+  performance_plans_performance_plans_supervisorIdTousers           performance_plans[]          @relation("performance_plans_supervisorIdTousers")
+  performance_reviews_performance_reviews_reviewerIdTousers         performance_reviews[]        @relation("performance_reviews_reviewerIdTousers")
+  performance_reviews_performance_reviews_supervisorIdTousers       performance_reviews[]        @relation("performance_reviews_supervisorIdTousers")
+  projects_projects_creatorIdTousers                                projects[]                   @relation("projects_creatorIdTousers")
+  projects_projects_managerIdTousers                                projects[]                   @relation("projects_managerIdTousers")
+  risk_assessments_risk_assessments_assessorIdTousers               risk_assessments[]           @relation("risk_assessments_assessorIdTousers")
+  risk_assessments_risk_assessments_reviewerIdTousers               risk_assessments[]           @relation("risk_assessments_reviewerIdTousers")
+  risk_audit_logs                                                   risk_audit_logs[]
+  risk_documents                                                    risk_documents[]
+  risk_mitigations_risk_mitigations_createdByIdTousers              risk_mitigations[]           @relation("risk_mitigations_createdByIdTousers")
+  risk_mitigations_risk_mitigations_ownerIdTousers                  risk_mitigations[]           @relation("risk_mitigations_ownerIdTousers")
+  risk_notifications                                                risk_notifications[]
+  risks_risks_createdByIdTousers                                    risks[]                      @relation("risks_createdByIdTousers")
+  risks_risks_ownerIdTousers                                        risks[]                      @relation("risks_ownerIdTousers")
+  search_logs                                                       search_logs[]
+  sessions                                                          sessions[]
+  users                                                             users?                       @relation("usersTousers", fields: [supervisorId], references: [id])
+  other_users                                                       users[]                      @relation("usersTousers")
 }
 
 model verificationtokens {
@@ -1291,31 +1313,6 @@ model verificationtokens {
   expires    DateTime
 
   @@unique([identifier, token])
-}
-
-model qualifications {
-  id                String                    @id
-  employeeId        String
-  type              QualificationType
-  title             String
-  institution       String?
-  description       String?
-  dateObtained      DateTime
-  expiryDate        DateTime?
-  grade             String?
-  certificateUrl    String?
-  verificationStatus String                  @default("pending")
-  isVerified        Boolean                  @default(false)
-  creditsEarned     Float?
-  skillsGained      String[]                @default([])
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime
-  employees         employees               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@index([employeeId])
-  @@index([type])
-  @@index([dateObtained])
-  @@index([expiryDate])
 }
 
 enum ActivityStatus {
@@ -1518,6 +1515,15 @@ enum ProjectStatus {
   CANCELLED
 }
 
+enum QualificationType {
+  EDUCATION
+  CERTIFICATION
+  SKILL
+  TRAINING
+  LICENSE
+  AWARD
+}
+
 enum RiskCategory {
   OPERATIONAL
   STRATEGIC
@@ -1564,7 +1570,6 @@ enum TaskStatus {
 }
 
 enum UserRole {
-  SUPERUSER
   SUPER_ADMIN
   ADMIN
   HR_MANAGER
@@ -1572,6 +1577,7 @@ enum UserRole {
   CALL_CENTRE_AGENT
   EMPLOYEE
   USER
+  SUPERUSER
   BASIC_USER_1
   BASIC_USER_2
   ADVANCE_USER_1
@@ -1579,14 +1585,3 @@ enum UserRole {
   HR
   SYSTEM_ADMINISTRATOR
 }
-
-enum QualificationType {
-  EDUCATION
-  CERTIFICATION
-  SKILL
-  TRAINING
-  LICENSE
-  AWARD
-}
-
-

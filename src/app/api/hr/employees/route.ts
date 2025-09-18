@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { 
   createSuccessResponse, 
@@ -109,15 +109,15 @@ export async function GET() {
         phone: emp.phoneNumber || 'N/A',
         
         // Supervisor info
-        supervisor: emp.supervisor ? {
-          id: emp.supervisor.id,
-          name: `${emp.supervisor.firstName} ${emp.supervisor.lastName}`,
-          email: emp.supervisor.email,
-          position: emp.supervisor.position
+        supervisor: emp.employees ? {
+          id: emp.employees.id,
+          name: `${emp.employees.firstName} ${emp.employees.lastName}`,
+          email: emp.employees.email,
+          position: emp.employees.position
         } : null,
         
         // Employee-specific data
-        startDate: emp.startDate || emp.createdAt,
+        startDate: emp.startDate || emp.hireDate || emp.createdAt,
         status: emp.status?.toLowerCase() || 'active',
         employmentType: emp.employmentType,
         salary: emp.salary,
@@ -320,14 +320,22 @@ export async function POST(request: Request) {
       phoneNumber: formData.phoneNumber ? sanitizeInput(formData.phoneNumber) : null,
       alternativePhone: formData.alternativePhone ? sanitizeInput(formData.alternativePhone) : null,
       address: formData.address ? sanitizeInput(formData.address) : null,
-      emergencyContact: formData.emergencyContact ? sanitizeInput(formData.emergencyContact) : null,
-      emergencyPhone: formData.emergencyPhone ? sanitizeInput(formData.emergencyPhone) : null,
+      // Fix emergency contact field mapping
+      emergencyContact: formData.emergencyContactName ? sanitizeInput(formData.emergencyContactName) : null,
+      emergencyPhone: formData.emergencyContactPhone ? sanitizeInput(formData.emergencyContactPhone) : null,
       department: sanitizeInput(departmentName || ''), // Keep for backward compatibility
       departmentId: validDepartmentId, // Use validated departmentId for proper relation
       position: sanitizeInput(formData.position),
       employmentType: formData.employmentType || 'FULL_TIME',
-      startDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
-      hireDate: formData.hireDate ? new Date(formData.hireDate) : new Date(),
+      // Fix date field mapping - use startDate from form, not hireDate
+      startDate: formData.startDate ? new Date(formData.startDate) : new Date(),
+      hireDate: formData.startDate ? new Date(formData.startDate) : new Date(),
+      // Add missing personal information fields
+      dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth) : null,
+      gender: formData.gender || null,
+      nationality: formData.country || null,
+      nationalId: formData.nationalId || null,
+      passportNumber: formData.passportNumber || null,
       // Compensation fields
       salary: formData.baseSalary ? parseFloat(formData.baseSalary) : null,
       currency: formData.currency || 'USD',
@@ -342,7 +350,7 @@ export async function POST(request: Request) {
       vehicleBenefit: formData.vehicleBenefit || false,
       fuelAllowance: formData.fuelAllowance || false,
       airtimeAllowance: formData.airtimeAllowance || false,
-      otherBenefits: formData.otherBenefits ? [formData.otherBenefits] : [],
+      otherBenefits: Array.isArray(formData.otherBenefits) ? formData.otherBenefits.filter(benefit => benefit && benefit.trim() !== '') : [],
       // Job Description data
       jobDescription: formData.jobDescription ? {
         jobTitle: sanitizeInput(formData.jobDescription.jobTitle || ''),
@@ -398,6 +406,11 @@ export async function POST(request: Request) {
           firstName: sanitizedData.firstName,
           lastName: sanitizedData.lastName,
           middleName: sanitizedData.middleName,
+          dateOfBirth: sanitizedData.dateOfBirth,
+          gender: sanitizedData.gender,
+          nationality: sanitizedData.nationality,
+          nationalId: sanitizedData.nationalId,
+          passportNumber: sanitizedData.passportNumber,
           email: sanitizedData.email,
           phoneNumber: sanitizedData.phoneNumber,
           alternativePhone: sanitizedData.alternativePhone,

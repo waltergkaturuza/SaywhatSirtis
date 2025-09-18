@@ -166,7 +166,7 @@ export async function GET(request: Request) {
         lastLogin: true,
         createdAt: true,
         updatedAt: true,
-        employee: {
+        employees: {
           select: {
             id: true,
             employeeId: true,
@@ -213,7 +213,7 @@ export async function GET(request: Request) {
 
     // Transform data to match frontend interface, clearly distinguishing system users and employees
     const transformedUsers = users.map(user => {
-      const employeeData = ('employee' in user) ? user.employee : null
+      const employeeData = ('employees' in user) ? user.employees : null
       const isEmployee = !!employeeData
       
       // For system users, prioritize user table data; for employees, show employee data

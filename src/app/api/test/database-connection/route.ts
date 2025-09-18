@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from '@prisma/client'
+import { executeQuery, connectPrisma } from '@/lib/prisma'
 
 // Helper function to serialize BigInt values
 function serializeBigInt(obj: any): any {
@@ -55,39 +55,29 @@ export async function GET() {
       )
     }
 
-    // Initialize Prisma with explicit configuration
-    console.log('🔄 Initializing Prisma client with enhanced configuration...')
-    const prisma = new PrismaClient({
-      log: ['error', 'warn', 'info'],
-      datasources: {
-        db: {
-          url: dbUrl
-        }
-      }
-    })
-
-    // Test basic connection with timeout
-    console.log('🔄 Testing database connection...')
+    console.log('🔄 Ensuring singleton Prisma connection...')
     const startTime = Date.now()
-    
+    const connected = await connectPrisma()
+    if (!connected) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to establish database connection after retries',
+        environment: nodeEnv,
+        isRender: !!renderEnv,
+        maskedDbUrl: maskedDbUrl,
+        timestamp: new Date().toISOString()
+      }, { status: 500 })
+    }
+
     try {
-      // Connect explicitly
-      await prisma.$connect()
-      console.log('✅ Prisma client connected')
-      
-      // Simple query to test connection (casting to text to avoid BigInt)
-      const result = await prisma.$queryRaw`SELECT '1' as test, NOW()::text as timestamp_text, current_database() as database_name`
+      const result = await executeQuery(async (p) => {
+        return p.$queryRaw`SELECT '1' as test, NOW()::text as timestamp_text, current_database() as database_name`
+      })
       const connectionTime = Date.now() - startTime
-      
       console.log(`✅ Database query successful (${connectionTime}ms)`)
-      console.log('Query result:', result)
-      
-      await prisma.$disconnect()
-      console.log('✅ Database connection test completed successfully')
-      
       return NextResponse.json({
         success: true,
-        message: 'Database connection successful',
+        message: 'Database connection successful (singleton)',
         connectionTime: `${connectionTime}ms`,
         environment: nodeEnv,
         isRender: !!renderEnv,
@@ -95,15 +85,12 @@ export async function GET() {
         maskedDbUrl: maskedDbUrl,
         timestamp: new Date().toISOString()
       })
-      
     } catch (dbError) {
       console.error('❌ Database connection/query failed:', dbError)
-      await prisma.$disconnect()
-      
       return NextResponse.json(
         {
           success: false,
-          error: 'Database connection failed',
+          error: 'Database query failed',
           details: dbError instanceof Error ? dbError.message : 'Unknown error',
           errorName: dbError instanceof Error ? dbError.name : 'Unknown',
           environment: nodeEnv,

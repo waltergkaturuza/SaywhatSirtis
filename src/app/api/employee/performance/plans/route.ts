@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         planPeriod: body.planPeriod || 'Annual',
         status: 'draft',
         updatedAt: new Date(),
-        keyResponsibilities: {
+        performance_responsibilities: {
           create: defaultResponsibilities.map((resp, index) => ({
             id: randomUUID(),
             title: `Key Responsibility ${index + 1}`,
@@ -70,9 +70,9 @@ export async function POST(request: NextRequest) {
         }
       },
       include: {
-        keyResponsibilities: true,
+        performance_responsibilities: true,
         employees: true,
-        supervisor: true
+        users_performance_plans_supervisorIdTousers: true
       }
     });
 
@@ -133,9 +133,9 @@ export async function GET() {
     const performancePlans = await prisma.performance_plans.findMany({
       where: { employeeId: employee.id },
       include: {
-        keyResponsibilities: true,
+        performance_responsibilities: true,
         employees: true,
-        supervisor: true
+        users_performance_plans_supervisorIdTousers: true
       },
       orderBy: { planYear: 'desc' }
     });

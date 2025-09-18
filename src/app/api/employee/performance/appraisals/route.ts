@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
         employeeId: employee.id 
       },
       include: {
-        keyResponsibilities: {
+        performance_responsibilities: {
           include: {
-            activities: true
+            performance_activities: true
           }
         }
       }
@@ -174,9 +174,9 @@ export async function GET() {
         ]
       },
       include: {
-        responsibilityAssessments: true,
-        valueAssessments: true,
-        employee: {
+        performance_responsibility_assessments: true,
+        performance_value_assessments: true,
+        employees: {
           select: {
             firstName: true,
             lastName: true,
@@ -184,26 +184,26 @@ export async function GET() {
             position: true
           }
         },
-        supervisor: {
+        users_performance_appraisals_supervisorIdTousers: {
           select: {
             firstName: true,
             lastName: true,
             email: true
           }
         },
-        reviewer: {
+        users_performance_appraisals_reviewerIdTousers: {
           select: {
             firstName: true,
             lastName: true,
             email: true
           }
         },
-        performancePlan: {
+        performance_plans: {
           select: {
             planYear: true,
-            keyResponsibilities: {
+            performance_responsibilities: {
               include: {
-                activities: true
+                performance_activities: true
               }
             }
           }

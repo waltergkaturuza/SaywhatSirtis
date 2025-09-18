@@ -31,7 +31,7 @@ export async function GET(
     const employee = await prisma.users.findUnique({
       where: { id: requestId },
       include: {
-        supervisor: {
+        users: {
           select: {
             id: true,
             firstName: true,
@@ -40,7 +40,7 @@ export async function GET(
             position: true
           }
         },
-        supervisees: {
+        other_users: {
           select: {
             id: true,
             firstName: true,
@@ -75,8 +75,8 @@ export async function GET(
       
       // Supervisor relationship
       supervisorId: employee.supervisorId,
-      supervisor: employee.supervisor,
-      subordinates: employee.supervisees,
+      supervisor: employee.users,
+      subordinates: employee.other_users,
       
       // Status and timestamps
       isActive: employee.isActive,
@@ -183,7 +183,7 @@ export async function PUT(
       where: { id: requestId },
       data: updateData,
       include: {
-        supervisor: {
+        users: {
           select: {
             id: true,
             firstName: true,
@@ -192,7 +192,7 @@ export async function PUT(
             position: true
           }
         },
-        supervisees: {
+        other_users: {
           select: {
             id: true,
             firstName: true,
@@ -219,8 +219,8 @@ export async function PUT(
       
       // Supervisor relationship
       supervisorId: updatedEmployee.supervisorId,
-      supervisor: updatedEmployee.supervisor,
-      subordinates: updatedEmployee.supervisees,
+      supervisor: updatedEmployee.users,
+      subordinates: updatedEmployee.other_users,
       
       // Status and timestamps
       isActive: updatedEmployee.isActive,

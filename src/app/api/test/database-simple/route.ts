@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from '@prisma/client'
+import { executeQuery, connectPrisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
@@ -26,50 +26,38 @@ export async function GET() {
       )
     }
 
-    // Initialize Prisma
-    console.log('🔄 Initializing Prisma client...')
-    const prisma = new PrismaClient({
-      log: ['error', 'warn'],
-      datasources: {
-        db: {
-          url: dbUrl
-        }
-      }
-    })
-
-    console.log('🔄 Testing database connection...')
+    console.log('🔄 Ensuring singleton Prisma connection...')
     const startTime = Date.now()
-    
+    const connected = await connectPrisma()
+    if (!connected) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to establish database connection after retries',
+        environment: nodeEnv,
+        isRender: !!renderEnv,
+        timestamp: new Date().toISOString()
+      }, { status: 500 })
+    }
+
     try {
-      // Simple connection test without BigInt issues
-      await prisma.$connect()
-      console.log('✅ Prisma client connected')
-      
-      // Very simple query that won't produce BigInt
-      await prisma.$queryRaw`SELECT 'connection_test' as status`
+      await executeQuery(async (p) => {
+        await p.$queryRaw`SELECT 'connection_test' as status`
+      })
       const connectionTime = Date.now() - startTime
-      
-      console.log(`✅ Database connection successful (${connectionTime}ms)`)
-      
-      await prisma.$disconnect()
-      
       return NextResponse.json({
         success: true,
-        message: 'Database connection successful',
+        message: 'Database connection successful (singleton)',
         connectionTime: `${connectionTime}ms`,
         environment: nodeEnv,
         isRender: !!renderEnv,
         timestamp: new Date().toISOString()
       })
-      
     } catch (dbError) {
-      console.error('❌ Database connection failed:', dbError)
-      await prisma.$disconnect()
-      
+      console.error('❌ Database verification failed:', dbError)
       return NextResponse.json(
         {
           success: false,
-          error: 'Database connection failed',
+          error: 'Database query failed',
           details: dbError instanceof Error ? dbError.message : 'Unknown error',
           environment: nodeEnv,
           isRender: !!renderEnv,

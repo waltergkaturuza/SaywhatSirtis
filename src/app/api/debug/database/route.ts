@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { executeQuery, connectPrisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    // Test database connection
-    await prisma.$connect();
-    
-    // Basic database info
-    const result = await prisma.$queryRaw`SELECT 1 as test`;
-    
-    await prisma.$disconnect();
+    const connected = await connectPrisma();
+    if (!connected) {
+      return NextResponse.json({
+        status: 'error',
+        message: 'Failed to connect to database after retries',
+        timestamp: new Date().toISOString()
+      }, { status: 500 });
+    }
+
+    const result = await executeQuery(async (p) => p.$queryRaw`SELECT 1 as test`);
     
     return NextResponse.json({
       status: 'success',

@@ -211,9 +211,9 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold mb-2">SAYWHAT SIRTIS</h1>
+                <h1 className="text-3xl font-bold mb-2">SIRTIS</h1>
                 <p className="text-orange-100 text-lg">
-                  Integrated Member Management & Program Performance System
+                  SAYWHAT Integrated Real-Time Information System
                 </p>
                 <div className="mt-4 flex space-x-6 text-sm">
                   <div>
