@@ -4,7 +4,6 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { randomUUID } from 'crypto';
 
 // POST: Upload qualification certificate
@@ -80,7 +79,7 @@ export async function POST(
 
     // Create unique filename
     const fileExtension = file.name.split('.').pop();
-    const fileName = `certificate-${qualification.id}-${uuidv4()}.${fileExtension}`;
+    const fileName = `certificate-${qualification.id}-${randomUUID()}.${fileExtension}`;
     
     // Create upload directory if it doesn't exist
     const uploadDir = join(process.cwd(), 'public', 'uploads', 'certificates');
