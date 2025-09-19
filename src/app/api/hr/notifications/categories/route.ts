@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
+import { v4 as uuidv4 } from 'uuid'
 
 // GET /api/hr/notifications/categories - Get notification categories
 export async function GET() {
@@ -22,10 +23,12 @@ export async function GET() {
     }
 
     // Get categories
-    const categories = await prisma.notification_categories.findMany({
-      orderBy: {
-        name: 'asc'
-      }
+    const categories = await executeQuery(async (prisma) => {
+      return prisma.notification_categories.findMany({
+        orderBy: {
+          name: 'asc'
+        }
+      })
     })
 
     // Transform categories for frontend
@@ -80,14 +83,17 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Create category
-    const category = await prisma.notification_categories.create({
-      data: {
-        name,
-        description,
-        icon,
-        color,
-        isActive: true
-      }
+    const category = await executeQuery(async (prisma) => {
+      return prisma.notification_categories.create({
+        data: {
+          id: uuidv4(),
+          name,
+          description,
+          icon,
+          color,
+          isActive: true
+        }
+      })
     })
 
     return NextResponse.json({
