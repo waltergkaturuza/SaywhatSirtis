@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { executeQuery } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
@@ -18,15 +18,17 @@ export async function GET(
     const appraisalId = params.id;
 
     // Get user and check permissions
-    const user = await prisma.users.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        department: true,
-        isActive: true
-      }
+    const user = await executeQuery(async (prisma) => {
+      return prisma.users.findUnique({
+        where: { id: session.user.id },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          department: true,
+          isActive: true
+        }
+      });
     });
 
     if (!user) {
@@ -36,18 +38,20 @@ export async function GET(
     const canViewAllAppraisals = ['SUPERUSER', 'HR_MANAGER', 'HR_SPECIALIST'].includes(user.role);
 
     // Fetch the performance review with all related data
-    const performanceReview = await prisma.performance_reviews.findUnique({
-      where: { id: appraisalId },
-      include: {
-        employees: {
-          include: {
-            departments: true,
-            user: true
-          }
-        },
-        supervisor: true,
-        reviewer: true
-      }
+    const performanceReview = await executeQuery(async (prisma) => {
+      return prisma.performance_reviews.findUnique({
+        where: { id: appraisalId },
+        include: {
+          employees: {
+            include: {
+              departments: true,
+              users: true
+            }
+          },
+          users_performance_reviews_supervisorIdTousers: true,
+          users_performance_reviews_reviewerIdTousers: true
+        }
+      });
     });
 
     if (!performanceReview) {
@@ -55,40 +59,42 @@ export async function GET(
     }
 
     // Check access permissions
-    if (!canViewAllAppraisals && 
-        performanceReview.employeeId !== user.id && 
+    if (!canViewAllAppraisals &&
+        performanceReview.employeeId !== user.id &&
         performanceReview.supervisorId !== user.id &&
         performanceReview.reviewerId !== user.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Get performance areas/criteria for this review
-    const performanceAreas = await prisma.performance_criteria.findMany({
-      orderBy: { weight: 'desc' }
+    const performanceAreas = await executeQuery(async (prisma) => {
+      return prisma.performance_criteria.findMany({
+        orderBy: { weight: 'desc' }
+      });
     });
 
     // Get achievements for this employee
-    const achievements = await prisma.performance_achievements.findMany({
-      where: { 
-        employeeId: performanceReview.employeeId 
-      },
-      orderBy: { createdAt: 'desc' }
+    const achievements = await executeQuery(async (prisma) => {
+      return prisma.performance_achievements.findMany({
+        where: { employeeId: performanceReview.employeeId },
+        orderBy: { createdAt: 'desc' }
+      });
     });
 
     // Get development plans (general ones since no employee association in schema)
-    const developmentPlans = await prisma.development_plans.findMany({
-      where: { 
-        status: 'ACTIVE'
-      },
-      orderBy: { createdAt: 'desc' }
+    const developmentPlans = await executeQuery(async (prisma) => {
+      return prisma.development_plans.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: { createdAt: 'desc' }
+      });
     });
 
     // Get feedback/comments for this review
-    const feedback = await prisma.performance_feedback.findMany({
-      where: { 
-        reviewId: performanceReview.id 
-      },
-      orderBy: { createdAt: 'desc' }
+    const feedback = await executeQuery(async (prisma) => {
+      return prisma.performance_feedback.findMany({
+        where: { reviewId: performanceReview.id },
+        orderBy: { createdAt: 'desc' }
+      });
     });
 
     // Calculate overall rating from performance areas
@@ -107,10 +113,10 @@ export async function GET(
     // Format the response data
     const appraisalData = {
       id: performanceReview.id,
-      employeeName: performanceReview.employees.user?.firstName && performanceReview.employees.user?.lastName
-                   ? `${performanceReview.employees.user.firstName} ${performanceReview.employees.user.lastName}`
-                   : `${performanceReview.employees.firstName} ${performanceReview.employees.lastName}`,
-      employeeId: performanceReview.employees.employeeId,
+  employeeName: performanceReview.employees.users?.firstName && performanceReview.employees.users?.lastName
+       ? `${performanceReview.employees.users.firstName} ${performanceReview.employees.users.lastName}`
+       : `${performanceReview.employees.firstName} ${performanceReview.employees.lastName}`,
+  employeeId: performanceReview.employees.employeeId,
       department: performanceReview.employees.departments?.name || 'Unknown',
       position: performanceReview.employees.position || 'Unknown',
       period: formatReviewPeriod(performanceReview.reviewType, performanceReview.reviewDate),
@@ -118,12 +124,12 @@ export async function GET(
       status: performanceReview.reviewStatus,
       submittedAt: performanceReview.submittedAt,
       reviewedAt: performanceReview.reviewedAt,
-      supervisor: performanceReview.supervisor?.firstName && performanceReview.supervisor?.lastName
-                  ? `${performanceReview.supervisor.firstName} ${performanceReview.supervisor.lastName}`
-                  : performanceReview.supervisor?.email || 'Unknown',
-      reviewer: performanceReview.reviewer?.firstName && performanceReview.reviewer?.lastName
-               ? `${performanceReview.reviewer.firstName} ${performanceReview.reviewer.lastName}`
-               : performanceReview.reviewer?.email || 'Unknown',
+  supervisor: performanceReview.users_performance_reviews_supervisorIdTousers?.firstName && performanceReview.users_performance_reviews_supervisorIdTousers?.lastName
+      ? `${performanceReview.users_performance_reviews_supervisorIdTousers.firstName} ${performanceReview.users_performance_reviews_supervisorIdTousers.lastName}`
+      : performanceReview.users_performance_reviews_supervisorIdTousers?.email || 'Unknown',
+  reviewer: performanceReview.users_performance_reviews_reviewerIdTousers?.firstName && performanceReview.users_performance_reviews_reviewerIdTousers?.lastName
+       ? `${performanceReview.users_performance_reviews_reviewerIdTousers.firstName} ${performanceReview.users_performance_reviews_reviewerIdTousers.lastName}`
+       : performanceReview.users_performance_reviews_reviewerIdTousers?.email || 'Unknown',
       planProgress: calculatePlanProgress(developmentPlans),
       strengths: performanceReview.strengths || '',
       areasImprovement: performanceReview.areasForImprovement || '',

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { executeQuery } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user and check permissions
-    const user = await prisma.users.findUnique({
+    const user = await executeQuery(async (prisma) => {
+      return prisma.users.findUnique({
       where: { id: session.user.id },
       select: {
         id: true,
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
         department: true,
         isActive: true
       }
+      });
     });
 
     if (!user) {
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const canViewAllAppraisals = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role);
+  const canViewAllAppraisals = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role);
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -45,26 +47,22 @@ export async function GET(request: NextRequest) {
     const whereClause: any = {};
     
     if (status && status !== 'all') {
-      whereClause.status = status.toUpperCase();
+  // Schema uses reviewStatus
+  whereClause.reviewStatus = status.toUpperCase();
     }
     
     if (department && department !== 'all') {
-      whereClause.employee = {
-        department: department
-      };
+      whereClause.employees = { department };
     }
 
     if (period && period !== 'all') {
-      whereClause.reviewPeriod = period;
+  whereClause.reviewPeriod = period;
     }
 
     // If user can't view all appraisals, limit to their department or direct reports
     if (!canViewAllAppraisals) {
       if (user.department) {
-        whereClause.employee = {
-          ...whereClause.employee,
-          department: user.department
-        };
+        whereClause.employees = { ...(whereClause.employees || {}), department: user.department };
       } else {
         // If no department, return empty list
         return NextResponse.json({
@@ -78,7 +76,8 @@ export async function GET(request: NextRequest) {
 
     try {
       // Fetch performance reviews from database
-      const performanceReviews = await prisma.performance_reviews.findMany({
+      const performanceReviews = await executeQuery(async (prisma) => {
+        return prisma.performance_reviews.findMany({
         where: whereClause,
         include: {
           employees: {
@@ -91,17 +90,14 @@ export async function GET(request: NextRequest) {
               position: true
             }
           },
-          supervisor: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true
-            }
+          users_performance_reviews_supervisorIdTousers: {
+            select: { id: true, firstName: true, lastName: true }
           }
         },
         orderBy: {
           reviewDate: 'asc'
         }
+        });
       });
 
       // Transform data to match frontend interface
@@ -116,8 +112,8 @@ export async function GET(request: NextRequest) {
         period: review.reviewPeriod || 'Unknown',
         overallRating: review.overallRating,
         status: review.reviewStatus?.toLowerCase() || 'draft',
-        supervisor: review.supervisor 
-          ? `${review.supervisor.firstName || ''} ${review.supervisor.lastName || ''}`.trim()
+        supervisor: review.users_performance_reviews_supervisorIdTousers 
+          ? `${review.users_performance_reviews_supervisorIdTousers.firstName || ''} ${review.users_performance_reviews_supervisorIdTousers.lastName || ''}`.trim()
           : 'Unknown Supervisor',
         dueDate: review.reviewDate?.toISOString().split('T')[0] || null,
         lastUpdated: review.updatedAt?.toISOString().split('T')[0] || review.createdAt?.toISOString().split('T')[0] || null,
@@ -175,12 +171,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const user = await prisma.users.findUnique({
+    const user = await executeQuery(async (prisma) => {
+      return prisma.users.findUnique({
       where: { id: session.user.id },
       select: {
         id: true,
         role: true
       }
+      });
     });
 
     if (!user || !['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role)) {
@@ -192,7 +190,8 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'bulk_approve':
         // Update multiple appraisals to approved status
-        await prisma.performance_reviews.updateMany({
+        await executeQuery(async (prisma) => {
+          await prisma.performance_reviews.updateMany({
           where: {
             id: {
               in: appraisalIds
@@ -202,6 +201,7 @@ export async function POST(request: NextRequest) {
             reviewStatus: 'COMPLETED',
             updatedAt: new Date()
           }
+          });
         });
 
         return NextResponse.json({
@@ -210,7 +210,8 @@ export async function POST(request: NextRequest) {
         });
 
       case 'bulk_status_update':
-        await prisma.performance_reviews.updateMany({
+        await executeQuery(async (prisma) => {
+          await prisma.performance_reviews.updateMany({
           where: {
             id: {
               in: appraisalIds
@@ -220,6 +221,7 @@ export async function POST(request: NextRequest) {
             reviewStatus: data.status.toUpperCase(),
             updatedAt: new Date()
           }
+          });
         });
 
         return NextResponse.json({

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
 import { createSuccessResponse, createErrorResponse, HttpStatus, ErrorCodes } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
@@ -22,20 +22,13 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get('period')
 
     // Check if prisma is available and try to connect
-    if (!prisma) {
-      console.error('Prisma client is not initialized')
-      const response = createErrorResponse(
-        'Database connection failed',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        { code: ErrorCodes.INTERNAL_SERVER_ERROR }
-      )
-      return NextResponse.json(response.response, { status: response.status })
-    }
+    // (Removed explicit prisma availability check; executeQuery will handle errors)
 
     // Get user and check permissions
     let user
     try {
-      user = await prisma.users.findUnique({
+      user = await executeQuery(async (prisma) => {
+        return prisma.users.findUnique({
         where: { id: session.user.id },
         select: {
           id: true,
@@ -44,6 +37,7 @@ export async function GET(request: NextRequest) {
           department: true,
           isActive: true
         }
+        })
       })
     } catch (dbError) {
       console.error('Database connection failed:', dbError)
@@ -94,16 +88,13 @@ export async function GET(request: NextRequest) {
     let whereClause: any = {}
     
     if (!canViewAllAppraisals && user.id) {
-      whereClause.employeeId = user.id
+  whereClause.employeeId = user.id
     }
 
     // Add department filter
     if (department && department !== 'all') {
-      whereClause.employee = {
-        department: {
-          name: department
-        }
-      }
+      // employees has a simple department string, not nested name per schema
+      whereClause.employees = { department }
     }
 
     // Add period filter
@@ -132,18 +123,13 @@ export async function GET(request: NextRequest) {
         improvementAreas
       ] = await Promise.all([
         // Total appraisals
-        prisma.performance_reviews.count({ where: whereClause }),
+        executeQuery(async (prisma) => prisma.performance_reviews.count({ where: whereClause })),
         
         // Completed appraisals
-        prisma.performance_reviews.count({
-          where: { ...whereClause, reviewStatus: 'completed' }
-        }),
+        executeQuery(async (prisma) => prisma.performance_reviews.count({ where: { ...whereClause, reviewStatus: 'completed' } })),
         
         // Average rating
-        prisma.performance_reviews.aggregate({
-          where: { ...whereClause, overallRating: { not: null } },
-          _avg: { overallRating: true }
-        }),
+        executeQuery(async (prisma) => prisma.performance_reviews.aggregate({ where: { ...whereClause, overallRating: { not: null } }, _avg: { overallRating: true } })),
         
         // On-time completions (completed before due date)
         getOnTimeCompletions(whereClause),
@@ -214,16 +200,9 @@ export async function GET(request: NextRequest) {
 // Helper function to get on-time completions
 async function getOnTimeCompletions(baseWhereClause: any): Promise<number> {
   try {
-    return await prisma.performance_reviews.count({
-      where: {
-        ...baseWhereClause,
-        reviewStatus: 'completed',
-        reviewedAt: { not: null },
-        reviewDate: { not: null }
-        // Note: Cannot directly compare reviewedAt with reviewDate in Prisma where clause
-        // This would need to be handled with raw SQL or post-processing
-      }
-    })
+    return await executeQuery(async (prisma) => prisma.performance_reviews.count({
+      where: { ...baseWhereClause, reviewStatus: 'completed', reviewedAt: { not: null }, reviewDate: { not: null } }
+    }))
   } catch (error) {
     console.error('Error getting on-time completions:', error)
     return 0
@@ -236,19 +215,10 @@ async function getDepartmentStats(baseWhereClause: any, canViewAllAppraisals: bo
     if (!canViewAllAppraisals) {
       return []
     }
-
-    const departments = await prisma.departments.findMany({
+    const departments = await executeQuery(async (prisma) => prisma.departments.findMany({
       where: { isActive: true },
-      include: {
-        employees: {
-          include: {
-            performance_reviews: {
-              where: baseWhereClause
-            }
-          }
-        }
-      }
-    })
+      include: { employees: { include: { performance_reviews: { where: baseWhereClause } } } }
+    }))
 
     const departmentStats = await Promise.all(
       departments.map(async (dept) => {
@@ -258,17 +228,9 @@ async function getDepartmentStats(baseWhereClause: any, canViewAllAppraisals: bo
         }
 
         const [total, completed, avgRating, onTime] = await Promise.all([
-          prisma.performance_reviews.count({ where: deptWhereClause }),
-          
-          prisma.performance_reviews.count({
-            where: { ...deptWhereClause, reviewStatus: 'completed' }
-          }),
-          
-          prisma.performance_reviews.aggregate({
-            where: { ...deptWhereClause, overallRating: { not: null } },
-            _avg: { overallRating: true }
-          }),
-          
+          executeQuery(async (prisma) => prisma.performance_reviews.count({ where: deptWhereClause })),
+          executeQuery(async (prisma) => prisma.performance_reviews.count({ where: { ...deptWhereClause, reviewStatus: 'completed' } })),
+          executeQuery(async (prisma) => prisma.performance_reviews.aggregate({ where: { ...deptWhereClause, overallRating: { not: null } }, _avg: { overallRating: true } })),
           getOnTimeCompletions(deptWhereClause)
         ])
 
@@ -292,14 +254,11 @@ async function getDepartmentStats(baseWhereClause: any, canViewAllAppraisals: bo
 // Helper function to get rating distribution
 async function getRatingDistribution(baseWhereClause: any) {
   try {
-    const ratings = await prisma.performance_reviews.groupBy({
+    const ratings = await executeQuery(async (prisma) => prisma.performance_reviews.groupBy({
       by: ['overallRating'],
-      where: {
-        ...baseWhereClause,
-        overallRating: { not: null }
-      },
+      where: { ...baseWhereClause, overallRating: { not: null } },
       _count: true
-    })
+    }))
 
     const totalRatings = ratings.reduce((sum, rating) => sum + rating._count, 0)
     
@@ -335,29 +294,8 @@ async function getMonthlyTrends(baseWhereClause: any) {
       const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1)
       
       const monthlyData = await Promise.all([
-        prisma.performance_reviews.count({
-          where: {
-            ...baseWhereClause,
-            reviewStatus: 'completed',
-            reviewedAt: {
-              gte: date,
-              lt: nextMonth
-            }
-          }
-        }),
-        
-        prisma.performance_reviews.aggregate({
-          where: {
-            ...baseWhereClause,
-            reviewStatus: 'completed',
-            reviewedAt: {
-              gte: date,
-              lt: nextMonth
-            },
-            overallRating: { not: null }
-          },
-          _avg: { overallRating: true }
-        })
+        executeQuery(async (prisma) => prisma.performance_reviews.count({ where: { ...baseWhereClause, reviewStatus: 'completed', reviewedAt: { gte: date, lt: nextMonth } } })),
+        executeQuery(async (prisma) => prisma.performance_reviews.aggregate({ where: { ...baseWhereClause, reviewStatus: 'completed', reviewedAt: { gte: date, lt: nextMonth }, overallRating: { not: null } }, _avg: { overallRating: true } }))
       ])
 
       months.push({
@@ -377,27 +315,16 @@ async function getMonthlyTrends(baseWhereClause: any) {
 // Helper function to get top performers
 async function getTopPerformers(baseWhereClause: any) {
   try {
-    const topPerformers = await prisma.performance_reviews.findMany({
-      where: {
-        ...baseWhereClause,
-        reviewStatus: 'completed',
-        overallRating: { not: null }
-      },
-      include: {
-        employees: {
-          include: {
-            user: true,
-            departments: true
-          }
-        }
-      },
+    const topPerformers = await executeQuery(async (prisma) => prisma.performance_reviews.findMany({
+      where: { ...baseWhereClause, reviewStatus: 'completed', overallRating: { not: null } },
+      include: { employees: { include: { users: true, departments: true } } },
       orderBy: { overallRating: 'desc' },
       take: 5
-    })
+    }))
 
     return topPerformers.map(review => ({
-      name: review.employees.user?.firstName && review.employees.user?.lastName
-           ? `${review.employees.user.firstName} ${review.employees.user.lastName}`
+   name: review.employees.users?.firstName && review.employees.users?.lastName
+     ? `${review.employees.users.firstName} ${review.employees.users.lastName}`
            : `${review.employees.firstName} ${review.employees.lastName}`,
       department: review.employees.departments?.name || 'Unknown',
       rating: Math.round((review.overallRating || 0) * 10) / 10,
