@@ -139,7 +139,8 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const {
-      performancePlanId,
+      performancePlanId, // legacy param name kept for backward compatibility (represents a plan id)
+      responsibilityId,  // preferred param: explicit responsibility id
       keyDeliverable,
       activity,
       timeline,
@@ -160,11 +161,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    // Check if user can manage this performance plan
-    const performancePlan = await prisma.performance_plans.findUnique({
-      where: { id: performancePlanId },
-      select: { employeeId: true, supervisorId: true }
-    });
+    // Resolve plan (needed for authorization) — allow either responsibilityId -> plan lookup or direct plan id
+    let planAuthTargetId: string | undefined = performancePlanId;
+    let effectiveResponsibilityId = responsibilityId as string | undefined;
+
+    // If we only received a responsibilityId, look up its plan
+    if (!planAuthTargetId && effectiveResponsibilityId) {
+      const responsibilityRecord = await executeQuery(async (prisma) => {
+        return prisma.performance_responsibilities.findUnique({
+          where: { id: effectiveResponsibilityId },
+          select: { planId: true }
+        });
+      });
+      planAuthTargetId = responsibilityRecord?.planId;
+    }
+
+    // If we only got a plan id and no responsibilityId, we cannot create an activity correctly (activity needs a responsibility)
+    if (!effectiveResponsibilityId && performancePlanId) {
+      return NextResponse.json({ error: 'responsibilityId is required to create an activity' }, { status: 400 });
+    }
+
+    const performancePlan = planAuthTargetId ? await executeQuery(async (prisma) => {
+      return prisma.performance_plans.findUnique({
+        where: { id: planAuthTargetId! },
+        select: { employeeId: true, supervisorId: true }
+      })
+    }) : null;
 
     if (!performancePlan) {
       return NextResponse.json({ error: 'Performance plan not found' }, { status: 404 });
@@ -178,23 +200,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const newActivity = await prisma.performance_activities.create({
-      data: {
-        id: `activity-${Date.now()}`,
-        responsibilityId: performancePlanId, // Using this as a placeholder
-        title: activity || 'New Activity',
-        description: keyDeliverable,
-        targetDate: timeline ? new Date(timeline) : null,
-        status: status || 'pending',
-        updatedAt: new Date()
-      },
-      include: {
-        responsibility: {
-          select: {
-            id: true
+    const newActivity = await executeQuery(async (prisma) => {
+      return prisma.performance_activities.create({
+        data: {
+          id: uuidv4(),
+          responsibilityId: effectiveResponsibilityId!,
+          title: activity || 'New Activity',
+          description: keyDeliverable,
+          targetDate: timeline ? new Date(timeline) : null,
+          status: status || 'pending',
+          updatedAt: new Date()
+        },
+        include: {
+          performance_responsibilities: {
+            select: {
+              id: true,
+              planId: true,
+              performance_plans: {
+                select: {
+                  id: true,
+                  employees: {
+                    select: { id: true, firstName: true, lastName: true, department: true }
+                  }
+                }
+              }
+            }
           }
         }
-      }
+      })
     });
 
     return NextResponse.json({
@@ -210,9 +243,11 @@ export async function POST(request: Request) {
         status: newActivity.status,
         lastUpdate: newActivity.updatedAt,
         performancePlan: {
-          id: newActivity.responsibility.id,
-          employee: 'N/A',
-          department: 'N/A'
+          id: newActivity.performance_responsibilities.performance_plans.id,
+          employee: newActivity.performance_responsibilities.performance_plans.employees
+            ? `${newActivity.performance_responsibilities.performance_plans.employees.firstName} ${newActivity.performance_responsibilities.performance_plans.employees.lastName}`
+            : 'N/A',
+          department: newActivity.performance_responsibilities.performance_plans.employees?.department || 'N/A'
         }
       }
     });
