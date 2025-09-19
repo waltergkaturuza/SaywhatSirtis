@@ -108,23 +108,30 @@ export async function GET(request: NextRequest) {
 
     // Get summary statistics
     const [totalCount, pendingCount, escalatedCount, successRate] = await Promise.all([
-      prisma.notifications.count({ where: whereClause }),
-      prisma.notifications.count({ 
-        where: { ...whereClause, status: 'pending' } 
+      executeQuery(async (prisma) => {
+        return prisma.notifications.count({ where: whereClause })
       }),
-      prisma.notifications.count({ 
-        where: { ...whereClause, status: 'escalated' } 
+      executeQuery(async (prisma) => {
+        return prisma.notifications.count({ 
+          where: { ...whereClause, status: 'pending' } 
+        })
+      }),
+      executeQuery(async (prisma) => {
+        return prisma.notifications.count({ 
+          where: { ...whereClause, status: 'escalated' } 
+        })
       }),
       // Calculate success rate (acknowledged / total sent)
-      prisma.notifications.aggregate({
-        where: { 
-          ...whereClause,
-          status: { in: ['sent', 'delivered', 'acknowledged'] }
-        },
-        _count: {
-          status: true
-        }
-      }).then(async (sent) => {
+      executeQuery(async (prisma) => {
+        const sent = await prisma.notifications.aggregate({
+          where: { 
+            ...whereClause,
+            status: { in: ['sent', 'delivered', 'acknowledged'] }
+          },
+          _count: {
+            status: true
+          }
+        })
         const acknowledged = await prisma.notifications.count({
           where: { 
             ...whereClause,
@@ -212,37 +219,40 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Create notification
-    const notification = await prisma.notifications.create({
-      data: {
-        title,
-        message,
-        type: type.toUpperCase(),
-        priority,
-        userId: recipientId,
-        recipientId,
-        employeeId,
-        senderId: session.user.id,
-        deadline: deadline ? new Date(deadline) : null,
-        actionUrl,
-        metadata,
-        status: 'pending'
-      },
-      include: {
-        recipient: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true
-          }
+    const notification = await executeQuery(async (prisma) => {
+      return prisma.notifications.create({
+        data: {
+          id: uuidv4(),
+          title,
+          message,
+          type: type.toUpperCase(),
+          priority,
+          userId: recipientId,
+          recipientId,
+          employeeId,
+          senderId: session.user.id,
+          deadline: deadline ? new Date(deadline) : null,
+          actionUrl,
+          metadata,
+          status: 'pending'
         },
-        employee: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true
+        include: {
+          users_notifications_recipientIdTousers: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          },
+          employees: {
+            select: {
+              firstName: true,
+              lastName: true,
+              email: true
+            }
           }
         }
-      }
+      })
     })
 
     return NextResponse.json({

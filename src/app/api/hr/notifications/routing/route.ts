@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
+import { v4 as uuidv4 } from 'uuid'
 
 // GET /api/hr/notifications/routing - Get routing rules
 export async function GET() {
@@ -22,13 +23,15 @@ export async function GET() {
     }
 
     // Get routing rules
-    const routingRules = await prisma.notification_routing_rules.findMany({
-      include: {
-        routes: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
+    const routingRules = await executeQuery(async (prisma) => {
+      return prisma.notification_routing_rules.findMany({
+        include: {
+          notification_routes: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
     })
 
     // Transform routing rules for frontend
@@ -40,7 +43,7 @@ export async function GET() {
       isActive: rule.isActive,
       successRate: rule.successRate,
       lastTriggered: rule.lastTriggered,
-      routes: rule.routes.map(route => ({
+      routes: rule.notification_routes.map((route: any) => ({
         id: route.id,
         recipient: route.recipient,
         action: route.action,
@@ -90,17 +93,19 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Create routing rule with routes in a transaction
-    const routingRule = await prisma.$transaction(async (tx) => {
-      // Create the routing rule
-      const rule = await tx.notification_routing_rules.create({
-        data: {
-          name,
-          description,
-          trigger,
-          isActive: true,
-          createdBy: session.user.id
-        }
-      })
+    const routingRule = await executeQuery(async (prisma) => {
+      return prisma.$transaction(async (tx) => {
+        // Create the routing rule
+        const rule = await tx.notification_routing_rules.create({
+          data: {
+            id: uuidv4(),
+            name,
+            description,
+            trigger,
+            isActive: true,
+            createdBy: session.user.id
+          }
+        })
 
       // Create the routes
       if (routes && routes.length > 0) {
@@ -115,7 +120,8 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      return rule
+        return rule
+      })
     })
 
     return NextResponse.json({
