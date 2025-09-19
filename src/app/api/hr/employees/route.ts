@@ -370,6 +370,23 @@ export async function POST(request: Request) {
       } : null
     }
 
+    // Pre-validate foreign keys to avoid generic FK failures
+    if (sanitizedData.supervisorId) {
+      const supervisorExists = await executeQuery(async (prisma) => prisma.users.findUnique({ where: { id: sanitizedData.supervisorId }, select: { id: true } }))
+      if (!supervisorExists) {
+        const { response, status } = createErrorResponse('Supervisor does not exist', HttpStatus.BAD_REQUEST, { code: ErrorCodes.VALIDATION_ERROR, message: 'Referenced supervisor was not found' })
+        return NextResponse.json(response, { status })
+      }
+    }
+    if (sanitizedData.departmentId) {
+      const deptId = sanitizedData.departmentId as string
+      const departmentExists = await executeQuery(async (prisma) => prisma.departments.findUnique({ where: { id: deptId }, select: { id: true } }))
+      if (!departmentExists) {
+        const { response, status } = createErrorResponse('Department does not exist', HttpStatus.BAD_REQUEST, { code: ErrorCodes.VALIDATION_ERROR, message: 'Referenced department was not found' })
+        return NextResponse.json(response, { status })
+      }
+    }
+
     // Create user and employee in a transaction
     const result = await executeQuery(async (prisma) => 
       prisma.$transaction(async (tx) => {
