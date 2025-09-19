@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { executeQuery } from '@/lib/prisma';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request: Request) {
   try {
@@ -67,27 +68,29 @@ export async function GET(request: Request) {
       }
     }
 
-    const activities = await prisma.performance_activities.findMany({
-      where: whereClause,
-      include: {
-        responsibility: {
-          include: {
-            performancePlan: {
-              include: {
-                employees: {
-                  select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    department: true
+    const activities = await executeQuery(async (prisma) => {
+      return prisma.performance_activities.findMany({
+        where: whereClause,
+        include: {
+          performance_responsibilities: {
+            include: {
+              performance_plans: {
+                include: {
+                  employees: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      department: true
+                    }
                   }
                 }
               }
             }
           }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
     });
 
     const formattedActivities = activities.map(activity => ({
@@ -101,9 +104,9 @@ export async function GET(request: Request) {
       status: 'not-started',
       lastUpdate: activity.updatedAt,
       performancePlan: {
-        id: activity.responsibility.performancePlan.id,
-        employee: `${activity.responsibility.performancePlan.employees.firstName} ${activity.responsibility.performancePlan.employees.lastName}`,
-        department: activity.responsibility.performancePlan.employees.department || 'N/A'
+        id: activity.performance_responsibilities.performance_plans.id,
+        employee: `${activity.performance_responsibilities.performance_plans.employees.firstName} ${activity.performance_responsibilities.performance_plans.employees.lastName}`,
+        department: activity.performance_responsibilities.performance_plans.employees.department || 'N/A'
       }
     }));
 
