@@ -1,4 +1,5 @@
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
+import { v4 as uuidv4 } from 'uuid'
 
 export interface NotificationData {
   title: string
@@ -20,26 +21,28 @@ export class NotificationService {
    */
   static async createNotification(data: NotificationData) {
     try {
-      return await prisma.notifications.create({
-        data: {
-          title: data.title,
-          message: data.message,
-          type: data.type.toUpperCase() as any,
-          priority: data.priority || 'normal',
-          userId: data.recipientId,
-          recipientId: data.recipientId,
-          employeeId: data.employeeId,
-          senderId: data.senderId,
-          deadline: data.deadline,
-          actionUrl: data.actionUrl,
-          metadata: data.metadata,
-          status: 'pending'
-        },
-        include: {
-          recipient: true,
-          employee: true,
-          sender: true
-        }
+      return await executeQuery(async (prisma) => {
+        return prisma.notifications.create({
+          data: {
+            id: uuidv4(),
+            title: data.title,
+            message: data.message,
+            type: data.type.toUpperCase() as any,
+            priority: data.priority || 'normal',
+            recipientId: data.recipientId,
+            employeeId: data.employeeId,
+            senderId: data.senderId,
+            deadline: data.deadline,
+            actionUrl: data.actionUrl,
+            metadata: data.metadata,
+            status: 'pending'
+          },
+          include: {
+            users_notifications_recipientIdTousers: true,
+            users_notifications_senderIdTousers: true,
+            employees: true
+          }
+        })
       })
     } catch (error) {
       console.error('Error creating notification:', error)
@@ -53,24 +56,26 @@ export class NotificationService {
   static async routeNotification(notificationType: string, employeeId: string, metadata?: any) {
     try {
       // Find routing rules for this notification type
-      const routingRules = await prisma.notification_routing_rules.findMany({
+      const routingRules = await executeQuery(async (prisma) => {
+        return prisma.notification_routing_rules.findMany({
         where: {
           trigger: notificationType.toUpperCase(),
           isActive: true
         },
         include: {
-          routes: true
+          notification_routes: true
         },
         orderBy: {
           createdAt: 'desc'
         }
+        })
       })
 
-      const employee = await prisma.employees.findUnique({
-        where: { id: employeeId },
-        include: {
-          departments: true
-        }
+      const employee = await executeQuery(async (prisma) => {
+        return prisma.employees.findUnique({
+          where: { id: employeeId },
+          include: { departments: true }
+        })
       })
 
       if (!employee) {
@@ -82,7 +87,7 @@ export class NotificationService {
       // Process routing rules
       for (const rule of routingRules) {
         // Create notifications for each route in the rule
-        for (const route of rule.routes) {
+        for (const route of rule.notification_routes) {
             const notification = await this.createNotification({
               title: this.generateTitle(notificationType, employee),
               message: this.generateMessage(notificationType, employee, metadata),
@@ -284,7 +289,8 @@ export class NotificationService {
 
     // If no manager, find HR manager
     if (!recipientId) {
-      const hrManager = await prisma.employees.findFirst({
+      const hrManager = await executeQuery(async (prisma) => {
+        return prisma.employees.findFirst({
         where: {
           archived_at: null,
           OR: [
@@ -293,6 +299,7 @@ export class NotificationService {
             { department: { contains: 'HR', mode: 'insensitive' } }
           ]
         }
+        })
       })
       recipientId = hrManager?.id
     }
@@ -319,14 +326,17 @@ export class NotificationService {
    */
   static async markAsRead(notificationId: string, userId: string) {
     try {
-      return await prisma.notifications.update({
+      return await executeQuery(async (prisma) => {
+        return prisma.notifications.update({
         where: { 
           id: notificationId,
           recipientId: userId
         },
         data: { 
-          isRead: true
+          isRead: true,
+          updatedAt: new Date()
         }
+        })
       })
     } catch (error) {
       console.error('Error marking notification as read:', error)
@@ -348,9 +358,11 @@ export class NotificationService {
         updateData.acknowledgedAt = new Date()
       }
 
-      return await prisma.notifications.update({
+      return await executeQuery(async (prisma) => {
+        return prisma.notifications.update({
         where: { id: notificationId },
         data: updateData
+        })
       })
     } catch (error) {
       console.error('Error updating notification status:', error)
