@@ -15,16 +15,20 @@ export async function GET(request: Request) {
     const performancePlanId = searchParams.get('performancePlanId');
 
     // Get user's role and employee record
-    const user = await prisma.users.findUnique({
-      where: { email: session.user.email }
+    const user = await executeQuery(async (prisma) => {
+      return prisma.users.findUnique({
+        where: { email: session.user.email }
+      })
     });
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const employee = await prisma.employees.findUnique({
-      where: { email: session.user.email }
+    const employee = await executeQuery(async (prisma) => {
+      return prisma.employees.findUnique({
+        where: { email: session.user.email }
+      })
     });
 
     if (!employee) {
@@ -43,9 +47,11 @@ export async function GET(request: Request) {
       
       // If not admin, ensure they can only see their own or their subordinates' activities
       if (!canViewAllPlans) {
-        const performancePlan = await prisma.performance_plans.findUnique({
-          where: { id: performancePlanId },
-          select: { employeeId: true, supervisorId: true }
+        const performancePlan = await executeQuery(async (prisma) => {
+          return prisma.performance_plans.findUnique({
+            where: { id: performancePlanId },
+            select: { employeeId: true, supervisorId: true }
+          })
         });
 
         if (!performancePlan || 
