@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
 
     // If user can't view all, only count their own plans
     if (!canViewAll) {
-      const employee = await prisma.employees.findFirst({
-        where: { userId: session.user.id }
+      const employee = await executeQuery(async (prisma) => {
+        return prisma.employees.findFirst({ where: { userId: session.user.id }, select: { id: true } })
       })
       if (employee) {
         whereClause.employeeId = employee.id
@@ -42,37 +42,38 @@ export async function GET(request: NextRequest) {
     }
 
     // Get basic counts
-    const [totalPlans, approved, pendingReview, draft] = await Promise.all([
-      prisma.performance_plans.count({ where: whereClause }),
-      prisma.performance_plans.count({ where: { ...whereClause, status: 'approved' } }),
-      prisma.performance_plans.count({ where: { ...whereClause, status: 'pending-review' } }),
-      prisma.performance_plans.count({ where: { ...whereClause, status: 'draft' } })
+    const [totalPlans, supervisorApproved, reviewerApproved, draft] = await Promise.all([
+      executeQuery(async (prisma) => prisma.performance_plans.count({ where: whereClause })),
+      executeQuery(async (prisma) => prisma.performance_plans.count({ where: { ...whereClause, status: 'supervisor-approved' } })),
+      executeQuery(async (prisma) => prisma.performance_plans.count({ where: { ...whereClause, status: 'reviewer-approved' } })),
+      executeQuery(async (prisma) => prisma.performance_plans.count({ where: { ...whereClause, status: 'draft' } }))
     ])
 
     // Calculate approval rate
-    const approvalRate = totalPlans > 0 ? Math.round((approved / totalPlans) * 100) : 0
+  const totalApproved = supervisorApproved + reviewerApproved
+  const approvalRate = totalPlans > 0 ? Math.round((totalApproved / totalPlans) * 100) : 0
 
     // Calculate average progress across all plans
-    const plansWithProgress = await prisma.performance_plans.findMany({
-      where: whereClause,
-      include: {
-        keyResponsibilities: {
-          include: {
-            activities: true
+    const plansWithProgress = await executeQuery(async (prisma) => {
+      return prisma.performance_plans.findMany({
+        where: whereClause,
+        include: {
+          performance_responsibilities: {
+            include: { performance_activities: true }
           }
         }
-      }
+      })
     })
 
     let totalProgress = 0
     let plansCount = 0
 
     plansWithProgress.forEach(plan => {
-      const totalActivities = plan.keyResponsibilities.reduce((sum, resp) => 
-        sum + resp.activities.length, 0
+      const totalActivities = plan.performance_responsibilities.reduce((sum, resp) => 
+        sum + resp.performance_activities.length, 0
       )
-      const completedActivities = plan.keyResponsibilities.reduce((sum, resp) => 
-        sum + resp.activities.filter(act => act.status === 'completed').length, 0
+      const completedActivities = plan.performance_responsibilities.reduce((sum, resp) => 
+        sum + resp.performance_activities.filter(act => act.status === 'completed').length, 0
       )
       
       if (totalActivities > 0) {
@@ -85,8 +86,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       totalPlans,
-      approved,
-      pendingReview,
+  supervisorApproved,
+  reviewerApproved,
       draft,
       approvalRate,
       avgProgress
