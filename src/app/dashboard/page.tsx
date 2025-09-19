@@ -165,8 +165,7 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-saywhat-dark">SAYWHAT SIRTIS Dashboard</h1>
-              <p className="mt-2 text-saywhat-grey">Real-time insights into member engagement and program performance</p>
+              <h1 className="text-3xl font-bold text-saywhat-dark">WELCOME TO SIRTIS</h1>
             </div>
             <div className="flex items-center space-x-4">
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>

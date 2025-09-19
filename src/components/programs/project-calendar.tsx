@@ -87,54 +87,7 @@ export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarPr
       setLoading(true)
       setError(null)
 
-      // Use mock data temporarily to avoid API rate limiting
-      const mockEvents: CalendarEvent[] = [
-        {
-          id: '1',
-          title: 'Agriculture & Sports Gala',
-          type: 'event',
-          startDate: new Date('2025-08-25'),
-          endDate: new Date('2025-08-27'),
-          status: 'PLANNING',
-          category: 'OUTREACH',
-          venue: 'Harare Sports Club',
-          description: 'Annual agriculture and sports event',
-          color: '#10b981',
-          budget: 50000
-        },
-        {
-          id: '2',
-          title: 'Youth Leadership Workshop',
-          type: 'event',
-          startDate: new Date('2025-09-15'),
-          endDate: new Date('2025-09-15'),
-          status: 'ACTIVE',
-          category: 'WORKSHOP',
-          venue: 'SAYWHAT Offices',
-          description: 'Leadership development for youth',
-          color: '#8b5cf6',
-          budget: 15000
-        },
-        {
-          id: '3',
-          title: 'Community Health Project',
-          type: 'project',
-          startDate: new Date('2025-08-20'),
-          endDate: new Date('2025-12-31'),
-          status: 'ACTIVE',
-          priority: 'HIGH',
-          description: 'Ongoing community health initiatives',
-          color: '#ef4444',
-          budget: 100000,
-          progress: 65,
-          manager: 'Dr. Smith'
-        }
-      ]
-
-      setCalendarEvents(mockEvents)
-
-      /* 
-      // Original API calls - commented out to prevent rate limiting
+      // Fetch real data from API
       const [projectsRes, eventsRes] = await Promise.all([
         fetch('/api/programs/projects'),
         fetch('/api/programs/events?limit=100')
@@ -179,44 +132,43 @@ export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarPr
           if (event.startDate) {
             events.push({
               id: event.id,
-              title: event.name,
+              title: event.name || event.title,
               type: 'event',
               startDate: new Date(event.startDate),
               endDate: event.endDate ? new Date(event.endDate) : new Date(event.startDate),
               status: event.status,
-              category: event.category,
+              category: event.category || event.type,
               venue: event.location,
               description: event.description,
               budget: event.budget,
               organizer: event.organizer?.name,
-              color: getEventColor(event.category, event.status)
+              color: getEventColor(event.category || event.type, event.status)
             })
           }
         })
-      } else if (eventsData.events) {
-        // Handle alternative data structure
-        eventsData.events.forEach((event: any) => {
+      } else if (eventsData && Array.isArray(eventsData)) {
+        // Handle direct array response
+        eventsData.forEach((event: any) => {
           if (event.startDate) {
             events.push({
               id: event.id,
-              title: event.name,
+              title: event.name || event.title,
               type: 'event',
               startDate: new Date(event.startDate),
               endDate: event.endDate ? new Date(event.endDate) : new Date(event.startDate),
               status: event.status,
-              category: event.category,
+              category: event.category || event.type,
               venue: event.location,
               description: event.description,
               budget: event.budget,
               organizer: event.organizer?.name,
-              color: getEventColor(event.category, event.status)
+              color: getEventColor(event.category || event.type, event.status)
             })
           }
         })
       }
 
       setCalendarEvents(events)
-      */
     } catch (err) {
       console.error('Calendar data fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load calendar data')

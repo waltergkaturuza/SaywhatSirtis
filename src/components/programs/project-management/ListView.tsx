@@ -88,14 +88,14 @@ const ListView: React.FC<ListViewProps> = ({
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'NGN'
+      currency: 'USD'
     }).format(amount)
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-NG', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

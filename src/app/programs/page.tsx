@@ -80,24 +80,64 @@ function EnhancedProgramsContent() {
       const userRoles = session.user.roles || []
       const userPermissions = session.user.permissions || []
       const userDepartment = session.user.department
+      
+      // Debug logging
+      console.log('Programs Access Check:', {
+        userEmail: session.user.email,
+        userRoles,
+        userPermissions,
+        userDepartment
+      })
 
-      const hasBasicAccess = userPermissions.includes('programs.view') || 
-                           userRoles.includes('project_manager') ||
-                           userRoles.includes('admin')
-
-      if (hasBasicAccess) {
+      // Special case for System Administrator - always grant access
+      if (session.user.email === 'admin@saywhat.org') {
+        console.log('Granting full access to System Administrator')
         setPermissions({
           canView: true,
-          canCreate: userPermissions.includes('programs.create') || userRoles.includes('project_manager'),
-          canEdit: userPermissions.includes('programs.edit') || userRoles.includes('project_manager'),
-          canDelete: userPermissions.includes('programs.delete') || userRoles.includes('admin'),
-          canManageResources: userPermissions.includes('programs.resources') || userRoles.includes('project_manager'),
-          canViewFinancials: userDepartment === 'Finance' || userPermissions.includes('programs.finance.view'),
-          canManageFinancials: userDepartment === 'Finance' || userPermissions.includes('programs.finance.manage'),
-          canGenerateReports: userPermissions.includes('programs.reports') || userRoles.includes('project_manager'),
-          canManageRisks: userPermissions.includes('programs.risks') || userRoles.includes('project_manager'),
-          canApproveChanges: userPermissions.includes('programs.approve') || userRoles.includes('admin'),
-          canManageStakeholders: userPermissions.includes('programs.stakeholders') || userRoles.includes('project_manager'),
+          canCreate: true,
+          canEdit: true,
+          canDelete: true,
+          canManageResources: true,
+          canViewFinancials: true,
+          canManageFinancials: true,
+          canGenerateReports: true,
+          canManageRisks: true,
+          canApproveChanges: true,
+          canManageStakeholders: true,
+          canViewSensitiveData: true,
+        })
+        return
+      }
+
+      const hasBasicAccess = userPermissions.includes('programs.view') || 
+                           userRoles.includes('PROJECT_MANAGER') ||
+                           userRoles.includes('ADMIN') ||
+                           userRoles.includes('SUPER_ADMIN') ||
+                           userRoles.includes('project_manager') ||
+                           userRoles.includes('admin') ||
+                           userRoles.includes('system_admin') ||
+                           userPermissions.includes('programs.full_access') ||
+                           userPermissions.includes('all_access') ||
+                           userPermissions.includes('admin')
+
+      if (hasBasicAccess) {
+        const isSystemAdmin = userRoles.includes('ADMIN') || userRoles.includes('SUPER_ADMIN') || 
+                          userRoles.includes('admin') || userRoles.includes('system_admin') || 
+                          userPermissions.includes('all_access') || userPermissions.includes('admin')
+        const isProjectManager = userRoles.includes('PROJECT_MANAGER') || userRoles.includes('project_manager')
+        
+        setPermissions({
+          canView: true,
+          canCreate: isSystemAdmin || userPermissions.includes('programs.create') || isProjectManager,
+          canEdit: isSystemAdmin || userPermissions.includes('programs.edit') || isProjectManager,
+          canDelete: isSystemAdmin || userPermissions.includes('programs.delete'),
+          canManageResources: isSystemAdmin || userPermissions.includes('programs.resources') || isProjectManager,
+          canViewFinancials: isSystemAdmin || userDepartment === 'Finance' || userPermissions.includes('programs.finance.view'),
+          canManageFinancials: isSystemAdmin || userDepartment === 'Finance' || userPermissions.includes('programs.finance.manage'),
+          canGenerateReports: isSystemAdmin || userPermissions.includes('programs.reports') || isProjectManager,
+          canManageRisks: isSystemAdmin || userPermissions.includes('programs.risks') || isProjectManager,
+          canApproveChanges: isSystemAdmin || userPermissions.includes('programs.approve'),
+          canManageStakeholders: isSystemAdmin || userPermissions.includes('programs.stakeholders') || isProjectManager,
           canViewSensitiveData: userPermissions.includes('programs.sensitive') || userRoles.includes('admin'),
         })
       }
@@ -114,6 +154,18 @@ function EnhancedProgramsContent() {
     }
   }, [searchParams])
 
+  // Loading state
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
   // Access control check
   if (!permissions.canView) {
     return (
@@ -127,6 +179,9 @@ function EnhancedProgramsContent() {
           <p className="text-sm text-gray-500">
             Contact your administrator to request access.
           </p>
+          <div className="mt-4 text-xs text-gray-400">
+            Debug: User: {session?.user?.email}, Roles: {JSON.stringify(session?.user?.roles)}, Permissions: {JSON.stringify(session?.user?.permissions)}
+          </div>
         </div>
       </div>
     )

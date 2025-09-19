@@ -264,7 +264,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             {permissions?.canEdit && (
               <button
                 onClick={() => {
-                  const budget = prompt('Enter new budget amount (NGN):')
+                  const budget = prompt('Enter new budget amount (USD):')
                   if (budget && !isNaN(Number(budget))) {
                     handleAction('updateBudget', { budget: Number(budget) })
                   }

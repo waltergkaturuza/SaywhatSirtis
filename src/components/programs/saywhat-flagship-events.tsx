@@ -10,7 +10,8 @@ import {
   EyeIcon,
   PencilIcon,
   TrashIcon,
-  FunnelIcon
+  FunnelIcon,
+  PrinterIcon
 } from "@heroicons/react/24/outline"
 
 interface FlagshipEvent {
@@ -71,6 +72,7 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
     organizer: ''
   });
   const [editingEvent, setEditingEvent] = useState<FlagshipEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<FlagshipEvent | null>(null);
   const [uploadedDocuments, setUploadedDocuments] = useState<Array<{
     id: string;
     name: string;
@@ -270,8 +272,8 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
           <p><strong>Location:</strong> ${event.location}</p>
           <p><strong>Expected Attendees:</strong> ${event.expectedAttendees ? event.expectedAttendees.toLocaleString() : 'N/A'}</p>
           ${event.actualAttendees ? `<p><strong>Actual Attendees:</strong> ${event.actualAttendees.toLocaleString()}</p>` : ''}
-          <p><strong>Status:</strong> ${event.status.charAt(0) + event.status.slice(1).toLowerCase()}</p>
-          <p><strong>Category:</strong> ${event.category.charAt(0) + event.category.slice(1).toLowerCase()}</p>
+          <p><strong>Status:</strong> ${event.status ? (event.status.charAt(0) + event.status.slice(1).toLowerCase()) : 'N/A'}</p>
+          <p><strong>Category:</strong> ${event.category ? (event.category.charAt(0) + event.category.slice(1).toLowerCase()) : 'N/A'}</p>
           <p><strong>Budget:</strong> ${formatCurrency(event.budget)}</p>
           ${event.actualCost ? `<p><strong>Actual Cost:</strong> ${formatCurrency(event.actualCost)}</p>` : ''}
           <p><strong>Organizer:</strong> ${event.organizer?.name || 'Unknown'}</p>
@@ -292,6 +294,13 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
     }
   }
 
+  const handleViewEvent = (event: FlagshipEvent) => {
+    // Set the selected event for viewing details
+    setSelectedEvent(event)
+    // You could also navigate to a detail page or open a modal
+    // For now, we'll use the existing selectedEvent state to show details
+  }
+
   const handleEditClick = (event: FlagshipEvent) => {
     setEditingEvent(event)
     setFormData({
@@ -309,8 +318,8 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
       requiresRegistration: false, // TODO: Load from event data when backend supports it
       registrationDeadline: '',
       registrationFields: ['name', 'email', 'phone'],
-      status: event.status.toLowerCase(),
-      category: event.category.toLowerCase(),
+      status: event.status ? event.status.toLowerCase() : 'planning',
+      category: event.category ? event.category.toLowerCase() : 'conference',
       budget: event.budget,
       organizer: event.organizer?.name || ''
     })
@@ -404,7 +413,8 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
     fetchEvents()
   }, [selectedStatus, selectedCategory])
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'text-gray-600 bg-gray-100'
     const statusLower = status.toLowerCase()
     switch (statusLower) {
       case 'planning': return 'text-orange-700 bg-orange-100'
@@ -415,7 +425,8 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
     }
   }
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColor = (category: string | undefined) => {
+    if (!category) return 'text-gray-600 bg-gray-100'
     const categoryLower = category.toLowerCase()
     switch (categoryLower) {
       case 'conference': return 'text-purple-700 bg-purple-100'
@@ -680,17 +691,24 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">{event.name}</h3>
                       <div className="flex items-center space-x-2 mb-3">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-                          {event.status.charAt(0) + event.status.slice(1).toLowerCase()}
+                          {event.status ? (event.status.charAt(0) + event.status.slice(1).toLowerCase()) : 'N/A'}
                         </span>
                       </div>
                     </div>
                     <div className="flex space-x-1">
                       <button 
                         className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50" 
-                        title="View"
-                        onClick={() => handlePrintEvent(event)}
+                        title="View Details"
+                        onClick={() => handleViewEvent(event)}
                       >
                         <EyeIcon className="h-4 w-4" />
+                      </button>
+                      <button 
+                        className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors rounded-full hover:bg-purple-50" 
+                        title="Print Event"
+                        onClick={() => handlePrintEvent(event)}
+                      >
+                        <PrinterIcon className="h-4 w-4" />
                       </button>
                       {permissions?.canEdit && (
                         <button 
@@ -811,10 +829,10 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
                             <div className="flex items-center space-x-2 mb-2">
                               <h4 className="text-lg font-semibold text-gray-900">{event.name}</h4>
                               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
-                                {event.status.charAt(0) + event.status.slice(1).toLowerCase()}
+                                {event.status ? (event.status.charAt(0) + event.status.slice(1).toLowerCase()) : 'N/A'}
                               </span>
                               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(event.category)}`}>
-                                {event.category.charAt(0) + event.category.slice(1).toLowerCase()}
+                                {event.category ? (event.category.charAt(0) + event.category.slice(1).toLowerCase()) : 'N/A'}
                               </span>
                             </div>
                             
@@ -857,10 +875,17 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
                           <div className="flex space-x-1 ml-4">
                             <button 
                               className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50" 
-                              title="View"
-                              onClick={() => handlePrintEvent(event)}
+                              title="View Details"
+                              onClick={() => handleViewEvent(event)}
                             >
                               <EyeIcon className="h-4 w-4" />
+                            </button>
+                            <button 
+                              className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors rounded-full hover:bg-purple-50" 
+                              title="Print Event"
+                              onClick={() => handlePrintEvent(event)}
+                            >
+                              <PrinterIcon className="h-4 w-4" />
                             </button>
                             {permissions?.canEdit && (
                               <button 

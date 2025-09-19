@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     }).catch(() => 0)
 
     // Get call statistics with safe query execution
-    const [callsThisMonth, callsThisYear, callsToday] = await Promise.all([
+    const [callsThisMonth, callsThisYear, callsToday, successfulCalls, totalCallsForRate] = await Promise.all([
       safeQuery(async (prisma) => {
         return await prisma.call_records.count({
           where: {
@@ -57,6 +57,20 @@ export async function GET(request: NextRequest) {
             }
           }
         })
+      }).catch(() => 0),
+      // Count successful calls (resolved or in progress calls)
+      safeQuery(async (prisma) => {
+        return await prisma.call_records.count({
+          where: {
+            status: {
+              in: ['RESOLVED', 'IN_PROGRESS', 'CLOSED']
+            }
+          }
+        })
+      }).catch(() => 0),
+      // Total calls for success rate calculation
+      safeQuery(async (prisma) => {
+        return await prisma.call_records.count()
       }).catch(() => 0)
     ])
 
@@ -90,6 +104,11 @@ export async function GET(request: NextRequest) {
       ? Math.round((programsOnTrack / activePrograms) * 100) 
       : 0
 
+    // Calculate call success rate based on resolved/closed calls vs total calls
+    const callSuccessRate = totalCallsForRate > 0 
+      ? Math.round((successfulCalls / totalCallsForRate) * 100) 
+      : 0
+
     return NextResponse.json({
       totalMembers,
       activeMembers: totalMembers, // Same as total for now
@@ -98,7 +117,7 @@ export async function GET(request: NextRequest) {
       callsToday,
       callsThisMonth,
       avgCallDuration: 5.2, // Default value
-      callSuccessRate: 85.5, // Default value
+      callSuccessRate, // Now dynamic based on actual data
       totalPrograms,
       activePrograms,
       completedPrograms: totalPrograms - activePrograms,

@@ -21,17 +21,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Events API: Query params:', { status, category, page, limit })
 
-    // Check if database is connected
-    try {
-      await prisma.$connect()
-      console.log('Events API: Database connected successfully')
-    } catch (dbError) {
-      console.error('Events API: Database connection failed:', dbError)
-      return NextResponse.json({ 
-        error: 'Database connection failed',
-        details: process.env.NODE_ENV === 'development' ? dbError : undefined
-      }, { status: 500 })
-    }
+    // Database connection is handled automatically by Prisma
 
     // Build where clause
     const where: any = {};

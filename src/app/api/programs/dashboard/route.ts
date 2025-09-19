@@ -23,10 +23,6 @@ export async function GET(request: NextRequest) {
 
     // Fetch all projects with counts
     try {
-      // Ensure fresh connection
-      await prisma.$disconnect()
-      await prisma.$connect()
-      
       const [
         totalProjects,
         activeProjects,

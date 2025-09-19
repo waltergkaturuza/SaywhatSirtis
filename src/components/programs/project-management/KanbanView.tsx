@@ -67,15 +67,15 @@ const KanbanView: React.FC<KanbanViewProps> = ({
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'NGN',
+      currency: 'USD',
       notation: 'compact'
     }).format(amount)
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-NG', {
+    return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
     })

@@ -42,6 +42,11 @@ const createPrismaClient = () => {
     datasources: { db: { url: connectionUrl } }
   })
 
+  // Automatically connect on first use
+  client.$connect().catch((error) => {
+    console.error('Failed to connect to database:', error)
+  })
+
   // Lightweight health flag
   ;(client as any)._healthy = false
 

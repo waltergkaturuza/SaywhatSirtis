@@ -77,9 +77,9 @@ const ProjectFiltersComponent: React.FC<ProjectFiltersProps> = ({
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'NGN',
+      currency: 'USD',
       notation: 'compact'
     }).format(amount)
   }
@@ -301,7 +301,7 @@ const ProjectFiltersComponent: React.FC<ProjectFiltersProps> = ({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <CurrencyDollarIcon className="h-4 w-4 inline mr-1" />
-                Budget Range (NGN)
+                Budget Range (USD)
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <input

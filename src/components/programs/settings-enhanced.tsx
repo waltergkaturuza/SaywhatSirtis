@@ -81,7 +81,7 @@ export function Settings({ permissions, selectedProject, onProjectSelect }: Sett
       description: "Primary development project for SAYWHAT initiatives",
       code: "SWP-001",
       timezone: "Africa/Lagos",
-      currency: "NGN",
+      currency: "USD",
       language: "en",
       dateFormat: "DD/MM/YYYY",
       workingDays: ["monday", "tuesday", "wednesday", "thursday", "friday"],
