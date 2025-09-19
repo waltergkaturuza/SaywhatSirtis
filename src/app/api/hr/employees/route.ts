@@ -371,11 +371,32 @@ export async function POST(request: Request) {
     }
 
     // Pre-validate foreign keys to avoid generic FK failures
+    // Prepare supervisor mapping (the incoming supervisorId might be either a userId or an employeeId)
+    let supervisorUserId: string | undefined = undefined
+    let supervisorEmployeeId: string | undefined = undefined
     if (sanitizedData.supervisorId) {
-      const supervisorExists = await executeQuery(async (prisma) => prisma.users.findUnique({ where: { id: sanitizedData.supervisorId }, select: { id: true } }))
-      if (!supervisorExists) {
-        const { response, status } = createErrorResponse('Supervisor does not exist', HttpStatus.BAD_REQUEST, { code: ErrorCodes.VALIDATION_ERROR, message: 'Referenced supervisor was not found' })
-        return NextResponse.json(response, { status })
+      const provided = sanitizedData.supervisorId
+      // Try match as employee.id first
+      const supervisorAsEmployee = await executeQuery(async (prisma) => prisma.employees.findUnique({ where: { id: provided }, select: { id: true, userId: true } }))
+      if (supervisorAsEmployee) {
+        supervisorEmployeeId = supervisorAsEmployee.id
+        supervisorUserId = supervisorAsEmployee.userId
+      } else {
+        // Try match as users.id then find linked employee
+        const supervisorUser = await executeQuery(async (prisma) => prisma.users.findUnique({ where: { id: provided }, select: { id: true } }))
+        if (supervisorUser) {
+          const linkedEmployee = await executeQuery(async (prisma) => prisma.employees.findUnique({ where: { userId: supervisorUser.id }, select: { id: true, userId: true } }))
+          if (linkedEmployee) {
+            supervisorEmployeeId = linkedEmployee.id
+            supervisorUserId = linkedEmployee.userId
+          } else {
+            const { response, status } = createErrorResponse('Supervisor employee record not found', HttpStatus.BAD_REQUEST, { code: ErrorCodes.VALIDATION_ERROR, message: 'Provided supervisor user has no employee record' })
+            return NextResponse.json(response, { status })
+          }
+        } else {
+          const { response, status } = createErrorResponse('Supervisor does not exist', HttpStatus.BAD_REQUEST, { code: ErrorCodes.VALIDATION_ERROR, message: 'Referenced supervisor was not found' })
+          return NextResponse.json(response, { status })
+        }
       }
     }
     if (sanitizedData.departmentId) {
@@ -412,7 +433,7 @@ export async function POST(request: Request) {
           department: sanitizedData.department,
           position: sanitizedData.position,
           role: userRole, // Use the selected role from the form
-          supervisorId: sanitizedData.supervisorId, // Set supervisor relationship
+          supervisorId: supervisorUserId, // resolved supervisor user id (may be undefined)
           updatedAt: new Date()
         }
       })
@@ -446,7 +467,7 @@ export async function POST(request: Request) {
           salary: sanitizedData.salary,
           currency: sanitizedData.currency,
           status: sanitizedData.status,
-          supervisor_id: sanitizedData.supervisorId,
+          supervisor_id: supervisorEmployeeId, // resolved supervisor employee id
           is_supervisor: sanitizedData.isSupervisor,
           is_reviewer: sanitizedData.isReviewer,
           medical_aid: sanitizedData.medicalAid,
