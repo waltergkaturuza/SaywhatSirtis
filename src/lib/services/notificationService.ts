@@ -22,6 +22,32 @@ export class NotificationService {
   static async createNotification(data: NotificationData) {
     try {
       return await executeQuery(async (prisma) => {
+        // Validate foreign keys proactively to produce clearer errors
+        if (data.employeeId) {
+          const employeeExists = await prisma.employees.findUnique({ select: { id: true }, where: { id: data.employeeId } })
+          if (!employeeExists) {
+            throw new Error(`Employee ${data.employeeId} does not exist`)
+          }
+        }
+
+        if (data.recipientId) {
+          const recipientExists = await prisma.users.findUnique({ select: { id: true }, where: { id: data.recipientId } })
+          if (!recipientExists) {
+            throw new Error(`Recipient user ${data.recipientId} does not exist`)
+          }
+        }
+
+        let senderId: string | null = data.senderId
+        if (senderId === 'system') {
+          // Allow null sender to avoid FK violation if no 'system' user row exists
+            senderId = null
+        } else if (senderId) {
+          const senderExists = await prisma.users.findUnique({ select: { id: true }, where: { id: senderId } })
+          if (!senderExists) {
+            throw new Error(`Sender user ${senderId} does not exist`)
+          }
+        }
+
         return prisma.notifications.create({
           data: {
             id: uuidv4(),
@@ -31,7 +57,7 @@ export class NotificationService {
             priority: data.priority || 'normal',
             recipientId: data.recipientId,
             employeeId: data.employeeId,
-            senderId: data.senderId,
+            senderId: senderId,
             deadline: data.deadline,
             actionUrl: data.actionUrl,
             metadata: data.metadata,
@@ -46,6 +72,10 @@ export class NotificationService {
       })
     } catch (error) {
       console.error('Error creating notification:', error)
+      // Pass through validation context if we set custom message
+      if (error instanceof Error) {
+        throw error
+      }
       throw new Error('Failed to create notification')
     }
   }
@@ -285,23 +315,25 @@ export class NotificationService {
    */
   private static async createDefaultNotification(type: string, employee: any, metadata?: any) {
     // Default to employee's manager or HR
-    let recipientId = employee.managerId
+    // Schema uses supervisor_id for manager relationship
+    let recipientId = employee.supervisor_id
 
     // If no manager, find HR manager
     if (!recipientId) {
       const hrManager = await executeQuery(async (prisma) => {
         return prisma.employees.findFirst({
-        where: {
-          archived_at: null,
-          OR: [
-            { position: { contains: 'HR Manager', mode: 'insensitive' } },
-            { position: { contains: 'Human Resources', mode: 'insensitive' } },
-            { department: { contains: 'HR', mode: 'insensitive' } }
-          ]
-        }
+          where: {
+            archived_at: null,
+            OR: [
+              { position: { contains: 'HR Manager', mode: 'insensitive' } },
+              { position: { contains: 'Human Resources', mode: 'insensitive' } },
+              { department: { contains: 'HR', mode: 'insensitive' } }
+            ]
+          },
+          include: { users: { select: { id: true } } }
         })
       })
-      recipientId = hrManager?.id
+  recipientId = hrManager?.users?.id || hrManager?.id
     }
 
     return await this.createNotification({

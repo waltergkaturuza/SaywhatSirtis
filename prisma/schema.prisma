@@ -118,10 +118,41 @@ model batch_analyses {
 model call_records {
   id                 String    @id
   caseNumber         String    @unique
+  callNumber         String?
+  officerName        String?
+  // Caller Information
   callerName         String
   callerPhone        String?
   callerEmail        String?
+  callerAge          String?
+  callerGender       String?
+  callerKeyPopulation String?
+  callerProvince     String?
+  callerAddress      String?
+  // Call Details
   callType           String?   @default("INBOUND")
+  modeOfCommunication String?
+  howDidYouHearAboutUs String?
+  callValidity       String?   @default("valid")
+  newOrRepeatCall    String?   @default("new")
+  language           String?   @default("English")
+  callDescription    String?
+  purpose            String?   @default("HIV/AIDS")
+  isCase             String?   @default("NO")
+  // Client Information (person who needs help)
+  clientName         String?
+  clientAge          String?
+  clientSex          String?
+  clientAddress      String?
+  clientProvince     String?
+  // Additional Information
+  perpetrator        String?
+  servicesRecommended String?
+  referral           String?
+  voucherIssued      String?   @default("NO")
+  voucherValue       String?
+  comment            String?
+  // System Fields
   category           String?   @default("INQUIRY")
   priority           String?   @default("MEDIUM")
   status             String?   @default("OPEN")

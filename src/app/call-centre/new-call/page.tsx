@@ -65,7 +65,7 @@ export default function NewCallEntryPage() {
     clientProvince: 'N/A',
     // Voucher Information (replaces Additional Information)
     voucherIssued: 'NO',
-    voucherValue: '',
+    voucherValue: '0',
     comment: ''
   })
   
@@ -112,11 +112,30 @@ export default function NewCallEntryPage() {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    alert(`Call entry saved successfully! ${caseGenerated ? `Case number: ${generatedCaseNumber}` : ''}`)
-    setIsSubmitting(false)
+    try {
+      const response = await fetch('/api/call-centre/calls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        alert(`Call entry saved successfully! ${caseGenerated ? `Case number: ${generatedCaseNumber}` : `Call Number: ${formData.callNumber}`}`)
+        // Reset form or redirect as needed
+        window.location.href = '/call-centre'
+      } else {
+        alert(`Error saving call: ${result.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error)
+      alert('Error saving call entry. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const metadata = {
@@ -655,22 +674,46 @@ export default function NewCallEntryPage() {
                 />
               </div>
 
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Client's Details (Name/Age/Sex)
+                  Client's Details
                 </label>
-                <input
-                  type="text"
-                  value={`${formData.clientName} / ${formData.clientAge} / ${formData.clientSex}`}
-                  onChange={(e) => {
-                    const parts = e.target.value.split(' / ')
-                    handleInputChange('clientName', parts[0] || '')
-                    handleInputChange('clientAge', parts[1] || '')
-                    handleInputChange('clientSex', parts[2] || 'N/A')
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
-                  placeholder="Client Name / Age / Sex or N/A"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <input
+                      type="text"
+                      value={formData.clientName}
+                      onChange={(e) => handleInputChange('clientName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                      placeholder="Client Name"
+                    />
+                    <label className="text-xs text-gray-500 mt-1 block">Name</label>
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={formData.clientAge}
+                      onChange={(e) => handleInputChange('clientAge', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                      placeholder="Age"
+                    />
+                    <label className="text-xs text-gray-500 mt-1 block">Age</label>
+                  </div>
+                  <div>
+                    <select
+                      value={formData.clientSex}
+                      onChange={(e) => handleInputChange('clientSex', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                    >
+                      <option value="N/A">N/A</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                    <label className="text-xs text-gray-500 mt-1 block">Sex</label>
+                  </div>
+                </div>
               </div>
 
               {/* Voucher Information Section */}
@@ -695,8 +738,8 @@ export default function NewCallEntryPage() {
                   </label>
                   <input
                     type="number"
-                    value={formData.voucherValue}
-                    onChange={(e) => handleInputChange('voucherValue', e.target.value)}
+                    value={formData.voucherValue || ''}
+                    onChange={(e) => handleInputChange('voucherValue', e.target.value || '0')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                     placeholder="Enter voucher value"
                     min="0"
