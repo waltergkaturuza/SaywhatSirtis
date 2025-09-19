@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
 
 export async function GET() {
   try {
@@ -23,61 +23,65 @@ export async function GET() {
     }
 
     // Fetch employees who are marked as supervisors or reviewers
-    const supervisorEmployees = await prisma.employees.findMany({
-      where: {
-        status: 'ACTIVE',
-        OR: [
-          { is_supervisor: true },
-          { is_reviewer: true }
-        ]
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            isActive: true
+    const supervisorEmployees = await executeQuery(async (prisma) => {
+      return prisma.employees.findMany({
+        where: {
+          status: 'ACTIVE',
+          OR: [
+            { is_supervisor: true },
+            { is_reviewer: true }
+          ]
+        },
+        include: {
+          users: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              isActive: true
+            }
           }
-        }
-      },
-      orderBy: [
-        { firstName: 'asc' },
-        { lastName: 'asc' }
-      ]
+        },
+        orderBy: [
+          { firstName: 'asc' },
+          { lastName: 'asc' }
+        ]
+      })
     })
 
     // Also include users with supervisor-like position titles as fallback
-    const positionBasedSupervisors = await prisma.employees.findMany({
-      where: {
-        status: 'ACTIVE',
-        AND: [
-          {
-            OR: [
-              { is_supervisor: { not: true } },
-              { is_reviewer: { not: true } }
-            ]
-          },
-          {
-            position: {
-              contains: 'manager',
-              mode: 'insensitive'
+    const positionBasedSupervisors = await executeQuery(async (prisma) => {
+      return prisma.employees.findMany({
+        where: {
+          status: 'ACTIVE',
+          AND: [
+            {
+              OR: [
+                { is_supervisor: { not: true } },
+                { is_reviewer: { not: true } }
+              ]
+            },
+            {
+              position: {
+                contains: 'manager',
+                mode: 'insensitive'
+              }
+            }
+          ]
+        },
+        include: {
+          users: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              isActive: true
             }
           }
-        ]
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            isActive: true
-          }
         }
-      }
+      })
     })
 
     // Combine both lists and remove duplicates
@@ -88,9 +92,9 @@ export async function GET() {
 
     // Transform the data for frontend
     const supervisors = uniqueSupervisors
-      .filter(emp => emp.user && emp.user.isActive) // Only active users
+      .filter(emp => emp.users && emp.users.isActive) // Only active users
       .map(emp => ({
-        id: emp.user.id,
+        id: emp.users.id,
         employeeId: emp.employeeId,
         firstName: emp.firstName,
         lastName: emp.lastName,
