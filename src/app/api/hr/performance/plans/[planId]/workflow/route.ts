@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ planId: string }> }) {
   try {
@@ -13,8 +13,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { planId } = await params
     const { action, comment, reviewerId } = await request.json()
 
-    const user = await prisma.users.findUnique({
-      where: { id: session.user.id }
+    const user = await executeQuery(async (prisma) => {
+      return prisma.users.findUnique({
+        where: { id: session.user.id },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+          roles: true
+        }
+      })
     })
 
     if (!user) {
@@ -22,23 +32,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Fetch the current plan
-    const plan = await prisma.performance_plans.findUnique({
-      where: { id: planId },
-      include: {
-        employees: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
+    const plan = await executeQuery(async (prisma) => {
+      return prisma.performance_plans.findUnique({
+        where: { id: planId },
+        include: {
+          employees: {
+            include: {
+              users: {
+                select: { firstName: true, lastName: true, email: true }
               }
             }
+          },
+          users_performance_plans_supervisorIdTousers: {
+            select: { id: true, firstName: true, lastName: true, email: true }
+          },
+          users_performance_plans_reviewerIdTousers: {
+            select: { id: true, firstName: true, lastName: true, email: true }
           }
-        },
-        supervisor: true,
-        reviewer: true
-      }
+        }
+      })
     })
 
     if (!plan) {
@@ -108,9 +120,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }
 
         // Verify reviewer exists and has reviewer role
-        const reviewer = await prisma.users.findUnique({
-          where: { id: reviewerId }
-        })
+            const reviewer = await executeQuery(async (prisma) => {
+              return prisma.users.findUnique({ where: { id: reviewerId }, select: { id: true, roles: true, role: true } })
+            })
         if (!reviewer || (!reviewer.roles?.includes('reviewer') && reviewer.role !== 'ADMIN')) {
           return NextResponse.json({ error: 'Invalid reviewer selected' }, { status: 400 })
         }
@@ -176,7 +188,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Perform the update in a transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await executeQuery(async (prisma) => {
+      return prisma.$transaction(async (tx) => {
       // Update the plan status
       const updatedPlan = await tx.performance_plans.update({
         where: { id: planId },
@@ -187,29 +200,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         include: {
           employees: {
             include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  email: true
-                }
-              }
+              users: { select: { firstName: true, lastName: true, email: true } }
             }
           },
-          supervisor: {
-            select: {
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          },
-          reviewer: {
-            select: {
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
+          users_performance_plans_supervisorIdTousers: { select: { firstName: true, lastName: true, email: true } },
+          users_performance_plans_reviewerIdTousers: { select: { firstName: true, lastName: true, email: true } }
         }
       })
 
@@ -225,6 +220,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       })
 
       return updatedPlan
+      })
     })
 
     // Determine next actions based on new status
