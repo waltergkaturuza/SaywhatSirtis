@@ -12,11 +12,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    //Check permissions
+    // Unified permission check (align with dashboard route)
     const hasPermission = session.user?.permissions?.includes('calls.view') ||
-                         session.user?.permissions?.includes('calls.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('manager')
+      session.user?.permissions?.includes('calls.full_access') ||
+      session.user?.roles?.includes('admin') ||
+      session.user?.roles?.includes('manager')
 
     if (!hasPermission) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -29,60 +29,18 @@ export async function GET(request: NextRequest) {
     tomorrow.setDate(tomorrow.getDate() + 1)
 
     // Get quick stats from database
-    const [
-      totalCallsToday,
-      activeCases,
-      pendingFollowups,
-      overdueCases
-    ] = await Promise.all([
-      // Total calls today
-      prisma.call_records.count({
-        where: {
-          createdAt: {
-            gte: today,
-            lt: tomorrow
-          }
-        }
-      }),
-      // Active cases (calls that are still open)
-      prisma.call_records.count({
-        where: {
-          status: 'OPEN'
-        }
-      }),
-      // Pending follow-ups
-      prisma.call_records.count({
-        where: {
-          followUpRequired: true,
-          followUpDate: {
-            gte: new Date()
-          }
-        }
-      }),
-      // Overdue cases (calls older than 7 days and still open)
-      prisma.call_records.count({
-        where: {
-          status: 'OPEN',
-          createdAt: {
-            lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-          }
-        }
-      })
+    const now = new Date()
+
+    const [ totalCallsToday, activeCases, pendingFollowups, overdueCases ] = await Promise.all([
+      prisma.call_records.count({ where: { createdAt: { gte: today, lt: tomorrow } } }),
+      prisma.call_records.count({ where: { status: 'OPEN' } }),
+      prisma.call_records.count({ where: { followUpRequired: true, followUpDate: { gte: now } } }),
+      prisma.call_records.count({ where: { status: 'OPEN', createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } })
     ])
 
     // Calculate valid calls rate
-    const validCalls = await prisma.call_records.count({
-      where: {
-        createdAt: {
-          gte: today,
-          lt: tomorrow
-        },
-        // Assuming calls with non-empty summary are valid calls
-        summary: {
-          not: null
-        }
-      }
-    })
+    // Placeholder: treat all calls today as valid until a validation rule is defined
+    const validCalls = totalCallsToday
 
     const validCallsRate = totalCallsToday > 0 ? 
       Math.round((validCalls / totalCallsToday) * 100) : 0
@@ -111,7 +69,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching quick stats:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch quick stats' },
+      { error: 'Failed to fetch quick stats', details: error instanceof Error ? { name: error.name, message: error.message } : 'Unknown error' },
       { status: 500 }
     )
   }

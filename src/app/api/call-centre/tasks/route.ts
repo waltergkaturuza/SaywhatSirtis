@@ -11,17 +11,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Test database connection first
-    try {
-      await prisma.$queryRaw`SELECT 1`
-      console.log('Database connection test successful for tasks')
-    } catch (dbError) {
-      console.error('Database connection failed:', dbError)
-      return NextResponse.json({ 
-        error: 'Database connection failed',
-        message: dbError instanceof Error ? dbError.message : 'Unknown database error'
-      }, { status: 500 })
+    // Unified permission check consistent with other call centre APIs
+    const hasPermission = session.user?.permissions?.includes('calls.view') ||
+      session.user?.permissions?.includes('calls.full_access') ||
+      session.user?.roles?.includes('admin') ||
+      session.user?.roles?.includes('manager')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    // Removed redundant connection test - Prisma handles connections automatically
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
@@ -134,7 +134,8 @@ export async function GET(request: NextRequest) {
       { 
         success: false,
         error: 'Failed to fetch tasks',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
+        details: error instanceof Error ? { name: error.name, stack: error.stack?.split('\n').slice(0,3).join(' | ') } : undefined
       },
       { status: 500 }
     )
@@ -147,6 +148,14 @@ export async function POST(request: NextRequest) {
     
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const hasPermission = session.user?.permissions?.includes('calls.full_access') ||
+      session.user?.roles?.includes('admin') ||
+      session.user?.roles?.includes('manager')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const { action, taskId, callId, updates } = await request.json()

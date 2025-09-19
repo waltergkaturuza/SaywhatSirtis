@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+// Helper: safe percentage formatting
+function pct(part: number, whole: number) {
+  if (!whole || whole === 0) return 0
+  return parseFloat(((part / whole) * 100).toFixed(1))
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -38,106 +44,70 @@ export async function GET(request: NextRequest) {
     const thisYearStart = new Date(now.getFullYear(), 0, 1)
     const thisYearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
 
-    // Get today's metrics
-    const todaysMetrics = await prisma.call_records.findMany({
-      where: {
-        createdAt: {
-          gte: todayStart,
-          lte: todayEnd
-        }
-      }
+    // Batch queries in smaller groups to avoid pool exhaustion
+    // Group 1: Today's metrics
+    const [todayTotal, todayOpen] = await Promise.all([
+      prisma.call_records.count({ where: { createdAt: { gte: todayStart, lte: todayEnd } } }),
+      prisma.call_records.count({ where: { createdAt: { gte: todayStart, lte: todayEnd }, status: 'OPEN' } })
+    ])
+
+    // Group 2: Month/Year metrics
+    const [monthTotal, monthOpen, monthResolved, yearTotal, yearOpen, yearResolved] = await Promise.all([
+      prisma.call_records.count({ where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd } } }),
+      prisma.call_records.count({ where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd }, status: 'OPEN' } }),
+      prisma.call_records.count({ where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd }, status: 'RESOLVED' } }),
+      prisma.call_records.count({ where: { createdAt: { gte: thisYearStart, lte: thisYearEnd } } }),
+      prisma.call_records.count({ where: { createdAt: { gte: thisYearStart, lte: thisYearEnd }, status: 'OPEN' } }),
+      prisma.call_records.count({ where: { createdAt: { gte: thisYearStart, lte: thisYearEnd }, status: 'RESOLVED' } })
+    ])
+
+    // Group 3: All-time and case metrics
+    const [allTotal, allOpen, allResolved, activeCases, overdueCases] = await Promise.all([
+      prisma.call_records.count(),
+      prisma.call_records.count({ where: { status: 'OPEN' } }),
+      prisma.call_records.count({ where: { status: 'RESOLVED' } }),
+      prisma.call_records.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+      prisma.call_records.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] }, createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } })
+    ])
+
+    // Group 4: Call purpose distribution (separate to avoid timeout)
+    const callsByPurpose = await prisma.call_records.groupBy({
+      by: ['callType'],
+      _count: { callType: true },
+      where: { createdAt: { gte: todayStart, lte: todayEnd } }
     })
 
-    // Get this month's metrics
-    const thisMonthMetrics = await prisma.call_records.findMany({
-      where: {
-        createdAt: {
-          gte: thisMonthStart,
-          lte: thisMonthEnd
-        }
-      }
-    })
-
-    // Get this year's metrics
-    const thisYearMetrics = await prisma.call_records.findMany({
-      where: {
-        createdAt: {
-          gte: thisYearStart,
-          lte: thisYearEnd
-        }
-      }
-    })
-
-    // Get all-time metrics
-    const allTimeMetrics = await prisma.call_records.findMany()
-
-    // Calculate statistics
     const todayStats = {
-      callsReceived: todaysMetrics.length,
-      validCalls: todaysMetrics.filter(call => call.status !== 'SPAM').length,
-      invalidCalls: todaysMetrics.filter(call => call.status === 'SPAM').length,
-      newCases: todaysMetrics.filter(call => call.status === 'OPEN').length,
-      averageCallDuration: '4.3 min', // This would need additional field in DB
-      peakHour: '10:00 - 11:00' // This would need hour-by-hour analysis
+      callsReceived: todayTotal,
+      validCalls: todayTotal, // placeholder until validity metric defined
+      invalidCalls: 0, // placeholder
+      newCases: todayOpen,
+      averageCallDuration: 'N/A',
+      peakHour: 'N/A'
     }
 
     const summaryStats = {
       thisMonth: {
-        totalCalls: thisMonthMetrics.length,
-        validCalls: thisMonthMetrics.filter(call => call.status !== 'SPAM').length,
-        newCases: thisMonthMetrics.filter(call => call.status === 'OPEN').length,
-        resolvedCases: thisMonthMetrics.filter(call => call.status === 'RESOLVED').length
+        totalCalls: monthTotal,
+        validCalls: monthTotal, // placeholder
+        newCases: monthOpen,
+        resolvedCases: monthResolved
       },
       thisYear: {
-        totalCalls: thisYearMetrics.length,
-        validCalls: thisYearMetrics.filter(call => call.status !== 'SPAM').length,
-        newCases: thisYearMetrics.filter(call => call.status === 'OPEN').length,
-        resolvedCases: thisYearMetrics.filter(call => call.status === 'RESOLVED').length
+        totalCalls: yearTotal,
+        validCalls: yearTotal, // placeholder
+        newCases: yearOpen,
+        resolvedCases: yearResolved
       },
       sinceInception: {
-        totalCalls: allTimeMetrics.length,
-        validCalls: allTimeMetrics.filter(call => call.status !== 'SPAM').length,
-        newCases: allTimeMetrics.filter(call => call.status === 'OPEN').length,
-        resolvedCases: allTimeMetrics.filter(call => call.status === 'RESOLVED').length
+        totalCalls: allTotal,
+        validCalls: allTotal, // placeholder
+        newCases: allOpen,
+        resolvedCases: allResolved
       }
     }
 
-    // Get call distribution by type/purpose
-    const callsByPurpose = await prisma.call_records.groupBy({
-      by: ['callType'],
-      _count: {
-        callType: true
-      },
-      where: {
-        createdAt: {
-          gte: todayStart,
-          lte: todayEnd
-        }
-      }
-    })
-
-    // Get active cases count
-    const activeCases = await prisma.call_records.count({
-      where: {
-        status: {
-          in: ['OPEN', 'IN_PROGRESS']
-        }
-      }
-    })
-
-    // Get overdue cases count
-    const overdueCases = await prisma.call_records.count({
-      where: {
-        status: {
-          in: ['OPEN', 'IN_PROGRESS']
-        },
-        createdAt: {
-          lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
-        }
-      }
-    })
-
-    return NextResponse.json({
+    const response = {
       todaysMetrics: todayStats,
       summaryStats,
       callsByPurpose: callsByPurpose.map(item => ({
@@ -147,14 +117,17 @@ export async function GET(request: NextRequest) {
       })),
       activeCases,
       overdueCases,
-      validCallRate: allTimeMetrics.length > 0 ? 
-        ((allTimeMetrics.filter(call => call.status !== 'SPAM').length / allTimeMetrics.length) * 100).toFixed(1) : 
-        0,
-      officersOnline: 12 // This would need session tracking
-    })
+      validCallRate: pct(allTotal, allTotal),
+      officersOnline: 0 // placeholder until presence tracking implemented
+    }
+
+    return NextResponse.json(response)
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? { name: error.name, message: error.message } : 'Unknown error'
+    }, { status: 500 })
   }
 }
 

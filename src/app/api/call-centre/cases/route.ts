@@ -11,8 +11,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user has call centre access
-    if (!session.user.permissions?.includes('callcentre.access')) {
+    // Harmonized permission logic with other call centre endpoints
+    const hasPermission = session.user.permissions?.includes('calls.view') ||
+      session.user.permissions?.includes('calls.full_access') ||
+      session.user.roles?.includes('admin') ||
+      session.user.roles?.includes('manager');
+
+    if (!hasPermission) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -39,7 +44,7 @@ export async function GET(request: NextRequest) {
       return {
         id: call.id,
         caseNumber: `CASE-${call.id.substring(0, 8)}`,
-        callNumber: call.id,
+        callNumber: call.callNumber || call.id,
         clientName: call.callerName,
         phone: call.callerPhone,
         purpose: call.summary || 'General Inquiry',
@@ -62,7 +67,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching cases:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch cases' },
+      { error: 'Failed to fetch cases', details: error instanceof Error ? { name: error.name, message: error.message } : 'Unknown error' },
       { status: 500 }
     );
   }

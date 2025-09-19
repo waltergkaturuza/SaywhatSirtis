@@ -22,9 +22,12 @@ const createPrismaClient = () => {
   const parts = connectionUrl.split('?')
   if (parts[1]) {
     const params = new URLSearchParams(parts[1])
-    // Normalize connection_limit to 6 if not explicitly provided
+    // Increase connection pool for better concurrency
     if (!params.has('connection_limit')) {
-      params.set('connection_limit', '6')
+      params.set('connection_limit', '10')
+    }
+    if (!params.has('pool_timeout')) {
+      params.set('pool_timeout', '60')
     }
     // Remove any duplicate keys implicitly handled by URLSearchParams
     connectionUrl = parts[0] + '?' + params.toString()
@@ -33,7 +36,14 @@ const createPrismaClient = () => {
   const client = new PrismaClient({
     log: ['error', 'warn'],
     errorFormat: 'pretty',
-    datasources: { db: { url: connectionUrl } }
+    datasources: { db: { url: connectionUrl } },
+    // Optimize for better connection handling
+    __internal: {
+      engine: {
+        connectTimeout: 60000,  // 60 seconds
+        acquireTimeout: 60000,  // 60 seconds
+      }
+    }
   })
 
   // Lightweight health flag
