@@ -150,8 +150,10 @@ export async function POST(request: Request) {
     } = body;
 
     // Get user's role and employee record
-    const employee = await prisma.employees.findUnique({
-      where: { email: session.user.email }
+    const employee = await executeQuery(async (prisma) => {
+      return prisma.employees.findUnique({
+        where: { email: session.user.email }
+      })
     });
 
     if (!employee) {
