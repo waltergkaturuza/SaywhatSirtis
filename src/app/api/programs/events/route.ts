@@ -81,16 +81,25 @@ export async function POST(request: NextRequest) {
     const {
       name,
       description,
+      objectives,
       startDate,
       startTime,
       endDate,
       endTime,
       location,
+      venue,
+      address,
       expectedAttendees,
+      actualAttendees,
       status,
       category,
       budget,
+      actualCost,
       organizer,
+      agenda,
+      speakers,
+      partners,
+      registrationFields,
     } = body;
 
     // Validate required fields
@@ -101,34 +110,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find organizer user
-    let organizerUser;
-    if (organizer) {
-      organizerUser = await prisma.users.findFirst({
-        where: {
-          OR: [
-            { email: organizer },
-            { firstName: organizer },
-            { lastName: organizer },
-            { id: organizer },
-          ],
-        },
-      });
-    }
-
-    // Create the event
+    // Create the event with all fields
     const event = await prisma.events.create({
       data: {
         id: crypto.randomUUID(),
         title: name,
         description,
+        objectives: objectives || undefined,
         startDate: new Date(startDate),
+        startTime: startTime || undefined,
         endDate: new Date(endDate),
+        endTime: endTime || undefined,
         location,
-        capacity: parseInt(expectedAttendees) || 0,
+        venue: venue || undefined,
+        address: address || undefined,
+        expectedAttendees: expectedAttendees ? parseInt(expectedAttendees) : 0,
+        actualAttendees: actualAttendees ? parseInt(actualAttendees) : undefined,
         status: status?.toLowerCase() || 'planning',
         type: category?.toLowerCase() || 'conference',
-        budget: parseFloat(budget) || 0,
+        budget: budget ? parseFloat(budget) : 0,
+        actualCost: actualCost ? parseFloat(actualCost) : undefined,
+        organizer: organizer || undefined,
+        agenda: agenda || undefined,
+        speakers: speakers || undefined,
+        partners: partners || undefined,
+        registrationFields: registrationFields || undefined,
         updatedAt: new Date()
       }
     });

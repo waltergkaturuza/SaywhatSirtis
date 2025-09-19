@@ -59,18 +59,25 @@ export async function PUT(
     const {
       name,
       description,
+      objectives,
       startDate,
       startTime,
       endDate,
       endTime,
       location,
+      venue,
+      address,
       expectedAttendees,
+      actualAttendees,
       status,
       category,
       budget,
-      organizer,
-      actualAttendees,
       actualCost,
+      organizer,
+      agenda,
+      speakers,
+      partners,
+      registrationFields,
     } = body;
 
     // Check if event exists
@@ -82,19 +89,31 @@ export async function PUT(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    // Update the event
+    // Update the event with all fields
     const event = await prisma.events.update({
       where: { id },
       data: {
         title: name,
         description,
+        objectives: objectives !== undefined ? objectives : undefined,
         startDate: startDate ? new Date(startDate) : undefined,
+        startTime: startTime !== undefined ? startTime : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
+        endTime: endTime !== undefined ? endTime : undefined,
         location,
-        capacity: expectedAttendees ? parseInt(expectedAttendees) : undefined,
+        venue: venue !== undefined ? venue : undefined,
+        address: address !== undefined ? address : undefined,
+        expectedAttendees: expectedAttendees !== undefined ? parseInt(expectedAttendees) : undefined,
+        actualAttendees: actualAttendees !== undefined ? parseInt(actualAttendees) : undefined,
         status: status?.toLowerCase(),
-        type: category?.toLowerCase() || 'general',
-        budget: budget ? parseFloat(budget) : undefined,
+        type: category?.toLowerCase(),
+        budget: budget !== undefined ? parseFloat(budget) : undefined,
+        actualCost: actualCost !== undefined ? parseFloat(actualCost) : undefined,
+        organizer: organizer !== undefined ? organizer : undefined,
+        agenda: agenda !== undefined ? agenda : undefined,
+        speakers: speakers !== undefined ? speakers : undefined,
+        partners: partners !== undefined ? partners : undefined,
+        registrationFields: registrationFields !== undefined ? registrationFields : undefined,
       },
       include: {
         event_registrations: {

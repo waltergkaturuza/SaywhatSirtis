@@ -623,17 +623,25 @@ model events {
   type                 String
   status               String                @default("planning")
   startDate            DateTime
+  startTime            String?
   endDate              DateTime?
+  endTime              String?
   location             String?
+  address              String?
   venue                String?
   capacity             Int?
+  expectedAttendees    Int?
+  actualAttendees      Int?
   agenda               Json?
+  objectives           Json?
   speakers             Json?
   budget               Float?
   actualCost           Float                 @default(0)
   requiresRegistration Boolean               @default(false)
   registrationDeadline DateTime?
+  registrationFields   Json?
   partners             Json?
+  organizer            String?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime
   event_registrations  event_registrations[]
