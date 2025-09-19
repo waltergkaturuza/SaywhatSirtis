@@ -54,21 +54,23 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    objectives: [''],
     startDate: '',
     startTime: '',
     endDate: '',
     endTime: '',
     location: '',
     venue: '',
-    address: '',
     expectedAttendees: 0,
+    actualAttendees: 0,
     requiresRegistration: false,
     registrationDeadline: '',
-    registrationFields: ['name', 'email', 'phone'],
     status: 'planning',
     category: 'conference',
     budget: 0,
+    actualCost: 0,
+    agenda: '',
+    speakers: '',
+    partners: '',
     organizer: ''
   });
   const [editingEvent, setEditingEvent] = useState<FlagshipEvent | null>(null);
@@ -141,15 +143,10 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
         if (doc.file) {
           formData.append('file', doc.file)
           formData.append('title', `${doc.type.toUpperCase()}: ${doc.name}`)
-          formData.append('type', doc.type)
-          formData.append('tags', JSON.stringify(['event', doc.type, eventId]))
-          formData.append('metadata', JSON.stringify({ 
-            eventId, 
-            documentType: doc.type,
-            uploadDate: doc.uploadDate 
-          }))
+          formData.append('category', doc.type.toUpperCase())
+          formData.append('classification', 'CONFIDENTIAL')
 
-          const docResponse = await fetch('/api/documents', {
+          const docResponse = await fetch('/api/documents/upload', {
             method: 'POST',
             body: formData,
           })
