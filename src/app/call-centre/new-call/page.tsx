@@ -152,7 +152,7 @@ export default function NewCallEntryPage() {
     <>
       <Link
         href="/call-centre"
-        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+        className="inline-flex items-center px-4 py-2 border border-saywhat-grey rounded-md shadow-sm text-sm font-medium text-saywhat-dark bg-white hover:bg-saywhat-light-grey transition-colors"
       >
         <ArrowLeftIcon className="h-4 w-4 mr-2" />
         Back to Call Centre
@@ -161,7 +161,7 @@ export default function NewCallEntryPage() {
         type="submit"
         form="call-entry-form"
         disabled={isSubmitting}
-        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        className="inline-flex items-center px-4 py-2 bg-saywhat-orange border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50 transition-colors"
       >
         <DocumentTextIcon className="h-4 w-4 mr-2" />
         {isSubmitting ? 'Saving...' : 'Save Call Entry'}
@@ -172,32 +172,32 @@ export default function NewCallEntryPage() {
   const sidebar = (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Call Information</h3>
+        <h3 className="text-lg font-semibold text-saywhat-dark mb-4">Call Information</h3>
         <div className="space-y-3 text-sm">
-          <div className="bg-blue-50 p-3 rounded">
-            <div className="font-medium text-blue-900">Call Number</div>
-            <div className="text-blue-700">{formData.callNumber}</div>
+          <div className="bg-saywhat-light-grey p-3 rounded border-l-4 border-l-saywhat-orange">
+            <div className="font-medium text-saywhat-dark">Call Number</div>
+            <div className="text-saywhat-grey">{formData.callNumber}</div>
           </div>
-          <div className="bg-green-50 p-3 rounded">
-            <div className="font-medium text-green-900">Officer</div>
-            <div className="text-green-700">{formData.officerName}</div>
+          <div className="bg-saywhat-light-grey p-3 rounded border-l-4 border-l-saywhat-green">
+            <div className="font-medium text-saywhat-dark">Officer</div>
+            <div className="text-saywhat-grey">{formData.officerName}</div>
           </div>
-          <div className="bg-purple-50 p-3 rounded">
-            <div className="font-medium text-purple-900">Date & Time</div>
-            <div className="text-purple-700">{formData.date} {formData.time}</div>
+          <div className="bg-saywhat-light-grey p-3 rounded border-l-4 border-l-gray-600">
+            <div className="font-medium text-saywhat-dark">Date & Time</div>
+            <div className="text-saywhat-grey">{formData.date} {formData.time}</div>
           </div>
           {caseGenerated && (
-            <div className="bg-yellow-50 p-3 rounded">
-              <div className="font-medium text-yellow-900">Case Number</div>
-              <div className="text-yellow-700">{generatedCaseNumber}</div>
+            <div className="bg-saywhat-light-grey p-3 rounded border-l-4 border-l-saywhat-orange">
+              <div className="font-medium text-saywhat-dark">Case Number</div>
+              <div className="text-saywhat-grey">{generatedCaseNumber}</div>
             </div>
           )}
         </div>
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Tips</h3>
-        <div className="space-y-2 text-sm text-gray-600">
+        <h3 className="text-lg font-semibold text-saywhat-dark mb-4">Quick Tips</h3>
+        <div className="space-y-2 text-sm text-saywhat-grey">
           <div>• Ensure all required fields are completed</div>
           <div>• Select "YES" for case if follow-up is needed</div>
           <div>• Use clear, professional language</div>
@@ -207,7 +207,7 @@ export default function NewCallEntryPage() {
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-saywhat-dark mb-4">Service Providers Directory</h3>
+                <h3 className="text-lg font-semibold text-saywhat-dark mb-4">Service Providers Directory</h3>
         <div className="space-y-2 text-sm max-h-96 overflow-y-auto">
           <div className="p-3 bg-saywhat-light-grey rounded-lg border">
             <div className="font-medium text-saywhat-dark">Zimbabwe AIDS Council (ZAC)</div>
@@ -274,87 +274,93 @@ export default function NewCallEntryPage() {
       <div className="space-y-6">
         <form id="call-entry-form" onSubmit={handleSubmit} className="space-y-6">
           {/* Auto-generated Information */}
-          <div className="bg-white rounded-lg border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Call Information (Auto-generated)</h2>
+          <div className="bg-white rounded-lg border-l-4 border-l-saywhat-orange shadow-md p-6">
+            <h2 className="text-xl font-semibold text-saywhat-dark mb-6 flex items-center">
+              <div className="w-3 h-3 bg-saywhat-orange rounded-full mr-3"></div>
+              Call Information (Auto-generated)
+            </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Officer Name
                 </label>
                 <input
                   type="text"
                   value={formData.officerName}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md bg-saywhat-light-grey text-saywhat-dark"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Date
                 </label>
                 <input
                   type="date"
                   value={formData.date}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md bg-saywhat-light-grey text-saywhat-dark"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Time
                 </label>
                 <input
                   type="time"
                   value={formData.time}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md bg-saywhat-light-grey text-saywhat-dark"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Call Number
                 </label>
                 <input
                   type="text"
                   value={formData.callNumber}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md bg-saywhat-light-grey text-saywhat-dark"
                 />
               </div>
             </div>
           </div>
 
           {/* Caller's Details */}
-          <div className="bg-white rounded-lg shadow-lg border border-saywhat-light-grey p-6">
-            <h2 className="text-xl font-semibold text-saywhat-dark mb-6">Caller's Details</h2>
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-l-saywhat-green p-6">
+            <h2 className="text-xl font-semibold text-saywhat-dark mb-6 flex items-center">
+              <div className="w-3 h-3 bg-saywhat-green rounded-full mr-3"></div>
+              Caller's Details
+            </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Caller's Phone Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
                   value={formData.callerPhoneNumber}
                   onChange={(e) => handleInputChange('callerPhoneNumber', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   placeholder="e.g., 0771234567"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Mode of Communication <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.modeOfCommunication}
                   onChange={(e) => handleInputChange('modeOfCommunication', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark bg-white"
                   required
                 >
                   <option value="inbound">Inbound</option>
@@ -366,26 +372,26 @@ export default function NewCallEntryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   How did you hear about us?
                 </label>
                 <input
                   type="text"
                   value={formData.howDidYouHearAboutUs}
                   onChange={(e) => handleInputChange('howDidYouHearAboutUs', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   placeholder="e.g., Radio, TV, Friend referral..."
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Call Validity <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.callValidity}
                   onChange={(e) => handleInputChange('callValidity', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   required
                 >
                   <option value="valid">Valid</option>
@@ -394,13 +400,13 @@ export default function NewCallEntryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   New or Repeat Call <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.newOrRepeatCall}
                   onChange={(e) => handleInputChange('newOrRepeatCall', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   required
                 >
                   <option value="new">New</option>
@@ -409,13 +415,13 @@ export default function NewCallEntryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Language <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.language}
                   onChange={(e) => handleInputChange('language', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   required
                 >
                   <option value="English">English</option>
@@ -428,32 +434,35 @@ export default function NewCallEntryPage() {
           </div>
 
           {/* Caller Information */}
-          <div className="bg-white rounded-lg border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Caller Information</h2>
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-l-saywhat-orange p-6">
+            <h2 className="text-xl font-semibold text-saywhat-dark mb-6 flex items-center">
+              <div className="w-3 h-3 bg-saywhat-orange rounded-full mr-3"></div>
+              Caller Information
+            </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Caller's Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.callerFullName}
                   onChange={(e) => handleInputChange('callerFullName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   placeholder="Enter full name"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Age Group <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.callerAge}
                   onChange={(e) => handleInputChange('callerAge', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   required
                 >
                   <option value="-14">Under 14</option>
@@ -464,13 +473,13 @@ export default function NewCallEntryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Key Population <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.callerKeyPopulation}
                   onChange={(e) => handleInputChange('callerKeyPopulation', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   required
                 >
                   <option value="Child">Child</option>
@@ -481,13 +490,13 @@ export default function NewCallEntryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Gender <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.callerGender}
                   onChange={(e) => handleInputChange('callerGender', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   required
                 >
                   <option value="Male">Male</option>
@@ -497,13 +506,13 @@ export default function NewCallEntryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Province <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.callerProvince}
                   onChange={(e) => handleInputChange('callerProvince', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   required
                 >
                   <option value="Harare">Harare</option>
@@ -521,14 +530,14 @@ export default function NewCallEntryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Address
                 </label>
                 <input
                   type="text"
                   value={formData.callerAddress}
                   onChange={(e) => handleInputChange('callerAddress', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   placeholder="Enter address"
                 />
               </div>
@@ -536,26 +545,29 @@ export default function NewCallEntryPage() {
           </div>
 
           {/* Call Details */}
-          <div className="bg-white rounded-lg border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Call Details</h2>
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-l-saywhat-green p-6">
+            <h2 className="text-xl font-semibold text-saywhat-dark mb-6 flex items-center">
+              <div className="w-3 h-3 bg-saywhat-green rounded-full mr-3"></div>
+              Call Details
+            </h2>
             
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Call Description <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={formData.callDescription}
                   onChange={(e) => handleInputChange('callDescription', e.target.value)}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   placeholder="Describe the caller's inquiry or concern..."
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Purpose <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -592,7 +604,7 @@ export default function NewCallEntryPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Case <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center space-x-4">
@@ -631,51 +643,54 @@ export default function NewCallEntryPage() {
           </div>
 
           {/* Additional Information */}
-          <div className="bg-white rounded-lg border p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Additional Information</h2>
+          <div className="bg-white rounded-lg shadow-md border-l-4 border-l-gray-800 p-6">
+            <h2 className="text-xl font-semibold text-saywhat-dark mb-6 flex items-center">
+              <div className="w-3 h-3 bg-gray-800 rounded-full mr-3"></div>
+              Additional Information
+            </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Perpetrator (if applicable)
                 </label>
                 <input
                   type="text"
                   value={formData.perpetrator}
                   onChange={(e) => handleInputChange('perpetrator', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   placeholder="If relevant to the case"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Services Recommended or Requested
                 </label>
                 <input
                   type="text"
                   value={formData.servicesRecommended}
                   onChange={(e) => handleInputChange('servicesRecommended', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   placeholder="Services provided or recommended"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Referral
                 </label>
                 <input
                   type="text"
                   value={formData.referral}
                   onChange={(e) => handleInputChange('referral', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   placeholder="Referred to which organization/service"
                 />
               </div>
 
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Client's Details
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -718,7 +733,7 @@ export default function NewCallEntryPage() {
 
               {/* Voucher Information Section */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Voucher Issued
                 </label>
                 <select
@@ -733,7 +748,7 @@ export default function NewCallEntryPage() {
 
               {formData.voucherIssued === 'YES' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-saywhat-dark mb-2">
                     Voucher Value (USD)
                   </label>
                   <input
@@ -750,14 +765,14 @@ export default function NewCallEntryPage() {
             </div>
 
             <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-saywhat-dark mb-2">
                 Comment
               </label>
               <textarea
                 value={formData.comment}
                 onChange={(e) => handleInputChange('comment', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                 placeholder="Additional comments or notes..."
               />
             </div>
@@ -765,9 +780,12 @@ export default function NewCallEntryPage() {
         </form>
 
         {/* Form Validation */}
-        <div className="bg-blue-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">Form Completion Guidelines</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
+        <div className="bg-saywhat-light-grey rounded-lg border-l-4 border-l-saywhat-orange p-6">
+          <h3 className="text-lg font-semibold text-saywhat-dark mb-3 flex items-center">
+            <div className="w-2 h-2 bg-saywhat-orange rounded-full mr-3"></div>
+            Form Completion Guidelines
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-saywhat-dark">
             <div>
               <h4 className="font-medium mb-2">Required Fields</h4>
               <ul className="space-y-1">
