@@ -29,6 +29,9 @@ const createPrismaClient = () => {
     if (!params.has('pool_timeout')) {
       params.set('pool_timeout', '60')
     }
+    if (!params.has('connect_timeout')) {
+      params.set('connect_timeout', '60')
+    }
     // Remove any duplicate keys implicitly handled by URLSearchParams
     connectionUrl = parts[0] + '?' + params.toString()
   }
@@ -36,14 +39,7 @@ const createPrismaClient = () => {
   const client = new PrismaClient({
     log: ['error', 'warn'],
     errorFormat: 'pretty',
-    datasources: { db: { url: connectionUrl } },
-    // Optimize for better connection handling
-    __internal: {
-      engine: {
-        connectTimeout: 60000,  // 60 seconds
-        acquireTimeout: 60000,  // 60 seconds
-      }
-    }
+    datasources: { db: { url: connectionUrl } }
   })
 
   // Lightweight health flag
