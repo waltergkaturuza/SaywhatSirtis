@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,8 +10,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const user = await prisma.users.findUnique({
-      where: { id: session.user.id }
+    const user = await executeQuery(async (prisma) => {
+      return prisma.users.findUnique({
+        where: { id: session.user.id },
+        select: { id: true, roles: true, role: true }
+      })
     })
 
     if (!user) {
@@ -27,53 +30,57 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all users with reviewer role who are active
-    const reviewers = await prisma.users.findMany({
-      where: {
-        isActive: true,
-        OR: [
-          { roles: { has: 'reviewer' } },
-          { role: 'ADMIN' }
-        ]
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        department: true,
-        position: true,
-        roles: true,
-        // Include performance plan counts for workload info
-        _count: {
-          select: {
-            performance_plans_reviewed: {
-              where: {
-                status: {
-                  in: ['reviewer-review', 'reviewer-approved']
-                }
-              }
-            }
-          }
-        }
-      },
-      orderBy: [
-        { firstName: 'asc' },
-        { lastName: 'asc' }
-      ]
+    const reviewers = await executeQuery(async (prisma) => {
+      return prisma.users.findMany({
+        where: {
+          isActive: true,
+          OR: [ { roles: { has: 'reviewer' } }, { role: 'ADMIN' } ]
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          department: true,
+          position: true,
+          roles: true,
+          role: true
+        },
+        orderBy: [ { firstName: 'asc' }, { lastName: 'asc' } ]
+      })
     })
 
+    // Fetch workload counts per reviewer (plans where they are reviewer and in specific statuses)
+    const reviewerIds = reviewers.map(r => r.id)
+    const workloads = reviewerIds.length > 0 ? await executeQuery(async (prisma) => {
+      const grouped = await prisma.performance_plans.groupBy({
+        by: ['reviewerId'],
+        where: {
+          reviewerId: { in: reviewerIds },
+          status: { in: ['reviewer-review', 'reviewer-approved'] }
+        },
+        _count: { reviewerId: true }
+      })
+      return grouped.reduce<Record<string, number>>((acc, g) => {
+        acc[g.reviewerId!] = g._count.reviewerId
+        return acc
+      }, {})
+    }) : {}
+
     // Transform to include workload information
-    const reviewersWithWorkload = reviewers.map(reviewer => ({
-      id: reviewer.id,
-      name: `${reviewer.firstName} ${reviewer.lastName}`,
-      email: reviewer.email,
-      department: reviewer.department,
-      position: reviewer.position,
-      isHR: reviewer.roles?.includes('hr') || reviewer.roles?.includes('ADMIN'),
-      currentWorkload: reviewer._count.performance_plans_reviewed,
-      availability: reviewer._count.performance_plans_reviewed < 10 ? 'available' : 
-                   reviewer._count.performance_plans_reviewed < 20 ? 'busy' : 'overloaded'
-    }))
+    const reviewersWithWorkload = reviewers.map(reviewer => {
+      const count = workloads[reviewer.id] || 0
+      return {
+        id: reviewer.id,
+        name: `${reviewer.firstName || ''} ${reviewer.lastName || ''}`.trim(),
+        email: reviewer.email,
+        department: reviewer.department,
+        position: reviewer.position,
+        isHR: reviewer.roles?.includes('hr') || reviewer.role === 'ADMIN',
+        currentWorkload: count,
+        availability: count < 10 ? 'available' : count < 20 ? 'busy' : 'overloaded'
+      }
+    })
 
     return NextResponse.json({
       reviewers: reviewersWithWorkload,
