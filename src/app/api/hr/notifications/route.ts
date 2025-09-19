@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { executeQuery } from '@/lib/prisma'
+import { v4 as uuidv4 } from 'uuid'
 
 // GET /api/hr/notifications - Get notifications with routing data
 export async function GET(request: NextRequest) {
@@ -62,26 +63,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Get notifications
-    const notifications = await prisma.notifications.findMany({
-      where: whereClause,
-      include: {
-        sender: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
-        recipient: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
-        employee: {
+    const notifications = await executeQuery(async (prisma) => {
+      return prisma.notifications.findMany({
+        where: whereClause,
+        include: {
+          users_notifications_senderIdTousers: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          },
+          users_notifications_recipientIdTousers: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          },
+          employees: {
           select: {
             id: true,
             firstName: true,
@@ -101,6 +103,7 @@ export async function GET(request: NextRequest) {
         { createdAt: 'desc' }
       ],
       take: limit
+      })
     })
 
     // Get summary statistics
@@ -140,14 +143,14 @@ export async function GET(request: NextRequest) {
       message: notification.message,
       status: notification.status,
       priority: notification.priority,
-      employee: notification.employee ? 
-        `${notification.employee.firstName} ${notification.employee.lastName}` :
+      employee: notification.employees ? 
+        `${notification.employees.firstName} ${notification.employees.lastName}` :
         'N/A',
-      supervisor: notification.recipient ?
-        `${notification.recipient.firstName || ''} ${notification.recipient.lastName || ''}`.trim() :
+      supervisor: notification.users_notifications_recipientIdTousers ?
+        `${notification.users_notifications_recipientIdTousers.firstName || ''} ${notification.users_notifications_recipientIdTousers.lastName || ''}`.trim() :
         'Unknown',
-      secretariat: notification.employee?.departments?.name || 
-                   notification.employee?.department || 
+      secretariat: notification.employees?.departments?.name || 
+                   notification.employees?.department || 
                    'Unknown',
       timestamp: notification.createdAt.toISOString(),
       deadline: notification.deadline?.toISOString(),
