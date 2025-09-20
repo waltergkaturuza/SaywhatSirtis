@@ -13,15 +13,31 @@ export async function GET(request: NextRequest) {
     let departments: Array<{id: string, name: string, code: string | null, employees: any[]}> = []
     
     try {
-      // Get departments from the HR departments table for performance plans
+      // Get all departments with hierarchical structure
       const departmentsData = await prisma.departments.findMany({
         where: {
-          status: 'ACTIVE'
+          isActive: true
         },
         select: {
           id: true,
           name: true,
           code: true,
+          parentId: true,
+          description: true,
+          departments: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
+          },
+          other_departments: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
+          },
           employees: {
             where: {
               status: 'ACTIVE'
@@ -41,12 +57,13 @@ export async function GET(request: NextRequest) {
             }
           }
         },
-        orderBy: {
-          name: 'asc'
-        }
+        orderBy: [
+          { parentId: 'asc' },
+          { name: 'asc' }
+        ]
       })
 
-      // Transform to match performance plans sidebar expectations
+      // Transform to match performance plans sidebar expectations with hierarchy info
       departments = departmentsData.map(dept => {
         const totalEmployees = dept.employees.length
         const employeesWithPlans = dept.employees.filter(emp => emp.performance_plans.length > 0).length
@@ -60,10 +77,20 @@ export async function GET(request: NextRequest) {
               }, 0) / Math.max(employeesWithPlans, 1)
           : 0
 
+        // Determine department type and display name
+        const isSubunit = !!dept.parentId
+        const displayName = isSubunit && dept.departments
+          ? `${dept.departments.name} → ${dept.name}`
+          : dept.name
+
         return {
           id: dept.id,
           name: dept.name,
           code: dept.code,
+          displayName: displayName,
+          type: isSubunit ? 'subunit' : 'main_department',
+          parentDepartment: dept.departments,
+          subDepartments: dept.other_departments,
           employees: dept.employees,
           totalEmployees,
           employeesWithPlans,

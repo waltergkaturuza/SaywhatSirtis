@@ -65,7 +65,7 @@ export async function GET() {
       whereClause.id = currentUser.id
     }
 
-    // Get all employees with their user details
+    // Get all employees with their user details and department hierarchy
     const employees = await executeQuery(async (prisma) => 
       prisma.employees.findMany({
         where: {
@@ -82,6 +82,14 @@ export async function GET() {
               isActive: true,
               createdAt: true,
               updatedAt: true
+            }
+          },
+          departments: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              parentId: true
             }
           }
         },
@@ -100,6 +108,15 @@ export async function GET() {
         lastName: emp.lastName,
         email: emp.email,
         department: emp.department || 'Not Assigned',
+        departmentInfo: emp.departments ? {
+          id: emp.departments.id,
+          name: emp.departments.name,
+          code: emp.departments.code,
+          type: emp.departments.parentId ? 'subunit' : 'main_department',
+          displayName: emp.departments.parentId 
+            ? `Subunit: ${emp.departments.name} (${emp.departments.code})`
+            : `Main Dept: ${emp.departments.name} (${emp.departments.code})`
+        } : null,
         position: emp.position || 'N/A',
         phone: emp.phoneNumber || 'N/A',
         
