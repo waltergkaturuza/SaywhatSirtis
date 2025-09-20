@@ -33,9 +33,6 @@ npx prisma generate
 echo "🗄️  Deploying database migrations..."
 npx prisma migrate deploy
 
-echo "🌱 Seeding database with initial data..."
-npx prisma db seed --preview-feature
-
 echo "✅ Supabase database deployment complete!"
 
 # Reset schema back to development version for local work

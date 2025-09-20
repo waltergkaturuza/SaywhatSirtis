@@ -34,12 +34,6 @@ try {
     npx prisma migrate deploy
     if ($LASTEXITCODE -ne 0) { throw "Migration deployment failed" }
 
-    Write-Host "🌱 Seeding database with initial data..." -ForegroundColor Yellow
-    npx prisma db seed
-    if ($LASTEXITCODE -ne 0) { 
-        Write-Host "⚠️  Database seeding failed, but continuing..." -ForegroundColor Yellow
-    }
-
     Write-Host "✅ Supabase database deployment complete!" -ForegroundColor Green
 
     # Reset schema back to development version for local work

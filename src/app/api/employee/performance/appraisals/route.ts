@@ -16,9 +16,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find employee by email
-    const employee = await prisma.users.findUnique({
+    // First find the user by email
+    const user = await prisma.users.findUnique({
       where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' }, 
+        { status: 404 }
+      );
+    }
+
+    // Then find the employee record
+    const employee = await prisma.employees.findUnique({
+      where: { userId: user.id }
     });
 
     if (!employee) {
@@ -75,7 +87,7 @@ export async function POST(request: NextRequest) {
         id: randomUUID(),
         employeeId: employee.id,
         planId: planId,
-        supervisorId: reviewerId || employee.supervisorId,
+        supervisorId: reviewerId || employee.supervisor_id,
         appraisalType: appraisalType, // annual, quarterly, probation
         status: 'draft',
         selfAssessments: selfAssessments || {},
@@ -152,9 +164,21 @@ export async function GET() {
       );
     }
 
-    // Find employee by email
-    const employee = await prisma.users.findUnique({
+    // First find the user by email
+    const user = await prisma.users.findUnique({
       where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' }, 
+        { status: 404 }
+      );
+    }
+
+    // Then find the employee record
+    const employee = await prisma.employees.findUnique({
+      where: { userId: user.id }
     });
 
     if (!employee) {

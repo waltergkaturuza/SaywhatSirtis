@@ -3,111 +3,117 @@
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ModulePage } from "@/components/layout/enhanced-layout";
 import {
   UserIcon,
   PencilIcon,
-  CameraIcon,
   CheckIcon,
   XMarkIcon,
+  CameraIcon,
   PhoneIcon,
   EnvelopeIcon,
   MapPinIcon,
-  CalendarIcon,
+  ChartBarIcon,
+  DocumentTextIcon,
+  StarIcon,
+  AcademicCapIcon,
+  TrophyIcon,
+  ArrowTrendingUpIcon,
   IdentificationIcon,
-  GlobeAltIcon,
-  UserGroupIcon
+  BriefcaseIcon,
+  ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 
-interface EmployeeProfile {
-  id: string;
+interface ProfileData {
   employeeId: string;
   firstName: string;
   lastName: string;
-  middleName?: string;
   email: string;
-  phoneNumber?: string;
-  alternativePhone?: string;
-  address?: string;
+  position?: string;
+  departmentName?: string;
+  startDate?: string;
   dateOfBirth?: string;
-  gender?: string;
-  nationality?: string;
-  nationalId?: string;
-  passportNumber?: string;
-  emergencyContact?: string;
-  emergencyPhone?: string;
-  position: string;
-  department: string;
-  startDate: string;
-  profilePicture?: string;
-  supervisor?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
-
-interface ProfileFormData {
   phoneNumber?: string;
   alternativePhone?: string;
+  personalEmail?: string;
+  alternativeEmail?: string;
   address?: string;
   emergencyContact?: string;
   emergencyPhone?: string;
+  emergencyContactAddress?: string;
+  emergencyContactRelationship?: string;
   profilePicture?: string;
 }
 
 export default function EmployeeProfilePage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
-  const [profile, setProfile] = useState<EmployeeProfile | null>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState<ProfileFormData>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  const [formData, setFormData] = useState({
+    phoneNumber: '',
+    alternativePhone: '',
+    personalEmail: '',
+    alternativeEmail: '',
+    address: '',
+    emergencyContact: '',
+    emergencyPhone: '',
+    emergencyContactAddress: '',
+    emergencyContactRelationship: '',
+    profilePicture: ''
+  });
 
-  // Load employee profile
   const loadProfile = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const response = await fetch('/api/employee/profile');
       
       if (!response.ok) {
         throw new Error('Failed to fetch profile');
       }
-
+      
       const data = await response.json();
       setProfile(data);
       setFormData({
-        phoneNumber: data.phoneNumber,
-        alternativePhone: data.alternativePhone,
-        address: data.address,
-        emergencyContact: data.emergencyContact,
-        emergencyPhone: data.emergencyPhone,
-        profilePicture: data.profilePicture
+        phoneNumber: data.phoneNumber || '',
+        alternativePhone: data.alternativePhone || '',
+        personalEmail: data.personalEmail || '',
+        alternativeEmail: data.alternativeEmail || '',
+        address: data.address || '',
+        emergencyContact: data.emergencyContact || '',
+        emergencyPhone: data.emergencyPhone || '',
+        emergencyContactAddress: data.emergencyContactAddress || '',
+        emergencyContactRelationship: data.emergencyContactRelationship || '',
+        profilePicture: data.profilePicture || ''
       });
-
     } catch (err) {
-      setError('Failed to load profile');
       console.error('Error loading profile:', err);
+      setError('Failed to load profile. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Save profile changes
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
-      setError('');
+      setError(null);
+      setSuccessMessage(null);
 
       const response = await fetch('/api/employee/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -119,52 +125,33 @@ export default function EmployeeProfilePage() {
       setEditMode(false);
       setSuccessMessage('Profile updated successfully!');
       
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(''), 3000);
-
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
-      setError('Failed to save profile changes');
       console.error('Error saving profile:', err);
+      setError('Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
-  // Handle profile picture upload
-  const handleProfilePictureUpload = async (file: File) => {
-    const formData = new FormData();
-    formData.append('profilePicture', file);
-
-    try {
-      const response = await fetch('/api/employee/profile/picture', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload profile picture');
-      }
-
-      const result = await response.json();
-      setFormData(prev => ({ ...prev, profilePicture: result.url }));
-      setSuccessMessage('Profile picture updated successfully!');
-
-    } catch (err) {
-      setError('Failed to upload profile picture');
-      console.error('Error uploading profile picture:', err);
-    }
-  };
-
   useEffect(() => {
+    if (status === "loading") return;
+    
     if (session) {
       loadProfile();
     }
-  }, [session]);
+  }, [session, status]);
 
-  // Redirect if not authenticated
-  if (!session) {
-    router.push('/auth/signin');
-    return null;
+  // Show loading while checking authentication or if no session
+  if (status === "loading" || !session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saywhat-orange mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your profile...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -179,9 +166,9 @@ export default function EmployeeProfilePage() {
         ]
       }}
     >
-      <div className="space-y-6">
+      <div className="space-y-8">
         {loading && (
-          <div className="flex justify-center items-center py-8">
+          <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saywhat-orange"></div>
             <span className="ml-2 text-sm text-gray-500">Loading profile...</span>
           </div>
@@ -201,55 +188,15 @@ export default function EmployeeProfilePage() {
 
         {profile && (
           <>
-            {/* Profile Header */}
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Personal Information</h3>
-                {!editMode ? (
-                  <button
-                    onClick={() => setEditMode(true)}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    <PencilIcon className="-ml-0.5 mr-2 h-4 w-4" />
-                    Edit Profile
-                  </button>
-                ) : (
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={handleSaveProfile}
-                      disabled={saving}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-saywhat-orange hover:bg-saywhat-orange/90 disabled:opacity-50"
-                    >
-                      <CheckIcon className="-ml-0.5 mr-2 h-4 w-4" />
-                      {saving ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditMode(false);
-                        setFormData({
-                          phoneNumber: profile.phoneNumber,
-                          alternativePhone: profile.alternativePhone,
-                          address: profile.address,
-                          emergencyContact: profile.emergencyContact,
-                          emergencyPhone: profile.emergencyPhone,
-                          profilePicture: profile.profilePicture
-                        });
-                      }}
-                      className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                    >
-                      <XMarkIcon className="-ml-0.5 mr-2 h-4 w-4" />
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-6">
-                <div className="flex items-start space-x-6">
+            {/* Hero Profile Header with Gradient */}
+            <div className="relative bg-gradient-to-br from-saywhat-orange via-orange-500 to-green-600 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="absolute inset-0 bg-black/10"></div>
+              <div className="relative px-8 py-12">
+                <div className="flex flex-col lg:flex-row items-center lg:items-start space-y-6 lg:space-y-0 lg:space-x-8">
                   {/* Profile Picture */}
-                  <div className="flex-shrink-0">
-                    <div className="relative">
-                      <div className="h-32 w-32 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
+                  <div className="relative group">
+                    <div className="h-40 w-40 bg-white/20 backdrop-blur-sm rounded-full p-2 shadow-2xl">
+                      <div className="h-full w-full bg-white rounded-full flex items-center justify-center overflow-hidden shadow-lg">
                         {(formData.profilePicture || profile.profilePicture) ? (
                           <img 
                             src={formData.profilePicture || profile.profilePicture} 
@@ -257,249 +204,452 @@ export default function EmployeeProfilePage() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <UserIcon className="h-16 w-16 text-gray-400" />
+                          <UserIcon className="h-20 w-20 text-gray-400" />
                         )}
                       </div>
-                      {editMode && (
-                        <label className="absolute bottom-0 right-0 h-8 w-8 bg-saywhat-orange rounded-full flex items-center justify-center cursor-pointer hover:bg-saywhat-orange/90">
-                          <CameraIcon className="h-4 w-4 text-white" />
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleProfilePictureUpload(file);
-                              }
-                            }}
-                          />
+                    </div>
+                    {editMode && (
+                      <label className="absolute bottom-2 right-2 h-10 w-10 bg-white rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-50 shadow-lg transition-all duration-200 hover:scale-110">
+                        <CameraIcon className="h-5 w-5 text-saywhat-orange" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (e) => {
+                                setFormData(prev => ({ ...prev, profilePicture: e.target?.result as string }));
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Employee Information */}
+                  <div className="text-center lg:text-left text-white flex-1">
+                    <h1 className="text-4xl font-bold mb-2">{profile.firstName} {profile.lastName}</h1>
+                    <div className="space-y-2 mb-6">
+                      <p className="text-xl text-white/90 font-medium">{profile.position || 'System Administrator'}</p>
+                      <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-6 space-y-2 lg:space-y-0">
+                        <div className="flex items-center justify-center lg:justify-start space-x-2">
+                          <div className="h-2 w-2 bg-green-300 rounded-full animate-pulse"></div>
+                          <span className="text-white/80">Employee ID: {profile.employeeId}</span>
+                        </div>
+                        <div className="flex items-center justify-center lg:justify-start space-x-2">
+                          <EnvelopeIcon className="h-4 w-4 text-white/80" />
+                          <span className="text-white/80">{profile.email}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    {!editMode ? (
+                      <button
+                        onClick={() => setEditMode(true)}
+                        className="inline-flex items-center px-6 py-3 bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-xl text-white font-medium hover:bg-white/30 transition-all duration-200 hover:scale-105 shadow-lg"
+                      >
+                        <PencilIcon className="mr-2 h-5 w-5" />
+                        Edit Profile
+                      </button>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                        <button
+                          onClick={handleSaveProfile}
+                          disabled={saving}
+                          className="inline-flex items-center px-6 py-3 bg-green-600 border-2 border-green-500 rounded-xl text-white font-medium hover:bg-green-700 disabled:opacity-50 transition-all duration-200 hover:scale-105 shadow-lg"
+                        >
+                          <CheckIcon className="mr-2 h-5 w-5" />
+                          {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditMode(false);
+                            setFormData({
+                              phoneNumber: profile.phoneNumber || '',
+                              alternativePhone: profile.alternativePhone || '',
+                              personalEmail: profile.personalEmail || '',
+                              alternativeEmail: profile.alternativeEmail || '',
+                              address: profile.address || '',
+                              emergencyContact: profile.emergencyContact || '',
+                              emergencyPhone: profile.emergencyPhone || '',
+                              emergencyContactAddress: profile.emergencyContactAddress || '',
+                              emergencyContactRelationship: profile.emergencyContactRelationship || '',
+                              profilePicture: profile.profilePicture || ''
+                            });
+                          }}
+                          className="inline-flex items-center px-6 py-3 bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-xl text-white font-medium hover:bg-white/30 transition-all duration-200 hover:scale-105 shadow-lg"
+                        >
+                          <XMarkIcon className="mr-2 h-5 w-5" />
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modern Information Cards Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+              {/* Left Column - Contains Personal Information and Contact Information */}
+              <div className="lg:col-span-3 space-y-8">
+                {/* Personal Details Card */}
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                  <div className="bg-gradient-to-r from-gray-900 to-black px-6 py-4">
+                    <h3 className="text-xl font-bold text-white flex items-center">
+                      <UserIcon className="mr-3 h-6 w-6 text-saywhat-orange" />
+                      Personal Information
+                    </h3>
+                  </div>
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="p-4 bg-gradient-to-r from-saywhat-orange/10 to-transparent rounded-xl border-l-4 border-saywhat-orange">
+                          <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Employee ID</label>
+                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.employeeId}</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-r from-green-100 to-transparent rounded-xl border-l-4 border-green-500">
+                          <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Position</label>
+                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.position || 'System Administrator'}</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-r from-gray-100 to-transparent rounded-xl border-l-4 border-gray-500">
+                          <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Department</label>
+                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.departmentName || 'Unassigned'}</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-r from-pink-100 to-transparent rounded-xl border-l-4 border-pink-500">
+                          <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Date of Birth</label>
+                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not provided'}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-gradient-to-r from-blue-100 to-transparent rounded-xl border-l-4 border-blue-500">
+                          <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Start Date</label>
+                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.startDate ? new Date(profile.startDate).toLocaleDateString() : '14/9/2025'}</p>
+                        </div>
+                        <div className="p-4 bg-gradient-to-r from-purple-100 to-transparent rounded-xl border-l-4 border-purple-500">
+                          <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Status</label>
+                          <div className="flex items-center mt-1">
+                            <div className="h-3 w-3 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                            <p className="text-lg font-medium text-green-700">Active</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Information Section - Now in Left Column */}
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                  <div className="bg-gradient-to-r from-saywhat-orange to-orange-500 px-6 py-4">
+                    <h3 className="text-xl font-bold text-white flex items-center">
+                      <PhoneIcon className="mr-3 h-6 w-6" />
+                      Contact Information
+                    </h3>
+                  </div>
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <PhoneIcon className="inline h-4 w-4 mr-2 text-saywhat-orange" />
+                          Primary Phone
                         </label>
-                      )}
+                        {editMode ? (
+                          <input
+                            type="tel"
+                            value={formData.phoneNumber}
+                            onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            placeholder="Enter phone number"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.phoneNumber || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <PhoneIcon className="inline h-4 w-4 mr-2 text-green-600" />
+                          Alternative Phone
+                        </label>
+                        {editMode ? (
+                          <input
+                            type="tel"
+                            value={formData.alternativePhone}
+                            onChange={(e) => setFormData(prev => ({ ...prev, alternativePhone: e.target.value }))}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            placeholder="Enter alternative phone"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl border-l-4 border-green-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.alternativePhone || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <EnvelopeIcon className="inline h-4 w-4 mr-2 text-blue-600" />
+                          Personal Email
+                        </label>
+                        {editMode ? (
+                          <input
+                            type="email"
+                            value={formData.personalEmail}
+                            onChange={(e) => setFormData(prev => ({ ...prev, personalEmail: e.target.value }))}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            placeholder="Enter personal email"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.personalEmail || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <EnvelopeIcon className="inline h-4 w-4 mr-2 text-indigo-600" />
+                          Alternative Email
+                        </label>
+                        {editMode ? (
+                          <input
+                            type="email"
+                            value={formData.alternativeEmail}
+                            onChange={(e) => setFormData(prev => ({ ...prev, alternativeEmail: e.target.value }))}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            placeholder="Enter alternative email"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-indigo-50 to-transparent rounded-xl border-l-4 border-indigo-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.alternativeEmail || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="group md:col-span-2 lg:col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <MapPinIcon className="inline h-4 w-4 mr-2 text-purple-600" />
+                          Home Address
+                        </label>
+                        {editMode ? (
+                          <textarea
+                            value={formData.address}
+                            onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                            rows={3}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors resize-none"
+                            placeholder="Enter home address"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-purple-50 to-transparent rounded-xl border-l-4 border-purple-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.address || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Basic Information */}
-                  <div className="flex-1 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Employee ID</label>
-                        <p className="text-sm text-gray-900">{profile.employeeId}</p>
+                    {/* Emergency Contact */}
+                    <div className="mt-8 p-6 bg-gradient-to-r from-red-50 to-red-25 rounded-xl border border-red-200">
+                      <h4 className="text-lg font-bold text-red-800 mb-4 flex items-center">
+                        <span className="inline-block w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse"></span>
+                        Emergency Contact
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                            Contact Name
+                          </label>
+                          {editMode ? (
+                            <input
+                              type="text"
+                              value={formData.emergencyContact}
+                              onChange={(e) => setFormData(prev => ({ ...prev, emergencyContact: e.target.value }))}
+                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                              placeholder="Emergency contact name"
+                            />
+                          ) : (
+                            <div className="p-3 bg-white rounded-lg border border-red-200">
+                              <p className="text-lg font-medium text-gray-900">{profile.emergencyContact || 'Not provided'}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                            Contact Phone
+                          </label>
+                          {editMode ? (
+                            <input
+                              type="tel"
+                              value={formData.emergencyPhone}
+                              onChange={(e) => setFormData(prev => ({ ...prev, emergencyPhone: e.target.value }))}
+                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                              placeholder="Emergency contact phone"
+                            />
+                          ) : (
+                            <div className="p-3 bg-white rounded-lg border border-red-200">
+                              <p className="text-lg font-medium text-gray-900">{profile.emergencyPhone || 'Not provided'}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                            Relationship
+                          </label>
+                          {editMode ? (
+                            <select
+                              value={formData.emergencyContactRelationship}
+                              onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactRelationship: e.target.value }))}
+                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            >
+                              <option value="">Select relationship</option>
+                              <option value="spouse">Spouse</option>
+                              <option value="parent">Parent</option>
+                              <option value="child">Child</option>
+                              <option value="sibling">Sibling</option>
+                              <option value="friend">Friend</option>
+                              <option value="other">Other</option>
+                            </select>
+                          ) : (
+                            <div className="p-3 bg-white rounded-lg border border-red-200">
+                              <p className="text-lg font-medium text-gray-900">{profile.emergencyContactRelationship || 'Not provided'}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                            Contact Address
+                          </label>
+                          {editMode ? (
+                            <textarea
+                              value={formData.emergencyContactAddress}
+                              onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactAddress: e.target.value }))}
+                              rows={3}
+                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors resize-none"
+                              placeholder="Emergency contact address"
+                            />
+                          ) : (
+                            <div className="p-3 bg-white rounded-lg border border-red-200">
+                              <p className="text-lg font-medium text-gray-900">{profile.emergencyContactAddress || 'Not provided'}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Full Name</label>
-                        <p className="text-sm text-gray-900">
-                          {profile.firstName} {profile.middleName} {profile.lastName}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Position</label>
-                        <p className="text-sm text-gray-900">{profile.position}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Department</label>
-                        <p className="text-sm text-gray-900">{profile.department}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Start Date</label>
-                        <p className="text-sm text-gray-900">
-                          {new Date(profile.startDate).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Email</label>
-                        <p className="text-sm text-gray-900">{profile.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Contact Information</h3>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      <PhoneIcon className="inline h-4 w-4 mr-2" />
-                      Primary Phone
-                    </label>
-                    {editMode ? (
-                      <input
-                        type="tel"
-                        value={formData.phoneNumber || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-saywhat-orange focus:border-saywhat-orange sm:text-sm"
-                        placeholder="Enter phone number"
-                      />
-                    ) : (
-                      <p className="mt-1 text-sm text-gray-900">{profile.phoneNumber || 'Not provided'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      <PhoneIcon className="inline h-4 w-4 mr-2" />
-                      Alternative Phone
-                    </label>
-                    {editMode ? (
-                      <input
-                        type="tel"
-                        value={formData.alternativePhone || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, alternativePhone: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-saywhat-orange focus:border-saywhat-orange sm:text-sm"
-                        placeholder="Enter alternative phone"
-                      />
-                    ) : (
-                      <p className="mt-1 text-sm text-gray-900">{profile.alternativePhone || 'Not provided'}</p>
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      <MapPinIcon className="inline h-4 w-4 mr-2" />
-                      Address
-                    </label>
-                    {editMode ? (
-                      <textarea
-                        rows={3}
-                        value={formData.address || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-saywhat-orange focus:border-saywhat-orange sm:text-sm"
-                        placeholder="Enter your address"
-                      />
-                    ) : (
-                      <p className="mt-1 text-sm text-gray-900">{profile.address || 'Not provided'}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Emergency Contact */}
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Emergency Contact</h3>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      <UserGroupIcon className="inline h-4 w-4 mr-2" />
-                      Emergency Contact Name
-                    </label>
-                    {editMode ? (
-                      <input
-                        type="text"
-                        value={formData.emergencyContact || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, emergencyContact: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-saywhat-orange focus:border-saywhat-orange sm:text-sm"
-                        placeholder="Enter emergency contact name"
-                      />
-                    ) : (
-                      <p className="mt-1 text-sm text-gray-900">{profile.emergencyContact || 'Not provided'}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      <PhoneIcon className="inline h-4 w-4 mr-2" />
-                      Emergency Contact Phone
-                    </label>
-                    {editMode ? (
-                      <input
-                        type="tel"
-                        value={formData.emergencyPhone || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, emergencyPhone: e.target.value }))}
-                        className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-saywhat-orange focus:border-saywhat-orange sm:text-sm"
-                        placeholder="Enter emergency contact phone"
-                      />
-                    ) : (
-                      <p className="mt-1 text-sm text-gray-900">{profile.emergencyPhone || 'Not provided'}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Personal Details (Read-only) */}
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Personal Details</h3>
-                <p className="text-sm text-gray-500">Contact HR to update these details</p>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      <CalendarIcon className="inline h-4 w-4 mr-2" />
-                      Date of Birth
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900">
-                      {profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not provided'}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      <UserIcon className="inline h-4 w-4 mr-2" />
-                      Gender
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900">{profile.gender || 'Not provided'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      <GlobeAltIcon className="inline h-4 w-4 mr-2" />
-                      Nationality
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900">{profile.nationality || 'Not provided'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      <IdentificationIcon className="inline h-4 w-4 mr-2" />
-                      National ID
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900">{profile.nationalId || 'Not provided'}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      <IdentificationIcon className="inline h-4 w-4 mr-2" />
-                      Passport Number
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900">{profile.passportNumber || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Supervisor Information */}
-            {profile.supervisor && (
-              <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900">Reporting Structure</h3>
-                </div>
-                <div className="p-6">
-                  <div className="flex items-center">
-                    <UserGroupIcon className="h-8 w-8 text-gray-400" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">
-                        Supervisor: {profile.supervisor.name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {profile.supervisor.email}
-                      </p>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+
+              {/* Right Sidebar - Quick Stats and Quick Actions */}
+              <div className="space-y-6">
+                {/* Quick Stats Card - Natural Height */}
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                  <div className="bg-gradient-to-r from-green-600 to-green-500 px-4 py-3">
+                    <h3 className="text-lg font-bold text-white flex items-center">
+                      <ChartBarIcon className="mr-2 h-5 w-5" />
+                      Quick Stats
+                    </h3>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="text-center p-3 bg-gradient-to-br from-saywhat-orange/20 to-saywhat-orange/5 rounded-lg">
+                      <div className="text-2xl font-bold text-saywhat-orange">5</div>
+                      <div className="text-xs font-medium text-gray-600">Years of Service</div>
+                    </div>
+                    <div className="text-center p-3 bg-gradient-to-br from-green-100 to-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">95%</div>
+                      <div className="text-xs font-medium text-gray-600">Performance Score</div>
+                    </div>
+                    <div className="text-center p-3 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">12</div>
+                      <div className="text-xs font-medium text-gray-600">Trainings Completed</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enhanced Quick Actions */}
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                <div className="bg-gradient-to-r from-black to-gray-800 px-4 py-3">
+                  <h3 className="text-lg font-bold text-white flex items-center">
+                    <StarIcon className="mr-2 h-5 w-5 text-saywhat-orange" />
+                    Quick Actions
+                  </h3>
+                </div>
+                <div className="p-4 space-y-3">
+                  <Link
+                    href="/employee/performance"
+                    className="group flex items-center p-3 bg-gradient-to-br from-saywhat-orange/10 via-saywhat-orange/5 to-transparent rounded-lg border-2 border-saywhat-orange/20 hover:border-saywhat-orange/40 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                  >
+                    <ChartBarIcon className="h-5 w-5 text-saywhat-orange mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Performance</p>
+                      <p className="text-xs text-gray-600">View plans & appraisals</p>
+                    </div>
+                  </Link>
+                  
+                  <Link
+                    href="/employee/performance/plans/create"
+                    className="group flex items-center p-3 bg-gradient-to-br from-green-100 via-green-50 to-transparent rounded-lg border-2 border-green-200 hover:border-green-400 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                  >
+                    <DocumentTextIcon className="h-5 w-5 text-green-600 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">New Plan</p>
+                      <p className="text-xs text-gray-600">Create performance plan</p>
+                    </div>
+                  </Link>
+                  
+                  <Link
+                    href="/employee/performance/appraisals/create"
+                    className="group flex items-center p-3 bg-gradient-to-br from-blue-100 via-blue-50 to-transparent rounded-lg border-2 border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                  >
+                    <StarIcon className="h-5 w-5 text-blue-600 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Self Appraisal</p>
+                      <p className="text-xs text-gray-600">Complete assessment</p>
+                    </div>
+                  </Link>
+                  
+                  <Link
+                    href="/employee/qualifications"
+                    className="group flex items-center p-3 bg-gradient-to-br from-purple-100 via-purple-50 to-transparent rounded-lg border-2 border-purple-200 hover:border-purple-400 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                  >
+                    <AcademicCapIcon className="h-5 w-5 text-purple-600 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Qualifications</p>
+                      <p className="text-xs text-gray-600">Manage certifications</p>
+                    </div>
+                  </Link>
+                  
+                  <Link
+                    href="/hr/training/enroll"
+                    className="group flex items-center p-3 bg-gradient-to-br from-yellow-100 via-yellow-50 to-transparent rounded-lg border-2 border-yellow-200 hover:border-yellow-400 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                  >
+                    <TrophyIcon className="h-5 w-5 text-yellow-600 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Training</p>
+                      <p className="text-xs text-gray-600">Browse & enroll</p>
+                    </div>
+                  </Link>
+                  
+                  <Link
+                    href="/employee"
+                    className="group flex items-center p-3 bg-gradient-to-br from-gray-100 via-gray-50 to-transparent rounded-lg border-2 border-gray-200 hover:border-gray-400 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                  >
+                    <ArrowTrendingUpIcon className="h-5 w-5 text-gray-600 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Dashboard</p>
+                      <p className="text-xs text-gray-600">Employee portal home</p>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+              </div>
+            </div>
+
           </>
         )}
       </div>

@@ -16,9 +16,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find employee by email
-    const employee = await prisma.users.findUnique({
+    // First find the user by email
+    const user = await prisma.users.findUnique({
       where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' }, 
+        { status: 404 }
+      );
+    }
+
+    // Then find the employee record
+    const employee = await prisma.employees.findUnique({
+      where: { userId: user.id }
     });
 
     if (!employee) {
@@ -29,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if employee has a supervisor
-    if (!employee.supervisorId) {
+    if (!employee.supervisor_id) {
       return NextResponse.json(
         { error: 'Employee must have a supervisor assigned for performance planning' }, 
         { status: 400 }
@@ -54,7 +66,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: randomUUID(),
         employeeId: employee.id,
-        supervisorId: employee.supervisorId!,
+        supervisorId: employee.supervisor_id!,
         planYear: parseInt(body.planYear),
         planPeriod: body.planPeriod || 'Annual',
         status: 'draft',
@@ -117,9 +129,21 @@ export async function GET() {
       );
     }
 
-    // Find employee by email
-    const employee = await prisma.users.findUnique({
+    // First find the user by email
+    const user = await prisma.users.findUnique({
       where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' }, 
+        { status: 404 }
+      );
+    }
+
+    // Then find the employee record
+    const employee = await prisma.employees.findUnique({
+      where: { userId: user.id }
     });
 
     if (!employee) {

@@ -22,9 +22,6 @@ if [ "$VERCEL" = "1" ]; then
     if [ ! -z "$DATABASE_URL" ]; then
         echo "🗄️  Running database migrations..."
         npx prisma migrate deploy
-        
-        echo "🌱 Seeding database..."
-        npx prisma db seed
     else
         echo "⚠️  DATABASE_URL not set - skipping migrations"
     fi

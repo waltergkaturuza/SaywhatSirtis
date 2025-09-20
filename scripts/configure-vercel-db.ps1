@@ -20,9 +20,6 @@ if ($env:VERCEL -eq "1") {
     if ($env:DATABASE_URL) {
         Write-Host "🗄️  Running database migrations..." -ForegroundColor Yellow
         npx prisma migrate deploy
-        
-        Write-Host "🌱 Seeding database..." -ForegroundColor Yellow
-        npx prisma db seed
     }
     else {
         Write-Host "⚠️  DATABASE_URL not set - skipping migrations" -ForegroundColor Red

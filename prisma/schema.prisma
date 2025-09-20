@@ -546,9 +546,14 @@ model employees {
   email                    String                     @unique
   phoneNumber              String?
   alternativePhone         String?
+  personalEmail            String?
+  alternativeEmail         String?
   address                  String?
   emergencyContact         String?
   emergencyPhone           String?
+  emergencyContactAddress  String?
+  emergencyContactRelationship String?
+  profilePicture           String?
   department               String?
   position                 String
   employmentType           String                     @default("FULL_TIME")

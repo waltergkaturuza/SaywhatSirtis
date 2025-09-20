@@ -73,5 +73,4 @@ Write-Host "• Apply via Supabase Dashboard → SQL Editor if psql unavailable"
 Write-Host ""
 Write-Host "🎯 Next steps:" -ForegroundColor Cyan
 Write-Host "1. Apply RLS policies (scripts/enable-rls.sql)" -ForegroundColor White
-Write-Host "2. Run: npm run supabase:seed" -ForegroundColor White
-Write-Host "3. Test your application!" -ForegroundColor White
+Write-Host "2. Test your application!" -ForegroundColor White
