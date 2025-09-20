@@ -196,6 +196,7 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
           formData.append('title', `${doc.type.toUpperCase()}: ${doc.name}`)
           formData.append('category', doc.type.toUpperCase())
           formData.append('classification', 'CONFIDENTIAL')
+          formData.append('eventId', eventId) // Link document to event
 
           const docResponse = await fetch('/api/documents/upload', {
             method: 'POST',
@@ -643,18 +644,77 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
         </div>
       </div>
 
+      {/* Status Filter Tabs */}
+      <div className="mb-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Filter by Status</h3>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedStatus('all')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              selectedStatus === 'all' 
+                ? 'bg-gray-800 text-white' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            All Status
+          </button>
+          <button
+            onClick={() => setSelectedStatus('planning')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              selectedStatus === 'planning' 
+                ? 'bg-orange-600 text-white' 
+                : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+            }`}
+          >
+            Planning
+          </button>
+          <button
+            onClick={() => setSelectedStatus('active')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              selectedStatus === 'active' 
+                ? 'bg-yellow-600 text-white' 
+                : 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200'
+            }`}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setSelectedStatus('completed')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              selectedStatus === 'completed' 
+                ? 'bg-green-600 text-white' 
+                : 'bg-green-100 text-green-600 hover:bg-green-200'
+            }`}
+          >
+            Completed
+          </button>
+          <button
+            onClick={() => setSelectedStatus('cancelled')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              selectedStatus === 'cancelled' 
+                ? 'bg-red-600 text-white' 
+                : 'bg-red-100 text-red-600 hover:bg-red-200'
+            }`}
+          >
+            Cancelled
+          </button>
+        </div>
+      </div>
+
       {/* Category Filter Tabs */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <button
-          onClick={() => setSelectedCategory('all')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            selectedCategory === 'all' 
-              ? 'bg-orange-100 text-orange-700 border border-orange-200' 
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
-        >
-          All
-        </button>
+      <div className="mb-6">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Filter by Category</h3>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              selectedCategory === 'all' 
+                ? 'bg-orange-100 text-orange-700 border border-orange-200' 
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            All Categories
+          </button>
         <button
           onClick={() => setSelectedCategory('conference')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -1784,6 +1844,7 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }

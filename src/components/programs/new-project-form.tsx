@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ResultsFramework, ResultsFrameworkData } from "./results-framework"
 import { 
   DocumentTextIcon,
@@ -120,6 +121,10 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   const [frequencyDates, setFrequencyDates] = useState<Record<string, string>>({})
   const [selectedMethodologies, setSelectedMethodologies] = useState<string[]>([])
   
+  // Employee selection state
+  const [employees, setEmployees] = useState<Array<{id: string, name: string, department: string, position: string}>>([])
+  const [loadingEmployees, setLoadingEmployees] = useState(false)
+  
   // Financial Details State
   const [totalBudget, setTotalBudget] = useState("")
   const [fundingSource, setFundingSource] = useState("")
@@ -140,7 +145,11 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
     return session?.user?.roles?.includes(role) || session?.user?.department === 'MEAL'
   }
 
-  const canEdit = isCurrentUser('MEAL_PERSONNEL') || session?.user?.roles?.includes('admin')
+  const canEdit = isCurrentUser('MEAL_PERSONNEL') || 
+                  session?.user?.roles?.includes('admin') || 
+                  session?.user?.roles?.includes('superuser') ||
+                  session?.user?.permissions?.includes('programs.create') ||
+                  session?.user?.permissions?.includes('programs.full_access')
 
   const handleCategoryToggle = (category: string) => {
     setSelectedCategories(prev => 
@@ -175,13 +184,41 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
     }))
   }
 
+  // Helper function to fetch employees for project lead selection
+  const fetchEmployees = async () => {
+    if (loadingEmployees || employees.length > 0) return // Don't fetch if already loading or loaded
+    
+    setLoadingEmployees(true)
+    try {
+      const response = await fetch('/api/hr/employees')
+      if (!response.ok) throw new Error('Failed to fetch employees')
+      
+      const data = await response.json()
+      if (data.success && data.data) {
+        const employeeList = data.data.map((emp: any) => ({
+          value: emp.id.toString(),
+          label: `${emp.firstName} ${emp.lastName} - ${emp.position || 'Unknown'} (${emp.department || 'Unknown'})`
+        }))
+        setEmployees(employeeList)
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error)
+    } finally {
+      setLoadingEmployees(false)
+    }
+  }
+
+  // Load employees on component mount
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
+
   // Helper function to handle document upload
   const handleDocumentUpload = async (files: FileList) => {
     const newDocuments: Array<{id: string, name: string, size: number, type: string, uploadedAt: Date}> = []
     
     try {
-      // For now, we'll store the documents locally and send them with the project data
-      // In a real implementation, you would upload to the document API
+      // Upload files to document repository with confidential classification
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
         
@@ -211,12 +248,31 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
           return
         }
         
+        // Upload to document repository
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('title', `Project Document: ${file.name}`)
+        formData.append('category', 'PROJECT_DOCUMENT')
+        formData.append('classification', 'CONFIDENTIAL')
+        
+        const response = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${file.name}`)
+        }
+
+        const result = await response.json()
+        
         const documentData = {
-          id: Date.now().toString() + i,
+          id: result.document?.id || Date.now().toString() + i,
           name: file.name,
           size: file.size,
           type: file.type,
-          uploadedAt: new Date()
+          uploadedAt: new Date(),
+          documentId: result.document?.id // Store the actual document ID for linking
         }
         
         newDocuments.push(documentData)
@@ -227,7 +283,8 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
       
       // Show success message could be implemented here
     } catch (error) {
-      setError('Failed to process documents. Please try again.')
+      console.error('Document upload error:', error)
+      setError(`Failed to upload documents: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -335,14 +392,28 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
         </div>
         <div>
           <Label htmlFor="projectLead">Project Lead</Label>
-          <Input
-            id="projectLead"
+          <Select
             value={projectLead}
-            onChange={(e) => setProjectLead(e.target.value)}
-            placeholder="Enter project lead name"
+            onValueChange={setProjectLead}
             disabled={!canEdit}
-            className="focus:ring-green-500 focus:border-green-500"
-          />
+          >
+            <SelectTrigger className="focus:ring-green-500 focus:border-green-500">
+              <SelectValue placeholder="Select project lead" />
+            </SelectTrigger>
+            <SelectContent>
+              {loadingEmployees ? (
+                <SelectItem value="loading" disabled>Loading employees...</SelectItem>
+              ) : employees.length === 0 ? (
+                <SelectItem value="no-employees" disabled>No employees found</SelectItem>
+              ) : (
+                employees.map((employee) => (
+                  <SelectItem key={employee.id} value={employee.id}>        
+                    {employee.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -383,14 +454,28 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
 
       <div>
         <Label htmlFor="projectLead">Project Lead *</Label>
-        <Input
-          id="projectLead"
+        <Select
           value={projectLead}
-          onChange={(e) => setProjectLead(e.target.value)}
-          placeholder="Enter project lead name"
+          onValueChange={setProjectLead}
           disabled={!canEdit}
-          className="focus:ring-green-500 focus:border-green-500"
-        />
+        >
+          <SelectTrigger className="focus:ring-green-500 focus:border-green-500">
+            <SelectValue placeholder="Select project lead" />
+          </SelectTrigger>
+          <SelectContent>
+            {loadingEmployees ? (
+              <SelectItem value="loading" disabled>Loading employees...</SelectItem>
+            ) : employees.length === 0 ? (
+              <SelectItem value="no-employees" disabled>No employees found</SelectItem>
+            ) : (
+              employees.map((employee) => (
+                <SelectItem key={employee.id} value={employee.id}>
+                  {employee.name}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>

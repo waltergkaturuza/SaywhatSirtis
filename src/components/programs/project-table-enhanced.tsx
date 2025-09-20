@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { ProjectCalendar } from "./project-calendar"
 import { 
   ClipboardDocumentListIcon, 
@@ -87,6 +88,7 @@ interface Filters {
 }
 
 export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedProject }: ProjectTableProps) {
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -213,6 +215,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
 
   const fetchProjects = async () => {
     try {
+      console.log('Fetching projects...')
       setLoading(true)
       setError(null)
 
@@ -257,6 +260,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
           milestonesCompleted: 0
         }))
         
+        console.log('Projects loaded:', transformedProjects.length, 'projects')
         setProjects(transformedProjects)
       }
     } catch (err) {
@@ -343,6 +347,96 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
     )
   }
 
+  // Action handlers for project operations
+  const handleDuplicateProject = async (projectId: string) => {
+    console.log('Duplicate project clicked:', projectId)
+    try {
+      const response = await fetch(`/api/programs/projects/${projectId}/duplicate`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        await fetchProjects() // Refresh the list
+        setActionMenuOpen(null)
+        alert('Project duplicated successfully!')
+      } else {
+        throw new Error('Failed to duplicate project')
+      }
+    } catch (error) {
+      console.error('Error duplicating project:', error)
+      alert('Failed to duplicate project')
+    }
+  }
+
+  const handleArchiveProject = async (projectId: string) => {
+    if (!confirm('Are you sure you want to archive this project?')) return
+    
+    try {
+      const response = await fetch(`/api/programs/projects/${projectId}/archive`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        await fetchProjects() // Refresh the list
+        setActionMenuOpen(null)
+        alert('Project archived successfully!')
+      } else {
+        throw new Error('Failed to archive project')
+      }
+    } catch (error) {
+      console.error('Error archiving project:', error)
+      alert('Failed to archive project')
+    }
+  }
+
+  const handleExportProject = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/programs/projects/${projectId}/export`)
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `project-${projectId}-export.xlsx`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+        setActionMenuOpen(null)
+      } else {
+        throw new Error('Failed to export project')
+      }
+    } catch (error) {
+      console.error('Error exporting project:', error)
+      alert('Failed to export project')
+    }
+  }
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) return
+    
+    try {
+      const response = await fetch(`/api/programs/projects/${projectId}`, {
+        method: 'DELETE'
+      })
+      if (response.ok) {
+        await fetchProjects() // Refresh the list
+        setActionMenuOpen(null)
+        alert('Project deleted successfully!')
+      } else {
+        throw new Error('Failed to delete project')
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      alert('Failed to delete project')
+    }
+  }
+
+  const handleEditProject = (projectId: string) => {
+    console.log('Edit project clicked:', projectId)
+    setActionMenuOpen(null)
+    // Navigate to edit page
+    router.push(`/programs/projects/${projectId}/edit`)
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ACTIVE': return 'bg-green-100 text-green-800'
@@ -396,6 +490,8 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
   if (!mounted) {
     return <div className="p-6">Loading projects...</div>
   }
+
+  console.log('ProjectTable permissions:', permissions)
 
   return (
     <div className="p-6 space-y-6">
@@ -724,20 +820,36 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => onProjectSelect(project.id)}
-                        className="text-blue-600 hover:text-blue-800"
+                        onClick={() => {
+                          console.log('View project clicked:', project.id)
+                          alert(`View project: ${project.name}`)
+                          onProjectSelect(project.id)
+                        }}
+                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                        title="View Project"
                       >
                         <EyeIcon className="h-4 w-4" />
                       </button>
-                      {permissions?.canEdit && (
-                        <button className="text-gray-600 hover:text-gray-800">
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                      )}
+                      <button 
+                        onClick={() => {
+                          console.log('Edit project clicked:', project.id)
+                          alert(`Edit project: ${project.name}`)
+                          handleEditProject(project.id)
+                        }}
+                        className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded transition-colors"
+                        title="Edit Project"
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </button>
                       <div className="relative">
                         <button
-                          onClick={() => setActionMenuOpen(actionMenuOpen === project.id ? null : project.id)}
-                          className="text-gray-600 hover:text-gray-800"
+                          onClick={() => {
+                            console.log('Menu toggle clicked for project:', project.id)
+                            alert(`Menu for project: ${project.name}`)
+                            setActionMenuOpen(actionMenuOpen === project.id ? null : project.id)
+                          }}
+                          className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded transition-colors"
+                          title="More Actions"
                         >
                           <EllipsisHorizontalIcon className="h-4 w-4" />
                         </button>
@@ -745,20 +857,32 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
                         {actionMenuOpen === project.id && (
                           <div className="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5">
                             <div className="py-1">
-                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 w-full text-left transition-colors">
+                              <button 
+                                onClick={() => handleDuplicateProject(project.id)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 w-full text-left transition-colors"
+                              >
                                 <DocumentDuplicateIcon className="h-4 w-4 mr-2" />
                                 Duplicate Project
                               </button>
-                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 w-full text-left transition-colors">
+                              <button 
+                                onClick={() => handleArchiveProject(project.id)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 w-full text-left transition-colors"
+                              >
                                 <ArchiveBoxIcon className="h-4 w-4 mr-2" />
                                 Archive Project
                               </button>
-                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 w-full text-left transition-colors">
+                              <button 
+                                onClick={() => handleExportProject(project.id)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 w-full text-left transition-colors"
+                              >
                                 <ShareIcon className="h-4 w-4 mr-2" />
                                 Export Data
                               </button>
                               {permissions?.canDelete && (
-                                <button className="flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50 w-full text-left transition-colors">
+                                <button 
+                                  onClick={() => handleDeleteProject(project.id)}
+                                  className="flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50 w-full text-left transition-colors"
+                                >
                                   <TrashIcon className="h-4 w-4 mr-2" />
                                   Delete Project
                                 </button>

@@ -123,6 +123,7 @@ function EnhancedProgramsContent() {
       if (hasBasicAccess) {
         const isSystemAdmin = userRoles.includes('ADMIN') || userRoles.includes('SUPER_ADMIN') || 
                           userRoles.includes('admin') || userRoles.includes('system_admin') || 
+                          userRoles.includes('superuser') ||
                           userPermissions.includes('all_access') || userPermissions.includes('admin')
         const isProjectManager = userRoles.includes('PROJECT_MANAGER') || userRoles.includes('project_manager')
         

@@ -25,12 +25,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const search = searchParams.get('search')
+    const eventId = searchParams.get('eventId')
 
     // Build filter
     const where: any = {}
 
     if (category) {
       where.category = category
+    }
+
+    if (eventId) {
+      where.customMetadata = {
+        path: ['eventId'],
+        equals: eventId
+      }
     }
 
     if (search) {

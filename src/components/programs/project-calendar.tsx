@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { 
   ChevronLeftIcon, 
@@ -48,6 +49,7 @@ type ViewMode = 'month' | 'year'
 type FilterType = 'all' | 'projects' | 'events'
 
 export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarProps) {
+  const { data: session, status } = useSession()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<ViewMode>('month')
   const [filterType, setFilterType] = useState<FilterType>('all')
@@ -66,21 +68,34 @@ export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarPr
 
   // Fetch projects and events data
   useEffect(() => {
-    // Prevent multiple rapid calls
-    let isMounted = true
-    
-    // Add a small delay to prevent immediate API calls on mount
-    const timer = setTimeout(() => {
-      if (isMounted) {
-        fetchCalendarData()
-      }
-    }, 500)
-    
-    return () => {
-      isMounted = false
-      clearTimeout(timer)
+    // Only fetch data when session is available
+    if (status === 'loading') {
+      return // Still loading session
     }
-  }, []) // Empty dependency array to run only once on mount
+    
+    if (status === 'unauthenticated') {
+      setError('Authentication required')
+      setLoading(false)
+      return
+    }
+    
+    if (status === 'authenticated' && session) {
+      // Prevent multiple rapid calls
+      let isMounted = true
+      
+      // Add a small delay to prevent immediate API calls on mount
+      const timer = setTimeout(() => {
+        if (isMounted) {
+          fetchCalendarData()
+        }
+      }, 500)
+      
+      return () => {
+        isMounted = false
+        clearTimeout(timer)
+      }
+    }
+  }, [status, session]) // Depend on session status
 
   const fetchCalendarData = async () => {
     try {
@@ -93,8 +108,16 @@ export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarPr
         fetch('/api/programs/events?limit=100')
       ])
 
-      if (!projectsRes.ok || !eventsRes.ok) {
-        throw new Error('Failed to fetch calendar data')
+      if (!projectsRes.ok) {
+        const errorData = await projectsRes.text()
+        console.error('Projects API error:', projectsRes.status, errorData)
+        throw new Error(`Failed to fetch projects: ${projectsRes.status} ${errorData}`)
+      }
+      
+      if (!eventsRes.ok) {
+        const errorData = await eventsRes.text()
+        console.error('Events API error:', eventsRes.status, errorData)
+        throw new Error(`Failed to fetch events: ${eventsRes.status} ${errorData}`)
       }
 
       const [projectsData, eventsData] = await Promise.all([
@@ -127,8 +150,8 @@ export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarPr
       }
 
       // Transform events
-      if (eventsData.success && eventsData.data) {
-        eventsData.data.forEach((event: any) => {
+      if (eventsData.events && Array.isArray(eventsData.events)) {
+        eventsData.events.forEach((event: any) => {
           if (event.startDate) {
             events.push({
               id: event.id,

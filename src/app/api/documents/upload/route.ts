@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     const title = formData.get('title') as string
     const category = formData.get('category') as string
     const classification = formData.get('classification') as string
+    const eventId = formData.get('eventId') as string
 
     if (!file) {
       return NextResponse.json({ 
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
         isPublic: classification === 'PUBLIC',
         accessLevel: classification?.toLowerCase() || 'internal',
         uploadedBy: session.user?.id,
+        customMetadata: eventId ? { eventId } : {},
         updatedAt: new Date()
       }
     })

@@ -26,10 +26,10 @@ export async function GET(request: NextRequest) {
     // Build where clause
     const where: any = {};
     if (status && status !== 'all') {
-      where.status = status.toUpperCase();
+      where.status = status.toLowerCase();
     }
     if (category && category !== 'all') {
-      where.category = category.toUpperCase();
+      where.type = category.toLowerCase();
     }
 
     console.log('Events API: Where clause:', where)

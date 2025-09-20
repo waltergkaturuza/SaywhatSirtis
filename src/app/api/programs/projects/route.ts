@@ -114,6 +114,29 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Link uploaded documents to this project
+    if (body.uploadedDocuments && body.uploadedDocuments.length > 0) {
+      try {
+        for (const doc of body.uploadedDocuments) {
+          if (doc.documentId) {
+            await prisma.documents.update({
+              where: { id: doc.documentId },
+              data: { 
+                projectId: project.id,
+                customMetadata: { 
+                  projectId: project.id,
+                  projectName: project.name 
+                }
+              }
+            })
+          }
+        }
+      } catch (docError) {
+        console.error('Error linking documents to project:', docError)
+        // Don't fail project creation if document linking fails
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
       message: "Project created successfully",
