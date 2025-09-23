@@ -53,12 +53,12 @@ interface Risk {
     lastName: string | null
     email: string
   } | null
-  mitigations: {
+  mitigations?: {
     id: string
     status: MitigationStatus
     implementationProgress: number
   }[]
-  _count: {
+  _count?: {
     mitigations: number
     assessments: number
     documents: number
@@ -158,7 +158,7 @@ export default function RiskManagementPage() {
         risk.status,
         new Date(risk.dateIdentified).toLocaleDateString(),
         risk.owner ? `"${risk.owner.firstName} ${risk.owner.lastName}"` : 'Unassigned',
-        risk._count.mitigations
+        risk._count?.mitigations || 0
       ])
       
       // Combine headers and rows
@@ -501,10 +501,10 @@ export default function RiskManagementPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {risk.mitigations.length > 0 ? `${risk.mitigations[0].implementationProgress}%` : 'N/A'}
+                          {risk.mitigations && risk.mitigations.length > 0 ? `${risk.mitigations[0].implementationProgress}%` : 'N/A'}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {risk._count.mitigations} mitigation{risk._count.mitigations !== 1 ? 's' : ''}
+                          {risk._count?.mitigations || 0} mitigation{(risk._count?.mitigations || 0) !== 1 ? 's' : ''}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

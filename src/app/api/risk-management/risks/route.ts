@@ -88,10 +88,23 @@ export async function GET(request: NextRequest) {
       prisma.risks.count({ where })
     ]);
 
+    // Transform the data to match frontend expectations
+    const transformedRisks = risks.map(risk => ({
+      ...risk,
+      owner: risk.users_risks_ownerIdTousers,
+      createdBy: risk.users_risks_createdByIdTousers,
+      mitigations: risk.risk_mitigations,
+      _count: {
+        mitigations: risk._count.risk_mitigations,
+        assessments: risk._count.risk_assessments,
+        documents: risk._count.risk_documents
+      }
+    }));
+
     return NextResponse.json({
       success: true,
       data: {
-        risks,
+        risks: transformedRisks,
         pagination: {
           page,
           limit,
