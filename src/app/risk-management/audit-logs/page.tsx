@@ -283,14 +283,14 @@ export default function AuditLogsPage() {
 
   const getSeverityBadge = (severity: string) => {
     const colors = {
-      LOW: 'bg-green-100 text-green-800',
-      MEDIUM: 'bg-yellow-100 text-yellow-800',
-      HIGH: 'bg-orange-100 text-orange-800',
-      CRITICAL: 'bg-red-100 text-red-800'
+      LOW: 'bg-green-100 text-green-700 border border-green-200',
+      MEDIUM: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
+      HIGH: 'bg-orange-100 text-orange-700 border border-orange-200',
+      CRITICAL: 'bg-red-100 text-red-700 border border-red-200'
     }
     
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[severity as keyof typeof colors]}`}>
+      <span className={`inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold ${colors[severity as keyof typeof colors]} shadow-sm`}>
         {severity}
       </span>
     )
@@ -309,14 +309,20 @@ export default function AuditLogsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 px-4 py-6">
+        <div className="w-full max-w-none mx-auto">
           <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-orange-100 mb-8">
+              <div className="h-12 bg-gradient-to-r from-orange-200 to-orange-300 rounded-xl w-1/3 mb-4"></div>
+              <div className="h-6 bg-orange-100 rounded-lg w-2/3"></div>
+            </div>
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-orange-100 p-8">
+              <div className="h-8 bg-orange-100 rounded-xl w-1/4 mb-6"></div>
+              <div className="space-y-4">
+                <div className="h-6 bg-orange-50 rounded-lg w-full"></div>
+                <div className="h-6 bg-orange-50 rounded-lg w-3/4"></div>
+                <div className="h-6 bg-orange-50 rounded-lg w-1/2"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -325,55 +331,63 @@ export default function AuditLogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 px-4 py-6">
+      <div className="w-full max-w-none mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
             <Link
               href="/risk-management"
-              className="inline-flex items-center text-gray-600 hover:text-gray-900"
+              className="inline-flex items-center text-gray-600 hover:text-orange-600 transition-colors duration-200 font-medium"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Risk Management
             </Link>
             
             <button
               onClick={exportAuditLogs}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
             >
-              <FileText className="h-4 w-4 mr-2" />
+              <FileText className="h-5 w-5 mr-2" />
               Export Logs
             </button>
           </div>
           
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Audit Trail</h1>
-          <p className="text-gray-600">Track all risk management activities and changes</p>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-orange-100">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-orange-600 bg-clip-text text-transparent mb-3">
+              Audit Trail
+            </h1>
+            <p className="text-gray-600 text-lg">Track all risk management activities and changes with comprehensive logging</p>
+          </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-orange-100 p-8 mb-8">
+          <div className="flex items-center mb-6">
+            <Filter className="h-6 w-6 text-orange-500 mr-3" />
+            <h2 className="text-xl font-semibold text-gray-900">Filter & Search</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Search</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-orange-400" />
                 <input
                   type="text"
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   placeholder="Search logs..."
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white"
                 />
               </div>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Action</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Action</label>
               <select
                 value={filters.action}
                 onChange={(e) => handleFilterChange('action', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white"
               >
                 <option value="all">All Actions</option>
                 <option value="CREATE">Create</option>
@@ -387,11 +401,11 @@ export default function AuditLogsPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Entity Type</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Entity Type</label>
               <select
                 value={filters.entityType}
                 onChange={(e) => handleFilterChange('entityType', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white"
               >
                 <option value="all">All Types</option>
                 <option value="RISK">Risk</option>
@@ -403,11 +417,11 @@ export default function AuditLogsPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Severity</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Severity</label>
               <select
                 value={filters.severity}
                 onChange={(e) => handleFilterChange('severity', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white"
               >
                 <option value="all">All Severities</option>
                 <option value="LOW">Low</option>
@@ -418,120 +432,135 @@ export default function AuditLogsPage() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">From Date</label>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">To Date</label>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 bg-gray-50 hover:bg-white"
               />
             </div>
           </div>
           
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-4 border-t border-gray-100">
             <button
               onClick={clearFilters}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              className="inline-flex items-center px-6 py-3 border border-orange-200 text-orange-600 rounded-xl hover:bg-orange-50 hover:border-orange-300 transition-all duration-200 font-medium"
             >
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="h-5 w-5 mr-2" />
               Clear Filters
             </button>
           </div>
         </div>
 
         {/* Audit Logs Table */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Activity Logs</h2>
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-orange-100 overflow-hidden">
+          <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-orange-500 to-orange-600">
+            <h2 className="text-2xl font-bold text-white flex items-center">
+              <FileText className="h-6 w-6 mr-3" />
+              Activity Logs
+            </h2>
           </div>
           
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-5 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
                     Timestamp
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-5 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
                     User
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-5 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
                     Action
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-5 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
                     Entity
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-5 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
                     Severity
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-5 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
                     Details
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-8 py-5 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white/50 divide-y divide-gray-100">
                 {auditLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">No audit logs found</p>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Try adjusting your filters or check back later
-                      </p>
+                    <td colSpan={7} className="px-8 py-16 text-center bg-gradient-to-br from-orange-50 to-orange-100">
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-6">
+                          <FileText className="h-10 w-10 text-orange-400" />
+                        </div>
+                        <p className="text-xl font-semibold text-gray-700 mb-2">No audit logs found</p>
+                        <p className="text-gray-500 text-lg">
+                          Try adjusting your filters or check back later
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatTimestamp(log.timestamp)}
+                    <tr key={log.id} className="hover:bg-orange-50/50 transition-colors duration-200 border-b border-gray-50">
+                      <td className="px-8 py-6 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <div className="bg-gray-100 rounded-lg px-3 py-2 inline-block">
+                          {formatTimestamp(log.timestamp)}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-8 py-6 whitespace-nowrap">
                         <div className="flex items-center">
-                          <User className="h-4 w-4 text-gray-400 mr-2" />
+                          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-4">
+                            <User className="h-5 w-5 text-orange-500" />
+                          </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{log.userName}</div>
+                            <div className="text-sm font-semibold text-gray-900">{log.userName}</div>
                             <div className="text-sm text-gray-500">{log.userEmail}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
+                      <td className="px-8 py-6 whitespace-nowrap">
+                        <div className="flex items-center bg-gray-50 rounded-lg px-3 py-2 w-fit">
                           {getActionIcon(log.action)}
-                          <span className="ml-2 text-sm text-gray-900">{log.action}</span>
+                          <span className="ml-2 text-sm font-medium text-gray-900">{log.action}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{log.entityName}</div>
-                        <div className="text-sm text-gray-500">{log.entityType}</div>
+                      <td className="px-8 py-6">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="text-sm font-semibold text-gray-900">{log.entityName}</div>
+                          <div className="text-xs text-orange-600 font-medium mt-1">{log.entityType}</div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-8 py-6 whitespace-nowrap">
                         {getSeverityBadge(log.severity)}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs truncate">
-                          {log.details || 'No additional details'}
+                      <td className="px-8 py-6">
+                        <div className="bg-gray-50 rounded-lg p-3 max-w-xs">
+                          <div className="text-sm text-gray-900 line-clamp-2">
+                            {log.details || 'No additional details'}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-8 py-6 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => viewLogDetails(log)}
-                          className="text-blue-600 hover:text-blue-900 inline-flex items-center"
+                          className="text-orange-600 hover:text-orange-700 inline-flex items-center bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-lg transition-colors duration-200 font-medium"
                         >
-                          <Eye className="h-4 w-4 mr-1" />
+                          <Eye className="h-4 w-4 mr-2" />
                           View
                         </button>
                       </td>
@@ -544,44 +573,44 @@ export default function AuditLogsPage() {
           
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+            <div className="bg-gradient-to-r from-orange-50 to-orange-100 px-8 py-6 border-t border-orange-200">
               <div className="flex items-center justify-between">
                 <div className="flex-1 flex justify-between sm:hidden">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                    className="relative inline-flex items-center px-6 py-3 border border-orange-200 text-sm font-medium rounded-xl text-orange-700 bg-white hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                    className="ml-3 relative inline-flex items-center px-6 py-3 border border-orange-200 text-sm font-medium rounded-xl text-orange-700 bg-white hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   >
                     Next
                   </button>
                 </div>
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm text-gray-700">
-                      Showing page <span className="font-medium">{currentPage}</span> of{' '}
-                      <span className="font-medium">{totalPages}</span>
+                    <p className="text-lg text-gray-700 font-medium">
+                      Showing page <span className="font-bold text-orange-600">{currentPage}</span> of{' '}
+                      <span className="font-bold text-orange-600">{totalPages}</span>
                     </p>
                   </div>
                   <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <nav className="relative z-0 inline-flex rounded-xl shadow-lg overflow-hidden">
                       <button
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                         disabled={currentPage === 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                        className="relative inline-flex items-center px-6 py-3 border border-orange-200 bg-white text-sm font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Previous
                       </button>
                       <button
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                         disabled={currentPage === totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                        className="relative inline-flex items-center px-6 py-3 border-l border-orange-200 bg-white text-sm font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Next
                       </button>
