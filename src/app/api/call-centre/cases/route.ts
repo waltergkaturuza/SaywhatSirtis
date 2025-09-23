@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, checkDatabaseConnection } from '@/lib/db-connection';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check database connection first
+    const isConnected = await checkDatabaseConnection()
+    if (!isConnected) {
+      console.error('Database connection failed in call centre cases API')
+      return NextResponse.json(
+        { error: 'Database connection unavailable', code: 'DB_CONNECTION_FAILED' }, 
+        { status: 503 }
+      )
+    }
+
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
@@ -21,18 +31,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get call centre records from database and transform them into cases
-    const calls = await prisma.call_records.findMany({
-      where: {
-        // Only include calls that have been assigned to create cases
-        assignedOfficer: {
-          not: null
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    // Get call centre records from database with timeout and error handling
+    let calls: any[] = [];
+    
+    try {
+      const queryPromise = Promise.race([
+        prisma.call_records.findMany({
+          where: {
+            // Only include calls that have been assigned to create cases
+            assignedOfficer: {
+              not: null
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 100 // Limit results to prevent timeout
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Cases query timeout')), 10000)
+        )
+      ]);
+      
+      calls = await queryPromise as any[];
+    } catch (error) {
+      console.error('Failed to fetch call records for cases:', error);
+      // Return empty cases array if database query fails
+      return NextResponse.json({
+        success: true,
+        cases: [],
+        error: 'Database query failed, showing empty results'
+      });
+    }
 
     // Transform calls into cases format
     const cases = calls.map(call => {

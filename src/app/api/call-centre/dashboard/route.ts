@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 
 // Helper: safe percentage formatting
 function pct(part: number, whole: number) {
@@ -11,6 +11,16 @@ function pct(part: number, whole: number) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check database connection first
+    const isConnected = await checkDatabaseConnection()
+    if (!isConnected) {
+      console.error('Database connection failed in call centre dashboard API')
+      return NextResponse.json(
+        { error: 'Database connection unavailable', code: 'DB_CONNECTION_FAILED' }, 
+        { status: 503 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session) {
@@ -44,38 +54,84 @@ export async function GET(request: NextRequest) {
     const thisYearStart = new Date(now.getFullYear(), 0, 1)
     const thisYearEnd = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
 
-    // Batch queries in smaller groups to avoid pool exhaustion
-    // Group 1: Today's metrics
-    const [todayTotal, todayOpen] = await Promise.all([
-      prisma.call_records.count({ where: { createdAt: { gte: todayStart, lte: todayEnd } } }),
-      prisma.call_records.count({ where: { createdAt: { gte: todayStart, lte: todayEnd }, status: 'OPEN' } })
-    ])
+    // Execute queries with timeout and error handling for production stability
+    const queryTimeout = 15000; // 15 seconds timeout for each query group
+    
+    let todayTotal = 0, todayOpen = 0;
+    let monthTotal = 0, monthOpen = 0, monthResolved = 0;
+    let yearTotal = 0, yearOpen = 0, yearResolved = 0;
+    let allTotal = 0, allOpen = 0, allResolved = 0;
+    let activeCases = 0, overdueCases = 0;
+    let callsByPurpose: any[] = [];
 
-    // Group 2: Month/Year metrics
-    const [monthTotal, monthOpen, monthResolved, yearTotal, yearOpen, yearResolved] = await Promise.all([
-      prisma.call_records.count({ where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd } } }),
-      prisma.call_records.count({ where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd }, status: 'OPEN' } }),
-      prisma.call_records.count({ where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd }, status: 'RESOLVED' } }),
-      prisma.call_records.count({ where: { createdAt: { gte: thisYearStart, lte: thisYearEnd } } }),
-      prisma.call_records.count({ where: { createdAt: { gte: thisYearStart, lte: thisYearEnd }, status: 'OPEN' } }),
-      prisma.call_records.count({ where: { createdAt: { gte: thisYearStart, lte: thisYearEnd }, status: 'RESOLVED' } })
-    ])
+    try {
+      // Group 1: Today's metrics with timeout
+      const todayPromises = Promise.race([
+        Promise.all([
+          prisma.call_records.count({ where: { createdAt: { gte: todayStart, lte: todayEnd } } }),
+          prisma.call_records.count({ where: { createdAt: { gte: todayStart, lte: todayEnd }, status: 'OPEN' } })
+        ]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Today metrics timeout')), queryTimeout))
+      ]);
+      
+      [todayTotal, todayOpen] = await todayPromises as [number, number];
+    } catch (error) {
+      console.warn('Today metrics query failed, using defaults:', error);
+    }
 
-    // Group 3: All-time and case metrics
-    const [allTotal, allOpen, allResolved, activeCases, overdueCases] = await Promise.all([
-      prisma.call_records.count(),
-      prisma.call_records.count({ where: { status: 'OPEN' } }),
-      prisma.call_records.count({ where: { status: 'RESOLVED' } }),
-      prisma.call_records.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
-      prisma.call_records.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] }, createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } })
-    ])
+    try {
+      // Group 2: Month/Year metrics with timeout  
+      const periodPromises = Promise.race([
+        Promise.all([
+          prisma.call_records.count({ where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd } } }),
+          prisma.call_records.count({ where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd }, status: 'OPEN' } }),
+          prisma.call_records.count({ where: { createdAt: { gte: thisMonthStart, lte: thisMonthEnd }, status: 'RESOLVED' } }),
+          prisma.call_records.count({ where: { createdAt: { gte: thisYearStart, lte: thisYearEnd } } }),
+          prisma.call_records.count({ where: { createdAt: { gte: thisYearStart, lte: thisYearEnd }, status: 'OPEN' } }),
+          prisma.call_records.count({ where: { createdAt: { gte: thisYearStart, lte: thisYearEnd }, status: 'RESOLVED' } })
+        ]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Period metrics timeout')), queryTimeout))
+      ]);
+      
+      [monthTotal, monthOpen, monthResolved, yearTotal, yearOpen, yearResolved] = await periodPromises as number[];
+    } catch (error) {
+      console.warn('Period metrics query failed, using defaults:', error);
+    }
 
-    // Group 4: Call purpose distribution (separate to avoid timeout)
-    const callsByPurpose = await prisma.call_records.groupBy({
-      by: ['callType'],
-      _count: { callType: true },
-      where: { createdAt: { gte: todayStart, lte: todayEnd } }
-    })
+    try {
+      // Group 3: All-time and case metrics with timeout
+      const allTimePromises = Promise.race([
+        Promise.all([
+          prisma.call_records.count(),
+          prisma.call_records.count({ where: { status: 'OPEN' } }),
+          prisma.call_records.count({ where: { status: 'RESOLVED' } }),
+          prisma.call_records.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+          prisma.call_records.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] }, createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } })
+        ]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('All-time metrics timeout')), queryTimeout))
+      ]);
+      
+      [allTotal, allOpen, allResolved, activeCases, overdueCases] = await allTimePromises as number[];
+    } catch (error) {
+      console.warn('All-time metrics query failed, using defaults:', error);
+    }
+
+    try {
+      // Group 4: Call purpose distribution with timeout
+      const purposePromise = Promise.race([
+        prisma.call_records.groupBy({
+          by: ['callType'],
+          _count: { callType: true },
+          where: { createdAt: { gte: todayStart, lte: todayEnd } }
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Purpose distribution timeout')), queryTimeout))
+      ]);
+      
+      callsByPurpose = await purposePromise as any[];
+    } catch (error) {
+      console.warn('Purpose distribution query failed, using defaults:', error);
+      callsByPurpose = [];
+    }
 
     const todayStats = {
       callsReceived: todayTotal,

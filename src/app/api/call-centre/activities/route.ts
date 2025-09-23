@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check database connection first
+    const isConnected = await checkDatabaseConnection()
+    if (!isConnected) {
+      console.error('Database connection failed in call centre activities API')
+      return NextResponse.json(
+        { error: 'Database connection unavailable', code: 'DB_CONNECTION_FAILED' }, 
+        { status: 503 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session) {

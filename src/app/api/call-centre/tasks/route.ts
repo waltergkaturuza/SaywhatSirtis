@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check database connection first
+    const isConnected = await checkDatabaseConnection()
+    if (!isConnected) {
+      console.error('Database connection failed in call centre tasks API')
+      return NextResponse.json(
+        { error: 'Database connection unavailable', code: 'DB_CONNECTION_FAILED' }, 
+        { status: 503 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session) {
@@ -20,8 +30,6 @@ export async function GET(request: NextRequest) {
     if (!hasPermission) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-
-    // Removed redundant connection test - Prisma handles connections automatically
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
