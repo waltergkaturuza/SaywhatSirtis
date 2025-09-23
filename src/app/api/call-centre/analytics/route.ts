@@ -277,7 +277,7 @@ export async function GET(request: NextRequest) {
     const { response, status } = createErrorResponse(
       'Failed to retrieve analytics',
       HttpStatus.INTERNAL_SERVER_ERROR,
-      { code: ErrorCodes.INTERNAL_SERVER_ERROR, details: error instanceof Error ? error.message : 'Unknown error' }
+      { code: ErrorCodes.INTERNAL_SERVER_ERROR, details: { message: error instanceof Error ? error.message : 'Unknown error' } }
     )
     return NextResponse.json(response, { status })
   }
