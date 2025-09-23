@@ -39,8 +39,10 @@ export default function EditRiskPage() {
   
   const [risk, setRisk] = useState<Risk | null>(null)
   const [users, setUsers] = useState<User[]>([])
+  const [departments, setDepartments] = useState<Array<{id: string, name: string}>>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [loadingDepartments, setLoadingDepartments] = useState(true)
   
   // Form state
   const [formData, setFormData] = useState({
@@ -132,6 +134,32 @@ export default function EditRiskPage() {
         if (usersData.success) {
           setUsers(usersData.data.users || [])
         }
+      }
+      
+      // Load departments from HR API
+      try {
+        setLoadingDepartments(true)
+        const deptResponse = await fetch('/api/hr/departments/main')
+        if (deptResponse.ok) {
+          const deptResult = await deptResponse.json()
+          if (deptResult.success && deptResult.data) {
+            setDepartments(deptResult.data.map((dept: any) => ({
+              id: dept.id,
+              name: dept.name
+            })))
+          } else {
+            console.error('Failed to fetch departments:', deptResult.message)
+            setDepartments([])
+          }
+        } else {
+          console.error('Department API request failed:', deptResponse.statusText)
+          setDepartments([])
+        }
+      } catch (deptError) {
+        console.error('Error fetching departments:', deptError)
+        setDepartments([])
+      } finally {
+        setLoadingDepartments(false)
       }
       
     } catch (error) {
@@ -325,13 +353,20 @@ export default function EditRiskPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Department
               </label>
-              <input
-                type="text"
+              <select
                 value={formData.department}
                 onChange={(e) => handleInputChange('department', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter department"
-              />
+              >
+                <option value="">Select Department</option>
+                {loadingDepartments ? (
+                  <option disabled>Loading departments...</option>
+                ) : (
+                  departments.map(dept => (
+                    <option key={dept.id} value={dept.name}>{dept.name}</option>
+                  ))
+                )}
+              </select>
             </div>
 
             {/* Probability */}

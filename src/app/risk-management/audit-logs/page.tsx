@@ -333,9 +333,15 @@ export default function AuditLogsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 px-4 py-6">
       <div className="w-full max-w-none mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+        {/* Navigation */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <Link
+              href="/"
+              className="inline-flex items-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+            >
+              🏠
+            </Link>
             <Link
               href="/risk-management"
               className="inline-flex items-center text-gray-600 hover:text-orange-600 transition-colors duration-200 font-medium"
@@ -343,7 +349,12 @@ export default function AuditLogsPage() {
               <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Risk Management
             </Link>
-            
+          </div>
+        </div>
+
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center mb-6">
             <button
               onClick={exportAuditLogs}
               className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"

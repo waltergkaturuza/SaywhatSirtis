@@ -40,6 +40,7 @@ export default function AddRiskPage() {
   const [loading, setLoading] = useState(false)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
+  const [loadingDepartments, setLoadingDepartments] = useState(true)
   const [currentTag, setCurrentTag] = useState('')
   const [formData, setFormData] = useState<RiskFormData>({
     title: '',
@@ -63,7 +64,7 @@ export default function AddRiskPage() {
 
   const loadEmployeesAndDepartments = async () => {
     try {
-      // Load employees
+      // Load employees (keeping mock data for now)
       setEmployees([
         {
           id: '1',
@@ -88,17 +89,34 @@ export default function AddRiskPage() {
         }
       ])
       
-      // Load departments
-      setDepartments([
-        { id: '1', name: 'Human Resources' },
-        { id: '2', name: 'Finance' },
-        { id: '3', name: 'Human Resources' },
-        { id: '4', name: 'Operations' },
-        { id: '5', name: 'Marketing' },
-        { id: '6', name: 'Legal & Compliance' },
-        { id: '7', name: 'Customer Service' },
-        { id: '8', name: 'Executive' }
-      ])
+      // Load departments from HR API
+      try {
+        setLoadingDepartments(true)
+        const response = await fetch('/api/hr/departments/main')
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data) {
+            setDepartments(result.data.map((dept: any) => ({
+              id: dept.id,
+              name: dept.name
+            })))
+          } else {
+            console.error('Failed to fetch departments:', result.message)
+            // Fallback to empty departments
+            setDepartments([])
+          }
+        } else {
+          console.error('Department API request failed:', response.statusText)
+          // Fallback to empty departments
+          setDepartments([])
+        }
+      } catch (deptError) {
+        console.error('Error fetching departments:', deptError)
+        // Fallback to empty departments
+        setDepartments([])
+      } finally {
+        setLoadingDepartments(false)
+      }
       
     } catch (error) {
       console.error('Error loading data:', error)
@@ -315,9 +333,13 @@ export default function AddRiskPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select Department</option>
-                  {departments.map(dept => (
-                    <option key={dept.id} value={dept.name}>{dept.name}</option>
-                  ))}
+                  {loadingDepartments ? (
+                    <option disabled>Loading departments...</option>
+                  ) : (
+                    departments.map(dept => (
+                      <option key={dept.id} value={dept.name}>{dept.name}</option>
+                    ))
+                  )}
                 </select>
               </div>
               
