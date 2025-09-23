@@ -17,6 +17,19 @@ const requestLog: Array<{
 }> = []
 
 /**
+ * Fast health check response to avoid timeout on Render
+ */
+function createHealthResponse(): NextResponse {
+  return NextResponse.json({
+    status: 'healthy',
+    message: 'SIRTIS API is running (middleware)',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    middleware: true
+  }, { status: 200 });
+}
+
+/**
  * Rate limiting configuration
  */
 const RATE_LIMIT_CONFIG = {
@@ -144,6 +157,11 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
  */
 export async function middleware(request: NextRequest) {
   const startTime = Date.now()
+  
+  // FAST HEALTH CHECK BYPASS - Critical for Render deployment
+  if (request.nextUrl.pathname === '/api/health') {
+    return createHealthResponse();
+  }
   
   // Skip middleware for static files and Next.js internals
   if (

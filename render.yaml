@@ -4,7 +4,7 @@ services:
     env: node
     runtime: node
     buildCommand: npm ci --legacy-peer-deps && npx prisma generate && npm run build
-    startCommand: next start -H 0.0.0.0 -p $PORT
+    startCommand: bash scripts/render-start.sh
     healthCheckPath: /api/health
     autoDeploy: true
     region: oregon
@@ -26,3 +26,9 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      - key: JWT_SECRET
+        value: "6a1f9c25c069957affc22548e3fb186f86caf4dc8005f1148a18b1d9fa912744"

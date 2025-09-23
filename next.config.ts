@@ -11,8 +11,32 @@ const nextConfig: NextConfig = {
     // Use a simple build ID to avoid issues
     return 'build-id'
   },
+  // Enable standalone output for Docker and Render deployment
+  output: 'standalone',
+  // Compress images for better performance
+  images: {
+    formats: ['image/webp'],
+    minimumCacheTTL: 60,
+  },
+  // Optimize build for Render's resource limits
+  poweredByHeader: false,
+  reactStrictMode: true,
   // Ensure proper port and host binding for production
-  /* config options here */
+  experimental: {
+    // Optimize for production builds
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+  // Webpack optimizations for smaller bundle
+  webpack: (config, { dev, isServer }) => {
+    if (!dev && !isServer) {
+      // Reduce client bundle size
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@': __dirname + '/src',
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
