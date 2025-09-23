@@ -14,7 +14,8 @@ import {
   PlusIcon,
   AdjustmentsHorizontalIcon,
   PencilIcon,
-  TrashIcon
+  TrashIcon,
+  XMarkIcon
 } from "@heroicons/react/24/outline"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -300,6 +301,7 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
   const [error, setError] = useState<string>("")
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [showFindingsModal, setShowFindingsModal] = useState(false)
+  const [showAuditSelectionModal, setShowAuditSelectionModal] = useState(false)
   const [selectedAudit, setSelectedAudit] = useState<Audit | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -786,7 +788,7 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                 </div>
                 <div className="flex space-x-3">
                   <Button
-                    onClick={() => setActiveView('audits')}
+                    onClick={() => setShowAuditSelectionModal(true)}
                     className="bg-blue-500 hover:bg-blue-600 text-white"
                   >
                     <PlusIcon className="h-4 w-4 mr-2" />
@@ -1097,6 +1099,73 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
               }}
               onCancel={() => setShowFindingsModal(false)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Audit Selection Modal */}
+      {showAuditSelectionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAuditSelectionModal(false)}></div>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Select Audit for Findings</h3>
+                <button
+                  onClick={() => setShowAuditSelectionModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">Choose an audit to add findings and evidence</p>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-3">
+                {audits.filter(audit => audit.status === 'IN_PROGRESS' || audit.status === 'COMPLETED').map((audit) => (
+                  <div key={audit.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{audit.name}</h4>
+                        <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
+                          <span>Auditor: {audit.auditor}</span>
+                          <span>Date: {new Date(audit.scheduledDate).toLocaleDateString()}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            audit.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {audit.status}
+                          </span>
+                        </div>
+                        {audit.description && (
+                          <p className="text-sm text-gray-500 mt-1">{audit.description}</p>
+                        )}
+                      </div>
+                      <Button
+                        onClick={() => {
+                          setSelectedAudit(audit)
+                          setShowAuditSelectionModal(false)
+                          setShowFindingsModal(true)
+                        }}
+                        className="bg-blue-500 hover:bg-blue-600 text-white ml-4"
+                        size="sm"
+                      >
+                        <DocumentTextIcon className="h-4 w-4 mr-1" />
+                        Add Findings
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {audits.filter(audit => audit.status === 'IN_PROGRESS' || audit.status === 'COMPLETED').length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <ClipboardDocumentListIcon className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p>No audits available for findings</p>
+                    <p className="text-sm">Complete an audit to add findings</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

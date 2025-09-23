@@ -502,15 +502,6 @@ export default function InventoryManagementPage() {
         title="Export Assets"
         showOptions={true}
       />
-      
-      {permissions.canCreate && (
-        <Button 
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Add Asset
-        </Button>
-      )}
     </div>
   )
 
