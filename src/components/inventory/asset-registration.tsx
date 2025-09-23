@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
   CubeIcon,
   CurrencyDollarIcon,
@@ -11,9 +11,30 @@ import {
   CalendarIcon,
   UserIcon,
   BuildingOfficeIcon,
-  QrCodeIcon
+  QrCodeIcon,
+  CheckCircleIcon
 } from "@heroicons/react/24/outline"
 import type { Asset, InventoryPermissions } from "@/types/inventory"
+
+interface Department {
+  id: string
+  name: string
+  parentId?: string
+}
+
+interface Employee {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  department?: string
+}
+
+interface FundingSource {
+  id: string
+  name: string
+  isOther?: boolean
+}
 
 interface AssetRegistrationProps {
   permissions: InventoryPermissions
@@ -25,6 +46,14 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState(1)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Dynamic data states
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [fundingSources, setFundingSources] = useState<FundingSource[]>([])
+  const [customFundingSource, setCustomFundingSource] = useState("")
+  const [loadingData, setLoadingData] = useState(true)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
   
   const [formData, setFormData] = useState({
     // Basic Information
@@ -42,6 +71,7 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
     depreciationRate: editAsset?.depreciationRate || 0,
     depreciationMethod: editAsset?.depreciationMethod || "straight-line",
     procurementDate: editAsset?.procurementDate || "",
+    fundingSource: editAsset?.fundingSource || "",
     
     // Location & Allocation
     location: editAsset?.location?.id || "",
@@ -100,10 +130,74 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
     { id: "remote", name: "Remote/Mobile" }
   ]
 
-  const departments = [
-    "Finance", "Administration", "IT", "HR", "Operations", 
-    "Marketing", "Sales", "Legal", "Procurement", "Security"
-  ]
+  // Initialize funding sources with predefined options
+  useEffect(() => {
+    const initialFundingSources: FundingSource[] = [
+      { id: "unicef", name: "UNICEF" },
+      { id: "eu", name: "EU" },
+      { id: "internal-capex", name: "Internal Capex" },
+      { id: "government", name: "Government" },
+      { id: "world-bank", name: "World Bank" },
+      { id: "other", name: "Other", isOther: true }
+    ]
+    setFundingSources(initialFundingSources)
+  }, [])
+
+  // Fetch departments and employees from HR system
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoadingData(true)
+        
+        // Fetch departments from HR API
+        const deptResponse = await fetch('/api/hr/departments/hierarchy')
+        if (deptResponse.ok) {
+          const deptData = await deptResponse.json()
+          
+          // Use the flat structure from the API response
+          if (deptData.success && deptData.data && deptData.data.flat) {
+            const departments = deptData.data.flat.map((dept: any) => ({
+              id: dept.id,
+              name: dept.name,
+              parentId: dept.parentId || null
+            }))
+            setDepartments(departments)
+          } else {
+            console.error('Unexpected department data structure:', deptData)
+            setDepartments([])
+          }
+        } else {
+          console.error('Failed to fetch departments:', deptResponse.status)
+          setDepartments([])
+        }
+        
+        // Fetch employees from HR API
+        const empResponse = await fetch('/api/hr/employees')
+        if (empResponse.ok) {
+          const empData = await empResponse.json()
+          
+          // Handle the employees data structure
+          if (empData.success && empData.data) {
+            setEmployees(empData.data)
+          } else if (Array.isArray(empData)) {
+            setEmployees(empData)
+          } else {
+            console.error('Unexpected employee data structure:', empData)
+            setEmployees([])
+          }
+        } else {
+          console.error('Failed to fetch employees:', empResponse.status)
+          setEmployees([])
+        }
+      } catch (error) {
+        console.error('Error fetching HR data:', error)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -176,12 +270,36 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
         formData.assetNumber = generateAssetNumber()
       }
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Prepare data for API call
+      const assetData = {
+        ...formData,
+        // Handle custom funding source
+        fundingSource: formData.fundingSource === "other" ? customFundingSource : formData.fundingSource
+      }
       
-      console.log("Asset registration data:", formData)
-      alert(editAsset ? "Asset updated successfully!" : "Asset registered successfully!")
-      onSuccess()
+      // Call the API
+      const response = await fetch('/api/inventory/assets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(assetData),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to register asset')
+      }
+      
+      const result = await response.json()
+      console.log("Asset registration successful:", result)
+      setShowSuccessModal(true)
+      
+      // Auto-close modal and call onSuccess after 2 seconds
+      setTimeout(() => {
+        setShowSuccessModal(false)
+        onSuccess()
+      }, 2000)
     } catch (error) {
       console.error("Error registering asset:", error)
       alert("Error registering asset. Please try again.")
@@ -205,6 +323,34 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
   return (
     <div className="p-6">
       <div className="max-w-4xl mx-auto">
+        {/* Success Modal */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 transform transition-all duration-300 scale-100 opacity-100">
+              <div className="text-center">
+                <CheckCircleIcon className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {editAsset ? "Asset Updated Successfully!" : "Asset Registered Successfully!"}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {editAsset 
+                    ? "Your asset information has been updated in the inventory system."
+                    : "Your asset has been registered and added to the inventory system."
+                  }
+                </p>
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => setShowSuccessModal(false)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -408,6 +554,42 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Funding Source *
+                  </label>
+                  <select
+                    value={formData.fundingSource}
+                    onChange={(e) => {
+                      handleInputChange("fundingSource", e.target.value)
+                      if (e.target.value !== "other") {
+                        setCustomFundingSource("")
+                      }
+                    }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Select funding source</option>
+                    {fundingSources.map(source => (
+                      <option key={source.id} value={source.id}>
+                        {source.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formData.fundingSource === "other" && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        value={customFundingSource}
+                        onChange={(e) => setCustomFundingSource(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Specify other funding source"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Depreciation Rate (%)
                   </label>
                   <input
@@ -503,10 +685,15 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
                     onChange={(e) => handleInputChange("department", e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                     required
+                    disabled={loadingData}
                   >
-                    <option value="">Select department</option>
+                    <option value="">
+                      {loadingData ? "Loading departments..." : "Select department"}
+                    </option>
                     {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
+                      <option key={dept.id} value={dept.id}>
+                        {dept.parentId ? `└ ${dept.name}` : dept.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -515,13 +702,27 @@ export function AssetRegistration({ permissions, onSuccess, editAsset }: AssetRe
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Assigned To
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.assignedTo}
-                    onChange={(e) => handleInputChange("assignedTo", e.target.value)}
+                    onChange={(e) => {
+                      const selectedEmployee = employees.find(emp => emp.id === e.target.value)
+                      handleInputChange("assignedTo", e.target.value)
+                      if (selectedEmployee) {
+                        handleInputChange("assignedEmail", selectedEmployee.email)
+                      }
+                    }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Employee name"
-                  />
+                    disabled={loadingData}
+                  >
+                    <option value="">
+                      {loadingData ? "Loading employees..." : "Select employee"}
+                    </option>
+                    {employees.map(employee => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.firstName} {employee.lastName} ({employee.email})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

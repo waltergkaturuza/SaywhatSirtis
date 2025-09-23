@@ -63,25 +63,85 @@ model assets {
   name                String
   description         String?
   category            String
+  assetType           String?
   brand               String?
   model               String?
   serialNumber        String?
   purchaseDate        DateTime?
   purchasePrice       Float?
   currentValue        Float?
+  depreciationRate    Float?                @default(0)
+  depreciationMethod  String?               @default("straight-line")
+  fundingSource       String?
   location            String?
+  department          String?
+  assignedTo          String?
+  assignedEmail       String?
   condition           AssetCondition        @default(GOOD)
   status              String                @default("ACTIVE")
   warrantyExpiry      DateTime?
+  rfidTag             String?
+  qrCode              String?
+  barcodeId           String?
+  insuranceValue      Float?
+  insurancePolicy     String?
+  images              String[]              @default([])
+  documents           String[]              @default([])
   createdAt           DateTime              @default(now())
   updatedAt           DateTime
   asset_audits        asset_audits[]
   maintenance_records maintenance_records[]
+  audits              Audit[]              @relation("AuditAssets")
 
   @@index([assetTag])
   @@index([category])
   @@index([location])
   @@index([status])
+  @@index([department])
+  @@index([assignedTo])
+  @@index([fundingSource])
+  @@index([rfidTag])
+  @@index([qrCode])
+  @@index([barcodeId])
+}
+
+model Audit {
+  id              String       @id @default(uuid())
+  name            String
+  type            AuditType
+  status          AuditStatus  @default(PENDING)
+  scheduledDate   DateTime
+  completedDate   DateTime?
+  auditor         String
+  description     String?
+  findings        String[]     @default([])
+  recommendations String[]     @default([])
+  documents       String[]     @default([])
+  progress        Int?         @default(0)
+  assets          assets[]     @relation("AuditAssets")
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([scheduledDate])
+  @@index([auditor])
+}
+
+enum AuditType {
+  FULL_INVENTORY
+  PARTIAL_INVENTORY
+  COMPLIANCE_AUDIT
+  FINANCIAL_AUDIT
+  SECURITY_AUDIT
+  QUALITY_AUDIT
+}
+
+enum AuditStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
 model audit_logs {

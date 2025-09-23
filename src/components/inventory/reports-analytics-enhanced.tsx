@@ -77,17 +77,21 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
     return asset.currentValue || asset.procurementValue
   }
 
-  // Prepare chart data
-  const categoryData = ['Information Technology (IT) Equipment', 'Office Equipment', 'Vehicles & Transport', 'Machinery'].map(category => {
-    const categoryAssets = assets.filter(a => a.category?.name === category || a.category === category)
+  // Prepare chart data - dynamically generate categories from actual asset data
+  const uniqueCategories = [...new Set(assets.map(a => a.category?.name || a.category || 'Uncategorized'))]
+  const categoryData = uniqueCategories.map(category => {
+    const categoryAssets = assets.filter(a => 
+      (a.category?.name === category || a.category === category) ||
+      (category === 'Uncategorized' && (!a.category?.name && !a.category))
+    )
     const totalValue = categoryAssets.reduce((sum, asset) => sum + calculateCurrentValue(asset), 0)
     return {
-      name: category.replace('Information Technology (IT) Equipment', 'IT Equipment').replace('Vehicles & Transport', 'Vehicles'),
+      name: category,
       count: categoryAssets.length,
       value: totalValue,
-      percentage: ((categoryAssets.length / assets.length) * 100).toFixed(1)
+      percentage: assets.length > 0 ? ((categoryAssets.length / assets.length) * 100).toFixed(1) : '0'
     }
-  })
+  }).filter(category => category.count > 0) // Only show categories with assets
 
   // Generate monthly value data based on asset acquisition dates
   const generateMonthlyValueData = () => {
@@ -122,15 +126,20 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
     { name: 'Poor', value: assets.filter(a => a.condition === 'poor').length, fill: '#EF4444' }
   ]
 
-  const locationData = ['Head Office', 'Branch Office A', 'Branch Office B', 'Warehouse', 'Remote'].map(location => {
-    const locationAssets = assets.filter(a => a.location?.name === location || a.location === location)
+  // Generate location data dynamically from actual asset data
+  const uniqueLocations = [...new Set(assets.map(a => a.location?.name || a.location || 'Unassigned'))]
+  const locationData = uniqueLocations.map(location => {
+    const locationAssets = assets.filter(a => 
+      (a.location?.name === location || a.location === location) ||
+      (location === 'Unassigned' && (!a.location?.name && !a.location))
+    )
     const totalValue = locationAssets.reduce((sum, asset) => sum + calculateCurrentValue(asset), 0)
     return {
       name: location,
       assets: locationAssets.length,
       value: totalValue
     }
-  })
+  }).filter(location => location.assets > 0) // Only show locations with assets
 
   const depreciationTrendData = assets.slice(0, 10).map(asset => {
     const currentValue = calculateCurrentValue(asset)

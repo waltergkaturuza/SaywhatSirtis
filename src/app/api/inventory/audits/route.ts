@@ -58,49 +58,51 @@ export async function GET(request: NextRequest) {
       if (dateTo) where.scheduledDate.lte = new Date(dateTo)
     }
 
-    // For now, return sample data until Prisma is regenerated
-    const sampleAudits = [
-      {
-        id: 'audit-1',
-        name: 'Q3 Full Inventory Audit',
-        type: 'FULL_INVENTORY',
-        status: 'PENDING',
-        scheduledDate: new Date('2024-09-15'),
-        completedDate: null,
-        auditor: 'Jane Smith',
-        description: 'Comprehensive audit of all inventory items',
-        assets: ['asset-1', 'asset-2', 'asset-3'],
-        findings: [],
-        recommendations: [],
-        progress: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: 'audit-2',
-        name: 'IT Equipment Compliance Check',
-        type: 'COMPLIANCE_AUDIT',
-        status: 'IN_PROGRESS',
-        scheduledDate: new Date('2024-08-20'),
-        completedDate: null,
-        auditor: 'Mike Johnson',
-        description: 'Compliance check for IT equipment',
-        assets: ['asset-4', 'asset-5'],
-        findings: ['Some equipment needs updates'],
-        recommendations: ['Update security patches'],
-        progress: 45,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]
+    // Query audits from database
+    const [audits, totalCount] = await Promise.all([
+      prisma.audit.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit,
+        include: {
+          assets: {
+            select: {
+              id: true,
+              name: true,
+              assetTag: true
+            }
+          }
+        }
+      }),
+      prisma.audit.count({ where })
+    ])
+
+    // Transform the data to match frontend expectations
+    const transformedAudits = audits.map(audit => ({
+      id: audit.id,
+      name: audit.name,
+      type: audit.type,
+      status: audit.status,
+      scheduledDate: audit.scheduledDate,
+      completedDate: audit.completedDate,
+      auditor: audit.auditor,
+      description: audit.description,
+      assets: audit.assets.map(asset => asset.id),
+      findings: audit.findings || [],
+      recommendations: audit.recommendations || [],
+      progress: audit.progress || 0,
+      createdAt: audit.createdAt,
+      updatedAt: audit.updatedAt
+    }))
 
     return NextResponse.json({
-      audits: sampleAudits,
+      audits: transformedAudits,
       pagination: {
         page,
         limit,
-        total: sampleAudits.length,
-        pages: Math.ceil(sampleAudits.length / limit)
+        total: totalCount,
+        pages: Math.ceil(totalCount / limit)
       }
     })
 
@@ -141,25 +143,53 @@ export async function POST(request: NextRequest) {
 
     const { name, type, scheduledDate, auditor, description, assets } = validationResult.data
 
-    // For now, return mock success response
-    const newAudit = {
-      id: `audit-${Date.now()}`,
-      name,
-      type,
-      scheduledDate,
-      auditor,
-      description,
-      assets,
-      status: 'PENDING',
-      progress: 0,
-      findings: [],
-      recommendations: [],
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
+    // Create audit in database
+    const newAudit = await prisma.audit.create({
+      data: {
+        name,
+        type,
+        scheduledDate,
+        auditor,
+        description,
+        status: 'PENDING',
+        progress: 0,
+        findings: [],
+        recommendations: [],
+        // Connect assets if provided
+        ...(assets.length > 0 && {
+          assets: {
+            connect: assets.map(assetId => ({ id: assetId }))
+          }
+        })
+      },
+      include: {
+        assets: {
+          select: {
+            id: true,
+            name: true,
+            assetTag: true
+          }
+        }
+      }
+    })
 
     return NextResponse.json({
-      audit: newAudit,
+      audit: {
+        id: newAudit.id,
+        name: newAudit.name,
+        type: newAudit.type,
+        status: newAudit.status,
+        scheduledDate: newAudit.scheduledDate,
+        completedDate: newAudit.completedDate,
+        auditor: newAudit.auditor,
+        description: newAudit.description,
+        assets: newAudit.assets.map(asset => asset.id),
+        findings: newAudit.findings || [],
+        recommendations: newAudit.recommendations || [],
+        progress: newAudit.progress || 0,
+        createdAt: newAudit.createdAt,
+        updatedAt: newAudit.updatedAt
+      },
       message: 'Audit created successfully'
     }, { status: 201 })
 
@@ -196,15 +226,41 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json()
 
-    // For now, return mock success response
-    const updatedAudit = {
-      id,
-      ...body,
-      updatedAt: new Date()
-    }
+    // Update audit in database
+    const updatedAudit = await prisma.audit.update({
+      where: { id },
+      data: {
+        ...body,
+        updatedAt: new Date()
+      },
+      include: {
+        assets: {
+          select: {
+            id: true,
+            name: true,
+            assetTag: true
+          }
+        }
+      }
+    })
 
     return NextResponse.json({
-      audit: updatedAudit,
+      audit: {
+        id: updatedAudit.id,
+        name: updatedAudit.name,
+        type: updatedAudit.type,
+        status: updatedAudit.status,
+        scheduledDate: updatedAudit.scheduledDate,
+        completedDate: updatedAudit.completedDate,
+        auditor: updatedAudit.auditor,
+        description: updatedAudit.description,
+        assets: updatedAudit.assets.map(asset => asset.id),
+        findings: updatedAudit.findings || [],
+        recommendations: updatedAudit.recommendations || [],
+        progress: updatedAudit.progress || 0,
+        createdAt: updatedAudit.createdAt,
+        updatedAt: updatedAudit.updatedAt
+      },
       message: 'Audit updated successfully'
     })
 
@@ -239,7 +295,11 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // For now, return mock success response
+    // Delete audit from database
+    await prisma.audit.delete({
+      where: { id }
+    })
+
     return NextResponse.json({
       message: 'Audit deleted successfully'
     })

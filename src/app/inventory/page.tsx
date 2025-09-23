@@ -172,40 +172,41 @@ export default function InventoryManagementPage() {
   const [error, setError] = useState<string>("")
   
   // Fetch assets from API
-  useEffect(() => {
-    const fetchAssets = async () => {
-      try {
-        setIsLoading(true)
-        setError("")
-        
-        console.log('Fetching assets from API...')
-        const response = await fetch('/api/inventory/assets')
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-        
-        const data = await response.json()
-        console.log('Assets API response:', data)
-        
-        if (data.assets && Array.isArray(data.assets)) {
-          setAssets(data.assets)
-          setIsConnected(true)
-          console.log(`Loaded ${data.assets.length} assets from database`)
-        } else {
-          console.warn('No assets found in API response')
-          setAssets([])
-          setIsConnected(true)
-        }
-      } catch (err) {
-        console.error('Failed to fetch assets:', err)
-        setError(err instanceof Error ? err.message : 'Unknown error')
-        setIsConnected(false)
-        setAssets([]) // Clear any existing mock data
-      } finally {
-        setIsLoading(false)
+  const fetchAssets = async () => {
+    try {
+      setIsLoading(true)
+      setError("")
+      
+      console.log('Fetching assets from API...')
+      const response = await fetch('/api/inventory/assets')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
+      
+      const data = await response.json()
+      console.log('Assets API response:', data)
+      
+      if (data.assets && Array.isArray(data.assets)) {
+        setAssets(data.assets)
+        setIsConnected(true)
+        console.log(`Loaded ${data.assets.length} assets from database`)
+      } else {
+        console.warn('No assets found in API response')
+        setAssets([])
+        setIsConnected(true)
+      }
+    } catch (err) {
+      console.error('Failed to fetch assets:', err)
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      setIsConnected(false)
+      setAssets([]) // Clear any existing mock data
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  useEffect(() => {
 
     if (session) {
       fetchAssets()
@@ -221,9 +222,112 @@ export default function InventoryManagementPage() {
   const [showDocumentUpload, setShowDocumentUpload] = useState(false)
   
   // Asset registration handlers
-  const handleCreateAsset = () => {
-    // Implementation for creating asset
-    console.log('Creating asset:', createFormData)
+  const handleCreateAsset = async () => {
+    try {
+      // Validate required fields before API call
+      if (!createFormData.name?.trim()) {
+        alert('Asset name is required')
+        return
+      }
+      
+      // We'll validate after extraction
+
+      // Extract string values from potentially object fields
+      const extractedType = createFormData.type ? 
+        (typeof createFormData.type === 'string' ? createFormData.type : 
+         createFormData.type?.name || String(createFormData.type)) : ''
+      
+      const extractedCategory = createFormData.category ? 
+        (typeof createFormData.category === 'string' ? createFormData.category : 
+         createFormData.category?.name || String(createFormData.category)) : ''
+      
+      const extractedLocation = createFormData.location ? 
+        (typeof createFormData.location === 'string' ? createFormData.location : 
+         createFormData.location?.name || String(createFormData.location)) : ''
+
+      // Validate extracted values
+      if (!extractedCategory) {
+        alert('Asset category is required')
+        return
+      }
+      
+      if (!extractedLocation) {
+        alert('Asset location is required')
+        return
+      }
+
+      // Prepare data for API call with proper type conversion
+      const assetData = {
+        name: createFormData.name.trim(),
+        assetNumber: createFormData.assetNumber || generateAssetNumber(),
+        type: extractedType,
+        category: extractedCategory,
+        brand: createFormData.brand || '',
+        model: createFormData.model || '',
+        description: createFormData.description || '',
+        serialNumber: createFormData.serialNumber || '',
+        procurementValue: Number(createFormData.procurementValue) || 0,
+        depreciationRate: Number(createFormData.depreciationRate) || 0,
+        depreciationMethod: createFormData.depreciationMethod || 'straight-line',
+        procurementDate: createFormData.procurementDate || new Date().toISOString().split('T')[0],
+        fundingSource: createFormData.fundingSource || '',
+        location: extractedLocation,
+        department: createFormData.department || '',
+        assignedTo: createFormData.assignedTo || '',
+        assignedEmail: createFormData.assignedEmail || '',
+        status: createFormData.status || 'active',
+        condition: createFormData.condition || 'good',
+        warrantyExpiry: createFormData.warrantyExpiry || '',
+        rfidTag: createFormData.rfidTag || '',
+        qrCode: createFormData.qrCode || generateQRCode(createFormData.assetNumber || generateAssetNumber()),
+        barcodeId: createFormData.barcodeId || generateBarcode(),
+        insuranceValue: Number(createFormData.insuranceValue) || 0,
+        insurancePolicy: createFormData.insurancePolicy || '',
+        images: selectedImages.map(img => img.name), // For now, just store filenames
+        documents: selectedDocuments.map(doc => doc.name) // For now, just store filenames
+      }
+      
+      console.log('Form data before processing:', createFormData)
+      console.log('Extracted values:')
+      console.log('- category:', extractedCategory, '(from:', typeof createFormData.category, createFormData.category, ')')
+      console.log('- location:', extractedLocation, '(from:', typeof createFormData.location, createFormData.location, ')')
+      console.log('- type:', extractedType, '(from:', typeof createFormData.type, createFormData.type, ')')
+      console.log('Creating asset with data:', assetData)
+      
+      // Call the API
+      const response = await fetch('/api/inventory/assets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(assetData),
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('API Error Response:', errorData)
+        
+        // Show detailed validation errors if available
+        if (errorData.details) {
+          console.error('Validation Details:', errorData.details)
+        }
+        
+        throw new Error(errorData.error || 'Failed to create asset')
+      }
+      
+      const result = await response.json()
+      console.log("Asset created successfully:", result)
+      
+      // Refresh the assets list
+      await fetchAssets()
+      
+      // Show success notification
+      alert('Asset created successfully!')
+      
+    } catch (error) {
+      console.error('Error creating asset:', error)
+      alert(`Error creating asset: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
   
   const generateAssetNumber = () => {
