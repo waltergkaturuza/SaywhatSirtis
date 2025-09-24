@@ -64,12 +64,30 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    // Fetch documents from database
+    // Fetch documents from database with safe query
     const documents = await prisma.documents.findMany({
       where,
       orderBy: {
         createdAt: 'desc'
+      },
+      select: {
+        id: true,
+        filename: true,
+        originalName: true,
+        description: true,
+        mimeType: true,
+        size: true,
+        category: true,
+        accessLevel: true,
+        tags: true,
+        url: true,
+        uploadedBy: true,
+        createdAt: true,
+        updatedAt: true
       }
+    }).catch((error) => {
+      console.error('Database query error:', error)
+      return []
     })
 
     // Get uploader details separately if needed

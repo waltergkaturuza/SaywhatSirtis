@@ -67,103 +67,59 @@ export default function AISearchPage() {
     if (!searchQuery.trim()) return;
     
     setIsSearching(true);
+    setSearchResults([]);
+    setAiSuggestions([]);
     
     // Add to search history
     if (!searchHistory.includes(searchQuery)) {
       setSearchHistory(prev => [searchQuery, ...prev.slice(0, 9)]);
     }
     
-    // Simulate AI-powered search
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Generate mock results with AI insights
-    const mockResults: SearchResult[] = [
-      {
-        id: "1",
-        title: "Q4 2024 Financial Report - Executive Summary",
-        snippet: "Revenue increased by 15% in Q4 2024, with strong performance across all business units. Operating margin improved to 18.5%, exceeding targets...",
-        category: "Financial",
-        classification: "CONFIDENTIAL",
-        uploadDate: "2024-12-01",
-        fileType: "PDF",
-        size: "2.4 MB",
-        relevanceScore: 0.95,
-        semanticMatches: ["revenue growth", "quarterly performance", "financial analysis", "executive summary"],
-        aiInsights: [
-          "Document contains key financial metrics for Q4",
-          "Strong correlation with budget planning documents",
-          "References upcoming strategic initiatives"
-        ],
-        relatedDocuments: ["Q3 2024 Financial Report", "2024 Budget Plan", "Strategic Roadmap 2025"]
-      },
-      {
-        id: "2",
-        title: "Employee Training Manual v3.2 - Complete Guide",
-        snippet: "Updated procedures for onboarding new employees, including safety protocols, company policies, and digital transformation initiatives...",
-        category: "HR",
-        classification: "INTERNAL",
-        uploadDate: "2024-11-15",
-        fileType: "PDF",
-        size: "1.8 MB",
-        relevanceScore: 0.87,
-        semanticMatches: ["training procedures", "employee onboarding", "safety protocols", "digital transformation"],
-        aiInsights: [
-          "Recently updated with new digital processes",
-          "High engagement from HR department",
-          "Contains compliance requirements for 2024"
-        ],
-        relatedDocuments: ["HR Policy Handbook", "Safety Guidelines", "Digital Training Modules"]
-      },
-      {
-        id: "3",
-        title: "Data Protection Policy 2024 - GDPR Compliance",
-        snippet: "Comprehensive guidelines for handling customer data in compliance with international regulations including GDPR, CCPA, and local privacy laws...",
-        category: "Legal",
-        classification: "PUBLIC",
-        uploadDate: "2024-10-30",
-        fileType: "PDF",
-        size: "956 KB",
-        relevanceScore: 0.82,
-        semanticMatches: ["data protection", "privacy compliance", "customer data", "GDPR"],
-        aiInsights: [
-          "Updated for 2024 regulatory changes",
-          "Cross-references with technical documentation",
-          "Frequently accessed by development team"
-        ],
-        relatedDocuments: ["Security Guidelines", "Privacy Impact Assessments", "Technical Data Handling"]
-      },
-      {
-        id: "4",
-        title: "Marketing Strategy 2025 - Digital Transformation",
-        snippet: "Strategic roadmap for digital marketing initiatives, customer acquisition strategies, and brand positioning for the upcoming year...",
-        category: "Marketing",
-        classification: "INTERNAL",
-        uploadDate: "2024-11-20",
-        fileType: "PowerPoint",
-        size: "3.2 MB",
-        relevanceScore: 0.79,
-        semanticMatches: ["marketing strategy", "digital transformation", "customer acquisition", "brand positioning"],
-        aiInsights: [
-          "Aligns with financial targets from Q4 report",
-          "References competitor analysis documents",
-          "Contains actionable KPIs and metrics"
-        ],
-        relatedDocuments: ["Competitor Analysis", "Brand Guidelines", "Customer Research Report"]
+    try {
+      // Try to fetch real search results from API
+      const response = await fetch(`/api/documents?search=${encodeURIComponent(searchQuery)}`);
+      
+      if (response.ok) {
+        const documents = await response.json();
+        
+        // Transform documents to search result format
+        const searchResults: SearchResult[] = documents.slice(0, 10).map((doc: any, index: number) => ({
+          id: doc.id,
+          title: doc.title || doc.fileName,
+          snippet: doc.description || "No description available",
+          category: doc.category || "Uncategorized",
+          classification: doc.classification || "INTERNAL",
+          uploadDate: doc.uploadDate,
+          fileType: doc.type || "FILE",
+          size: doc.size,
+          relevanceScore: Math.max(0.5, 1 - (index * 0.1)), // Simulate relevance score
+          semanticMatches: [searchQuery.toLowerCase()],
+          aiInsights: [`Document matches search query: ${searchQuery}`],
+          relatedDocuments: []
+        }));
+        
+        setSearchResults(searchResults);
+        
+        // Generate AI suggestions based on search
+        const suggestions = [
+          `Related: ${searchQuery} reports`,
+          `Similar: documents about ${searchQuery}`,
+          `Timeline: ${searchQuery} over time`
+        ];
+        setAiSuggestions(suggestions);
+      } else {
+        // If API fails, show empty results
+        setSearchResults([]);
+        setAiSuggestions([]);
       }
-    ];
-    
-    setSearchResults(mockResults);
-    
-    // Generate AI suggestions based on search
-    const suggestions = [
-      `Related: ${searchQuery} trends`,
-      `Similar: documents like "${searchQuery}"`,
-      `Analysis: extract insights from ${searchQuery}`,
-      `Timeline: ${searchQuery} over time`
-    ];
-    setAiSuggestions(suggestions);
-    
-    setIsSearching(false);
+    } catch (error) {
+      console.error('Search error:', error);
+      // Show empty results on error
+      setSearchResults([]);
+      setAiSuggestions([]);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const getClassificationColor = (classification: string) => {

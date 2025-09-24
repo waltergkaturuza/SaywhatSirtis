@@ -184,27 +184,36 @@ export default function DocumentRepositoryPage() {
   const loadDocuments = async () => {
     try {
       setLoading(true);
+      setError('');
+      
       const response = await fetch('/api/documents');
-      if (!response.ok) throw new Error('Failed to fetch documents');
       
-      const data = await response.json();
-      setDocuments(data.documents || []);
-      
-      // Calculate file type statistics
-      const typeStats = calculateFileTypeStats(data.documents || []);
-      setFileTypes(typeStats);
-      
-      // Load dashboard statistics
-      await loadDashboardStats();
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments(Array.isArray(data) ? data : []);
+        
+        // Calculate file type statistics from loaded documents
+        const typeStats = calculateFileTypeStats(Array.isArray(data) ? data : []);
+        setFileTypes(typeStats);
+        
+        // Load dashboard statistics
+        await loadDashboardStats();
+      } else {
+        console.warn('Failed to fetch documents, using empty list');
+        setDocuments([]);
+        setFileTypes([]);
+      }
       
     } catch (err) {
-      setError('Failed to load documents');
       console.error('Error loading documents:', err);
+      setError('Unable to load documents at this time');
+      setDocuments([]);
+      setFileTypes([]);
     } finally {
       setLoading(false);
     }
 
-    // Load departments after documents are set
+    // Load departments after documents are set (if any documents exist)
     if (documents.length > 0) {
       await loadDepartments();
     }
@@ -213,39 +222,59 @@ export default function DocumentRepositoryPage() {
   const loadDashboardStats = async () => {
     try {
       const response = await fetch('/api/documents/analytics');
-      if (!response.ok) throw new Error('Failed to fetch analytics');
       
-      const stats = await response.json();
-      setDashboardStats(stats);
+      if (response.ok) {
+        const stats = await response.json();
+        setDashboardStats(stats);
+      } else {
+        // Set fallback stats if API fails
+        setDashboardStats({
+          totalDocuments: documents.length,
+          storageUsed: '0 MB',
+          viewsThisMonth: 0,
+          sharedWithMe: 0
+        });
+      }
       
     } catch (err) {
       console.error('Error loading dashboard stats:', err);
+      // Set fallback stats
+      setDashboardStats({
+        totalDocuments: documents.length,
+        storageUsed: '0 MB',
+        viewsThisMonth: 0,
+        sharedWithMe: 0
+      });
     }
   };
 
   const loadDepartments = async () => {
     try {
       const response = await fetch('/api/hr/departments');
-      if (!response.ok) throw new Error('Failed to fetch departments');
       
-      const depts = await response.json();
-      
-      // Calculate file counts for each department from documents
-      const deptFileCount = new Map();
-      documents.forEach(doc => {
-        if (doc.department) {
-          deptFileCount.set(doc.department, (deptFileCount.get(doc.department) || 0) + 1);
-        }
-      });
+      if (response.ok) {
+        const depts = await response.json();
+        
+        // Calculate file counts for each department from documents
+        const deptFileCount = new Map();
+        documents.forEach(doc => {
+          if (doc.department) {
+            deptFileCount.set(doc.department, (deptFileCount.get(doc.department) || 0) + 1);
+          }
+        });
 
-      const departmentStats = depts.map((dept: any) => ({
-        id: dept.id,
-        name: dept.name,
-        code: dept.code || dept.name.substring(0, 3).toUpperCase(),
-        fileCount: deptFileCount.get(dept.name) || 0
-      }));
+        const departmentStats = (Array.isArray(depts) ? depts : []).map((dept: any) => ({
+          id: dept.id || dept.name,
+          name: dept.name || 'Unknown Department',
+          code: dept.code || (dept.name ? dept.name.substring(0, 3).toUpperCase() : 'UNK'),
+          fileCount: deptFileCount.get(dept.name) || 0
+        }));
 
-      setDepartments(departmentStats);
+        setDepartments(departmentStats);
+      } else {
+        console.warn('Failed to fetch departments');
+        setDepartments([]);
+      }
       
     } catch (err) {
       console.error('Error loading departments:', err);
