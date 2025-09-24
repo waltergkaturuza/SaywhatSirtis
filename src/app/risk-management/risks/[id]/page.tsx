@@ -242,10 +242,10 @@ export default function RiskDetailPage() {
             {/* Risk Mitigations */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Risk Mitigations ({risk.mitigations.length})
+                Risk Mitigations ({risk.mitigations?.length || 0})
               </h2>
               
-              {risk.mitigations.length === 0 ? (
+              {(!risk.mitigations || risk.mitigations.length === 0) ? (
                 <div className="text-center py-8">
                   <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600">No mitigations defined for this risk</p>
@@ -258,7 +258,7 @@ export default function RiskDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {risk.mitigations.map((mitigation) => (
+                  {risk.mitigations?.map((mitigation) => (
                     <div key={mitigation.id} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-medium text-gray-900">{mitigation.title}</h3>
