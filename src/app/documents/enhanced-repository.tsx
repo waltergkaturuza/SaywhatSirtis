@@ -42,8 +42,106 @@ import {
   PresentationChartBarIcon,
   PhotoIcon,
   FilmIcon,
-  HomeIcon
+  HomeIcon,
+  CloudArrowDownIcon,
+  LinkIcon,
+  Square3Stack3DIcon,
+  ServerIcon,
+  DocumentDuplicateIcon,
+  RectangleStackIcon,
+  ComputerDesktopIcon,
+  CubeIcon,
+  InboxIcon
 } from "@heroicons/react/24/outline";
+
+// Security classifications with SAYWHAT branding
+const securityClassifications = {
+  "PUBLIC": {
+    level: 0,
+    description: "Information accessible to all employees within the organization",
+    color: "text-green-600 bg-green-50 border-green-200",
+    badgeColor: "bg-green-100 text-green-800",
+    iconColor: "text-green-600",
+    icon: ShareIcon,
+    examples: ["General policies", "Training materials", "Organization-wide announcements"]
+  },
+  "CONFIDENTIAL": {
+    level: 2,
+    description: "Sensitive information requiring authorized access - confidential level",
+    color: "text-orange-600 bg-orange-50 border-orange-200",
+    badgeColor: "bg-orange-100 text-orange-800",
+    iconColor: "text-orange-600",
+    icon: LockClosedIcon,
+    examples: ["Financial reports", "Personnel files", "Donor reports", "Management accounts"]
+  },
+  "SECRET": {
+    level: 3,
+    description: "Highly sensitive information - secret level classification",
+    color: "text-red-600 bg-red-50 border-red-200",
+    badgeColor: "bg-red-100 text-red-800",
+    iconColor: "text-red-600",
+    icon: ShieldCheckIcon,
+    examples: ["Strategic plans", "Board minutes", "Grant proposals", "Legal documents"]
+  },
+  "TOP_SECRET": {
+    level: 4,
+    description: "Highly sensitive information - top secret level classification",
+    color: "text-red-800 bg-red-50 border-red-300",
+    badgeColor: "bg-red-200 text-red-900",
+    iconColor: "text-red-800",
+    icon: ShieldCheckIcon,
+    examples: ["Executive decisions", "Sensitive investigations", "Critical strategic documents"]
+  }
+};
+
+// External platforms for quick access integration
+const externalPlatforms = [
+  {
+    id: 'onedrive',
+    name: 'OneDrive',
+    icon: CloudIcon,
+    color: 'bg-blue-50 hover:bg-blue-100 border-blue-200',
+    iconColor: 'text-blue-600',
+    description: 'Microsoft OneDrive files',
+    path: '/documents/onedrive'
+  },
+  {
+    id: 'sharepoint',
+    name: 'SharePoint',
+    icon: Square3Stack3DIcon,
+    color: 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200',
+    iconColor: 'text-indigo-600',
+    description: 'SharePoint documents',
+    path: '/documents/sharepoint'
+  },
+  {
+    id: 'googledrive',
+    name: 'Google Drive',
+    icon: ServerIcon,
+    color: 'bg-green-50 hover:bg-green-100 border-green-200',
+    iconColor: 'text-green-600',
+    description: 'Google Drive files',
+    path: '/documents/googledrive'
+  },
+  {
+    id: 'teams',
+    name: 'Microsoft Teams',
+    icon: ChatBubbleLeftRightIcon,
+    color: 'bg-purple-50 hover:bg-purple-100 border-purple-200',
+    iconColor: 'text-purple-600',
+    description: 'Teams file shares',
+    path: '/documents/teams'
+  },
+  {
+    id: 'dropbox',
+    name: 'Dropbox',
+    icon: CloudArrowDownIcon,
+    color: 'bg-blue-50 hover:bg-blue-100 border-blue-200',
+    iconColor: 'text-blue-500',
+    description: 'Dropbox storage',
+    path: '/documents/dropbox'
+  }
+];
 
 const documentTabs = [
   { 
@@ -136,7 +234,46 @@ interface Document {
   modifiedBy: string;
   url?: string;
   mimeType?: string;
+  accessLevel?: string;
+  permissions?: string[];
 }
+
+// Helper function to get security classification info
+const getSecurityInfo = (classification: string) => {
+  return securityClassifications[classification as keyof typeof securityClassifications] || securityClassifications.PUBLIC;
+};
+
+// Helper function to check if user has access to document
+const canUserAccessDocument = (document: Document, userRole?: string, userPermissions?: string[]) => {
+  const securityInfo = getSecurityInfo(document.classification);
+  
+  // Admin access
+  if (userRole === 'admin' || userPermissions?.includes('documents.full_access')) {
+    return true;
+  }
+  
+  // Security level based access
+  switch (document.classification) {
+    case 'PUBLIC':
+      return true;
+    case 'CONFIDENTIAL':
+      return userPermissions?.includes('documents.confidential') || 
+             userPermissions?.includes('documents.classified');
+    case 'SECRET':
+      return userPermissions?.includes('documents.secret') || 
+             userPermissions?.includes('documents.classified');
+    case 'TOP_SECRET':
+      return userPermissions?.includes('documents.top_secret');
+    default:
+      return true;
+  }
+};
+
+// Helper function to get classification badge color
+const getClassificationColor = (classification: string) => {
+  const info = getSecurityInfo(classification);
+  return info.badgeColor;
+};
 
 interface FileTypeStats {
   id: string;
@@ -553,36 +690,55 @@ export default function DocumentRepositoryPage() {
           ) : (
             documents.slice(0, 5).map((doc) => {
               const FileIcon = getFileIcon(doc.type);
+              const securityInfo = getSecurityInfo(doc.classification);
+              const SecurityIcon = securityInfo.icon;
+              const hasAccess = canUserAccessDocument(doc, session?.user?.roles?.[0], session?.user?.permissions);
+              
               return (
-                <div key={doc.id} className="px-6 py-4 hover:bg-gray-50">
+                <div key={doc.id} className={`px-6 py-4 hover:bg-gray-50 ${!hasAccess ? 'opacity-60' : ''}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <FileIcon className="h-8 w-8 text-gray-400" />
+                      <div className="relative">
+                        <FileIcon className="h-8 w-8 text-gray-400" />
+                        <SecurityIcon className={`h-4 w-4 ${securityInfo.iconColor} absolute -top-1 -right-1 bg-white rounded-full p-0.5`} />
+                      </div>
                       <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-900">{doc.title}</p>
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm font-medium text-gray-900">{doc.title}</p>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getClassificationColor(doc.classification)}`}>
+                            <SecurityIcon className="h-3 w-3 mr-1" />
+                            {doc.classification}
+                          </span>
+                        </div>
                         <p className="text-sm text-gray-500">
-                          {doc.size} • Uploaded by {doc.uploadedBy} • {doc.uploadDate}
+                          {doc.size} • {doc.department} • Uploaded by {doc.uploadedBy} • {doc.uploadDate}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getClassificationColor(doc.classification)}`}>
-                        {doc.classification}
-                      </span>
-                      <button 
-                        onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
-                        className="text-gray-400 hover:text-gray-500"
-                        title="View document"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
-                      <button 
-                        onClick={() => handleDownload(doc.id, doc.title)}
-                        className="text-gray-400 hover:text-gray-500"
-                        title="Download document"
-                      >
-                        <ArrowDownTrayIcon className="h-5 w-5" />
-                      </button>
+                      {hasAccess ? (
+                        <>
+                          <button 
+                            onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                            className="text-gray-400 hover:text-saywhat-orange transition-colors"
+                            title="View document"
+                          >
+                            <EyeIcon className="h-5 w-5" />
+                          </button>
+                          <button 
+                            onClick={() => handleDownload(doc.id, doc.title)}
+                            className="text-gray-400 hover:text-saywhat-orange transition-colors"
+                            title="Download document"
+                          >
+                            <ArrowDownTrayIcon className="h-5 w-5" />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center text-red-500 text-xs">
+                          <LockClosedIcon className="h-4 w-4 mr-1" />
+                          Access Denied
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -622,15 +778,39 @@ export default function DocumentRepositoryPage() {
         ) : (
           documents.map((doc) => {
             const FileIcon = getFileIcon(doc.type);
+            const securityInfo = getSecurityInfo(doc.classification);
+            const SecurityIcon = securityInfo.icon;
+            const hasAccess = canUserAccessDocument(doc, session?.user?.roles?.[0], session?.user?.permissions);
+            
+            // Don't show documents user doesn't have access to
+            if (!hasAccess) return null;
+            
             return (
-              <div key={doc.id} className="px-6 py-4 hover:bg-gray-50">
+              <div key={doc.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <FileIcon className="h-8 w-8 text-gray-400" />
+                    <div className="relative">
+                      <FileIcon className="h-8 w-8 text-gray-400" />
+                      <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${securityInfo.badgeColor} flex items-center justify-center`}>
+                        <SecurityIcon className="h-2.5 w-2.5" />
+                      </div>
+                    </div>
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">{doc.title}</p>
+                      <div className="flex items-center space-x-3">
+                        <p className="text-sm font-medium text-gray-900">{doc.title}</p>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${securityInfo.badgeColor}`}>
+                          <SecurityIcon className="h-3 w-3 mr-1" />
+                          {doc.classification}
+                        </span>
+                        {doc.department && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+                            <BuildingOfficeIcon className="h-3 w-3 mr-1" />
+                            {doc.department}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-500">
-                        {doc.size} • {doc.uploadDate} • {doc.department || 'No department'}
+                        {doc.size} • Uploaded by {doc.uploadedBy} • {doc.uploadDate}
                       </p>
                       {doc.description && (
                         <p className="text-xs text-gray-400 mt-1">{doc.description}</p>
@@ -638,19 +818,16 @@ export default function DocumentRepositoryPage() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getClassificationColor(doc.classification)}`}>
-                      {doc.classification}
-                    </span>
                     <button 
                       onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
-                      className="text-gray-400 hover:text-gray-500"
+                      className="text-gray-400 hover:text-saywhat-orange transition-colors p-1 rounded-md hover:bg-orange-50"
                       title="View document"
                     >
                       <EyeIcon className="h-5 w-5" />
                     </button>
                     <button 
                       onClick={() => handleDownload(doc.id, doc.title)}
-                      className="text-gray-400 hover:text-gray-500"
+                      className="text-gray-400 hover:text-saywhat-orange transition-colors p-1 rounded-md hover:bg-orange-50"
                       title="Download document"
                     >
                       <ArrowDownTrayIcon className="h-5 w-5" />
@@ -659,7 +836,7 @@ export default function DocumentRepositoryPage() {
                 </div>
               </div>
             );
-          })
+          }).filter(Boolean)
         )}
       </div>
     </div>
@@ -876,10 +1053,59 @@ export default function DocumentRepositoryPage() {
         breadcrumbs: [{ name: "Document Repository" }]
       }}
     >
-      <div className="max-w-full mx-auto px-4 space-y-6">
-        <div className="bg-white shadow rounded-lg">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+      <div className="flex h-full">
+        {/* External Platforms Sidebar */}
+        <div className="w-64 bg-gradient-to-b from-gray-50 to-gray-100 border-r border-gray-200 flex-shrink-0">
+          <div className="p-4">
+            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+              Quick Access
+            </h3>
+            <p className="text-xs text-gray-600 mt-1">External Platforms</p>
+          </div>
+          
+          <nav className="px-2 space-y-1">
+            {externalPlatforms.map((platform) => {
+              const PlatformIcon = platform.icon;
+              return (
+                <a
+                  key={platform.id}
+                  href={platform.path}
+                  className={`${platform.color} group flex items-center px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200 hover:shadow-sm`}
+                >
+                  <PlatformIcon className={`${platform.iconColor} flex-shrink-0 mr-3 h-5 w-5`} />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{platform.name}</div>
+                    <div className="text-xs text-gray-600">{platform.description}</div>
+                  </div>
+                  <LinkIcon className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
+              );
+            })}
+          </nav>
+
+          {/* Security Level Legend */}
+          <div className="mt-6 px-4">
+            <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3">
+              Security Levels
+            </h4>
+            <div className="space-y-2">
+              {Object.entries(securityClassifications).map(([key, classification]) => {
+                const ClassIcon = classification.icon;
+                return (
+                  <div key={key} className={`${classification.color} px-2 py-1.5 rounded-md border text-xs flex items-center`}>
+                    <ClassIcon className="h-3 w-3 mr-2 flex-shrink-0" />
+                    <span className="font-medium">{key}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="bg-white shadow-sm border-b border-gray-200">
+            <nav className="flex space-x-8 px-6" aria-label="Tabs">
               {primaryTabs.map((tab) => {
                 const TabIcon = tab.icon;
                 return (
@@ -888,11 +1114,11 @@ export default function DocumentRepositoryPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`${
                       activeTab === tab.id
-                        ? 'border-saywhat-orange text-saywhat-orange'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+                        ? 'border-saywhat-orange text-saywhat-orange bg-orange-50'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                    } whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm flex items-center space-x-2 transition-all duration-200 rounded-t-md`}
                   >
-                    <TabIcon className="h-5 w-5" />
+                    <TabIcon className="h-4 w-4" />
                     <span>{tab.name}</span>
                   </button>
                 );
@@ -900,7 +1126,8 @@ export default function DocumentRepositoryPage() {
             </nav>
           </div>
 
-          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+          {/* Secondary Navigation */}
+          <div className="bg-gray-50 border-b border-gray-200 px-6 py-3">
             <div className="flex flex-wrap gap-2">
               {secondaryTabs.map((tab) => {
                 const TabIcon = tab.icon;
@@ -910,47 +1137,38 @@ export default function DocumentRepositoryPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`${
                       activeTab === tab.id
-                        ? 'bg-saywhat-orange text-white'
-                        : 'bg-white text-gray-700 hover:bg-gray-100'
-                    } inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md`}
+                        ? 'bg-saywhat-orange text-white shadow-md'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm'
+                    } ${tab.adminOnly && !isAdmin ? 'opacity-50 cursor-not-allowed' : ''} 
+                    inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-full transition-all duration-200`}
+                    disabled={tab.adminOnly && !isAdmin}
+                    title={tab.description}
                   >
-                    <TabIcon className="h-4 w-4 mr-1" />
-                    {tab.name}
-                  </button>
-                );
-              })}
-
-              {isAdmin && adminTabs.map((tab) => {
-                const TabIcon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`${
-                      activeTab === tab.id
-                        ? 'bg-red-600 text-white'
-                        : 'bg-red-50 text-red-700 hover:bg-red-100'
-                    } inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md`}
-                  >
-                    <TabIcon className="h-4 w-4 mr-1" />
+                    <TabIcon className="h-3 w-3 mr-1.5" />
                     {tab.name}
                   </button>
                 );
               })}
             </div>
           </div>
-        </div>
 
-        {renderTabContent()}
-
-        <div className="fixed bottom-6 right-6">
-          <button
-            onClick={() => window.location.href = '/documents/upload'}
-            className="bg-saywhat-orange hover:bg-orange-600 text-white rounded-full p-4 shadow-lg transition-colors"
-          >
-            <PlusIcon className="h-6 w-6" />
-          </button>
+          {/* Content Area */}
+          <div className="flex-1 overflow-auto bg-gray-50">
+            <div className="max-w-full mx-auto px-6 py-6">
+              {renderTabContent()}
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Floating Add Button */}
+      <div className="fixed bottom-6 right-6">
+        <button
+          onClick={() => window.location.href = '/documents/upload'}
+          className="bg-saywhat-orange hover:bg-orange-600 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:shadow-xl"
+        >
+          <PlusIcon className="h-6 w-6" />
+        </button>
       </div>
     </ModulePage>
   );
