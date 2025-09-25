@@ -77,6 +77,49 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Map classification to enum value
+    const classificationMap: { [key: string]: string } = {
+      'PUBLIC': 'PUBLIC',
+      'CONFIDENTIAL': 'CONFIDENTIAL', 
+      'SECRET': 'RESTRICTED',
+      'TOP_SECRET': 'TOP_SECRET',
+      'INTERNAL': 'INTERNAL'
+    }
+    
+    // Map category to enum value
+    const categoryMap: { [key: string]: string } = {
+      'Policy': 'POLICY',
+      'Policies': 'POLICY',
+      'Procedure': 'PROCEDURE',
+      'Procedures': 'PROCEDURE',
+      'Form': 'FORM',
+      'Forms': 'FORM',
+      'Report': 'REPORT',
+      'Reports': 'REPORT',
+      'Activity reports': 'REPORT',
+      'Activity Reports': 'REPORT',
+      'Financial Reports': 'REPORT',
+      'Progress Reports': 'REPORT',
+      'Contract': 'CONTRACT',
+      'Contracts': 'CONTRACT',
+      'Invoice': 'INVOICE',
+      'Invoices': 'INVOICE',
+      'Presentation': 'PRESENTATION',
+      'Presentations': 'PRESENTATION',
+      'Spreadsheet': 'SPREADSHEET',
+      'Spreadsheets': 'SPREADSHEET',
+      'Image': 'IMAGE',
+      'Images': 'IMAGE',
+      'Video': 'VIDEO',
+      'Videos': 'VIDEO',
+      'Audio': 'AUDIO',
+      'Archive': 'ARCHIVE',
+      'Archives': 'ARCHIVE',
+      'General': 'OTHER',
+      'Other': 'OTHER',
+      'Miscellaneous': 'OTHER'
+    }
+
     // Generate unique filename
     const documentId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
     const filename = `${documentId}_${file.name}`
@@ -84,6 +127,13 @@ export async function POST(request: NextRequest) {
     
     // TODO: Implement actual file storage (AWS S3, Azure Blob, etc.)
     // For now, we'll just save the metadata
+    
+    // Get mapped values with error handling
+    const mappedCategory = categoryMap[category] || 'OTHER';
+    const mappedClassification = classificationMap[classification] || 'PUBLIC';
+    
+    console.log(`📁 Mapping category "${category}" to "${mappedCategory}"`);
+    console.log(`🔒 Mapping classification "${classification}" to "${mappedClassification}"`);
     
     // Save document metadata to database
     const document = await prisma.documents.create({
@@ -95,11 +145,11 @@ export async function POST(request: NextRequest) {
         size: file.size,
         path: filePath,
         url: null, // Will be set when file is actually uploaded to storage
-        category: category as any,
+        category: mappedCategory as any,
         description: title,
         tags: [],
+        classification: mappedClassification as any,
         isPublic: classification === 'PUBLIC',
-        accessLevel: classification?.toLowerCase() || 'internal',
         uploadedBy: session.user?.id,
         customMetadata: eventId ? { eventId } : {},
         updatedAt: new Date()
@@ -129,7 +179,7 @@ export async function POST(request: NextRequest) {
         title: document.description,
         fileName: document.originalName,
         category: document.category,
-        classification: document.accessLevel?.toUpperCase(),
+        classification: document.classification,
         uploadedBy: uploaderName,
         uploadedAt: document.createdAt,
         size: `${(document.size / 1024 / 1024).toFixed(1)} MB`

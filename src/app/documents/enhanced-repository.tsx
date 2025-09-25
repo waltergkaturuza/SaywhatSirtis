@@ -324,8 +324,6 @@ export default function DocumentRepositoryPage() {
   const [showCopilot, setShowCopilot] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [dragActive, setDragActive] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   
   const isAdmin = session?.user?.roles?.includes('admin') || 
@@ -518,7 +516,7 @@ export default function DocumentRepositoryPage() {
     }
   };
 
-  // Drag and drop handlers
+  // Drag and drop handlers - Navigate to upload page
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(true);
@@ -533,37 +531,8 @@ export default function DocumentRepositoryPage() {
     e.preventDefault();
     setDragActive(false);
     
-    const files = Array.from(e.dataTransfer.files);
-    handleFileUpload(files);
-  };
-
-  const handleFileUpload = async (files: File[]) => {
-    setUploading(true);
-    
-    for (const file of files) {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('category', 'General');
-        formData.append('security_level', 'PUBLIC');
-        
-        const response = await fetch('/api/documents/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (response.ok) {
-          setStatusMessage('Document uploaded successfully');
-          setTimeout(() => setStatusMessage(''), 3000);
-          loadDocuments(); // Refresh the list
-        }
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        setStatusMessage('Error uploading document');
-      }
-    }
-    
-    setUploading(false);
+    // Navigate to upload page instead of handling inline
+    window.location.href = '/documents/upload';
   };
 
   const handleDocumentPreview = (document: any) => {
@@ -794,9 +763,9 @@ export default function DocumentRepositoryPage() {
                       {hasAccess ? (
                         <>
                           <button 
-                            onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                            onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
                             className="text-gray-400 hover:text-saywhat-orange transition-colors"
-                            title="View document"
+                            title="View document details"
                           >
                             <EyeIcon className="h-5 w-5" />
                           </button>
@@ -894,9 +863,9 @@ export default function DocumentRepositoryPage() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <button 
-                      onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                      onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
                       className="text-gray-400 hover:text-saywhat-orange transition-colors p-1 rounded-md hover:bg-orange-50"
-                      title="View document"
+                      title="View document details"
                     >
                       <EyeIcon className="h-5 w-5" />
                     </button>
@@ -1160,7 +1129,7 @@ export default function DocumentRepositoryPage() {
                   Document Management
                 </div>
                 <button
-                  onClick={() => document.getElementById('file-upload')?.click()}
+                  onClick={() => window.location.href = '/documents/upload'}
                   className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
                 >
                   <DocumentArrowUpIcon className="h-4 w-4 mr-2" />
@@ -1255,7 +1224,7 @@ export default function DocumentRepositoryPage() {
           {sidebarCollapsed && (
             <div className="p-2 space-y-3">
               <button
-                onClick={() => document.getElementById('file-upload')?.click()}
+                onClick={() => window.location.href = '/documents/upload'}
                 className="w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
                 title="Upload Documents"
               >
@@ -1347,40 +1316,12 @@ export default function DocumentRepositoryPage() {
           </div>
         </div>
 
-        {/* Upload Loading Indicator */}
-        {uploading && (
-          <div className="fixed top-32 right-6 z-50 bg-blue-500 text-white px-4 py-2 rounded-md shadow-lg flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-            Uploading documents...
-          </div>
-        )}
-
-        {/* Status Message */}
-        {statusMessage && (
-          <div className="fixed top-20 right-6 z-50 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg">
-            {statusMessage}
-          </div>
-        )}
-
-        {/* Hidden file upload input */}
-        <input
-          id="file-upload"
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files) {
-              handleFileUpload(Array.from(e.target.files));
-            }
-          }}
-        />
-
         {/* Drag-drop overlay */}
         {dragActive && (
           <div className="fixed inset-0 z-50 bg-blue-50 bg-opacity-90 flex items-center justify-center">
             <div className="text-center">
               <DocumentArrowUpIcon className="h-16 w-16 text-blue-500 mx-auto mb-4" />
-              <p className="text-xl font-medium text-blue-700">Drop files here to upload</p>
+              <p className="text-xl font-medium text-blue-700">Drop files to open upload page</p>
             </div>
           </div>
         )}
@@ -1400,8 +1341,9 @@ export default function DocumentRepositoryPage() {
         {/* Floating Add Button */}
         <div className="fixed bottom-6 right-6">
           <button
-            onClick={() => document.getElementById('file-upload')?.click()}
+            onClick={() => window.location.href = '/documents/upload'}
             className="bg-saywhat-orange hover:bg-orange-600 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:shadow-xl"
+            title="Upload Documents"
           >
             <PlusIcon className="h-6 w-6" />
           </button>

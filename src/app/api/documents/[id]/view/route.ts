@@ -48,23 +48,27 @@ export async function GET(
     // Read the file
     const fileBuffer = await fs.readFile(filePath);
 
-    // Create proper headers for file download
+    // Create proper headers for inline viewing
     const headers = new Headers();
     headers.set('Content-Type', document.mimeType || 'application/octet-stream');
     headers.set('Content-Length', fileBuffer.length.toString());
-    headers.set('Content-Disposition', `attachment; filename="${document.originalName}"`);
-    headers.set('Cache-Control', 'no-cache');
+    headers.set('Content-Disposition', `inline; filename="${document.originalName}"`);
+    headers.set('Cache-Control', 'public, max-age=31536000');
+    
+    // Add CORS headers for cross-origin requests
+    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Access-Control-Allow-Methods', 'GET');
 
-    // Return the file as a response
+    // Return the file as a response for viewing
     return new NextResponse(new Uint8Array(fileBuffer), {
       status: 200,
       headers
     });
 
   } catch (error) {
-    console.error('❌ Document download error:', error);
+    console.error('❌ Document view error:', error);
     return NextResponse.json(
-      { error: 'Failed to download document' },
+      { error: 'Failed to view document' },
       { status: 500 }
     );
   }
