@@ -51,7 +51,14 @@ import {
   RectangleStackIcon,
   ComputerDesktopIcon,
   CubeIcon,
-  InboxIcon
+  InboxIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  EllipsisHorizontalIcon,
+  DocumentArrowUpIcon,
+  EyeSlashIcon,
+  SparklesIcon as AiSparklesIcon,
+  ChatBubbleBottomCenterTextIcon
 } from "@heroicons/react/24/outline";
 
 // Security classifications with SAYWHAT branding
@@ -313,6 +320,13 @@ export default function DocumentRepositoryPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showCopilot, setShowCopilot] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
   
   const isAdmin = session?.user?.roles?.includes('admin') || 
                  session?.user?.permissions?.includes('documents.admin');
@@ -502,6 +516,67 @@ export default function DocumentRepositoryPage() {
       console.error('Download error:', err);
       alert('Failed to download document');
     }
+  };
+
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    handleFileUpload(files);
+  };
+
+  const handleFileUpload = async (files: File[]) => {
+    setUploading(true);
+    
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('category', 'General');
+        formData.append('security_level', 'PUBLIC');
+        
+        const response = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (response.ok) {
+          setStatusMessage('Document uploaded successfully');
+          setTimeout(() => setStatusMessage(''), 3000);
+          loadDocuments(); // Refresh the list
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        setStatusMessage('Error uploading document');
+      }
+    }
+    
+    setUploading(false);
+  };
+
+  const handleDocumentPreview = (document: any) => {
+    setSelectedDocument(document);
+    setShowPreview(true);
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  const toggleCopilot = () => {
+    setShowCopilot(!showCopilot);
   };
 
   // Load data on component mount
@@ -1053,57 +1128,169 @@ export default function DocumentRepositoryPage() {
         breadcrumbs: [{ name: "Document Repository" }]
       }}
     >
-      <div className="flex h-full">
-        {/* External Platforms Sidebar */}
-        <div className="w-64 bg-gradient-to-b from-gray-50 to-gray-100 border-r border-gray-200 flex-shrink-0">
-          <div className="p-4">
-            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-              Quick Access
-            </h3>
-            <p className="text-xs text-gray-600 mt-1">External Platforms</p>
+      <div className="flex h-full relative">
+        {/* External Platforms Sidebar - Now Collapsible */}
+        <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-gradient-to-b from-gray-50 to-gray-100 border-r border-gray-200 flex-shrink-0 transition-all duration-300`}>
+          {/* Sidebar Toggle Button */}
+          <div className="p-3 border-b border-gray-200">
+            <button
+              onClick={toggleSidebar}
+              className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              {sidebarCollapsed ? (
+                <ChevronRightIcon className="h-5 w-5 text-gray-600" />
+              ) : (
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-sm font-medium text-gray-700">External Platforms</span>
+                  <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
+                </div>
+              )}
+            </button>
           </div>
           
-          <nav className="px-2 space-y-1">
-            {externalPlatforms.map((platform) => {
-              const PlatformIcon = platform.icon;
-              return (
-                <a
-                  key={platform.id}
-                  href={platform.path}
-                  className={`${platform.color} group flex items-center px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200 hover:shadow-sm`}
+          {!sidebarCollapsed && (
+            <div className="p-4">
+              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
+                Quick Access
+              </h3>
+              
+              {/* Document Management Features */}
+              <div className="space-y-2 mb-6">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Document Management
+                </div>
+                <button
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                  className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
                 >
-                  <PlatformIcon className={`${platform.iconColor} flex-shrink-0 mr-3 h-5 w-5`} />
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900">{platform.name}</div>
-                    <div className="text-xs text-gray-600">{platform.description}</div>
-                  </div>
-                  <LinkIcon className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </a>
-              );
-            })}
-          </nav>
+                  <DocumentArrowUpIcon className="h-4 w-4 mr-2" />
+                  Upload Documents
+                </button>
+                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                  <FolderIcon className="h-4 w-4 mr-2" />
+                  Categorization
+                </button>
+                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                  <ClockIcon className="h-4 w-4 mr-2" />
+                  Version History
+                </button>
+              </div>
 
-          {/* Security Level Legend */}
-          <div className="mt-6 px-4">
-            <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3">
-              Security Levels
-            </h4>
-            <div className="space-y-2">
-              {Object.entries(securityClassifications).map(([key, classification]) => {
-                const ClassIcon = classification.icon;
+              {/* User Management */}
+              <div className="space-y-2 mb-6">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Access Control
+                </div>
+                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                  <UsersIcon className="h-4 w-4 mr-2" />
+                  User Management
+                </button>
+                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                  <EyeSlashIcon className="h-4 w-4 mr-2" />
+                  Privacy Settings
+                </button>
+              </div>
+
+              {/* Reports & Analytics */}
+              <div className="space-y-2 mb-6">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Reports & Analytics
+                </div>
+                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                  <ChartBarIcon className="h-4 w-4 mr-2" />
+                  Analytics Dashboard
+                </button>
+                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
+                  <DocumentTextIcon className="h-4 w-4 mr-2" />
+                  Generate Reports
+                </button>
+              </div>
+
+              {/* External Platforms */}
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  External Platforms
+                </div>
+                <nav className="space-y-1">
+                  {externalPlatforms.map((platform) => {
+                    const PlatformIcon = platform.icon;
+                    return (
+                      <a
+                        key={platform.id}
+                        href={platform.path}
+                        className={`${platform.color} group flex items-center px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200 hover:shadow-sm`}
+                      >
+                        <PlatformIcon className={`${platform.iconColor} flex-shrink-0 mr-3 h-4 w-4`} />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900 text-xs">{platform.name}</div>
+                        </div>
+                        <LinkIcon className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </a>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              {/* Security Level Legend */}
+              <div className="space-y-2 mt-6">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Security Levels
+                </div>
+                <div className="space-y-1">
+                  {Object.entries(securityClassifications).map(([key, classification]) => {
+                    const ClassIcon = classification.icon;
+                    return (
+                      <div key={key} className={`${classification.color} px-2 py-1.5 rounded-md border text-xs flex items-center`}>
+                        <ClassIcon className="h-3 w-3 mr-2 flex-shrink-0" />
+                        <span className="font-medium">{key}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Collapsed sidebar icons */}
+          {sidebarCollapsed && (
+            <div className="p-2 space-y-3">
+              <button
+                onClick={() => document.getElementById('file-upload')?.click()}
+                className="w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                title="Upload Documents"
+              >
+                <DocumentArrowUpIcon className="h-5 w-5" />
+              </button>
+              <button
+                className="w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                title="Analytics"
+              >
+                <ChartBarIcon className="h-5 w-5" />
+              </button>
+              {externalPlatforms.slice(0, 3).map((platform) => {
+                const PlatformIcon = platform.icon;
                 return (
-                  <div key={key} className={`${classification.color} px-2 py-1.5 rounded-md border text-xs flex items-center`}>
-                    <ClassIcon className="h-3 w-3 mr-2 flex-shrink-0" />
-                    <span className="font-medium">{key}</span>
-                  </div>
+                  <a
+                    key={platform.id}
+                    href={platform.path}
+                    className="w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                    title={platform.name}
+                  >
+                    <PlatformIcon className="h-5 w-5" />
+                  </a>
                 );
               })}
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Main Content Area with Drag-Drop Support */}
+        <div 
+          className={`flex-1 flex flex-col overflow-hidden ${dragActive ? 'bg-blue-50 border-2 border-blue-300 border-dashed' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <div className="bg-white shadow-sm border-b border-gray-200">
             <nav className="flex space-x-8 px-6" aria-label="Tabs">
               {primaryTabs.map((tab) => {
@@ -1159,16 +1346,66 @@ export default function DocumentRepositoryPage() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Floating Add Button */}
-      <div className="fixed bottom-6 right-6">
-        <button
-          onClick={() => window.location.href = '/documents/upload'}
-          className="bg-saywhat-orange hover:bg-orange-600 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:shadow-xl"
-        >
-          <PlusIcon className="h-6 w-6" />
-        </button>
+        {/* Upload Loading Indicator */}
+        {uploading && (
+          <div className="fixed top-32 right-6 z-50 bg-blue-500 text-white px-4 py-2 rounded-md shadow-lg flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+            Uploading documents...
+          </div>
+        )}
+
+        {/* Status Message */}
+        {statusMessage && (
+          <div className="fixed top-20 right-6 z-50 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg">
+            {statusMessage}
+          </div>
+        )}
+
+        {/* Hidden file upload input */}
+        <input
+          id="file-upload"
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) {
+              handleFileUpload(Array.from(e.target.files));
+            }
+          }}
+        />
+
+        {/* Drag-drop overlay */}
+        {dragActive && (
+          <div className="fixed inset-0 z-50 bg-blue-50 bg-opacity-90 flex items-center justify-center">
+            <div className="text-center">
+              <DocumentArrowUpIcon className="h-16 w-16 text-blue-500 mx-auto mb-4" />
+              <p className="text-xl font-medium text-blue-700">Drop files here to upload</p>
+            </div>
+          </div>
+        )}
+
+        {/* AI Copilot Button */}
+        {showCopilot && (
+          <div className="fixed bottom-20 right-6 z-40">
+            <button
+              onClick={toggleCopilot}
+              className="bg-purple-600 hover:bg-purple-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:shadow-xl"
+            >
+              <ChatBubbleBottomCenterTextIcon className="h-6 w-6" />
+            </button>
+          </div>
+        )}
+
+        {/* Floating Add Button */}
+        <div className="fixed bottom-6 right-6">
+          <button
+            onClick={() => document.getElementById('file-upload')?.click()}
+            className="bg-saywhat-orange hover:bg-orange-600 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:shadow-xl"
+          >
+            <PlusIcon className="h-6 w-6" />
+          </button>
+        </div>
       </div>
     </ModulePage>
   );
