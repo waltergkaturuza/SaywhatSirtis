@@ -319,53 +319,6 @@ export default function DocumentViewPage() {
             )}
           </div>
         </div>
-
-        {/* Right Sidebar - AI Copilot */}
-        <div className="w-80 bg-white shadow-lg flex-shrink-0 border-l border-gray-200 overflow-y-auto">
-          <div className="p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">AI Copilot</h3>
-                <p className="text-sm text-gray-500">Document Analysis</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-purple-900 mb-2">Document Summary</h4>
-                <p className="text-sm text-purple-700">
-                  Analyzing document content... AI-powered insights will appear here to help you understand the document's key points, structure, and important information.
-                </p>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-blue-900 mb-2">Quick Insights</h4>
-                <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Document type: {document.category}</li>
-                  <li>• Security level: {document.classification}</li>
-                  <li>• File format: {document.mimeType.split('/')[1].toUpperCase()}</li>
-                  <li>• Size: {formatFileSize(document.size)}</li>
-                </ul>
-              </div>
-
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-green-900 mb-2">Recommendations</h4>
-                <p className="text-sm text-green-700">
-                  Based on this document's content and metadata, consider sharing with relevant team members or adding to project folders for better organization.
-                </p>
-              </div>
-
-              <button className="w-full px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors">
-                Generate Full Analysis
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </ModulePage>
   );

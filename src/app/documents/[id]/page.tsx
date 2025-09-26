@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { ModulePage } from '@/components/layout/enhanced-layout';
-import DocumentSirtisCopilot from '@/components/ui/document-sirtis-copilot';
 import {
   DocumentIcon,
   ArrowDownTrayIcon,
@@ -322,13 +321,6 @@ export default function DocumentViewPage() {
             </div>
           </div>
         </div>
-
-        {/* SIRTIS Copilot for Document Analysis */}
-        <DocumentSirtisCopilot 
-          documentId={params.id as string}
-          documentName={document?.originalName || 'Document'}
-          documentType={document?.mimeType || 'Unknown'}
-        />
       </div>
     </ModulePage>
   );
