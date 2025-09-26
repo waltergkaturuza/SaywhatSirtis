@@ -1903,19 +1903,19 @@ export default function DocumentRepositoryPage() {
       }
     >
       <div className="flex h-full relative">
-        {/* External Platforms Sidebar - Now Collapsible */}
-        <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-gradient-to-b from-gray-50 to-gray-100 border-r border-gray-200 flex-shrink-0 transition-all duration-300`}>
+        {/* External Platforms Sidebar - Clean Minimal Design */}
+        <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex-shrink-0 transition-all duration-300`}>
           {/* Sidebar Toggle Button */}
-          <div className="p-3 border-b border-gray-200">
+          <div className="p-3 border-b border-gray-100">
             <button
               onClick={toggleSidebar}
-              className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-gray-200 transition-colors"
+              className="w-full flex items-center justify-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
             >
               {sidebarCollapsed ? (
                 <ChevronRightIcon className="h-5 w-5 text-gray-600" />
               ) : (
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-sm font-medium text-gray-700">Quick Access</span>
+                  <span className="text-sm font-semibold text-gray-900">Quick Access</span>
                   <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
                 </div>
               )}
@@ -1923,252 +1923,165 @@ export default function DocumentRepositoryPage() {
           </div>
           
           {!sidebarCollapsed && (
-            <div className="p-6 relative">
-              {/* Beautiful 3D Document Management Section */}
-              <div className="space-y-6">
-                {/* Section Header with 3D Effect */}
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-saywhat-orange/20 to-red-500/20 rounded-xl blur-lg"></div>
-                  <div className="relative bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl p-4 shadow-2xl border border-gray-700/50">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center">
-                      <div className="w-2 h-2 bg-saywhat-orange rounded-full mr-2 animate-pulse"></div>
-                      Document Management
-                    </h3>
-                  </div>
-                </div>
-
-                {/* 3D Upload Documents Button */}
-                <div className="group relative">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-saywhat-orange via-red-500 to-pink-500 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
+            <div className="p-4">
+              {/* Document Management Section */}
+              <div className="mb-6">
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center">
+                  <div className="w-2 h-2 bg-saywhat-orange rounded-full mr-2"></div>
+                  Document Management
+                </h3>
+                
+                <div className="space-y-2">
+                  {/* Upload Documents */}
                   <button
                     onClick={() => window.location.href = '/documents/upload'}
-                    className="relative w-full bg-gradient-to-br from-white via-gray-50 to-gray-100 rounded-xl p-4 shadow-xl border border-gray-200/80 transform hover:scale-105 transition-all duration-300 hover:shadow-2xl backdrop-blur-sm group-hover:-translate-y-1"
+                    className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group"
                   >
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <div className="absolute -inset-2 bg-gradient-to-r from-saywhat-orange to-red-500 rounded-lg blur-sm opacity-60"></div>
-                        <div className="relative bg-gradient-to-br from-saywhat-orange to-red-600 p-3 rounded-lg shadow-lg transform group-hover:rotate-12 transition-transform duration-300">
-                          <DocumentArrowUpIcon className="h-5 w-5 text-white drop-shadow-lg" />
-                        </div>
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="text-sm font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                          Upload Documents
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Add new files securely
-                        </div>
-                      </div>
+                    <div className="bg-saywhat-orange p-2 rounded-md mr-3 group-hover:bg-orange-600 transition-colors">
+                      <DocumentArrowUpIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-900">Upload Documents</div>
+                      <div className="text-xs text-gray-500">Add new files</div>
                     </div>
                   </button>
-                </div>
-                
-                {/* 3D Folders Button */}
-                <div className="group relative">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+                  
+                  {/* Folders */}
                   <button 
                     onClick={() => setActiveTab('browse')}
-                    className="relative w-full bg-gradient-to-br from-white via-green-50 to-blue-50 rounded-xl p-4 shadow-xl border border-green-200/80 transform hover:scale-105 transition-all duration-300 hover:shadow-2xl backdrop-blur-sm group-hover:-translate-y-1"
+                    className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group"
                   >
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <div className="absolute -inset-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg blur-sm opacity-60"></div>
-                        <div className="relative bg-gradient-to-br from-green-500 to-blue-600 p-3 rounded-lg shadow-lg transform group-hover:rotate-12 transition-transform duration-300">
-                          <FolderIcon className="h-5 w-5 text-white drop-shadow-lg" />
-                        </div>
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="text-sm font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                          Folders
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Organize your files
-                        </div>
-                      </div>
+                    <div className="bg-green-600 p-2 rounded-md mr-3 group-hover:bg-green-700 transition-colors">
+                      <FolderIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-900">Folders</div>
+                      <div className="text-xs text-gray-500">Organize files</div>
                     </div>
                   </button>
-                </div>
-
-                {/* 3D Version History Button */}
-                <div className="group relative">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-purple-400 via-pink-500 to-red-600 rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-                  <button className="relative w-full bg-gradient-to-br from-white via-purple-50 to-pink-50 rounded-xl p-4 shadow-xl border border-purple-200/80 transform hover:scale-105 transition-all duration-300 hover:shadow-2xl backdrop-blur-sm group-hover:-translate-y-1">
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <div className="absolute -inset-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg blur-sm opacity-60"></div>
-                        <div className="relative bg-gradient-to-br from-purple-500 to-pink-600 p-3 rounded-lg shadow-lg transform group-hover:rotate-12 transition-transform duration-300">
-                          <ClockIcon className="h-5 w-5 text-white drop-shadow-lg" />
-                        </div>
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="text-sm font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                          Version History
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Track document changes
-                        </div>
-                      </div>
+                  
+                  {/* Version History */}
+                  <button className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                    <div className="bg-gray-600 p-2 rounded-md mr-3 group-hover:bg-gray-700 transition-colors">
+                      <ClockIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-900">Version History</div>
+                      <div className="text-xs text-gray-500">Track changes</div>
                     </div>
                   </button>
                 </div>
               </div>
 
-              {/* Beautiful 3D Reports & Analytics Section */}
-              <div className="space-y-6 mb-8">
-                {/* Section Header with 3D Effect */}
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl blur-lg"></div>
-                  <div className="relative bg-gradient-to-r from-blue-900 to-cyan-800 rounded-xl p-4 shadow-2xl border border-blue-700/50">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center">
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full mr-2 animate-pulse"></div>
-                      Reports & Analytics
-                    </h3>
-                  </div>
-                </div>
-
-                {/* 3D Analytics Dashboard Button */}
-                <div className="group relative">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 via-cyan-500 to-teal-600 rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-                  <button className="relative w-full bg-gradient-to-br from-white via-blue-50 to-cyan-50 rounded-xl p-4 shadow-xl border border-blue-200/80 transform hover:scale-105 transition-all duration-300 hover:shadow-2xl backdrop-blur-sm group-hover:-translate-y-1">
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <div className="absolute -inset-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg blur-sm opacity-60"></div>
-                        <div className="relative bg-gradient-to-br from-blue-500 to-cyan-600 p-3 rounded-lg shadow-lg transform group-hover:rotate-12 transition-transform duration-300">
-                          <ChartBarIcon className="h-5 w-5 text-white drop-shadow-lg" />
-                        </div>
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="text-sm font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                          Analytics Dashboard
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          View insights & metrics
-                        </div>
-                      </div>
+              {/* Reports & Analytics Section */}
+              <div className="mb-6">
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center">
+                  <div className="w-2 h-2 bg-green-600 rounded-full mr-2"></div>
+                  Reports & Analytics
+                </h3>
+                
+                <div className="space-y-2">
+                  {/* Analytics Dashboard */}
+                  <button className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                    <div className="bg-saywhat-orange p-2 rounded-md mr-3 group-hover:bg-orange-600 transition-colors">
+                      <ChartBarIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-900">Analytics Dashboard</div>
+                      <div className="text-xs text-gray-500">View insights</div>
                     </div>
                   </button>
-                </div>
-
-                {/* 3D Generate Reports Button */}
-                <div className="group relative">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-teal-400 via-green-500 to-emerald-600 rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
-                  <button className="relative w-full bg-gradient-to-br from-white via-teal-50 to-green-50 rounded-xl p-4 shadow-xl border border-teal-200/80 transform hover:scale-105 transition-all duration-300 hover:shadow-2xl backdrop-blur-sm group-hover:-translate-y-1">
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <div className="absolute -inset-2 bg-gradient-to-r from-teal-500 to-green-500 rounded-lg blur-sm opacity-60"></div>
-                        <div className="relative bg-gradient-to-br from-teal-500 to-green-600 p-3 rounded-lg shadow-lg transform group-hover:rotate-12 transition-transform duration-300">
-                          <DocumentTextIcon className="h-5 w-5 text-white drop-shadow-lg" />
-                        </div>
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="text-sm font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                          Generate Reports
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Create custom reports
-                        </div>
-                      </div>
+                  
+                  {/* Generate Reports */}
+                  <button className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                    <div className="bg-green-600 p-2 rounded-md mr-3 group-hover:bg-green-700 transition-colors">
+                      <DocumentTextIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-medium text-gray-900">Generate Reports</div>
+                      <div className="text-xs text-gray-500">Create reports</div>
                     </div>
                   </button>
                 </div>
               </div>
 
-              {/* Beautiful 3D External Platforms Section */}
-              <div className="space-y-6">
-                {/* Section Header with 3D Effect */}
-                <div className="relative">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-xl blur-lg"></div>
-                  <div className="relative bg-gradient-to-r from-indigo-900 to-purple-800 rounded-xl p-4 shadow-2xl border border-indigo-700/50">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center">
-                      <div className="w-2 h-2 bg-indigo-400 rounded-full mr-2 animate-pulse"></div>
-                      External Platforms
-                    </h3>
-                  </div>
-                </div>
-
-                <nav className="space-y-4">
+              {/* External Platforms Section */}
+              <div>
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center">
+                  <div className="w-2 h-2 bg-gray-600 rounded-full mr-2"></div>
+                  External Platforms
+                </h3>
+                
+                <div className="space-y-2">
                   {externalPlatforms.map((platform, index) => {
                     const PlatformIcon = platform.icon;
-                    const gradients = [
-                      'from-indigo-400 via-purple-500 to-pink-600',
-                      'from-orange-400 via-red-500 to-pink-600',
-                      'from-yellow-400 via-orange-500 to-red-600',
-                    ];
-                    const bgGradients = [
-                      'from-white via-indigo-50 to-purple-50',
-                      'from-white via-orange-50 to-red-50', 
-                      'from-white via-yellow-50 to-orange-50',
-                    ];
-                    const iconGradients = [
-                      'from-indigo-500 to-purple-600',
-                      'from-orange-500 to-red-600',
-                      'from-yellow-500 to-orange-600',
-                    ];
+                    const colors = ['bg-saywhat-orange', 'bg-green-600', 'bg-gray-600'];
+                    const hoverColors = ['hover:bg-orange-600', 'hover:bg-green-700', 'hover:bg-gray-700'];
                     
                     return (
-                      <div key={platform.id} className="group relative">
-                        <div className={`absolute -inset-1 bg-gradient-to-r ${gradients[index % gradients.length]} rounded-2xl blur opacity-50 group-hover:opacity-75 transition duration-1000 group-hover:duration-200`}></div>
-                        <a
-                          href={platform.path}
-                          className={`relative w-full bg-gradient-to-br ${bgGradients[index % bgGradients.length]} rounded-xl p-4 shadow-xl border border-gray-200/80 transform hover:scale-105 transition-all duration-300 hover:shadow-2xl backdrop-blur-sm group-hover:-translate-y-1 flex items-center space-x-4`}
-                        >
-                          <div className="relative">
-                            <div className={`absolute -inset-2 bg-gradient-to-r ${iconGradients[index % iconGradients.length]} rounded-lg blur-sm opacity-60`}></div>
-                            <div className={`relative bg-gradient-to-br ${iconGradients[index % iconGradients.length]} p-3 rounded-lg shadow-lg transform group-hover:rotate-12 transition-transform duration-300`}>
-                              <PlatformIcon className="h-5 w-5 text-white drop-shadow-lg" />
-                            </div>
+                      <a
+                        key={platform.id}
+                        href={platform.path}
+                        className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                      >
+                        <div className={`${colors[index % colors.length]} ${hoverColors[index % hoverColors.length]} p-2 rounded-md mr-3 transition-colors`}>
+                          <PlatformIcon className="h-4 w-4 text-white" />
+                        </div>
+                        <div className="text-left flex-1">
+                          <div className="text-sm font-medium text-gray-900 flex items-center">
+                            {platform.name}
+                            <LinkIcon className="h-3 w-3 text-gray-400 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
-                          <div className="flex-1 text-left">
-                            <div className="text-sm font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent flex items-center">
-                              {platform.name}
-                              <LinkIcon className="h-4 w-4 text-gray-400 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1" />
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Connect & sync files
-                            </div>
-                          </div>
-                        </a>
-                      </div>
+                          <div className="text-xs text-gray-500">Connect & sync</div>
+                        </div>
+                      </a>
                     );
                   })}
-                </nav>
+                </div>
               </div>
             </div>
           )}
 
           {/* Collapsed sidebar icons */}
           {sidebarCollapsed && (
-            <div className="p-2 space-y-3">
-              <div className="flex flex-col items-center space-y-3">
-                <div className="relative">
-                  <div className="absolute left-0 top-0 w-1 h-10 bg-transparent rounded-r-full transition-colors hover:bg-green-500"></div>
-                  <button
-                    onClick={() => window.location.href = '/documents/upload'}
-                    className="w-10 h-10 bg-white rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors border border-gray-200"
-                    title="Upload Documents"
-                  >
-                    <DocumentArrowUpIcon className="h-5 w-5 text-saywhat-orange" />
-                  </button>
-                </div>
-                <div className="relative">
-                  <div className="absolute left-0 top-0 w-1 h-10 bg-transparent rounded-r-full transition-colors hover:bg-green-500"></div>
-                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200">
-                    <ChartBarIcon className="h-5 w-5 text-saywhat-orange" />
-                  </div>
-                </div>
-                {externalPlatforms.slice(0, 3).map((platform) => {
+            <div className="p-2 space-y-2">
+              <button
+                onClick={() => window.location.href = '/documents/upload'}
+                className="w-12 h-12 bg-saywhat-orange rounded-lg flex items-center justify-center hover:bg-orange-600 transition-colors"
+                title="Upload Documents"
+              >
+                <DocumentArrowUpIcon className="h-5 w-5 text-white" />
+              </button>
+              
+              <button
+                onClick={() => setActiveTab('browse')}
+                className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center hover:bg-green-700 transition-colors"
+                title="Folders"
+              >
+                <FolderIcon className="h-5 w-5 text-white" />
+              </button>
+              
+              <button
+                className="w-12 h-12 bg-gray-600 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors"
+                title="Version History"
+              >
+                <ClockIcon className="h-5 w-5 text-white" />
+              </button>
+              
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                {externalPlatforms.map((platform, index) => {
                   const PlatformIcon = platform.icon;
+                  const colors = ['bg-saywhat-orange hover:bg-orange-600', 'bg-green-600 hover:bg-green-700', 'bg-gray-600 hover:bg-gray-700'];
+                  
                   return (
-                    <div key={platform.id} className="relative">
-                      <div className="absolute left-0 top-0 w-1 h-10 bg-transparent rounded-r-full transition-colors hover:bg-green-500"></div>
-                      <a
-                        href={platform.path}
-                        className="w-10 h-10 bg-white rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors border border-gray-200"
-                        title={platform.name}
-                      >
-                        <PlatformIcon className="h-5 w-5 text-saywhat-orange" />
-                      </a>
-                    </div>
+                    <a
+                      key={platform.id}
+                      href={platform.path}
+                      className={`w-12 h-12 ${colors[index % colors.length]} rounded-lg flex items-center justify-center transition-colors mb-2 block`}
+                      title={platform.name}
+                    >
+                      <PlatformIcon className="h-5 w-5 text-white" />
+                    </a>
                   );
                 })}
               </div>
