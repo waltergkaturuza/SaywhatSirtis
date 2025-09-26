@@ -206,11 +206,13 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   session: {
-    strategy: "jwt"
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async jwt({ token, user }) {
+      // Handle new login
       if (user) {
         token.id = user.id
         token.department = user.department
@@ -221,12 +223,19 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string
-        session.user.department = token.department as string
-        session.user.position = token.position as string
-        session.user.roles = token.roles as string[]
-        session.user.permissions = token.permissions as string[]
+      // Handle potential token decryption issues gracefully
+      try {
+        if (token) {
+          session.user.id = token.id as string
+          session.user.department = token.department as string
+          session.user.position = token.position as string
+          session.user.roles = token.roles as string[]
+          session.user.permissions = token.permissions as string[]
+        }
+      } catch (error) {
+        console.error('Session callback error:', error)
+        // Return session without additional data if token is corrupted
+        return session
       }
       return session
     }
