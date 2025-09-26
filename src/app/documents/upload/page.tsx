@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ModulePage } from "@/components/layout/enhanced-layout";
 import { 
   CloudArrowUpIcon,
@@ -19,33 +19,91 @@ import {
   UserIcon,
   SparklesIcon,
   CpuChipIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  BuildingOfficeIcon
 } from "@heroicons/react/24/outline";
 
-// Document categories - Updated as per requirements (in alphabetical order)
+// Document categories - Updated comprehensive list (in alphabetical order)
 const documentCategories = [
-  "Activity reports",
+  "Activity Reports",
   "Annual Reports", 
-  "Baseline and end line reports",
-  "Case Management reports",
-  "Departmental monthly reports",
-  "Disciplinary reports",
-  "Donor reports",
-  "Employee contracts",
+  "Asset Management Records",
+  "Award Documents",
+  "Baseline and Endline Reports",
+  "Beneficiary Data & Records",
+  "Board Meeting Minutes",
+  "Budgets & Forecasts",
+  "Capacity Building Materials",
+  "Case Management Reports",
+  "Communication & PR Materials",
+  "Community Engagement Records",
+  "Compliance & Audit Reports",
+  "Conflict of Interest Declarations",
+  "Contracts & Agreements",
+  "Data Protection & Privacy Records",
+  "Departmental Monthly Reports",
+  "Disciplinary Reports",
+  "Donor Reports",
+  "Emergency Response Plans",
+  "Employee Contracts",
+  "Environmental Impact Assessments",
+  "Event Documentation",
+  "Exit Strategies & Closure Reports",
+  "External Evaluation Reports",
   "Financial Documents",
-  "Flagship Events reports",
+  "Flagship Events Reports",
+  "Fundraising Materials",
+  "Government Relations Documents",
+  "Grant Agreements",
   "Grant Proposals",
-  "Grants Agreements",
+  "Health & Safety Records",
+  "Impact Assessment Reports",
+  "Incident Reports",
+  "Insurance Documents",
+  "Internal Audit Reports",
+  "IT & Systems Documentation",
+  "Job Descriptions & Specifications",
+  "Knowledge Management Resources",
   "Legal Documents",
-  "Management accounts reports",
+  "Lesson Learned Documents",
+  "Management Accounts Reports",
   "Marketing Materials",
-  "MOUs",
+  "Media Coverage & Press Releases",
+  "Meeting Notes & Action Items",
+  "Memorandums of Understanding (MOUs)",
+  "Monitoring & Evaluation Reports",
   "Observer Newsletters",
+  "Organizational Charts",
+  "Partnership Agreements",
+  "Performance Appraisals",
+  "Performance Improvement Plans",
+  "Permit & License Documents",
   "Policies & Procedures",
   "Pre-Award Assessments",
-  "Research BOOKS",
+  "Procurement & Tender Documents",
+  "Project Proposals",
+  "Quality Assurance Documents",
+  "Recruitment & Selection Records",
+  "Regulatory Compliance Documents",
+  "Research Books",
   "Research Papers",
-  "Training Materials"
+  "Risk Registers",
+  "Safeguarding Policies & Reports",
+  "Staff Handbooks",
+  "Stakeholder Mapping & Analysis",
+  "Standard Operating Procedures (SOPs)",
+  "Strategic Plans",
+  "Sustainability Reports",
+  "Technical Specifications",
+  "Terms of Reference (ToRs)",
+  "Training Materials",
+  "Travel Reports",
+  "User Manuals & Guides",
+  "Vendor & Supplier Records",
+  "Volunteer Management Records",
+  "Waste Management Plans",
+  "Workshop & Conference Materials",
+  "Workplans & Activity Schedules"
 ];
 
 // Security classifications - Updated for internal/confidential focus with SAYWHAT colors
@@ -56,6 +114,13 @@ const securityClassifications = {
     color: "text-green-600 bg-green-100",
     icon: ShareIcon,
     examples: ["General policies", "Training materials", "Organization-wide announcements"]
+  },
+  "INTERNAL": {
+    level: 1,
+    description: "Information for internal use within the organization",
+    color: "text-blue-600 bg-blue-100",
+    icon: BuildingOfficeIcon,
+    examples: ["Internal memos", "Department reports", "Employee communications", "Internal procedures"]
   },
   "CONFIDENTIAL": {
     level: 2,
@@ -98,14 +163,25 @@ const workflowTypes = [
 ];
 
 export default function DocumentUploadPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [uploadState, setUploadState] = useState<"idle" | "uploading" | "processing" | "success" | "error">("idle");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [userDepartment, setUserDepartment] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
+  const [isPersonalRepo, setIsPersonalRepo] = useState<boolean>(true); // Default to personal repo
   
-  // Form data - Simplified as per requirements
+  // Access level specific selections
+  const [selectedIndividuals, setSelectedIndividuals] = useState<string[]>([]);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<Array<{id: string, name: string, email: string}>>([]);
+  const [availableDepartments, setAvailableDepartments] = useState<Array<{name: string, code: string}>>([]);
+  const [availableTeams, setAvailableTeams] = useState<Array<{id: string, name: string}>>([]);
+  
+  // Form data - Enhanced with auto-captured user info
   const [formData, setFormData] = useState({
     title: "",
     category: "",
@@ -113,12 +189,17 @@ export default function DocumentUploadPage() {
     accessLevel: "organization",
     folder: "/",
     keywords: "",
-    customMetadata: {} as Record<string, string>
+    customMetadata: {} as Record<string, string>,
+    // Auto-captured fields (read-only)
+    uploadedBy: "",
+    department: "",
+    status: "draft" // draft, pending, published
   });
 
   const [aiAnalysis, setAiAnalysis] = useState<{
     summary?: string;
     suggestedTags?: string[];
+    suggestedCategory?: string;
     suggestedClassification?: string;
     contentType?: string;
     language?: string;
@@ -128,9 +209,225 @@ export default function DocumentUploadPage() {
     securityRisks?: string[];
   } | null>(null);
 
-  // Check permissions
+  // Auto-load user information on component mount
+  useEffect(() => {
+    if (session?.user) {
+      const currentUserName = session.user.name || session.user.email || 'Unknown User';
+      setUserName(currentUserName);
+      
+      // Update form data with user info
+      setFormData(prev => ({
+        ...prev,
+        uploadedBy: currentUserName,
+        status: isPersonalRepo ? 'draft' : 'pending'
+      }));
+      
+      // Load user's department
+      loadUserDepartment();
+    }
+  }, [session, isPersonalRepo]);
+
+  // Load user's department information
+  const loadUserDepartment = async () => {
+    try {
+      if (session?.user?.email) {
+        const response = await fetch(`/api/hr/employees/by-email/${encodeURIComponent(session.user.email)}`);
+        if (response.ok) {
+          const employeeData = await response.json();
+          const department = employeeData.department?.name || 'General';
+          setUserDepartment(department);
+          setFormData(prev => ({
+            ...prev,
+            department: department
+          }));
+        } else {
+          // Fallback if employee not found
+          setUserDepartment('General');
+          setFormData(prev => ({
+            ...prev,
+            department: 'General'
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user department:', error);
+      setUserDepartment('General');
+      setFormData(prev => ({
+        ...prev,
+        department: 'General'
+      }));
+    }
+  };
+
+  // Load available users for individual access
+  const loadAvailableUsers = async () => {
+    try {
+      console.log('Loading users...');
+      console.log('Session status:', status);
+      console.log('Session data:', session);
+      
+      const response = await fetch('/api/users?format=simple', {
+        method: 'GET',
+        credentials: 'include', // Ensure cookies are sent
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Users response status:', response.status);
+      console.log('Users response headers:', response.headers);
+      
+      if (response.ok) {
+        const users = await response.json();
+        console.log('Users data received:', users);
+        const transformedUsers = users.map((user: any) => ({
+          id: user.id,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+          email: user.email
+        }));
+        console.log('Transformed users:', transformedUsers);
+        setAvailableUsers(transformedUsers);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch users:', response.status, response.statusText, errorText);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
+  // Load available departments
+  const loadAvailableDepartments = async () => {
+    try {
+      console.log('Loading departments...');
+      const response = await fetch('/api/hr/departments');
+      console.log('Departments response status:', response.status);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Departments data received:', data);
+        const departments = data.departments || [];
+        const transformedDepartments = departments.map((dept: any) => ({
+          name: dept.name,
+          code: dept.code || dept.name
+        }));
+        console.log('Transformed departments:', transformedDepartments);
+        setAvailableDepartments(transformedDepartments);
+      } else {
+        console.error('Failed to fetch departments:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  };
+
+  // Load available teams/projects
+  const loadAvailableTeams = async () => {
+    try {
+      console.log('Loading teams/projects...');
+      const response = await fetch('/api/projects');
+      console.log('Teams/projects response status:', response.status);
+      if (response.ok) {
+        const projects = await response.json();
+        console.log('Projects data received:', projects);
+        const transformedProjects = projects.map((project: any) => ({
+          id: project.id,
+          name: project.name
+        }));
+        console.log('Transformed projects:', transformedProjects);
+        setAvailableTeams(transformedProjects);
+      } else {
+        console.error('Failed to fetch projects:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error loading teams:', error);
+      // Fallback to some default teams
+      const fallbackTeams = [
+        { id: 'hr', name: 'Human Resources Team' },
+        { id: 'finance', name: 'Finance Team' },
+        { id: 'operations', name: 'Operations Team' },
+        { id: 'programs', name: 'Programs Team' }
+      ];
+      console.log('Using fallback teams:', fallbackTeams);
+      setAvailableTeams(fallbackTeams);
+    }
+  };
+
+  // Load data when access level changes
+  useEffect(() => {
+    // Only load data if we have an authenticated session
+    if (status !== "authenticated" || !session) {
+      return;
+    }
+
+    if (formData.accessLevel === 'individual' && availableUsers.length === 0) {
+      loadAvailableUsers();
+    }
+    if (formData.accessLevel === 'department' && availableDepartments.length === 0) {
+      loadAvailableDepartments();
+    }
+    if (formData.accessLevel === 'team' && availableTeams.length === 0) {
+      loadAvailableTeams();
+    }
+  }, [formData.accessLevel, status, session]);
+
+  // Check permissions and session status
   const hasAccess = session?.user?.permissions?.includes("documents.create") ||
                    session?.user?.permissions?.includes("documents.full_access");
+
+  // Show loading state if session is loading
+  if (status === "loading") {
+    return (
+      <ModulePage
+        metadata={{
+          title: "Upload Documents",
+          description: "Upload and classify documents with AI assistance",
+          breadcrumbs: [
+            { name: "Document Repository", href: "/documents" },
+            { name: "Upload" }
+          ]
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-saywhat-orange mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </ModulePage>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (status === "unauthenticated") {
+    return (
+      <ModulePage
+        metadata={{
+          title: "Upload Documents",
+          description: "Upload and classify documents with AI assistance",
+          breadcrumbs: [
+            { name: "Document Repository", href: "/documents" },
+            { name: "Upload" }
+          ]
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <p className="text-gray-600">Please sign in to access this page.</p>
+              <button
+                onClick={() => window.location.href = '/auth/signin'}
+                className="mt-4 px-6 py-2 bg-saywhat-orange text-white rounded-lg hover:bg-orange-600"
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      </ModulePage>
+    );
+  }
 
   if (!hasAccess) {
     return (
@@ -155,7 +452,7 @@ export default function DocumentUploadPage() {
     );
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
     setSelectedFiles(files);
     
@@ -166,28 +463,62 @@ export default function DocumentUploadPage() {
       setFormData(prev => ({ ...prev, title: nameWithoutExtension }));
     }
 
-    // Simulate AI analysis
+    // Intelligent AI analysis
     if (files.length > 0) {
       setUploadState("processing");
       try {
-        // Here would be actual AI analysis API call
-        // For now, set minimal analysis
-        setTimeout(() => {
-          setAiAnalysis({
-            summary: "Document uploaded successfully.",
-            suggestedTags: [],
-            suggestedClassification: "PUBLIC",
-            contentType: files[0].type.includes('pdf') ? "PDF Document" : "Office Document",
-            language: "English",
-            readabilityScore: 0.5,
-            sentimentScore: 0.5,
-            keyTopics: [],
-            securityRisks: []
-          });
-          setUploadState("idle");
-        }, 1000);
+        // Call our intelligent AI analysis API
+        const analysisFormData = new FormData();
+        analysisFormData.append('file', files[0]);
+        analysisFormData.append('category', formData.category || 'General Document');
+        analysisFormData.append('title', formData.title || files[0].name);
+        
+        const response = await fetch('/api/documents/ai-analyze', {
+          method: 'POST',
+          body: analysisFormData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.analysis) {
+            const analysis = result.analysis;
+            setAiAnalysis({
+              summary: analysis.summary,
+              suggestedTags: analysis.suggestedTags || [],
+              suggestedCategory: analysis.suggestedCategory,
+              suggestedClassification: analysis.suggestedClassification,
+              contentType: analysis.contentType,
+              language: analysis.language,
+              readabilityScore: analysis.readabilityScore,
+              sentimentScore: analysis.sentimentScore,
+              keyTopics: analysis.keyTopics || [],
+              securityRisks: analysis.securityRisks || []
+            });
+            
+            console.log('🤖 AI Analysis completed:', analysis);
+          } else {
+            throw new Error(result.error || 'Analysis failed');
+          }
+        } else {
+          throw new Error('AI analysis API call failed');
+        }
+        
+        setUploadState("idle");
       } catch (error) {
         console.error('Error analyzing document:', error);
+        // Fallback to basic analysis if AI fails
+        setAiAnalysis({
+          summary: `Document "${files[0].name}" uploaded and ready for processing. AI analysis temporarily unavailable.`,
+          suggestedTags: [formData.category || 'General'],
+          suggestedCategory: formData.category || "General Document",
+          suggestedClassification: "INTERNAL",
+          contentType: files[0].type.includes('pdf') ? "PDF Document" : "Office Document",
+          language: "English",
+          readabilityScore: 0.7,
+          sentimentScore: 0.6,
+          keyTopics: [formData.category || 'General Document'],
+          securityRisks: []
+        });
         setUploadState("idle");
       }
     }
@@ -209,12 +540,27 @@ export default function DocumentUploadPage() {
   };
 
   const applySuggestedClassification = () => {
-    if (aiAnalysis?.suggestedClassification) {
+    if (aiAnalysis?.suggestedClassification && 
+        securityClassifications[aiAnalysis.suggestedClassification as keyof typeof securityClassifications]) {
       setFormData(prev => ({
         ...prev,
         classification: aiAnalysis.suggestedClassification!
       }));
     }
+  };
+
+  const applySuggestedCategory = () => {
+    if (aiAnalysis?.suggestedCategory && documentCategories.includes(aiAnalysis.suggestedCategory)) {
+      setFormData(prev => ({
+        ...prev,
+        category: aiAnalysis.suggestedCategory!
+      }));
+    }
+  };
+
+  const applyAllSuggestions = () => {
+    applySuggestedCategory();
+    applySuggestedClassification();
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -230,6 +576,22 @@ export default function DocumentUploadPage() {
       return;
     }
 
+    // Validate access level specific selections
+    if (formData.accessLevel === 'individual' && selectedIndividuals.length === 0) {
+      alert("Please select at least one individual for Individual Access.");
+      return;
+    }
+
+    if (formData.accessLevel === 'department' && selectedDepartments.length === 0) {
+      alert("Please select at least one department for Department Only access.");
+      return;
+    }
+
+    if (formData.accessLevel === 'team' && selectedTeams.length === 0) {
+      alert("Please select at least one team/project for Team Members access.");
+      return;
+    }
+
     setUploadState("uploading");
     setUploadProgress(0);
 
@@ -242,6 +604,22 @@ export default function DocumentUploadPage() {
         uploadFormData.append('title', formData.title);
         uploadFormData.append('category', formData.category);
         uploadFormData.append('classification', formData.classification);
+        uploadFormData.append('accessLevel', formData.accessLevel);
+        uploadFormData.append('uploadedBy', formData.uploadedBy);
+        uploadFormData.append('department', formData.department);
+        uploadFormData.append('status', formData.status);
+        uploadFormData.append('isPersonalRepo', isPersonalRepo.toString());
+        
+        // Add access level specific selections
+        if (formData.accessLevel === 'individual') {
+          uploadFormData.append('selectedIndividuals', JSON.stringify(selectedIndividuals));
+        }
+        if (formData.accessLevel === 'department') {
+          uploadFormData.append('selectedDepartments', JSON.stringify(selectedDepartments));
+        }
+        if (formData.accessLevel === 'team') {
+          uploadFormData.append('selectedTeams', JSON.stringify(selectedTeams));
+        }
         
         const response = await fetch('/api/documents/upload', {
           method: 'POST',
@@ -271,7 +649,10 @@ export default function DocumentUploadPage() {
           accessLevel: "organization",
           folder: "/",
           keywords: "",
-          customMetadata: {}
+          customMetadata: {},
+          uploadedBy: userName,
+          department: userDepartment,
+          status: "draft"
         });
         setAiAnalysis(null);
         setUploadProgress(0);
@@ -284,8 +665,8 @@ export default function DocumentUploadPage() {
     }
   };
 
-  const selectedClassification = securityClassifications[formData.classification as keyof typeof securityClassifications];
-  const ClassificationIcon = selectedClassification.icon;
+  const selectedClassification = securityClassifications[formData.classification as keyof typeof securityClassifications] || securityClassifications["PUBLIC"];
+  const ClassificationIcon = selectedClassification?.icon || ShareIcon;
 
   return (
     <ModulePage
@@ -366,7 +747,10 @@ export default function DocumentUploadPage() {
                     accessLevel: "organization",
                     folder: "/",
                     keywords: "",
-                    customMetadata: {}
+                    customMetadata: {},
+                    uploadedBy: userName,
+                    department: userDepartment,
+                    status: "draft"
                   });
                   setAiAnalysis(null);
                   setUploadProgress(0);
@@ -508,109 +892,6 @@ export default function DocumentUploadPage() {
               )}
             </div>
 
-            {/* AI Analysis Results with World-Class Styling */}
-            {aiAnalysis && (
-              <div className="bg-gradient-to-br from-white to-purple-50 shadow-2xl rounded-3xl p-8 border-2 border-purple-100 backdrop-blur-sm">
-                <div className="flex items-center space-x-4 mb-8">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-indigo-400 rounded-xl blur-xl opacity-50"></div>
-                    <div className="relative p-3 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg">
-                      <SparklesIcon className="h-7 w-7 text-white" />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-900 to-indigo-900 bg-clip-text text-transparent">
-                      AI Analysis Results
-                    </h3>
-                    <p className="text-purple-600 font-medium">Intelligent document insights and recommendations</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 backdrop-blur-sm">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <DocumentIcon className="h-6 w-6 text-blue-600" />
-                        <h4 className="text-lg font-bold text-gray-900">Document Summary</h4>
-                      </div>
-                      <p className="text-gray-700 leading-relaxed bg-white/60 p-4 rounded-xl shadow-inner backdrop-blur-sm">
-                        {aiAnalysis.summary}
-                      </p>
-                    </div>
-
-                    <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 backdrop-blur-sm">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <MagnifyingGlassIcon className="h-6 w-6 text-green-600" />
-                        <h4 className="text-lg font-bold text-gray-900">Content Analysis</h4>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="bg-white/60 p-4 rounded-xl shadow-inner backdrop-blur-sm">
-                          <div className="font-semibold text-gray-700 mb-1">Document Type</div>
-                          <div className="text-green-700 font-bold">{aiAnalysis.contentType}</div>
-                        </div>
-                        <div className="bg-white/60 p-4 rounded-xl shadow-inner backdrop-blur-sm">
-                          <div className="font-semibold text-gray-700 mb-1">Language</div>
-                          <div className="text-green-700 font-bold">{aiAnalysis.language}</div>
-                        </div>
-                        <div className="bg-white/60 p-4 rounded-xl shadow-inner backdrop-blur-sm">
-                          <div className="font-semibold text-gray-700 mb-1">Readability</div>
-                          <div className="text-green-700 font-bold">{(aiAnalysis.readabilityScore! * 100).toFixed(0)}%</div>
-                        </div>
-                        <div className="bg-white/60 p-4 rounded-xl shadow-inner backdrop-blur-sm">
-                          <div className="font-semibold text-gray-700 mb-1">Sentiment</div>
-                          <div className="text-green-700 font-bold">{(aiAnalysis.sentimentScore! * 100).toFixed(0)}% Positive</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <div className="p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl border-2 border-orange-200 backdrop-blur-sm">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <ShieldCheckIcon className="h-6 w-6 text-orange-600" />
-                          <h4 className="text-lg font-bold text-gray-900">Suggested Classification</h4>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={applySuggestedClassification}
-                          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm font-semibold rounded-xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-lg transform hover:scale-105"
-                        >
-                          <CheckCircleIcon className="h-4 w-4 mr-1" />
-                          Apply
-                        </button>
-                      </div>
-                      <div className="bg-white/60 p-4 rounded-xl shadow-inner backdrop-blur-sm">
-                        <span className={`inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold shadow-lg ${securityClassifications[aiAnalysis.suggestedClassification! as keyof typeof securityClassifications]?.color}`}>
-                          <ShieldCheckIcon className="h-4 w-4 mr-2" />
-                          {aiAnalysis.suggestedClassification}
-                        </span>
-                        <p className="mt-3 text-sm text-gray-600 leading-relaxed">
-                          AI-recommended security classification based on content analysis
-                        </p>
-                      </div>
-                    </div>
-
-                    {aiAnalysis.keyTopics && aiAnalysis.keyTopics.length > 0 && (
-                      <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200 backdrop-blur-sm">
-                        <div className="flex items-center space-x-3 mb-4">
-                          <TagIcon className="h-6 w-6 text-purple-600" />
-                          <h4 className="text-lg font-bold text-gray-900">Key Topics</h4>
-                        </div>
-                        <div className="flex flex-wrap gap-3">
-                          {aiAnalysis.keyTopics.map(topic => (
-                            <span key={topic} className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg transform hover:scale-105 transition-all duration-200">
-                              {topic}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Document Metadata with Premium Styling */}
             <div className="bg-gradient-to-br from-white to-blue-50 shadow-2xl rounded-3xl p-8 border-2 border-blue-100 backdrop-blur-sm">
               <div className="flex items-center space-x-4 mb-8">
@@ -659,6 +940,84 @@ export default function DocumentUploadPage() {
                         <option key={category} value={category}>{category}</option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* User Information - Auto-captured */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200">
+                    <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
+                      <UserIcon className="h-5 w-5 text-green-600 mr-2" />
+                      Document Owner
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Uploaded By
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.uploadedBy}
+                          readOnly
+                          className="block w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-sm bg-gray-100 text-gray-700 cursor-not-allowed"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Department
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.department}
+                          readOnly
+                          className="block w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-sm bg-gray-100 text-gray-700 cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Repository Choice */}
+                  <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 border-2 border-orange-200">
+                    <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
+                      <FolderIcon className="h-5 w-5 text-orange-600 mr-2" />
+                      Document Repository
+                    </h4>
+                    <div className="space-y-4">
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="radio"
+                          id="personal-repo"
+                          name="repository"
+                          checked={isPersonalRepo}
+                          onChange={() => setIsPersonalRepo(true)}
+                          className="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                        />
+                        <div className="flex-1">
+                          <label htmlFor="personal-repo" className="block text-base font-semibold text-gray-900 cursor-pointer">
+                            Personal Repository (Recommended)
+                          </label>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Save to your personal repository first. You can edit, delete, or publish to main repository later.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="radio"
+                          id="main-repo"
+                          name="repository"
+                          checked={!isPersonalRepo}
+                          onChange={() => setIsPersonalRepo(false)}
+                          className="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                        />
+                        <div className="flex-1">
+                          <label htmlFor="main-repo" className="block text-base font-semibold text-gray-900 cursor-pointer">
+                            Main Repository
+                          </label>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Upload directly to main repository. Document will be pending approval.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -734,15 +1093,15 @@ export default function DocumentUploadPage() {
                     <div className="mt-6 p-6 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl border-2 border-red-200 backdrop-blur-sm">
                       <div className="flex items-center space-x-3 mb-4">
                         <ClassificationIcon className="h-6 w-6 text-red-600" />
-                        <span className={`px-4 py-2 rounded-xl text-sm font-bold shadow-lg ${selectedClassification.color}`}>
+                        <span className={`px-4 py-2 rounded-xl text-sm font-bold shadow-lg ${selectedClassification?.color || 'text-gray-600 bg-gray-100'}`}>
                           {formData.classification}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700 mb-4 leading-relaxed">{selectedClassification.description}</p>
+                      <p className="text-sm text-gray-700 mb-4 leading-relaxed">{selectedClassification?.description || 'No description available'}</p>
                       <div className="bg-white/60 p-4 rounded-xl shadow-inner backdrop-blur-sm">
                         <p className="text-sm font-semibold text-gray-700 mb-2">Example Use Cases:</p>
                         <ul className="text-sm text-gray-600 space-y-1">
-                          {selectedClassification.examples.map(example => (
+                          {(selectedClassification?.examples || []).map(example => (
                             <li key={example} className="flex items-center space-x-2">
                               <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
                               <span>{example}</span>
@@ -772,6 +1131,156 @@ export default function DocumentUploadPage() {
                       ))}
                     </select>
                   </div>
+
+                  {/* Conditional Selection Fields based on Access Level */}
+                  {formData.accessLevel === 'individual' && (
+                    <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200">
+                      <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
+                        <UserIcon className="h-5 w-5 text-blue-600 mr-2" />
+                        Select Individuals
+                      </h4>
+                      <div className="space-y-3">
+                        {availableUsers.map(user => (
+                          <label key={user.id} className="flex items-center space-x-3 p-3 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedIndividuals.includes(user.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedIndividuals(prev => [...prev, user.id]);
+                                } else {
+                                  setSelectedIndividuals(prev => prev.filter(id => id !== user.id));
+                                }
+                              }}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <div className="flex-1">
+                              <div className="font-semibold text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-600">{user.email}</div>
+                            </div>
+                          </label>
+                        ))}
+                        {availableUsers.length === 0 && status === "authenticated" && session && (
+                          <div className="text-center py-4 text-gray-500">
+                            <UserIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                            <p>Loading users...</p>
+                          </div>
+                        )}
+                        {availableUsers.length === 0 && (status !== "authenticated" || !session) && (
+                          <div className="text-center py-4 text-gray-500">
+                            <UserIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                            <p>Please wait for authentication...</p>
+                          </div>
+                        )}
+                      </div>
+                      {selectedIndividuals.length > 0 && (
+                        <div className="mt-3 p-3 bg-blue-100 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            <strong>{selectedIndividuals.length}</strong> individual(s) selected
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {formData.accessLevel === 'department' && (
+                    <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200">
+                      <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
+                        <UserGroupIcon className="h-5 w-5 text-green-600 mr-2" />
+                        Select Departments
+                      </h4>
+                      <div className="space-y-3">
+                        {availableDepartments.map(dept => (
+                          <label key={dept.code} className="flex items-center space-x-3 p-3 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedDepartments.includes(dept.code)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedDepartments(prev => [...prev, dept.code]);
+                                } else {
+                                  setSelectedDepartments(prev => prev.filter(code => code !== dept.code));
+                                }
+                              }}
+                              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                            />
+                            <div className="flex-1">
+                              <div className="font-semibold text-gray-900">{dept.name}</div>
+                              <div className="text-sm text-gray-600">Code: {dept.code}</div>
+                            </div>
+                          </label>
+                        ))}
+                        {availableDepartments.length === 0 && status === "authenticated" && session && (
+                          <div className="text-center py-4 text-gray-500">
+                            <UserGroupIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                            <p>Loading departments...</p>
+                          </div>
+                        )}
+                        {availableDepartments.length === 0 && (status !== "authenticated" || !session) && (
+                          <div className="text-center py-4 text-gray-500">
+                            <UserGroupIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                            <p>Please wait for authentication...</p>
+                          </div>
+                        )}
+                      </div>
+                      {selectedDepartments.length > 0 && (
+                        <div className="mt-3 p-3 bg-green-100 rounded-lg">
+                          <p className="text-sm text-green-800">
+                            <strong>{selectedDepartments.length}</strong> department(s) selected
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {formData.accessLevel === 'team' && (
+                    <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200">
+                      <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
+                        <UserGroupIcon className="h-5 w-5 text-purple-600 mr-2" />
+                        Select Teams/Projects
+                      </h4>
+                      <div className="space-y-3">
+                        {availableTeams.map(team => (
+                          <label key={team.id} className="flex items-center space-x-3 p-3 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedTeams.includes(team.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedTeams(prev => [...prev, team.id]);
+                                } else {
+                                  setSelectedTeams(prev => prev.filter(id => id !== team.id));
+                                }
+                              }}
+                              className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                            />
+                            <div className="flex-1">
+                              <div className="font-semibold text-gray-900">{team.name}</div>
+                            </div>
+                          </label>
+                        ))}
+                        {availableTeams.length === 0 && status === "authenticated" && session && (
+                          <div className="text-center py-4 text-gray-500">
+                            <UserGroupIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                            <p>Loading teams...</p>
+                          </div>
+                        )}
+                        {availableTeams.length === 0 && (status !== "authenticated" || !session) && (
+                          <div className="text-center py-4 text-gray-500">
+                            <UserGroupIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                            <p>Please wait for authentication...</p>
+                          </div>
+                        )}
+                      </div>
+                      {selectedTeams.length > 0 && (
+                        <div className="mt-3 p-3 bg-purple-100 rounded-lg">
+                          <p className="text-sm text-purple-800">
+                            <strong>{selectedTeams.length}</strong> team(s)/project(s) selected
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="p-6 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl border-2 border-orange-200 backdrop-blur-sm">
                     <div className="flex items-center space-x-3 mb-3">

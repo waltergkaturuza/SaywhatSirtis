@@ -39,8 +39,18 @@ export async function GET(
       await fs.access(filePath);
     } catch (error) {
       console.error('File not found on disk:', filePath, error);
+      
+      // Return helpful error message with file info
       return NextResponse.json(
-        { error: 'File not found on disk' },
+        { 
+          error: 'File not found on disk',
+          details: {
+            documentId: document.id,
+            filename: document.originalName,
+            expectedPath: document.path,
+            message: 'The file may have been moved or deleted, or was uploaded before file storage was properly implemented.'
+          }
+        },
         { status: 404 }
       );
     }

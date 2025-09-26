@@ -535,11 +535,14 @@ model documents {
   author                     String?
   department                 String?
   departmentId               String?
+  folderPath                 String? // Auto-generated path: "Department/Category"
   projectId                  String?
   customMetadata             Json?
   approvalStatus             DocumentApprovalStatus      @default(DRAFT)
   approvedBy                 String?
   approvedAt                 DateTime?
+  isPersonalRepo             Boolean                     @default(true) // Documents start in personal repo
+  publishedAt                DateTime? // When moved to main repository
   reviewStatus               DocumentReviewStatus        @default(PENDING)
   sentimentScore             Float?
   readabilityScore           Float?
@@ -581,6 +584,7 @@ model documents {
   @@index([createdAt])
   @@index([department])
   @@index([filename])
+  @@index([folderPath])
   @@index([isArchived])
   @@index([isCheckedOut])
   @@index([isDeleted])
@@ -589,6 +593,25 @@ model documents {
   @@index([projectId])
   @@index([reviewStatus])
   @@index([uploadedBy])
+}
+
+model document_category_folders {
+  id            String   @id @default(cuid())
+  path          String   @unique // Full path: "Department/Category"
+  department    String   // Department name
+  category      String   // Document category
+  documentCount Int      @default(0) @map("document_count")
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastUpdated   DateTime @default(now()) @updatedAt @map("last_updated")
+  isActive      Boolean  @default(true) @map("is_active")
+  metadata      Json?    // Additional folder metadata
+
+  @@unique([department, category])
+  @@index([department])
+  @@index([category])
+  @@index([path])
+  @@index([isActive])
 }
 
 model employees {

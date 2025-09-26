@@ -3,6 +3,8 @@
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { ModulePage } from "@/components/layout/enhanced-layout";
+import EditDocumentModal from "@/components/modals/EditDocumentModal";
+import DocumentViewModal from "@/components/modals/DocumentViewModal";
 import { 
   DocumentIcon,
   DocumentTextIcon,
@@ -54,12 +56,101 @@ import {
   InboxIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   EllipsisHorizontalIcon,
   DocumentArrowUpIcon,
   EyeSlashIcon,
   SparklesIcon as AiSparklesIcon,
-  ChatBubbleBottomCenterTextIcon
+  ChatBubbleBottomCenterTextIcon,
+  Bars3Icon,
+  XMarkIcon,
+  PencilIcon,
+  ArrowUpTrayIcon
 } from "@heroicons/react/24/outline";
+
+// Document categories from upload form - Updated comprehensive list
+const documentCategories = [
+  "Activity Reports",
+  "Annual Reports", 
+  "Baseline and Endline Reports",
+  "Board Meeting Minutes",
+  "Budgets & Forecasts",
+  "Case Management Reports",
+  "Compliance & Audit Reports",
+  "Contracts & Agreements",
+  "Departmental Monthly Reports",
+  "Disciplinary Reports",
+  "Donor Reports",
+  "Employee Contracts",
+  "Financial Documents",
+  "Flagship Events Reports",
+  "Grant Proposals",
+  "Grant Agreements",
+  "Health & Safety Records",
+  "Insurance Documents",
+  "IT & Systems Documentation",
+  "Legal Documents",
+  "Management Accounts Reports",
+  "Marketing Materials",
+  "Memorandums of Understanding (MOUs)",
+  "Monitoring & Evaluation Reports",
+  "Observer Newsletters",
+  "Partnership Agreements",
+  "Performance Appraisals",
+  "Performance Improvement Plans",
+  "Policies & Procedures",
+  "Pre-Award Assessments",
+  "Procurement & Tender Documents",
+  "Project Proposals",
+  "Research Books",
+  "Research Papers",
+  "Risk Registers",
+  "Staff Handbooks",
+  "Strategic Plans",
+  "Sustainability Reports",
+  "Training Materials",
+  "Travel Reports",
+  "Workplans & Activity Schedules",
+  // Additional comprehensive categories
+  "Asset Management Records",
+  "Award Documents",
+  "Beneficiary Data & Records",
+  "Capacity Building Materials",
+  "Communication & PR Materials",
+  "Community Engagement Records",
+  "Conflict of Interest Declarations",
+  "Data Protection & Privacy Records",
+  "Emergency Response Plans",
+  "Environmental Impact Assessments",
+  "Event Documentation",
+  "Exit Strategies & Closure Reports",
+  "External Evaluation Reports",
+  "Fundraising Materials",
+  "Government Relations Documents",
+  "Impact Assessment Reports",
+  "Incident Reports",
+  "Internal Audit Reports",
+  "Job Descriptions & Specifications",
+  "Knowledge Management Resources",
+  "Lesson Learned Documents",
+  "Media Coverage & Press Releases",
+  "Meeting Notes & Action Items",
+  "Organizational Charts",
+  "Permit & License Documents",
+  "Quality Assurance Documents",
+  "Recruitment & Selection Records",
+  "Regulatory Compliance Documents",
+  "Safeguarding Policies & Reports",
+  "Standard Operating Procedures (SOPs)",
+  "Stakeholder Mapping & Analysis",
+  "Technical Specifications",
+  "Terms of Reference (ToRs)",
+  "User Manuals & Guides",
+  "Vendor & Supplier Records",
+  "Volunteer Management Records",
+  "Waste Management Plans",
+  "Workshop & Conference Materials"
+];
 
 // Security classifications with SAYWHAT branding
 const securityClassifications = {
@@ -150,12 +241,28 @@ const externalPlatforms = [
   }
 ];
 
-const documentTabs = [
+interface TabItem {
+  id: string;
+  name: string;
+  icon: any;
+  description: string;
+  primary?: boolean;
+  adminOnly?: boolean;
+}
+
+const documentTabs: TabItem[] = [
   { 
     id: 'dashboard', 
     name: 'Dashboard', 
     icon: HomeIcon, 
     description: 'Overview and recent activity',
+    primary: true 
+  },
+  { 
+    id: 'my-documents', 
+    name: 'My Documents', 
+    icon: DocumentIcon, 
+    description: 'Personal documents & drafts',
     primary: true 
   },
   { 
@@ -214,13 +321,7 @@ const documentTabs = [
     id: 'trash', 
     name: 'Trash', 
     icon: TrashIcon, 
-    description: 'Deleted items' 
-  },
-  { 
-    id: 'admin', 
-    name: 'Admin Console', 
-    icon: Cog6ToothIcon, 
-    description: 'System administration',
+    description: 'Deleted items',
     adminOnly: true 
   }
 ];
@@ -310,6 +411,7 @@ export default function DocumentRepositoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [personalDocuments, setPersonalDocuments] = useState<Document[]>([]);
   const [fileTypes, setFileTypes] = useState<FileTypeStats[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
@@ -319,15 +421,197 @@ export default function DocumentRepositoryPage() {
     sharedWithMe: 0
   });
   const [loading, setLoading] = useState(true);
+  const [personalLoading, setPersonalLoading] = useState(false);
   const [error, setError] = useState('');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [showCopilot, setShowCopilot] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showHamburgerMenu, setShowHamburgerMenu] = useState(false);
+  const [showSecurityLevels, setShowSecurityLevels] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
+
+  // Generate dynamic folder structure based on departments and categories
+  const generateFolderStructure = () => {
+    if (!departments || departments.length === 0) {
+      // If no departments yet, show loading or create default structure
+      return [{
+        id: 'loading',
+        name: 'Loading departments...',
+        icon: BuildingOfficeIcon,
+        children: [],
+        totalDocuments: 0
+      }];
+    }
+
+    return departments.map(dept => {
+      // Count documents for each category within this department
+      const categoryStats = new Map();
+      documents.forEach(doc => {
+        if (doc.department === dept.name && doc.category) {
+          categoryStats.set(doc.category, (categoryStats.get(doc.category) || 0) + 1);
+        }
+      });
+
+      // Create category folders for this department (show all categories if department has documents)
+      const hasDocuments = Array.from(categoryStats.values()).some(count => count > 0);
+      const categoriesToShow = hasDocuments 
+        ? documentCategories.filter(category => categoryStats.has(category))
+        : documentCategories.slice(0, 5); // Show first 5 categories as examples when no documents
+
+      const categoryFolders = categoriesToShow.map(category => ({
+        id: `${dept.id}-${category.toLowerCase().replace(/\s+/g, '-')}`,
+        name: category,
+        icon: FolderIcon,
+        documentCount: categoryStats.get(category) || 0,
+        path: `${dept.name}/${category}`,
+        department: dept.name,
+        category: category
+      }));
+
+      return {
+        id: dept.id,
+        name: dept.name,
+        icon: BuildingOfficeIcon,
+        children: categoryFolders,
+        totalDocuments: dept.fileCount || 0
+      };
+    });
+  };
+
+  // Function to automatically create folder path for a document
+  const createDocumentFolderPath = (department: string, category: string) => {
+    if (!department || !category) return null;
+    
+    // Generate standardized folder path: Department/Category
+    const folderPath = `${department}/${category}`;
+    return {
+      path: folderPath,
+      department: department,
+      category: category,
+      created: new Date().toISOString()
+    };
+  };
+
+  // Function to ensure folder structure exists for document
+  const ensureFolderStructure = async (document: any) => {
+    if (!document.department || !document.category) return null;
+
+    const folderInfo = createDocumentFolderPath(document.department, document.category);
+    if (!folderInfo) return null;
+    
+    try {
+      // Check if folder structure already exists in database
+      const response = await fetch('/api/documents/folders/ensure', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path: folderInfo.path,
+          department: folderInfo.department,
+          category: folderInfo.category,
+          documentId: document.id
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.folderPath;
+      }
+    } catch (error) {
+      console.error('Error ensuring folder structure:', error);
+    }
+    
+    return folderInfo.path;
+  };
+
+  // Dynamic folder structure - updates when departments or documents change
+  const folderStructure = generateFolderStructure();
+
+  // Static folder structure for reference (not used in UI)
+  const staticFolderStructure = [
+    {
+      id: 'departments',
+      name: 'Departments',
+      icon: BuildingOfficeIcon,
+      children: [
+        { id: 'hr', name: 'Human Resources', icon: FolderIcon, documentCount: 24 },
+        { id: 'finance', name: 'Finance & Accounting', icon: FolderIcon, documentCount: 18 },
+        { id: 'operations', name: 'Operations', icon: FolderIcon, documentCount: 31 },
+        { id: 'it', name: 'Information Technology', icon: FolderIcon, documentCount: 12 },
+      ]
+    },
+    {
+      id: 'projects',
+      name: 'Projects',
+      icon: BriefcaseIcon,
+      children: [
+        { id: 'project-alpha', name: 'Project Alpha', icon: FolderIcon, documentCount: 15 },
+        { id: 'project-beta', name: 'Project Beta', icon: FolderIcon, documentCount: 8 },
+        { id: 'project-gamma', name: 'Project Gamma', icon: FolderIcon, documentCount: 22 },
+      ]
+    },
+    {
+      id: 'policies',
+      name: 'Policies & Procedures',
+      icon: ShieldCheckIcon,
+      children: [
+        { id: 'company-policies', name: 'Company Policies', icon: FolderIcon, documentCount: 6 },
+        { id: 'safety-procedures', name: 'Safety Procedures', icon: FolderIcon, documentCount: 14 },
+        { id: 'compliance', name: 'Compliance Documents', icon: FolderIcon, documentCount: 9 },
+      ]
+    },
+    {
+      id: 'templates',
+      name: 'Templates & Forms',
+      icon: DocumentPlusIcon,
+      children: [
+        { id: 'contracts', name: 'Contract Templates', icon: FolderIcon, documentCount: 7 },
+        { id: 'forms', name: 'Forms & Applications', icon: FolderIcon, documentCount: 11 },
+        { id: 'reports', name: 'Report Templates', icon: FolderIcon, documentCount: 5 },
+      ]
+    }
+  ];
+
+  const toggleFolder = (folderId: string) => {
+    const newExpanded = new Set(expandedFolders);
+    if (newExpanded.has(folderId)) {
+      newExpanded.delete(folderId);
+    } else {
+      newExpanded.add(folderId);
+    }
+    setExpandedFolders(newExpanded);
+  };
   
   const isAdmin = session?.user?.roles?.includes('admin') || 
                  session?.user?.permissions?.includes('documents.admin');
+
+  // Close hamburger menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showHamburgerMenu && !target.closest('.hamburger-menu')) {
+        setShowHamburgerMenu(false);
+      }
+      if (showSecurityLevels && !target.closest('.security-levels-panel') && !target.closest('.security-levels-button')) {
+        setShowSecurityLevels(false);
+      }
+    };
+
+    if (showHamburgerMenu || showSecurityLevels) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showHamburgerMenu, showSecurityLevels]);
 
   // Load documents and statistics from API
   const loadDocuments = async () => {
@@ -365,6 +649,80 @@ export default function DocumentRepositoryPage() {
     // Load departments after documents are set (if any documents exist)
     if (documents.length > 0) {
       await loadDepartments();
+    }
+  };
+
+  // Load user's personal documents (drafts)
+  const loadPersonalDocuments = async () => {
+    try {
+      setPersonalLoading(true);
+      const response = await fetch('/api/documents/personal');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPersonalDocuments(data.documents || []);
+      } else {
+        console.warn('Failed to fetch personal documents');
+        setPersonalDocuments([]);
+      }
+    } catch (err) {
+      console.error('Error loading personal documents:', err);
+      setPersonalDocuments([]);
+    } finally {
+      setPersonalLoading(false);
+    }
+  };
+
+  // Publish document from personal repo to main repository
+  const publishDocument = async (documentId: string) => {
+    try {
+      const response = await fetch('/api/documents/personal', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documentId: documentId,
+          action: 'publish'
+        })
+      });
+
+      if (response.ok) {
+        // Refresh personal documents list
+        await loadPersonalDocuments();
+        // Refresh main documents list
+        await loadDocuments();
+        return true;
+      } else {
+        const error = await response.json();
+        console.error('Error publishing document:', error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error publishing document:', error);
+      return false;
+    }
+  };
+
+  // Delete document from personal repository
+  const deletePersonalDocument = async (documentId: string) => {
+    try {
+      const response = await fetch(`/api/documents/personal?id=${documentId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        // Refresh personal documents list
+        await loadPersonalDocuments();
+        return true;
+      } else {
+        const error = await response.json();
+        console.error('Error deleting document:', error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      return false;
     }
   };
 
@@ -555,6 +913,13 @@ export default function DocumentRepositoryPage() {
     }
   }, [session]);
 
+  // Load personal documents when My Documents tab is active
+  useEffect(() => {
+    if (session && activeTab === 'my-documents') {
+      loadPersonalDocuments();
+    }
+  }, [session, activeTab]);
+
   const visibleTabs = documentTabs.filter(tab => 
     !tab.adminOnly || isAdmin
   );
@@ -597,6 +962,8 @@ export default function DocumentRepositoryPage() {
     switch (activeTab) {
       case 'dashboard':
         return renderDashboard();
+      case 'my-documents':
+        return renderMyDocuments();
       case 'browse':
         return renderBrowse();
       case 'search':
@@ -644,64 +1011,80 @@ export default function DocumentRepositoryPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+        <div className="bg-white overflow-hidden shadow-lg rounded-xl hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-gray-100">
+          <div className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <DocumentIcon className="h-6 w-6 text-gray-400" />
+                <div className="bg-gradient-to-br from-blue-100 to-blue-200 p-3 rounded-xl">
+                  <DocumentIcon className="h-7 w-7 text-blue-600" />
+                </div>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Total Documents</dt>
-                  <dd className="text-lg font-medium text-gray-900">{dashboardStats.totalDocuments.toLocaleString()}</dd>
+                  <dd className="text-2xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                    {dashboardStats.totalDocuments.toLocaleString()}
+                  </dd>
                 </dl>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+        <div className="bg-white overflow-hidden shadow-lg rounded-xl hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-gray-100">
+          <div className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <ChartBarIcon className="h-6 w-6 text-gray-400" />
+                <div className="bg-gradient-to-br from-green-100 to-green-200 p-3 rounded-xl">
+                  <ChartBarIcon className="h-7 w-7 text-green-600" />
+                </div>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Storage Used</dt>
-                  <dd className="text-lg font-medium text-gray-900">{dashboardStats.storageUsed}</dd>
+                  <dd className="text-2xl font-bold text-gray-900 bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
+                    {dashboardStats.storageUsed}
+                  </dd>
                 </dl>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+        <div className="bg-white overflow-hidden shadow-lg rounded-xl hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-gray-100">
+          <div className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <EyeIcon className="h-6 w-6 text-gray-400" />
+                <div className="bg-gradient-to-br from-purple-100 to-purple-200 p-3 rounded-xl">
+                  <EyeIcon className="h-7 w-7 text-purple-600" />
+                </div>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Views This Month</dt>
-                  <dd className="text-lg font-medium text-gray-900">{dashboardStats.viewsThisMonth.toLocaleString()}</dd>
+                  <dd className="text-2xl font-bold text-gray-900 bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
+                    {dashboardStats.viewsThisMonth.toLocaleString()}
+                  </dd>
                 </dl>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+        <div className="bg-white overflow-hidden shadow-lg rounded-xl hover:shadow-xl transition-all duration-300 transform hover:scale-105 border border-gray-100">
+          <div className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <ArrowDownTrayIcon className="h-6 w-6 text-gray-400" />
+                <div className="bg-gradient-to-br from-blue-100 to-blue-200 p-3 rounded-xl">
+                  <ShareIcon className="h-7 w-7 text-blue-600" />
+                </div>
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Downloads</dt>
-                  <dd className="text-lg font-medium text-gray-900">1,234</dd>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Shared with Me</dt>
+                  <dd className="text-2xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                    {dashboardStats.sharedWithMe.toLocaleString()}
+                  </dd>
                 </dl>
               </div>
             </div>
@@ -709,76 +1092,119 @@ export default function DocumentRepositoryPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Recent Files</h3>
-        </div>
-        <div className="divide-y divide-gray-200">
-          {documents.length === 0 && !loading ? (
-            <div className="px-6 py-8 text-center">
-              <DocumentIcon className="mx-auto h-12 w-12 text-gray-300" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No documents</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Get started by uploading your first document.
-              </p>
-              <div className="mt-6">
-                <button
-                  onClick={() => setActiveTab('upload')}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-saywhat-orange hover:bg-saywhat-orange/90"
-                >
-                  <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-                  Upload Document
-                </button>
+      <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-5 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-gradient-to-br from-saywhat-orange to-orange-600 p-2 rounded-lg">
+                <ClockIcon className="h-5 w-5 text-white" />
               </div>
+              <h3 className="text-xl font-bold text-gray-900">Recent Files</h3>
+            </div>
+            <span className="px-3 py-1 bg-saywhat-orange/10 text-saywhat-orange text-sm font-semibold rounded-full">
+              Latest Activity
+            </span>
+          </div>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {documents.length === 0 && !loading ? (
+            <div className="px-6 py-12 text-center">
+              <div className="bg-gradient-to-br from-gray-100 to-gray-200 p-6 rounded-2xl inline-block mb-4">
+                <DocumentIcon className="h-16 w-16 text-gray-400 mx-auto" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No documents yet</h3>
+              <p className="text-gray-500 mb-6">
+                Get started by uploading your first document to begin building your repository.
+              </p>
+              <button
+                onClick={() => window.location.href = '/documents/upload'}
+                className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              >
+                <DocumentArrowUpIcon className="mr-2 h-5 w-5" />
+                Upload Your First Document
+                <SparklesIcon className="ml-2 h-4 w-4 opacity-75" />
+              </button>
             </div>
           ) : (
-            documents.slice(0, 5).map((doc) => {
+            documents.slice(0, 5).map((doc, index) => {
               const FileIcon = getFileIcon(doc.type);
               const securityInfo = getSecurityInfo(doc.classification);
               const SecurityIcon = securityInfo.icon;
               const hasAccess = canUserAccessDocument(doc, session?.user?.roles?.[0], session?.user?.permissions);
               
               return (
-                <div key={doc.id} className={`px-6 py-4 hover:bg-gray-50 ${!hasAccess ? 'opacity-60' : ''}`}>
+                <div key={doc.id} className={`px-6 py-5 hover:bg-gradient-to-r hover:from-gray-50 hover:to-orange-50 transition-all duration-300 group ${!hasAccess ? 'opacity-60' : ''} ${index === 0 ? 'bg-gradient-to-r from-blue-50/30 to-transparent' : ''}`}>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center">
+                    <div className="flex items-center space-x-4">
                       <div className="relative">
-                        <FileIcon className="h-8 w-8 text-gray-400" />
-                        <SecurityIcon className={`h-4 w-4 ${securityInfo.iconColor} absolute -top-1 -right-1 bg-white rounded-full p-0.5`} />
+                        <div className="bg-gradient-to-br from-gray-100 to-gray-200 group-hover:from-orange-100 group-hover:to-orange-200 p-3 rounded-xl transition-all duration-300">
+                          <FileIcon className="h-7 w-7 text-gray-500 group-hover:text-saywhat-orange transition-colors duration-300" />
+                        </div>
+                        <div className={`absolute -top-1 -right-1 ${securityInfo.badgeColor} p-1 rounded-full shadow-sm`}>
+                          <SecurityIcon className="h-3 w-3" />
+                        </div>
                       </div>
-                      <div className="ml-4">
-                        <div className="flex items-center space-x-2">
-                          <p className="text-sm font-medium text-gray-900">{doc.title}</p>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getClassificationColor(doc.classification)}`}>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <p className="text-sm font-semibold text-gray-900 group-hover:text-saywhat-orange transition-colors duration-300">
+                            {doc.title}
+                          </p>
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${securityInfo.badgeColor} shadow-sm`}>
                             <SecurityIcon className="h-3 w-3 mr-1" />
                             {doc.classification}
                           </span>
+                          {index === 0 && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <SparklesIcon className="h-3 w-3 mr-1" />
+                              Latest
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-500">
-                          {doc.size} • {doc.department} • Uploaded by {doc.uploadedBy} • {doc.uploadDate}
-                        </p>
+                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                          <span className="flex items-center">
+                            <DocumentIcon className="h-4 w-4 mr-1" />
+                            {doc.size}
+                          </span>
+                          {doc.department && (
+                            <span className="flex items-center">
+                              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+                              {doc.department}
+                            </span>
+                          )}
+                          <span className="flex items-center">
+                            <UserGroupIcon className="h-4 w-4 mr-1" />
+                            {doc.uploadedBy}
+                          </span>
+                          <span className="flex items-center">
+                            <CalendarIcon className="h-4 w-4 mr-1" />
+                            {doc.uploadDate}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
                       {hasAccess ? (
                         <>
                           <button 
-                            onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
-                            className="text-gray-400 hover:text-saywhat-orange transition-colors"
+                            onClick={() => {
+                              setViewingDocumentId(doc.id);
+                              setShowViewModal(true);
+                            }}
+                            className="p-2 text-gray-400 hover:text-saywhat-orange hover:bg-orange-100 rounded-lg transition-all duration-200 group-hover:scale-105"
                             title="View document details"
                           >
                             <EyeIcon className="h-5 w-5" />
                           </button>
                           <button 
                             onClick={() => handleDownload(doc.id, doc.title)}
-                            className="text-gray-400 hover:text-saywhat-orange transition-colors"
+                            className="p-2 text-gray-400 hover:text-saywhat-orange hover:bg-orange-100 rounded-lg transition-all duration-200 group-hover:scale-105"
                             title="Download document"
                           >
                             <ArrowDownTrayIcon className="h-5 w-5" />
                           </button>
                         </>
                       ) : (
-                        <div className="flex items-center text-red-500 text-xs">
+                        <div className="flex items-center px-3 py-1 bg-red-50 text-red-600 text-xs font-medium rounded-full border border-red-200">
                           <LockClosedIcon className="h-4 w-4 mr-1" />
                           Access Denied
                         </div>
@@ -794,10 +1220,171 @@ export default function DocumentRepositoryPage() {
     </div>
   );
 
+  const renderMyDocuments = () => (
+    <div className="space-y-6">
+      {/* Header with Upload Button */}
+      <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-lg">
+                <DocumentIcon className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">My Documents</h3>
+                <p className="text-sm text-gray-600">Personal drafts & documents before publishing</p>
+              </div>
+            </div>
+            <button
+              onClick={() => window.location.href = '/documents/upload'}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <DocumentArrowUpIcon className="mr-2 h-4 w-4" />
+              Upload New Document
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Personal Documents List */}
+      <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900">Draft Documents</h4>
+              <p className="text-sm text-gray-500">
+                {personalDocuments.length} document{personalDocuments.length !== 1 ? 's' : ''} in your personal repository
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="divide-y divide-gray-200">
+          {personalLoading && (
+            <div className="p-6 text-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-saywhat-orange mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-500">Loading your documents...</p>
+            </div>
+          )}
+          
+          {personalDocuments.length === 0 && !personalLoading ? (
+            <div className="p-8 text-center">
+              <div className="bg-gradient-to-br from-gray-100 to-gray-200 p-6 rounded-2xl inline-block mb-4">
+                <DocumentIcon className="h-16 w-16 text-gray-400 mx-auto" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No personal documents yet</h3>
+              <p className="text-gray-500 mb-6">
+                Upload your first document to get started. Documents will be saved here as drafts before publishing.
+              </p>
+              <button
+                onClick={() => window.location.href = '/documents/upload'}
+                className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <DocumentArrowUpIcon className="mr-2 h-5 w-5" />
+                Upload First Document
+              </button>
+            </div>
+          ) : (
+            personalDocuments.map((doc) => {
+              const FileIcon = getFileIcon(doc.type || 'pdf');
+              const securityInfo = getSecurityInfo(doc.classification);
+              const SecurityIcon = securityInfo.icon;
+              
+              return (
+                <div key={doc.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="relative">
+                        <div className="bg-gradient-to-br from-gray-100 to-gray-200 p-3 rounded-xl">
+                          <FileIcon className="h-7 w-7 text-gray-500" />
+                        </div>
+                        <div className={`absolute -top-1 -right-1 ${securityInfo.badgeColor} p-1 rounded-full shadow-sm`}>
+                          <SecurityIcon className="h-3 w-3" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <p className="text-sm font-semibold text-gray-900">{doc.title}</p>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <DocumentIcon className="h-3 w-3 mr-1" />
+                            Draft
+                          </span>
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${securityInfo.badgeColor} shadow-sm`}>
+                            <SecurityIcon className="h-3 w-3 mr-1" />
+                            {doc.classification}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-4 text-sm text-gray-500">
+                          <span className="flex items-center">
+                            <FolderIcon className="h-4 w-4 mr-1" />
+                            {doc.category}
+                          </span>
+                          {doc.department && (
+                            <span className="flex items-center">
+                              <BuildingOfficeIcon className="h-4 w-4 mr-1" />
+                              {doc.department}
+                            </span>
+                          )}
+                          <span className="flex items-center">
+                            <DocumentIcon className="h-4 w-4 mr-1" />
+                            {doc.size}
+                          </span>
+                          <span className="flex items-center">
+                            <CalendarIcon className="h-4 w-4 mr-1" />
+                            {new Date(doc.uploadDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {/* Edit button */}
+                      <button 
+                        onClick={() => {
+                          setEditingDocumentId(doc.id);
+                          setShowEditModal(true);
+                        }}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                        title="Edit document"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                      
+                      {/* Publish button */}
+                      <button 
+                        onClick={() => publishDocument(doc.id)}
+                        className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200"
+                        title="Publish to main repository"
+                      >
+                        <ArrowUpTrayIcon className="h-5 w-5" />
+                      </button>
+                      
+                      {/* Delete button */}
+                      <button 
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+                            deletePersonalDocument(doc.id);
+                          }
+                        }}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                        title="Delete document"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   const renderBrowse = () => (
     <div className="bg-white shadow rounded-lg">
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">All Documents</h3>
+        <h3 className="text-lg font-medium text-gray-900">Browse by Folders</h3>
         <button
           onClick={() => window.location.href = '/documents/upload'}
           className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-saywhat-orange hover:bg-saywhat-orange/90"
@@ -807,125 +1394,195 @@ export default function DocumentRepositoryPage() {
         </button>
       </div>
       <div className="divide-y divide-gray-200">
-        {loading && (
-          <div className="p-6 text-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-saywhat-orange mx-auto"></div>
-            <p className="mt-2 text-sm text-gray-500">Loading documents...</p>
-          </div>
-        )}
-        {documents.length === 0 && !loading ? (
-          <div className="p-6 text-center">
-            <DocumentIcon className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No documents found</h3>
-            <p className="mt-1 text-sm text-gray-500">Upload your first document to get started.</p>
-          </div>
-        ) : (
-          documents.map((doc) => {
-            const FileIcon = getFileIcon(doc.type);
-            const securityInfo = getSecurityInfo(doc.classification);
-            const SecurityIcon = securityInfo.icon;
-            const hasAccess = canUserAccessDocument(doc, session?.user?.roles?.[0], session?.user?.permissions);
-            
-            // Don't show documents user doesn't have access to
-            if (!hasAccess) return null;
+        {/* Folder Tree Structure */}
+        <div className="p-4">
+          {folderStructure.map((folder) => {
+            const FolderMainIcon = folder.icon;
+            const isExpanded = expandedFolders.has(folder.id);
+            const totalDocs = folder.children.reduce((sum, child) => sum + child.documentCount, 0);
             
             return (
-              <div key={doc.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="relative">
-                      <FileIcon className="h-8 w-8 text-gray-400" />
-                      <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${securityInfo.badgeColor} flex items-center justify-center`}>
-                        <SecurityIcon className="h-2.5 w-2.5" />
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="flex items-center space-x-3">
-                        <p className="text-sm font-medium text-gray-900">{doc.title}</p>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${securityInfo.badgeColor}`}>
-                          <SecurityIcon className="h-3 w-3 mr-1" />
-                          {doc.classification}
-                        </span>
-                        {doc.department && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                            <BuildingOfficeIcon className="h-3 w-3 mr-1" />
-                            {doc.department}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        {doc.size} • Uploaded by {doc.uploadedBy} • {doc.uploadDate}
-                      </p>
-                      {doc.description && (
-                        <p className="text-xs text-gray-400 mt-1">{doc.description}</p>
-                      )}
-                    </div>
-                  </div>
+              <div key={folder.id} className="mb-4">
+                {/* Main Folder */}
+                <div 
+                  className="flex items-center space-x-2 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => toggleFolder(folder.id)}
+                >
                   <div className="flex items-center space-x-2">
-                    <button 
-                      onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
-                      className="text-gray-400 hover:text-saywhat-orange transition-colors p-1 rounded-md hover:bg-orange-50"
-                      title="View document details"
-                    >
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
-                    <button 
-                      onClick={() => handleDownload(doc.id, doc.title)}
-                      className="text-gray-400 hover:text-saywhat-orange transition-colors p-1 rounded-md hover:bg-orange-50"
-                      title="Download document"
-                    >
-                      <ArrowDownTrayIcon className="h-5 w-5" />
-                    </button>
+                    {isExpanded ? (
+                      <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <ChevronRightIcon className="h-5 w-5 text-gray-500" />
+                    )}
+                    <FolderMainIcon className="h-6 w-6 text-saywhat-orange" />
+                    <span className="font-medium text-gray-900">{folder.name}</span>
+                    <span className="text-sm text-gray-500">({totalDocs} documents)</span>
                   </div>
                 </div>
+
+                {/* Subfolders */}
+                {isExpanded && folder.children && (
+                  <div className="ml-8 mt-2 space-y-1">
+                    {folder.children.map((subfolder) => {
+                      const SubfolderIcon = subfolder.icon;
+                      return (
+                        <div key={subfolder.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
+                          <SubfolderIcon className="h-5 w-5 text-orange-400" />
+                          <span className="text-sm text-gray-700">{subfolder.name}</span>
+                          <span className="text-xs text-gray-500">({subfolder.documentCount})</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
-          }).filter(Boolean)
-        )}
+          })}
+        </div>
       </div>
     </div>
   );
 
   const renderSearch = () => (
-    <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Advanced Search</h3>
+    <div className="space-y-4">
+      {/* Compact Search Section */}
+      <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+          <div className="flex items-center space-x-2">
+            <div className="bg-gradient-to-br from-saywhat-orange to-orange-600 p-1.5 rounded-lg">
+              <MagnifyingGlassIcon className="h-4 w-4 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Advanced Search</h3>
+          </div>
         </div>
-        <div className="p-6">
+        <div className="p-4">
           <div className="space-y-4">
+            {/* Main Search Input - Compact */}
             <div>
               <input
                 type="text"
                 placeholder="Search documents, content, and metadata..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-saywhat-orange focus:border-saywhat-orange"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-200"
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <select className="px-3 py-2 border border-gray-300 rounded-md">
-                <option>All File Types</option>
-                {fileTypes.map(type => (
-                  <option key={type.id} value={type.id}>{type.name}</option>
-                ))}
-              </select>
-              <select className="px-3 py-2 border border-gray-300 rounded-md">
-                <option>All Departments</option>
-                {departments.map(dept => (
-                  <option key={dept.id} value={dept.id}>{dept.name}</option>
-                ))}
-              </select>
-              <select className="px-3 py-2 border border-gray-300 rounded-md">
-                <option>All Time</option>
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Last 90 days</option>
-                <option>Last 6 months</option>
-                <option>Last year</option>
-              </select>
+
+            {/* Search Filters - Compact Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">File Type</label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
+                  <option>All File Types</option>
+                  {fileTypes.map(type => (
+                    <option key={type.id} value={type.id}>{type.name} ({type.count})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Department</label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
+                  <option>All Departments</option>
+                  {departments.map(dept => (
+                    <option key={dept.id} value={dept.id}>{dept.name} ({dept.fileCount})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Time Range</label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
+                  <option>All Time</option>
+                  <option>Last 7 days</option>
+                  <option>Last 30 days</option>
+                  <option>Last 90 days</option>
+                  <option>Last 6 months</option>
+                  <option>Last year</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 transition-all duration-200">
+                  <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
+                  Search
+                </button>
+              </div>
+            </div>
+
+            {/* Clear Filters - Compact */}
+            <div className="flex justify-start">
+              <button className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                Clear All Filters
+              </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Compact Search Results */}
+      <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+          <div>
+            <h4 className="text-lg font-semibold text-gray-900">Search Results</h4>
+            <p className="text-xs text-gray-500">Found {documents.length} documents</p>
+          </div>
+          <div className="flex items-center space-x-2 text-xs text-gray-500">
+            <span>Sort by:</span>
+            <select className="border border-gray-300 rounded px-2 py-1 text-xs">
+              <option>Relevance</option>
+              <option>Date Modified</option>
+              <option>Name</option>
+              <option>Size</option>
+            </select>
+          </div>
+        </div>
+        <div className="max-h-96 overflow-y-auto">
+          {documents.length === 0 ? (
+            <div className="text-center py-8">
+              <MagnifyingGlassIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No search results</h3>
+              <p className="text-sm text-gray-500">Try adjusting your search terms or filters</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {documents.map((doc) => (
+                <div key={doc.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className="bg-gray-100 p-2 rounded-lg">
+                        <DocumentIcon className="h-5 w-5 text-gray-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm truncate">{doc.title}</p>
+                        <div className="flex items-center space-x-4 text-xs text-gray-500">
+                          <span>{doc.size}</span>
+                          {doc.department && <span>{doc.department}</span>}
+                          <span>{doc.uploadDate}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1 ml-3">
+                      <button 
+                        onClick={() => {
+                          setViewingDocumentId(doc.id);
+                          setShowViewModal(true);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
+                        title="View"
+                      >
+                        <EyeIcon className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDownload(doc.id, doc.title)}
+                        className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
+                        title="Download"
+                      >
+                        <ArrowDownTrayIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1048,7 +1705,7 @@ export default function DocumentRepositoryPage() {
   );
 
   const renderAdminConsole = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="p-6">
@@ -1086,16 +1743,170 @@ export default function DocumentRepositoryPage() {
           </div>
         </div>
       </div>
+
+      {/* Floating Security Levels Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          onClick={() => setShowSecurityLevels(!showSecurityLevels)}
+          className="security-levels-button bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110"
+          title="Security Classification Levels"
+        >
+          <ShieldCheckIcon className="h-6 w-6" />
+        </button>
+      </div>
+
+      {/* Security Levels Panel */}
+      {showSecurityLevels && (
+        <div className="fixed bottom-20 right-6 z-40 security-levels-panel bg-white rounded-lg shadow-xl border border-gray-200 p-6 w-80">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Security Levels</h3>
+            <button
+              onClick={() => setShowSecurityLevels(false)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+          
+          <div className="space-y-3">
+            {/* PUBLIC */}
+            <div className="flex items-center p-3 bg-green-50 border border-green-200 rounded-lg">
+              <ShareIcon className="h-5 w-5 text-green-600 mr-3" />
+              <div>
+                <div className="font-medium text-green-800">PUBLIC</div>
+                <div className="text-sm text-green-600">Information accessible to all employees</div>
+              </div>
+            </div>
+
+            {/* CONFIDENTIAL */}
+            <div className="flex items-center p-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <LockClosedIcon className="h-5 w-5 text-orange-600 mr-3" />
+              <div>
+                <div className="font-medium text-orange-800">CONFIDENTIAL</div>
+                <div className="text-sm text-orange-600">Sensitive information requiring authorization</div>
+              </div>
+            </div>
+
+            {/* SECRET */}
+            <div className="flex items-center p-3 bg-red-50 border border-red-200 rounded-lg">
+              <ShieldCheckIcon className="h-5 w-5 text-red-600 mr-3" />
+              <div>
+                <div className="font-medium text-red-800">SECRET</div>
+                <div className="text-sm text-red-600">Highly sensitive classified information</div>
+              </div>
+            </div>
+
+            {/* TOP_SECRET */}
+            <div className="flex items-center p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <ExclamationTriangleIcon className="h-5 w-5 text-purple-600 mr-3" />
+              <div>
+                <div className="font-medium text-purple-800">TOP_SECRET</div>
+                <div className="text-sm text-purple-600">Maximum security classification</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   return (
     <ModulePage
       metadata={{
-        title: "Document Repository",
-        description: "World-class document management with advanced security and AI capabilities",
-        breadcrumbs: [{ name: "Document Repository" }]
+        title: "Documents",
+        description: "Comprehensive document management system",
+        breadcrumbs: []
       }}
+      actions={
+        <div className="flex items-center justify-between w-full">
+          {/* Navigation tabs */}
+          <nav className="flex items-center space-x-1" aria-label="Document Navigation">
+            {primaryTabs.map((tab, index) => {
+              const TabIcon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`${
+                    isActive
+                      ? 'text-saywhat-orange bg-orange-50 border-saywhat-orange'
+                      : 'text-gray-600 hover:text-saywhat-orange hover:bg-orange-25 border-transparent'
+                  } inline-flex items-center px-3 py-2 border-b-2 text-sm font-medium transition-all duration-200 group`}
+                  title={tab.description}
+                >
+                  <TabIcon className={`h-4 w-4 mr-2 transition-all duration-200 ${
+                    isActive ? 'text-saywhat-orange' : 'text-gray-500 group-hover:text-saywhat-orange'
+                  }`} />
+                  <span className="font-semibold text-xs">{tab.name}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Right side - Upload and Hamburger Menu */}
+          <div className="flex items-center space-x-3">
+            {/* Upload Button */}
+            <button
+              onClick={() => window.location.href = '/documents/upload'}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              <DocumentArrowUpIcon className="h-4 w-4 mr-2" />
+              Upload Documents
+              <SparklesIcon className="h-3 w-3 ml-2 opacity-75" />
+            </button>
+
+            {/* Hamburger Menu */}
+            <div className="relative hamburger-menu">
+              <button
+                onClick={() => setShowHamburgerMenu(!showHamburgerMenu)}
+                className="inline-flex items-center p-2 text-gray-600 hover:text-saywhat-orange hover:bg-orange-50 rounded-lg transition-all duration-200"
+                title="More options"
+              >
+                <Bars3Icon className="h-5 w-5" />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showHamburgerMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab('admin');
+                        setShowHamburgerMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-saywhat-orange transition-colors duration-200 flex items-center"
+                    >
+                      <Cog6ToothIcon className="h-4 w-4 mr-3" />
+                      Admin Console
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('tasks');
+                        setShowHamburgerMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-saywhat-orange transition-colors duration-200 flex items-center"
+                    >
+                      <CheckCircleIcon className="h-4 w-4 mr-3" />
+                      Tasks & Approvals
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('trash');
+                        setShowHamburgerMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-saywhat-orange transition-colors duration-200 flex items-center"
+                    >
+                      <TrashIcon className="h-4 w-4 mr-3" />
+                      Trash
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      }
     >
       <div className="flex h-full relative">
         {/* External Platforms Sidebar - Now Collapsible */}
@@ -1110,7 +1921,7 @@ export default function DocumentRepositoryPage() {
                 <ChevronRightIcon className="h-5 w-5 text-gray-600" />
               ) : (
                 <div className="flex items-center justify-between w-full">
-                  <span className="text-sm font-medium text-gray-700">External Platforms</span>
+                  <span className="text-sm font-medium text-gray-700">Quick Access</span>
                   <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
                 </div>
               )}
@@ -1119,10 +1930,6 @@ export default function DocumentRepositoryPage() {
           
           {!sidebarCollapsed && (
             <div className="p-4">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
-                Quick Access
-              </h3>
-              
               {/* Document Management Features */}
               <div className="space-y-2 mb-6">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -1130,33 +1937,27 @@ export default function DocumentRepositoryPage() {
                 </div>
                 <button
                   onClick={() => window.location.href = '/documents/upload'}
-                  className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="w-full flex items-center py-2 pr-3 text-sm text-gray-700 hover:text-saywhat-orange rounded-r-lg transition-colors border-l-4 border-transparent hover:border-green-500 hover:bg-gray-50 relative"
                 >
-                  <DocumentArrowUpIcon className="h-4 w-4 mr-2" />
-                  Upload Documents
+                  <div className="bg-white p-2 rounded-lg mr-3 ml-2">
+                    <DocumentArrowUpIcon className="h-4 w-4 text-saywhat-orange" />
+                  </div>
+                  <span>Upload Documents</span>
                 </button>
-                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
-                  <FolderIcon className="h-4 w-4 mr-2" />
-                  Categorization
+                <button 
+                  onClick={() => setActiveTab('browse')}
+                  className="w-full flex items-center py-2 pr-3 text-sm text-gray-700 hover:text-saywhat-orange rounded-r-lg transition-colors border-l-4 border-transparent hover:border-green-500 hover:bg-gray-50 relative"
+                >
+                  <div className="bg-white p-2 rounded-lg mr-3 ml-2">
+                    <FolderIcon className="h-4 w-4 text-saywhat-orange" />
+                  </div>
+                  <span>Folders</span>
                 </button>
-                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
-                  <ClockIcon className="h-4 w-4 mr-2" />
-                  Version History
-                </button>
-              </div>
-
-              {/* User Management */}
-              <div className="space-y-2 mb-6">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Access Control
-                </div>
-                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
-                  <UsersIcon className="h-4 w-4 mr-2" />
-                  User Management
-                </button>
-                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
-                  <EyeSlashIcon className="h-4 w-4 mr-2" />
-                  Privacy Settings
+                <button className="w-full flex items-center py-2 pr-3 text-sm text-gray-700 hover:text-saywhat-orange rounded-r-lg transition-colors border-l-4 border-transparent hover:border-green-500 hover:bg-gray-50 relative">
+                  <div className="bg-white p-2 rounded-lg mr-3 ml-2">
+                    <ClockIcon className="h-4 w-4 text-saywhat-orange" />
+                  </div>
+                  <span>Version History</span>
                 </button>
               </div>
 
@@ -1165,13 +1966,17 @@ export default function DocumentRepositoryPage() {
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Reports & Analytics
                 </div>
-                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
-                  <ChartBarIcon className="h-4 w-4 mr-2" />
-                  Analytics Dashboard
+                <button className="w-full flex items-center py-2 pr-3 text-sm text-gray-700 hover:text-saywhat-orange rounded-r-lg transition-colors border-l-4 border-transparent hover:border-green-500 hover:bg-gray-50 relative">
+                  <div className="bg-white p-2 rounded-lg mr-3 ml-2">
+                    <ChartBarIcon className="h-4 w-4 text-saywhat-orange" />
+                  </div>
+                  <span>Analytics Dashboard</span>
                 </button>
-                <button className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">
-                  <DocumentTextIcon className="h-4 w-4 mr-2" />
-                  Generate Reports
+                <button className="w-full flex items-center py-2 pr-3 text-sm text-gray-700 hover:text-saywhat-orange rounded-r-lg transition-colors border-l-4 border-transparent hover:border-green-500 hover:bg-gray-50 relative">
+                  <div className="bg-white p-2 rounded-lg mr-3 ml-2">
+                    <DocumentTextIcon className="h-4 w-4 text-saywhat-orange" />
+                  </div>
+                  <span>Generate Reports</span>
                 </button>
               </div>
 
@@ -1180,16 +1985,18 @@ export default function DocumentRepositoryPage() {
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                   External Platforms
                 </div>
-                <nav className="space-y-1">
+                <nav className="space-y-2">
                   {externalPlatforms.map((platform) => {
                     const PlatformIcon = platform.icon;
                     return (
                       <a
                         key={platform.id}
                         href={platform.path}
-                        className={`${platform.color} group flex items-center px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200 hover:shadow-sm`}
+                        className="group flex items-center py-2 pr-3 text-sm font-medium rounded-r-lg transition-all duration-200 border-l-4 border-transparent hover:border-green-500 hover:bg-gray-50"
                       >
-                        <PlatformIcon className={`${platform.iconColor} flex-shrink-0 mr-3 h-4 w-4`} />
+                        <div className="flex-shrink-0 bg-white p-2 rounded-lg mr-3 ml-2">
+                          <PlatformIcon className="h-4 w-4 text-saywhat-orange" />
+                        </div>
                         <div className="flex-1">
                           <div className="font-medium text-gray-900 text-xs">{platform.name}</div>
                         </div>
@@ -1199,56 +2006,45 @@ export default function DocumentRepositoryPage() {
                   })}
                 </nav>
               </div>
-
-              {/* Security Level Legend */}
-              <div className="space-y-2 mt-6">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Security Levels
-                </div>
-                <div className="space-y-1">
-                  {Object.entries(securityClassifications).map(([key, classification]) => {
-                    const ClassIcon = classification.icon;
-                    return (
-                      <div key={key} className={`${classification.color} px-2 py-1.5 rounded-md border text-xs flex items-center`}>
-                        <ClassIcon className="h-3 w-3 mr-2 flex-shrink-0" />
-                        <span className="font-medium">{key}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           )}
 
           {/* Collapsed sidebar icons */}
           {sidebarCollapsed && (
             <div className="p-2 space-y-3">
-              <button
-                onClick={() => window.location.href = '/documents/upload'}
-                className="w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                title="Upload Documents"
-              >
-                <DocumentArrowUpIcon className="h-5 w-5" />
-              </button>
-              <button
-                className="w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                title="Analytics"
-              >
-                <ChartBarIcon className="h-5 w-5" />
-              </button>
-              {externalPlatforms.slice(0, 3).map((platform) => {
-                const PlatformIcon = platform.icon;
-                return (
-                  <a
-                    key={platform.id}
-                    href={platform.path}
-                    className="w-full flex items-center justify-center p-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                    title={platform.name}
+              <div className="flex flex-col items-center space-y-3">
+                <div className="relative">
+                  <div className="absolute left-0 top-0 w-1 h-10 bg-transparent rounded-r-full transition-colors hover:bg-green-500"></div>
+                  <button
+                    onClick={() => window.location.href = '/documents/upload'}
+                    className="w-10 h-10 bg-white rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors border border-gray-200"
+                    title="Upload Documents"
                   >
-                    <PlatformIcon className="h-5 w-5" />
-                  </a>
-                );
-              })}
+                    <DocumentArrowUpIcon className="h-5 w-5 text-saywhat-orange" />
+                  </button>
+                </div>
+                <div className="relative">
+                  <div className="absolute left-0 top-0 w-1 h-10 bg-transparent rounded-r-full transition-colors hover:bg-green-500"></div>
+                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-200">
+                    <ChartBarIcon className="h-5 w-5 text-saywhat-orange" />
+                  </div>
+                </div>
+                {externalPlatforms.slice(0, 3).map((platform) => {
+                  const PlatformIcon = platform.icon;
+                  return (
+                    <div key={platform.id} className="relative">
+                      <div className="absolute left-0 top-0 w-1 h-10 bg-transparent rounded-r-full transition-colors hover:bg-green-500"></div>
+                      <a
+                        href={platform.path}
+                        className="w-10 h-10 bg-white rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors border border-gray-200"
+                        title={platform.name}
+                      >
+                        <PlatformIcon className="h-5 w-5 text-saywhat-orange" />
+                      </a>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -1260,54 +2056,6 @@ export default function DocumentRepositoryPage() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="bg-white shadow-sm border-b border-gray-200">
-            <nav className="flex space-x-8 px-6" aria-label="Tabs">
-              {primaryTabs.map((tab) => {
-                const TabIcon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`${
-                      activeTab === tab.id
-                        ? 'border-saywhat-orange text-saywhat-orange bg-orange-50'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                    } whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm flex items-center space-x-2 transition-all duration-200 rounded-t-md`}
-                  >
-                    <TabIcon className="h-4 w-4" />
-                    <span>{tab.name}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Secondary Navigation */}
-          <div className="bg-gray-50 border-b border-gray-200 px-6 py-3">
-            <div className="flex flex-wrap gap-2">
-              {secondaryTabs.map((tab) => {
-                const TabIcon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`${
-                      activeTab === tab.id
-                        ? 'bg-saywhat-orange text-white shadow-md'
-                        : 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm'
-                    } ${tab.adminOnly && !isAdmin ? 'opacity-50 cursor-not-allowed' : ''} 
-                    inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-full transition-all duration-200`}
-                    disabled={tab.adminOnly && !isAdmin}
-                    title={tab.description}
-                  >
-                    <TabIcon className="h-3 w-3 mr-1.5" />
-                    {tab.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Content Area */}
           <div className="flex-1 overflow-auto bg-gray-50">
             <div className="max-w-full mx-auto px-6 py-6">
@@ -1338,16 +2086,50 @@ export default function DocumentRepositoryPage() {
           </div>
         )}
 
-        {/* Floating Add Button */}
+        {/* Floating SIRTIS Copilot Button */}
         <div className="fixed bottom-6 right-6">
           <button
-            onClick={() => window.location.href = '/documents/upload'}
-            className="bg-saywhat-orange hover:bg-orange-600 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:shadow-xl"
-            title="Upload Documents"
+            onClick={toggleCopilot}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full p-4 shadow-lg transition-all duration-300 hover:shadow-xl transform hover:scale-110 relative overflow-hidden"
+            title="SIRTIS AI Copilot - Your AI Assistant"
           >
-            <PlusIcon className="h-6 w-6" />
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 opacity-0 hover:opacity-20 transition-opacity duration-300"></div>
+            <ChatBubbleBottomCenterTextIcon className="h-6 w-6 relative z-10" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
           </button>
         </div>
+
+        {/* Edit Document Modal */}
+        {editingDocumentId && (
+          <EditDocumentModal
+            isOpen={showEditModal}
+            onClose={() => {
+              setShowEditModal(false);
+              setEditingDocumentId(null);
+            }}
+            documentId={editingDocumentId}
+            onSave={() => {
+              // Refresh the documents after editing
+              if (activeTab === 'personal') {
+                loadPersonalDocuments();
+              } else {
+                loadDocuments();
+              }
+            }}
+          />
+        )}
+
+        {/* Document View Modal */}
+        {viewingDocumentId && (
+          <DocumentViewModal
+            isOpen={showViewModal}
+            onClose={() => {
+              setShowViewModal(false);
+              setViewingDocumentId(null);
+            }}
+            documentId={viewingDocumentId}
+          />
+        )}
       </div>
     </ModulePage>
   );

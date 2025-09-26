@@ -8,6 +8,7 @@ import { ToastProvider } from "@/components/providers/toast-provider"
 import { OfflineProvider, OfflineIndicator, OfflineSyncStatus } from "@/components/ui/offline-support"
 import { LiveRegion } from "@/components/ui/accessibility"
 import ErrorBoundary from "@/components/ui/error-boundary"
+import SirtisGlobalCopilot from "@/components/ui/sirtis-global-copilot"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +51,11 @@ export default function RootLayout({
                     <OfflineIndicator />
                     <OfflineSyncStatus />
                     <LiveRegion />
+                    {/* Global SIRTIS Copilot - Available on all pages */}
+                    <SirtisGlobalCopilot 
+                      position="bottom-right"
+                      theme="modern"
+                    />
                   </OfflineProvider>
                 </ToastProvider>
               </QueryProvider>

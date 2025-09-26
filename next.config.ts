@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   // Webpack optimizations for smaller bundle
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config, { dev, isServer, webpack }) => {
     if (!dev && !isServer) {
       // Reduce client bundle size
       config.resolve.alias = {
@@ -35,6 +35,21 @@ const nextConfig: NextConfig = {
         '@': __dirname + '/src',
       };
     }
+
+    // Exclude pdf-parse test files from bundling
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    };
+
+    // Ignore test files that cause build issues
+    config.plugins.push(
+      new webpack.IgnorePlugin({
+        resourceRegExp: /test\/data\/.*\.pdf$/,
+        contextRegExp: /pdf-parse/,
+      })
+    );
+
     return config;
   },
 };

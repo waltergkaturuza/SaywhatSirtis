@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
+import { promises as fs } from 'fs'
+import path from 'path'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +34,22 @@ export async function POST(request: NextRequest) {
     const title = formData.get('title') as string
     const category = formData.get('category') as string
     const classification = formData.get('classification') as string
+    const accessLevel = formData.get('accessLevel') as string
     const eventId = formData.get('eventId') as string
+    
+    // Personal repository fields
+    const uploadedBy = formData.get('uploadedBy') as string
+    const department = formData.get('department') as string
+    const isPersonalRepo = formData.get('isPersonalRepo') === 'true'
+    const status = formData.get('status') as string
+
+    // Access level specific selections
+    const selectedIndividuals = formData.get('selectedIndividuals') ? 
+      JSON.parse(formData.get('selectedIndividuals') as string) : []
+    const selectedDepartments = formData.get('selectedDepartments') ? 
+      JSON.parse(formData.get('selectedDepartments') as string) : []
+    const selectedTeams = formData.get('selectedTeams') ? 
+      JSON.parse(formData.get('selectedTeams') as string) : []
 
     if (!file) {
       return NextResponse.json({ 
@@ -123,10 +140,83 @@ export async function POST(request: NextRequest) {
     // Generate unique filename
     const documentId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
     const filename = `${documentId}_${file.name}`
-    const filePath = `/uploads/${filename}`
     
-    // TODO: Implement actual file storage (AWS S3, Azure Blob, etc.)
-    // For now, we'll just save the metadata
+    // Create dynamic folder structure: uploads/department/category/
+    const departmentFolder = department || 'General'
+    const categoryFolder = categoryMap[category] || 'OTHER'
+    const folderPath = `uploads/${departmentFolder}/${categoryFolder}`
+    const filePath = `${folderPath}/${filename}`
+    
+    // Initialize metadata variables
+    let extractedMetadata: any = {};
+    let extractedKeywords: string[] = [];
+    
+    // Save file to disk
+    try {
+      // Create dynamic folder structure
+      const fullFolderPath = path.join(process.cwd(), 'public', folderPath)
+      await fs.mkdir(fullFolderPath, { recursive: true })
+      console.log(`📁 Created folder structure: ${fullFolderPath}`)
+      
+      // Convert file to buffer and save
+      const bytes = await file.arrayBuffer()
+      const buffer = Buffer.from(bytes)
+      const fullPath = path.join(process.cwd(), 'public', filePath)
+      
+      await fs.writeFile(fullPath, buffer)
+      console.log(`✅ File saved to: ${fullPath}`)
+      
+      // Extract document metadata using document processor
+      try {
+        console.log(`📄 Processing document for metadata extraction...`);
+        
+        // Dynamically import document processor to avoid build-time issues
+        const { documentProcessor } = await import('@/lib/document-processor');
+        
+        const processingResult = await documentProcessor.processDocument(fullPath, file.type);
+        
+        if (processingResult.success && processingResult.metadata) {
+          extractedMetadata = {
+            title: processingResult.metadata.title,
+            author: processingResult.metadata.author,
+            subject: processingResult.metadata.subject,
+            creator: processingResult.metadata.creator,
+            producer: processingResult.metadata.producer,
+            pageCount: processingResult.metadata.pageCount,
+            wordCount: processingResult.metadata.wordCount,
+            language: processingResult.metadata.language,
+            dimensions: processingResult.metadata.dimensions,
+            creationDate: processingResult.metadata.creationDate,
+            modificationDate: processingResult.metadata.modificationDate,
+            documentProcessed: true // Mark as processed
+          };
+          
+          // Extract keywords from text content
+          if (processingResult.textContent) {
+            extractedKeywords = documentProcessor.extractKeywords(processingResult.textContent, 15);
+            extractedMetadata.extractedKeywords = extractedKeywords;
+          }
+          
+          console.log(`✅ Metadata extracted successfully:`, {
+            title: extractedMetadata.title,
+            author: extractedMetadata.author,
+            pageCount: extractedMetadata.pageCount,
+            wordCount: extractedMetadata.wordCount,
+            keywordsCount: extractedKeywords.length
+          });
+        }
+      } catch (metadataError) {
+        console.warn(`⚠️  Metadata extraction failed (continuing with upload):`, metadataError);
+        // Continue with upload even if metadata extraction fails
+      }
+      
+    } catch (fileError) {
+      console.error('❌ File save error:', fileError)
+      return NextResponse.json({ 
+        success: false, 
+        error: "Failed to save file to disk" 
+      }, { status: 500 })
+    }
     
     // Get mapped values with error handling
     const mappedCategory = categoryMap[category] || 'OTHER';
@@ -146,12 +236,28 @@ export async function POST(request: NextRequest) {
         path: filePath,
         url: null, // Will be set when file is actually uploaded to storage
         category: mappedCategory as any,
-        description: title,
-        tags: [],
+        description: extractedMetadata.title || extractedMetadata.subject || title,
+        tags: extractedKeywords.length > 0 ? extractedKeywords : [],
         classification: mappedClassification as any,
+        accessLevel: accessLevel || 'organization',
         isPublic: classification === 'PUBLIC',
-        uploadedBy: session.user?.id,
-        customMetadata: eventId ? { eventId } : {},
+        uploadedBy: extractedMetadata.author || uploadedBy || session.user?.name || session.user?.email || 'Unknown User',
+        department: department || 'Unknown Department',
+        folderPath: `${department || 'Unknown Department'}/${mappedCategory}`,
+        isPersonalRepo: isPersonalRepo,
+        approvalStatus: isPersonalRepo ? 'DRAFT' : 'PENDING_REVIEW',
+        reviewStatus: 'PENDING',
+        customMetadata: {
+          ...(eventId ? { eventId } : {}),
+          ...(selectedIndividuals.length > 0 ? { selectedIndividuals } : {}),
+          ...(selectedDepartments.length > 0 ? { selectedDepartments } : {}),
+          ...(selectedTeams.length > 0 ? { selectedTeams } : {}),
+          accessLevel: accessLevel || 'organization',
+          // Add extracted metadata
+          ...extractedMetadata,
+          extractedKeywords,
+          documentProcessed: true
+        },
         updatedAt: new Date()
       }
     })
