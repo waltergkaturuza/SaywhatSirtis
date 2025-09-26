@@ -1,9 +1,16 @@
-import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
+
+// Dynamic import for pdf-parse to handle build issues
+let pdfParse: any = null;
+try {
+  pdfParse = require('pdf-parse');
+} catch (error) {
+  console.warn('pdf-parse not available:', error);
+}
 
 export interface DocumentMetadata {
   title?: string;
@@ -88,6 +95,15 @@ class DocumentProcessor {
    */
   private async processPDF(filePath: string, baseMetadata: DocumentMetadata): Promise<DocumentProcessingResult> {
     try {
+      if (!pdfParse) {
+        console.warn('PDF processing not available - pdf-parse module not loaded');
+        return {
+          success: false,
+          error: 'PDF processing not available',
+          metadata: baseMetadata
+        };
+      }
+
       const dataBuffer = fs.readFileSync(filePath);
       const pdfData = await pdfParse(dataBuffer);
 
