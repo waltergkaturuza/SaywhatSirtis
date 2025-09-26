@@ -1,8 +1,9 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useRef, useEffect } from "react";
-import { ModulePage } from "@/components/layout/enhanced-layout";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+// import ModulePage from "@/components/ui/module-page";
 import { 
   CloudArrowUpIcon,
   DocumentIcon,
@@ -20,84 +21,58 @@ import {
   SparklesIcon,
   CpuChipIcon,
   MagnifyingGlassIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  ArrowLeftIcon,
+  InformationCircleIcon,
+  DocumentPlusIcon
 } from "@heroicons/react/24/outline";
 
-// Document categories - Updated comprehensive list (in alphabetical order)
+import {
+  CloudArrowUpIcon as CloudArrowUpIconSolid,
+  DocumentIcon as DocumentIconSolid,
+} from "@heroicons/react/24/solid";
+
+// Document categories
 const documentCategories = [
+  "General Document",
   "Activity Reports",
-  "Annual Reports", 
-  "Asset Management Records",
-  "Award Documents",
-  "Baseline and Endline Reports",
-  "Beneficiary Data & Records",
+  "Approval Documents",
+  "Assessment Reports", 
+  "Audit Documents",
   "Board Meeting Minutes",
-  "Budgets & Forecasts",
-  "Capacity Building Materials",
-  "Case Management Reports",
-  "Communication & PR Materials",
-  "Community Engagement Records",
-  "Compliance & Audit Reports",
-  "Conflict of Interest Declarations",
+  "Budget & Financial Documents",
+  "Certificates & Credentials",
+  "Communication & Correspondence",
+  "Compliance Documents",
   "Contracts & Agreements",
-  "Data Protection & Privacy Records",
-  "Departmental Monthly Reports",
-  "Disciplinary Reports",
-  "Donor Reports",
-  "Emergency Response Plans",
-  "Employee Contracts",
-  "Environmental Impact Assessments",
-  "Event Documentation",
-  "Exit Strategies & Closure Reports",
-  "External Evaluation Reports",
-  "Financial Documents",
-  "Flagship Events Reports",
-  "Fundraising Materials",
-  "Government Relations Documents",
-  "Grant Agreements",
-  "Grant Proposals",
-  "Health & Safety Records",
-  "Impact Assessment Reports",
-  "Incident Reports",
-  "Insurance Documents",
-  "Internal Audit Reports",
-  "IT & Systems Documentation",
-  "Job Descriptions & Specifications",
-  "Knowledge Management Resources",
+  "Data Collection & Analysis",
+  "Employee Documents",
+  "Event Planning & Reports",
+  "External Communication",
+  "Feasibility Studies",
+  "Financial Statements",
+  "Grant Applications & Reports",
+  "HR Policies & Procedures", 
+  "Impact Assessment",
+  "Internal Policies",
+  "Invoices & Receipts",
+  "Job Descriptions",
   "Legal Documents",
-  "Lesson Learned Documents",
-  "Management Accounts Reports",
-  "Marketing Materials",
-  "Media Coverage & Press Releases",
-  "Meeting Notes & Action Items",
-  "Memorandums of Understanding (MOUs)",
-  "Monitoring & Evaluation Reports",
-  "Observer Newsletters",
-  "Organizational Charts",
+  "Meeting Minutes",
+  "Monitoring & Evaluation",
   "Partnership Agreements",
-  "Performance Appraisals",
-  "Performance Improvement Plans",
-  "Permit & License Documents",
-  "Policies & Procedures",
-  "Pre-Award Assessments",
-  "Procurement & Tender Documents",
-  "Project Proposals",
-  "Quality Assurance Documents",
-  "Recruitment & Selection Records",
-  "Regulatory Compliance Documents",
-  "Research Books",
-  "Research Papers",
-  "Risk Registers",
-  "Safeguarding Policies & Reports",
-  "Staff Handbooks",
-  "Stakeholder Mapping & Analysis",
-  "Standard Operating Procedures (SOPs)",
+  "Performance Reviews",
+  "Project Documentation",
+  "Project Plans & Proposals",
+  "Procurement Documents",
+  "Progress Reports",
+  "Quality Assurance",
+  "Research & Studies",
+  "Risk Management",
+  "SOPs (Standard Operating Procedures)",
   "Strategic Plans",
-  "Sustainability Reports",
-  "Technical Specifications",
-  "Terms of Reference (ToRs)",
+  "Tender Documents",
   "Training Materials",
-  "Travel Reports",
   "User Manuals & Guides",
   "Vendor & Supplier Records",
   "Volunteer Management Records",
@@ -377,16 +352,7 @@ export default function DocumentUploadPage() {
   // Show loading state if session is loading
   if (status === "loading") {
     return (
-      <ModulePage
-        metadata={{
-          title: "Upload Documents",
-          description: "Upload and classify documents with AI assistance",
-          breadcrumbs: [
-            { name: "Document Repository", href: "/documents" },
-            { name: "Upload" }
-          ]
-        }}
-      >
+      <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -395,23 +361,14 @@ export default function DocumentUploadPage() {
             </div>
           </div>
         </div>
-      </ModulePage>
+      </div>
     );
   }
 
   // Redirect to login if not authenticated
   if (status === "unauthenticated") {
     return (
-      <ModulePage
-        metadata={{
-          title: "Upload Documents",
-          description: "Upload and classify documents with AI assistance",
-          breadcrumbs: [
-            { name: "Document Repository", href: "/documents" },
-            { name: "Upload" }
-          ]
-        }}
-      >
+      <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -425,22 +382,13 @@ export default function DocumentUploadPage() {
             </div>
           </div>
         </div>
-      </ModulePage>
+      </div>
     );
   }
 
   if (!hasAccess) {
     return (
-      <ModulePage
-        metadata={{
-          title: "Upload Documents",
-          description: "Access Denied",
-          breadcrumbs: [
-            { name: "Document Repository", href: "/documents" },
-            { name: "Upload" }
-          ]
-        }}
-      >
+      <div className="min-h-screen bg-gray-50">
         <div className="text-center py-12">
           <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">Access Denied</h3>
@@ -448,7 +396,7 @@ export default function DocumentUploadPage() {
             You don't have permission to upload documents.
           </p>
         </div>
-      </ModulePage>
+      </div>
     );
   }
 
@@ -669,16 +617,7 @@ export default function DocumentUploadPage() {
   const ClassificationIcon = selectedClassification?.icon || ShareIcon;
 
   return (
-    <ModulePage
-      metadata={{
-        title: "Upload Documents",
-        description: "Upload and classify documents with AI assistance",
-        breadcrumbs: [
-          { name: "Document Repository", href: "/documents" },
-          { name: "Upload" }
-        ]
-      }}
-    >
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4">
         {/* Premium Header Section */}
         <div className="relative overflow-hidden bg-gradient-to-br from-saywhat-orange via-orange-600 to-saywhat-red rounded-3xl shadow-2xl p-8 mb-8 backdrop-blur-sm">
@@ -1353,6 +1292,6 @@ export default function DocumentUploadPage() {
           </form>
         )}
       </div>
-    </ModulePage>
+    </div>
   );
 }

@@ -19,18 +19,11 @@ import {
 interface Document {
   id: string;
   originalName: string;
-  filename: string;
-  size: number;
+  fileName: string;
+  size: string;
   mimeType: string;
   uploadedBy: string;
-  uploadedByUser?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  createdAt: string;
-  updatedAt: string;
+  uploadDate: string;
   category: string;
   classification: string;
   description?: string;
@@ -69,9 +62,8 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [fileLoadError, setFileLoadError] = useState(false);
 
-  // Helper function to format dates safely with datetime
+  // Helper function to format dates safely
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Not available';
     
@@ -83,44 +75,24 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
         if (isNaN(timestamp)) {
           return 'Date not available';
         }
-        return new Date(timestamp).toLocaleString('en-US', {
+        return new Date(timestamp).toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true
+          day: 'numeric'
         });
       }
-      return date.toLocaleString('en-US', {
+      return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
+        day: 'numeric'
       });
     } catch (error) {
       return 'Date not available';
     }
   };
 
-  // Helper function to format file sizes
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
   useEffect(() => {
     if (documentId && isOpen) {
-      setFileLoadError(false); // Reset file error when opening new document
       loadDocument();
     }
   }, [documentId, isOpen]);
@@ -154,22 +126,14 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
     }
   };
 
-  const handleIframeError = () => {
-    setFileLoadError(true);
-  };
-
   const canPreviewFile = (mimeType: string) => {
     return mimeType?.includes('pdf') || 
            mimeType?.startsWith('image/') || 
-           mimeType?.startsWith('text/');
-  };
-
-  const isOfficeDocument = (mimeType: string) => {
-    return mimeType?.includes('office') ||
+           mimeType?.startsWith('text/') ||
+           mimeType?.includes('office') ||
            mimeType?.includes('word') ||
            mimeType?.includes('excel') ||
-           mimeType?.includes('powerpoint') ||
-           mimeType?.includes('openxmlformats');
+           mimeType?.includes('powerpoint');
   };
 
   const getClassificationColor = (classification: string) => {
@@ -250,7 +214,7 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                             <DocumentIcon className="h-8 w-8 text-saywhat-orange flex-shrink-0 mt-1" />
                             <div>
                               <h4 className="font-semibold text-gray-900 text-sm">{document.originalName}</h4>
-                              <p className="text-xs text-gray-500 mt-1">{document.filename}</p>
+                              <p className="text-xs text-gray-500 mt-1">{document.fileName}</p>
                             </div>
                           </div>
                         </div>
@@ -261,12 +225,7 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                             <UserIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                             <div>
                               <p className="text-sm font-medium text-gray-900">Uploaded By</p>
-                              <p className="text-sm text-gray-600">
-                                {document.uploadedByUser 
-                                  ? `${document.uploadedByUser.firstName} ${document.uploadedByUser.lastName}`
-                                  : document.uploadedBy || 'System Administrator'
-                                }
-                              </p>
+                              <p className="text-sm text-gray-600">{document.uploadedBy}</p>
                             </div>
                           </div>
 
@@ -275,22 +234,10 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                             <div>
                               <p className="text-sm font-medium text-gray-900">Upload Date</p>
                               <p className="text-sm text-gray-600">
-                                {formatDate(document.createdAt)}
+                                {formatDate(document.uploadDate)}
                               </p>
                             </div>
                           </div>
-
-                          {document.updatedAt && document.updatedAt !== document.createdAt && (
-                            <div className="flex items-start space-x-3">
-                              <ClockIcon className="h-5 w-5 text-gray-400 mt-0.5" />
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">Last Updated</p>
-                                <p className="text-sm text-gray-600">
-                                  {formatDate(document.updatedAt)}
-                                </p>
-                              </div>
-                            </div>
-                          )}
 
                           <div className="flex items-start space-x-3">
                             <FolderIcon className="h-5 w-5 text-gray-400 mt-0.5" />
@@ -324,7 +271,7 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                             <DocumentIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                             <div>
                               <p className="text-sm font-medium text-gray-900">File Size</p>
-                              <p className="text-sm text-gray-600">{formatFileSize(document.size)}</p>
+                              <p className="text-sm text-gray-600">{document.size}</p>
                             </div>
                           </div>
 
@@ -350,97 +297,6 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                               <p className="text-sm text-gray-600">{document.description}</p>
                             </div>
                           )}
-
-                          {/* Extracted Metadata Section */}
-                          {document.customMetadata && document.customMetadata.documentProcessed && (
-                            <div className="mt-6 pt-6 border-t border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
-                                <DocumentIcon className="h-4 w-4 mr-2 text-saywhat-orange" />
-                                Document Properties
-                              </h4>
-                              
-                              <div className="space-y-3 text-xs">
-                                {document.customMetadata.author && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-gray-600">Author:</span>
-                                    <span className="text-gray-800">{document.customMetadata.author}</span>
-                                  </div>
-                                )}
-                                
-                                {document.customMetadata.creator && document.customMetadata.creator !== document.customMetadata.author && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-gray-600">Creator:</span>
-                                    <span className="text-gray-800">{document.customMetadata.creator}</span>
-                                  </div>
-                                )}
-                                
-                                {document.customMetadata.producer && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-gray-600">Producer:</span>
-                                    <span className="text-gray-800">{document.customMetadata.producer}</span>
-                                  </div>
-                                )}
-                                
-                                {document.customMetadata.pageCount && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-gray-600">Pages:</span>
-                                    <span className="text-gray-800">{document.customMetadata.pageCount}</span>
-                                  </div>
-                                )}
-                                
-                                {document.customMetadata.wordCount && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-gray-600">Words:</span>
-                                    <span className="text-gray-800">{document.customMetadata.wordCount.toLocaleString()}</span>
-                                  </div>
-                                )}
-                                
-                                {document.customMetadata.language && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-gray-600">Language:</span>
-                                    <span className="text-gray-800">{document.customMetadata.language}</span>
-                                  </div>
-                                )}
-
-                                {document.customMetadata.dimensions && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-gray-600">Dimensions:</span>
-                                    <span className="text-gray-800">
-                                      {document.customMetadata.dimensions.width} × {document.customMetadata.dimensions.height}
-                                    </span>
-                                  </div>
-                                )}
-
-                                {document.customMetadata.creationDate && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-gray-600">Created:</span>
-                                    <span className="text-gray-800">{formatDate(document.customMetadata.creationDate)}</span>
-                                  </div>
-                                )}
-
-                                {document.customMetadata.modificationDate && (
-                                  <div className="flex justify-between">
-                                    <span className="font-medium text-gray-600">Modified:</span>
-                                    <span className="text-gray-800">{formatDate(document.customMetadata.modificationDate)}</span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Extracted Keywords */}
-                              {document.customMetadata.extractedKeywords && document.customMetadata.extractedKeywords.length > 0 && (
-                                <div className="mt-4">
-                                  <p className="text-sm font-semibold text-gray-900 mb-2">Extracted Keywords</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {document.customMetadata.extractedKeywords.slice(0, 10).map((keyword, index) => (
-                                      <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800 font-medium">
-                                        {keyword}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </div>
 
                         {/* Action Buttons */}
@@ -463,7 +319,7 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                       </div>
                       
                       <div className="flex-1 p-6">
-                        {canPreviewFile(document.mimeType) && !fileLoadError ? (
+                        {canPreviewFile(document.mimeType) ? (
                           <div className="w-full h-full bg-white rounded-lg shadow-sm border border-gray-200">
                             <iframe
                               src={`/api/documents/${document.id}/view`}
@@ -471,89 +327,15 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                               title={document.originalName}
                               allow="fullscreen"
                               sandbox="allow-same-origin allow-scripts"
-                              onError={handleIframeError}
-                              onLoad={(e) => {
-                                // Check if iframe content loaded successfully
-                                const iframe = e.target as HTMLIFrameElement;
-                                try {
-                                  // If we can't access the content or it's an error page, show error
-                                  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-                                  if (iframeDoc && iframeDoc.title.includes("Can't Open This Page")) {
-                                    setFileLoadError(true);
-                                  }
-                                } catch (error) {
-                                  // Cross-origin restrictions might prevent access, that's okay
-                                  console.log('Iframe loaded successfully (cross-origin)');
-                                }
-                              }}
                             />
-                          </div>
-                        ) : isOfficeDocument(document.mimeType) ? (
-                          <div className="flex items-center justify-center h-full bg-white rounded-lg shadow-sm border border-gray-200">
-                            <div className="text-center">
-                              <DocumentIcon className="mx-auto h-16 w-16 text-blue-500" />
-                              <h3 className="mt-4 text-lg font-medium text-gray-900">Office Document</h3>
-                              <p className="mt-2 text-sm text-gray-500">
-                                This is a Microsoft Office document. Preview is not available in the browser.
-                              </p>
-                              <p className="mt-1 text-xs text-gray-400">
-                                Click download to open with your local Office applications.
-                              </p>
-                              
-                              {/* Show extracted metadata */}
-                              {document.customMetadata && (
-                                <div className="mt-6 bg-gray-50 rounded-lg p-4 text-left max-w-md mx-auto">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Document Information</h4>
-                                  <div className="space-y-2 text-xs">
-                                    {document.customMetadata.author && (
-                                      <div className="flex justify-between">
-                                        <span className="text-gray-600">Author:</span>
-                                        <span className="text-gray-800">{document.customMetadata.author}</span>
-                                      </div>
-                                    )}
-                                    {document.customMetadata.pageCount && (
-                                      <div className="flex justify-between">
-                                        <span className="text-gray-600">Pages:</span>
-                                        <span className="text-gray-800">{document.customMetadata.pageCount}</span>
-                                      </div>
-                                    )}
-                                    {document.customMetadata.wordCount && (
-                                      <div className="flex justify-between">
-                                        <span className="text-gray-600">Words:</span>
-                                        <span className="text-gray-800">{document.customMetadata.wordCount.toLocaleString()}</span>
-                                      </div>
-                                    )}
-                                    {document.customMetadata.language && (
-                                      <div className="flex justify-between">
-                                        <span className="text-gray-600">Language:</span>
-                                        <span className="text-gray-800">{document.customMetadata.language}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              <button
-                                onClick={handleDownload}
-                                className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-saywhat-orange hover:bg-orange-600"
-                              >
-                                <ArrowDownTrayIcon className="mr-2 h-5 w-5" />
-                                Download & Open
-                              </button>
-                            </div>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center h-full bg-white rounded-lg shadow-sm border border-gray-200">
                             <div className="text-center">
                               <DocumentIcon className="mx-auto h-12 w-12 text-gray-400" />
-                              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                                {fileLoadError ? 'File not available' : 'Preview not available'}
-                              </h3>
+                              <h3 className="mt-2 text-sm font-medium text-gray-900">Preview not available</h3>
                               <p className="mt-1 text-sm text-gray-500">
-                                {fileLoadError 
-                                  ? 'The file could not be loaded. It may have been moved, deleted, or the file path is incorrect.'
-                                  : 'This file type cannot be previewed. Download the file to view its contents.'
-                                }
+                                This file type cannot be previewed. Download the file to view its contents.
                               </p>
                               <button
                                 onClick={handleDownload}
