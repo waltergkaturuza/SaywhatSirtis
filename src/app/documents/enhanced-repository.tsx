@@ -251,13 +251,6 @@ interface TabItem {
 
 const documentTabs: TabItem[] = [
   { 
-    id: 'dashboard', 
-    name: 'Dashboard', 
-    icon: HomeIcon, 
-    description: 'Overview and recent activity',
-    primary: true 
-  },
-  { 
     id: 'my-documents', 
     name: 'My Documents', 
     icon: DocumentIcon, 
@@ -275,7 +268,7 @@ const documentTabs: TabItem[] = [
     id: 'search', 
     name: 'Search', 
     icon: MagnifyingGlassIcon, 
-    description: 'Powerful search with filters',
+    description: 'Find documents quickly',
     primary: true 
   },
   { 
@@ -406,7 +399,7 @@ interface DashboardStats {
 
 export default function DocumentRepositoryPage() {
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('my-documents');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -626,9 +619,6 @@ export default function DocumentRepositoryPage() {
         // Calculate file type statistics from loaded documents
         const typeStats = calculateFileTypeStats(Array.isArray(data) ? data : []);
         setFileTypes(typeStats);
-        
-        // Load dashboard statistics
-        await loadDashboardStats();
       } else {
         console.warn('Failed to fetch documents, using empty list');
         setDocuments([]);
@@ -792,7 +782,12 @@ export default function DocumentRepositoryPage() {
     const typeMap = new Map<string, { count: number; extensions: Set<string> }>();
     
     docs.forEach(doc => {
-      const type = doc.type?.toLowerCase() || 'unknown';
+      // Try different possible fields for file type
+      const type = doc.type?.toLowerCase() || 
+                   doc.mimeType?.split('/')[1]?.toLowerCase() || 
+                   doc.fileName?.split('.').pop()?.toLowerCase() || 
+                   'unknown';
+      
       const category = getDocumentCategory(type);
       
       if (!typeMap.has(category.id)) {
@@ -844,12 +839,13 @@ export default function DocumentRepositoryPage() {
   };
 
   const getDocumentCategory = (type: string): { id: string; name: string } => {
-    if (['pdf', 'doc', 'docx', 'txt'].includes(type)) return { id: 'documents', name: 'Documents' };
-    if (['xls', 'xlsx', 'csv'].includes(type)) return { id: 'spreadsheets', name: 'Spreadsheets' };
-    if (['ppt', 'pptx'].includes(type)) return { id: 'presentations', name: 'Presentations' };
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(type)) return { id: 'images', name: 'Images' };
-    if (['mp4', 'avi', 'mov', 'wmv'].includes(type)) return { id: 'videos', name: 'Videos' };
-    return { id: 'other', name: 'Other' };
+    const lowerType = type.toLowerCase();
+    if (['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt'].includes(lowerType)) return { id: 'documents', name: 'Documents' };
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(lowerType)) return { id: 'spreadsheets', name: 'Spreadsheets' };
+    if (['ppt', 'pptx', 'odp'].includes(lowerType)) return { id: 'presentations', name: 'Presentations' };
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'svg', 'webp'].includes(lowerType)) return { id: 'images', name: 'Images' };
+    if (['mp4', 'avi', 'mov', 'wmv', 'mkv', 'flv', 'webm'].includes(lowerType)) return { id: 'videos', name: 'Videos' };
+    return { id: 'documents', name: 'Documents' }; // Default to documents instead of other
   };
 
   const handleDownload = async (docId: string, filename: string) => {
@@ -914,6 +910,18 @@ export default function DocumentRepositoryPage() {
     }
   }, [session, activeTab]);
 
+  // Load documents and departments when search tab is active
+  useEffect(() => {
+    if (session && activeTab === 'search') {
+      if (documents.length === 0) {
+        loadDocuments();
+      }
+      if (departments.length === 0) {
+        loadDepartments();
+      }
+    }
+  }, [session, activeTab, documents.length, departments.length]);
+
   const visibleTabs = documentTabs.filter(tab => 
     !tab.adminOnly || isAdmin
   );
@@ -954,8 +962,6 @@ export default function DocumentRepositoryPage() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return renderDashboard();
       case 'my-documents':
         return renderMyDocuments();
       case 'browse':
@@ -979,7 +985,7 @@ export default function DocumentRepositoryPage() {
       case 'admin':
         return renderAdminConsole();
       default:
-        return renderDashboard();
+        return renderMyDocuments();
     }
   };
 
@@ -1812,9 +1818,9 @@ export default function DocumentRepositoryPage() {
         breadcrumbs: []
       }}
       actions={
-        <div className="flex items-center justify-between w-full">
-          {/* Navigation tabs */}
-          <nav className="flex items-center space-x-1" aria-label="Document Navigation">
+        <div className="flex items-center justify-between w-full bg-white shadow-sm border-b border-gray-100 px-6 py-4">
+          {/* Left Side - Enhanced Navigation tabs */}
+          <nav className="flex items-center space-x-2" aria-label="Document Navigation">
             {primaryTabs.map((tab, index) => {
               const TabIcon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -1824,76 +1830,104 @@ export default function DocumentRepositoryPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`${
                     isActive
-                      ? 'text-saywhat-orange bg-orange-50 border-saywhat-orange'
-                      : 'text-gray-600 hover:text-saywhat-orange hover:bg-orange-25 border-transparent'
-                  } inline-flex items-center px-3 py-2 border-b-2 text-sm font-medium transition-all duration-200 group`}
+                      ? 'text-saywhat-orange bg-orange-50 border-saywhat-orange shadow-sm'
+                      : 'text-gray-600 hover:text-saywhat-orange hover:bg-orange-50 border-gray-200 hover:border-orange-300'
+                  } inline-flex items-center px-4 py-3 border rounded-lg text-sm transition-all duration-200 group`}
                   title={tab.description}
                 >
-                  <TabIcon className={`h-4 w-4 mr-2 transition-all duration-200 ${
+                  <TabIcon className={`h-5 w-5 mr-2 transition-all duration-200 ${
                     isActive ? 'text-saywhat-orange' : 'text-gray-500 group-hover:text-saywhat-orange'
                   }`} />
-                  <span className="font-semibold text-xs">{tab.name}</span>
+                  <span className="text-sm">{tab.name}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* Right side - Upload and Hamburger Menu */}
-          <div className="flex items-center space-x-3">
+          {/* Right Side - Search and Upload */}
+          <div className="flex items-center space-x-4">
             {/* Upload Button */}
             <button
               onClick={() => window.location.href = '/documents/upload'}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              className="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-bold rounded-lg text-white bg-gradient-to-r from-saywhat-orange via-orange-500 to-orange-600 hover:from-orange-600 hover:via-orange-600 hover:to-orange-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 relative overflow-hidden"
             >
-              <DocumentArrowUpIcon className="h-4 w-4 mr-2" />
-              Upload Documents
-              <SparklesIcon className="h-3 w-3 ml-2 opacity-75" />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+              <DocumentArrowUpIcon className="h-4 w-4 mr-2 relative z-10" />
+              <span className="relative z-10">Upload Documents</span>
+              <SparklesIcon className="h-3 w-3 ml-2 opacity-75 relative z-10 animate-pulse" />
             </button>
 
-            {/* Hamburger Menu */}
+            {/* Enhanced Hamburger Menu */}
             <div className="relative hamburger-menu">
               <button
                 onClick={() => setShowHamburgerMenu(!showHamburgerMenu)}
-                className="inline-flex items-center p-2 text-gray-600 hover:text-saywhat-orange hover:bg-orange-50 rounded-lg transition-all duration-200"
+                className={`inline-flex items-center p-3 rounded-lg transition-all duration-300 transform hover:scale-105 ${
+                  showHamburgerMenu
+                    ? 'text-saywhat-orange bg-orange-50 shadow-md'
+                    : 'text-gray-600 hover:text-saywhat-orange hover:bg-orange-50'
+                }`}
                 title="More options"
               >
                 <Bars3Icon className="h-5 w-5" />
               </button>
 
-              {/* Dropdown Menu */}
+              {/* Enhanced Dropdown Menu */}
               {showHamburgerMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <div className="py-2">
+                <div className="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 transform transition-all duration-300 ease-out scale-100">
+                  <div className="py-3">
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Quick Actions</p>
+                    </div>
+                    
                     <button
                       onClick={() => {
                         setActiveTab('admin');
                         setShowHamburgerMenu(false);
                       }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-saywhat-orange transition-colors duration-200 flex items-center"
+                      className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-saywhat-orange transition-all duration-200 flex items-center group"
                     >
-                      <Cog6ToothIcon className="h-4 w-4 mr-3" />
-                      Admin Console
+                      <div className="bg-gray-100 p-2 rounded-lg mr-3 group-hover:bg-saywhat-orange group-hover:text-white transition-all duration-200">
+                        <Cog6ToothIcon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Admin Console</div>
+                        <div className="text-xs text-gray-500">Manage settings</div>
+                      </div>
                     </button>
+                    
                     <button
                       onClick={() => {
                         setActiveTab('tasks');
                         setShowHamburgerMenu(false);
                       }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-saywhat-orange transition-colors duration-200 flex items-center"
+                      className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-saywhat-orange transition-all duration-200 flex items-center group"
                     >
-                      <CheckCircleIcon className="h-4 w-4 mr-3" />
-                      Tasks & Approvals
+                      <div className="bg-green-100 p-2 rounded-lg mr-3 group-hover:bg-green-600 group-hover:text-white transition-all duration-200">
+                        <CheckCircleIcon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="font-medium">Tasks & Approvals</div>
+                        <div className="text-xs text-gray-500">Review pending items</div>
+                      </div>
                     </button>
-                    <button
-                      onClick={() => {
-                        setActiveTab('trash');
-                        setShowHamburgerMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-saywhat-orange transition-colors duration-200 flex items-center"
-                    >
-                      <TrashIcon className="h-4 w-4 mr-3" />
-                      Trash
-                    </button>
+                    
+                    <div className="border-t border-gray-100 mt-2 pt-2">
+                      <button
+                        onClick={() => {
+                          setActiveTab('trash');
+                          setShowHamburgerMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all duration-200 flex items-center group"
+                      >
+                        <div className="bg-gray-100 p-2 rounded-lg mr-3 group-hover:bg-red-500 group-hover:text-white transition-all duration-200">
+                          <TrashIcon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="font-medium">Trash</div>
+                          <div className="text-xs text-gray-500">Deleted documents</div>
+                        </div>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
