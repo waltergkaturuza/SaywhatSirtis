@@ -430,7 +430,74 @@ export default function DocumentRepositoryPage() {
   // Generate dynamic folder structure based on departments and categories
   const generateFolderStructure = () => {
     if (!departments || departments.length === 0) {
-      // If no departments yet, show loading or create default structure
+      // Create a fallback structure based on actual documents if we have them
+      if (documents && documents.length > 0) {
+        // Group documents by department or category
+        const departmentGroups = new Map();
+        const categoryGroups = new Map();
+        
+        documents.forEach(doc => {
+          // Group by department if available
+          if (doc.department) {
+            if (!departmentGroups.has(doc.department)) {
+              departmentGroups.set(doc.department, []);
+            }
+            departmentGroups.get(doc.department).push(doc);
+          }
+          
+          // Group by category if available
+          if (doc.category) {
+            if (!categoryGroups.has(doc.category)) {
+              categoryGroups.set(doc.category, []);
+            }
+            categoryGroups.get(doc.category).push(doc);
+          }
+        });
+        
+        // Create folders from document departments or categories
+        if (departmentGroups.size > 0) {
+          return Array.from(departmentGroups.entries()).map(([deptName, docs]: [string, Document[]]) => {
+            // Group docs in this department by category
+            const categories = new Map<string, number>();
+            docs.forEach((doc: Document) => {
+              const category = doc.category || 'General';
+              if (!categories.has(category)) {
+                categories.set(category, 0);
+              }
+              categories.set(category, categories.get(category)! + 1);
+            });
+            
+            const categoryFolders = Array.from(categories.entries()).map(([category, count]) => ({
+              id: `${deptName.replace(/\s+/g, '-')}-${category.toLowerCase().replace(/\s+/g, '-')}`,
+              name: category,
+              icon: FolderIcon,
+              documentCount: count,
+              path: `${deptName}/${category}`,
+              department: deptName,
+              category: category
+            }));
+            
+            return {
+              id: deptName.replace(/\s+/g, '-'),
+              name: deptName,
+              icon: BuildingOfficeIcon,
+              children: categoryFolders,
+              totalDocuments: docs.length
+            };
+          });
+        } else if (categoryGroups.size > 0) {
+          // If no departments, group by categories only
+          return Array.from(categoryGroups.entries()).map(([category, docs]) => ({
+            id: category.replace(/\s+/g, '-'),
+            name: category,
+            icon: FolderIcon,
+            children: [],
+            totalDocuments: docs.length
+          }));
+        }
+      }
+      
+      // Final fallback - show loading
       return [{
         id: 'loading',
         name: 'Loading departments...',
@@ -449,17 +516,12 @@ export default function DocumentRepositoryPage() {
         }
       });
 
-      // Create category folders for this department (show all categories if department has documents)
-      const hasDocuments = Array.from(categoryStats.values()).some(count => count > 0);
-      const categoriesToShow = hasDocuments 
-        ? documentCategories.filter(category => categoryStats.has(category))
-        : documentCategories.slice(0, 5); // Show first 5 categories as examples when no documents
-
-      const categoryFolders = categoriesToShow.map(category => ({
+      // Create category folders for this department
+      const categoryFolders = Array.from(categoryStats.entries()).map(([category, count]) => ({
         id: `${dept.id}-${category.toLowerCase().replace(/\s+/g, '-')}`,
         name: category,
         icon: FolderIcon,
-        documentCount: categoryStats.get(category) || 0,
+        documentCount: count,
         path: `${dept.name}/${category}`,
         department: dept.name,
         category: category
@@ -470,7 +532,7 @@ export default function DocumentRepositoryPage() {
         name: dept.name,
         icon: BuildingOfficeIcon,
         children: categoryFolders,
-        totalDocuments: dept.fileCount || 0
+        totalDocuments: dept.fileCount || categoryFolders.reduce((sum, folder) => sum + folder.documentCount, 0)
       };
     });
   };
@@ -632,11 +694,6 @@ export default function DocumentRepositoryPage() {
       setFileTypes([]);
     } finally {
       setLoading(false);
-    }
-
-    // Load departments after documents are set (if any documents exist)
-    if (documents.length > 0) {
-      await loadDepartments();
     }
   };
 
@@ -892,6 +949,17 @@ export default function DocumentRepositoryPage() {
     setShowPreview(true);
   };
 
+  // Handle document click - navigate to document view
+  const handleDocumentClick = (document: any) => {
+    window.location.href = `/documents/${document.id}`;
+  };
+
+  // Handle document view in modal
+  const handleDocumentView = (documentId: string) => {
+    setViewingDocumentId(documentId);
+    setShowViewModal(true);
+  };
+
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
@@ -900,6 +968,7 @@ export default function DocumentRepositoryPage() {
   useEffect(() => {
     if (session) {
       loadDocuments();
+      loadDepartments(); // Always load departments
     }
   }, [session]);
 
@@ -1429,19 +1498,124 @@ export default function DocumentRepositoryPage() {
                   </div>
                 </div>
 
-                {/* Subfolders */}
-                {isExpanded && folder.children && (
+                {/* Subfolders and Documents */}
+                {isExpanded && (
                   <div className="ml-8 mt-2 space-y-1">
-                    {folder.children.map((subfolder) => {
+                    {folder.children && folder.children.map((subfolder) => {
                       const SubfolderIcon = subfolder.icon;
+                      const subfolderExpanded = expandedFolders.has(subfolder.id);
+                      
+                      // Get documents for this subfolder
+                      const subfolderDocs = documents.filter(doc => 
+                        doc.department === subfolder.department && doc.category === subfolder.category
+                      );
+                      
                       return (
-                        <div key={subfolder.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
-                          <SubfolderIcon className="h-5 w-5 text-orange-400" />
-                          <span className="text-sm text-gray-700">{subfolder.name}</span>
-                          <span className="text-xs text-gray-500">({subfolder.documentCount})</span>
+                        <div key={subfolder.id} className="space-y-1">
+                          {/* Subfolder Header */}
+                          <div 
+                            className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
+                            onClick={() => toggleFolder(subfolder.id)}
+                          >
+                            {subfolderDocs.length > 0 && (
+                              subfolderExpanded ? (
+                                <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                              ) : (
+                                <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+                              )
+                            )}
+                            <SubfolderIcon className="h-5 w-5 text-orange-400" />
+                            <span className="text-sm text-gray-700">{subfolder.name}</span>
+                            <span className="text-xs text-gray-500">({subfolder.documentCount})</span>
+                          </div>
+                          
+                          {/* Documents in Subfolder */}
+                          {subfolderExpanded && subfolderDocs.length > 0 && (
+                            <div className="ml-6 space-y-1">
+                              {subfolderDocs.slice(0, 10).map((doc) => { // Show max 10 documents
+                                const FileIcon = getFileIcon(doc.mimeType || doc.type || 'unknown');
+                                return (
+                                  <div 
+                                    key={doc.id} 
+                                    className="flex items-center space-x-2 p-2 rounded-md hover:bg-blue-50 cursor-pointer transition-colors group"
+                                    onClick={() => handleDocumentClick(doc)}
+                                  >
+                                    <FileIcon className="h-4 w-4 text-gray-500" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm text-gray-700 truncate group-hover:text-blue-600">
+                                        {doc.title || doc.fileName}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {doc.size} • {new Date(doc.uploadDate).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDocumentView(doc.id);
+                                        }}
+                                        className="p-1 rounded hover:bg-blue-100 transition-colors"
+                                        title="View"
+                                      >
+                                        <EyeIcon className="h-3 w-3 text-blue-600" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDownload(doc.id, doc.fileName);
+                                        }}
+                                        className="p-1 rounded hover:bg-green-100 transition-colors"
+                                        title="Download"
+                                      >
+                                        <ArrowDownTrayIcon className="h-3 w-3 text-green-600" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {subfolderDocs.length > 10 && (
+                                <div className="text-xs text-gray-500 p-2">
+                                  ...and {subfolderDocs.length - 10} more documents
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
+                    
+                    {/* Documents directly in main folder (no category) */}
+                    {(() => {
+                      const mainFolderDocs = documents.filter(doc => 
+                        doc.department === folder.name && (!doc.category || !folder.children.some(child => child.category === doc.category))
+                      );
+                      return mainFolderDocs.length > 0 && (
+                        <div className="space-y-1 pt-2 border-t border-gray-100">
+                          <div className="text-xs text-gray-500 px-2">Other Documents:</div>
+                          {mainFolderDocs.slice(0, 5).map((doc) => {
+                            const FileIcon = getFileIcon(doc.mimeType || doc.type || 'unknown');
+                            return (
+                              <div 
+                                key={doc.id} 
+                                className="flex items-center space-x-2 p-2 rounded-md hover:bg-blue-50 cursor-pointer transition-colors group"
+                                onClick={() => handleDocumentClick(doc)}
+                              >
+                                <FileIcon className="h-4 w-4 text-gray-500" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-gray-700 truncate group-hover:text-blue-600">
+                                    {doc.title || doc.fileName}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {doc.size} • {new Date(doc.uploadDate).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
