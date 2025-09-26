@@ -922,6 +922,13 @@ export default function DocumentRepositoryPage() {
     }
   }, [session, activeTab, documents.length, departments.length]);
 
+  // Load dashboard stats when dashboard tab is active
+  useEffect(() => {
+    if (session && activeTab === 'dashboard') {
+      loadDashboardStats();
+    }
+  }, [session, activeTab]);
+
   const visibleTabs = documentTabs.filter(tab => 
     !tab.adminOnly || isAdmin
   );
@@ -962,6 +969,8 @@ export default function DocumentRepositoryPage() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'dashboard':
+        return renderDashboard();
       case 'my-documents':
         return renderMyDocuments();
       case 'browse':
@@ -1819,8 +1828,25 @@ export default function DocumentRepositoryPage() {
       }}
       actions={
         <div className="flex items-center justify-between w-full bg-white shadow-sm border-b border-gray-100 px-6 py-4">
-          {/* Left Side - Enhanced Navigation tabs */}
+          {/* Left Side - Dashboard + Enhanced Navigation tabs */}
           <nav className="flex items-center space-x-2" aria-label="Document Navigation">
+            {/* Dashboard Icon - Show documents dashboard */}
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`inline-flex items-center px-3 py-3 border rounded-lg transition-all duration-200 group ${
+                activeTab === 'dashboard'
+                  ? 'text-saywhat-orange bg-orange-50 border-orange-300'
+                  : 'text-gray-600 hover:text-saywhat-orange hover:bg-orange-50 border-gray-200 hover:border-orange-300'
+              }`}
+              title="Documents Dashboard - View recent files and statistics"
+            >
+              <HomeIcon className={`h-5 w-5 transition-all duration-200 ${
+                activeTab === 'dashboard' 
+                  ? 'text-saywhat-orange' 
+                  : 'text-gray-500 group-hover:text-saywhat-orange'
+              }`} />
+            </button>
+            
             {primaryTabs.map((tab, index) => {
               const TabIcon = tab.icon;
               const isActive = activeTab === tab.id;
