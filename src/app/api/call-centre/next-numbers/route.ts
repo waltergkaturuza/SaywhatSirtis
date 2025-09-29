@@ -58,8 +58,7 @@ export async function GET(request: NextRequest) {
     const maxCaseQuery = await prisma.call_records.findFirst({
       where: {
         caseNumber: {
-          startsWith: `CASE-${currentYear}-`,
-          not: null
+          startsWith: `CASE-${currentYear}-`
         }
       },
       orderBy: {
