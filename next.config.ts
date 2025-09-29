@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   },
   // Enable standalone output for Docker and Render deployment
   output: 'standalone',
+  // Fix workspace root detection
+  outputFileTracingRoot: process.cwd(),
   // Configure standalone server
   env: {
     PORT: process.env.PORT || '10000',
