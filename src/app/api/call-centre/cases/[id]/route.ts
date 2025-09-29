@@ -44,7 +44,7 @@ export async function GET(
 
     const caseData = {
       id: call.id,
-      caseNumber: `CASE-${call.id.substring(0, 8)}`,
+      caseNumber: call.caseNumber, // Use actual case number from database
       callNumber: call.id,
       status: (call.status || 'Open').replace('_', ' '),
       priority: call.priority || 'Medium',

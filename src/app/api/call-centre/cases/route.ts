@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       
       return {
         id: call.id,
-        caseNumber: `CASE-${call.id.substring(0, 8)}`,
+        caseNumber: call.caseNumber, // Use actual case number from database
         callNumber: call.callNumber || call.id,
         clientName: call.callerName,
         phone: call.callerPhone,

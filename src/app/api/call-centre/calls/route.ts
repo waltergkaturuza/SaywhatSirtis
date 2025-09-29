@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 import { randomUUID } from 'crypto'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check database connection first
+    const isConnected = await checkDatabaseConnection()
+    if (!isConnected) {
+      console.error('Database connection failed in call centre calls API')
+      return NextResponse.json(
+        { error: 'Database connection unavailable', code: 'DB_CONNECTION_FAILED' }, 
+        { status: 503 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session?.user) {
@@ -80,6 +90,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check database connection first
+    const isConnected = await checkDatabaseConnection()
+    if (!isConnected) {
+      console.error('Database connection failed in call centre calls POST API')
+      return NextResponse.json(
+        { error: 'Database connection unavailable', code: 'DB_CONNECTION_FAILED' }, 
+        { status: 503 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session) {
@@ -144,42 +164,108 @@ export async function POST(request: NextRequest) {
       assignedTo
     } = body
 
-    // Generate unique case number if not provided
+    // Generate systematic case number if not provided
     let finalCaseNumber = caseNumber
     if (!finalCaseNumber) {
-      let attempts = 0
-      const maxAttempts = 5
+      const currentYear = new Date().getFullYear()
       
-      while (attempts < maxAttempts) {
-        const timestamp = Date.now() + attempts // Add attempt counter to ensure uniqueness
-        const randomSuffix = Math.floor(Math.random() * 1000)
-        const tentativeCaseNumber = `CASE-${new Date().getFullYear()}-${String(timestamp).slice(-6)}-${randomSuffix}`
-        
-        // Check if this case number already exists
-        const existingCall = await prisma.call_records.findFirst({
-          where: { caseNumber: tentativeCaseNumber }
+      // Use a simpler but robust approach - check and retry if needed
+      for (let attempt = 1; attempt <= 10; attempt++) {
+        // Find the current max case number for this year
+        const maxCaseQuery = await prisma.call_records.findFirst({
+          where: {
+            caseNumber: {
+              startsWith: `CASE-${currentYear}-`
+            }
+          },
+          orderBy: {
+            caseNumber: 'desc'
+          },
+          select: {
+            caseNumber: true
+          }
         })
         
-        if (!existingCall) {
-          finalCaseNumber = tentativeCaseNumber
+        let nextNumber = 1
+        if (maxCaseQuery?.caseNumber) {
+          const numberPart = maxCaseQuery.caseNumber.split('-')[2]
+          if (numberPart && !isNaN(parseInt(numberPart))) {
+            nextNumber = parseInt(numberPart) + 1
+          }
+        }
+        
+        // Format the case number
+        const formattedNumber = nextNumber.toString().padStart(8, '0')
+        const candidateCaseNumber = `CASE-${currentYear}-${formattedNumber}`
+        
+        // Check if this number is already taken
+        const existing = await prisma.call_records.findUnique({
+          where: { caseNumber: candidateCaseNumber }
+        })
+        
+        if (!existing) {
+          finalCaseNumber = candidateCaseNumber
           break
         }
         
-        attempts++
-      }
-      
-      // If still no unique case number after attempts, use UUID-based approach
-      if (!finalCaseNumber) {
-        finalCaseNumber = `CASE-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`
+        // If we're on the last attempt and still no unique number, use fallback
+        if (attempt === 10) {
+          const timestamp = Date.now().toString().slice(-8)
+          finalCaseNumber = `CASE-${currentYear}-${timestamp}`
+        }
       }
     }
 
-    // Generate unique call number if not provided
+    // Generate systematic call number if not provided
     let finalCallNumber = callNumber
     if (!finalCallNumber) {
-      const year = new Date().getFullYear()
-      const randomNum = Math.floor(Math.random() * 99999)
-      finalCallNumber = `${String(randomNum).padStart(5, '0')}/${year}`
+      const currentYear = new Date().getFullYear()
+      
+      // Use a simpler but robust approach - check and retry if needed
+      for (let attempt = 1; attempt <= 10; attempt++) {
+        // Find the current max call number for this year
+        const maxCallQuery = await prisma.call_records.findFirst({
+          where: {
+            callNumber: {
+              endsWith: `/${currentYear}`
+            }
+          },
+          orderBy: {
+            callNumber: 'desc'
+          },
+          select: {
+            callNumber: true
+          }
+        })
+        
+        let nextNumber = 1
+        if (maxCallQuery?.callNumber) {
+          const numberPart = maxCallQuery.callNumber.split('/')[0]
+          if (numberPart && !isNaN(parseInt(numberPart))) {
+            nextNumber = parseInt(numberPart) + 1
+          }
+        }
+        
+        // Format the call number
+        const formattedNumber = nextNumber.toString().padStart(7, '0')
+        const candidateCallNumber = `${formattedNumber}/${currentYear}`
+        
+        // Check if this number is already taken
+        const existing = await prisma.call_records.findFirst({
+          where: { callNumber: candidateCallNumber }
+        })
+        
+        if (!existing) {
+          finalCallNumber = candidateCallNumber
+          break
+        }
+        
+        // If we're on the last attempt and still no unique number, use fallback
+        if (attempt === 10) {
+          const timestamp = Date.now().toString().slice(-7)
+          finalCallNumber = `${timestamp}/${currentYear}`
+        }
+      }
     }
 
     // Create new call record
