@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
@@ -20,23 +20,23 @@ export default function NewCallEntryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [caseGenerated, setCaseGenerated] = useState(false)
   const [generatedCaseNumber, setGeneratedCaseNumber] = useState('')
+  const [nextNumbers, setNextNumbers] = useState({
+    nextCallNumber: 'Loading...',
+    nextCaseNumber: 'Loading...',
+    loading: true
+  })
 
-  // Auto-generated fields with new numbering format
+  // Auto-generated fields
   const currentDateTime = new Date()
-  const currentYear = currentDateTime.getFullYear()
   const officerName = session?.user?.name || "Current Officer"
-  
-  // Generate call number in format 00001/2025 (up to 99999/year)
-  const [callCounter, setCallCounter] = useState(1) // In real app, this would come from database
-  const callNumber = `${String(callCounter).padStart(5, '0')}/${currentYear}`
   
   const [formData, setFormData] = useState({
     // Auto-generated fields
     officerName: officerName,
     date: currentDateTime.toISOString().split('T')[0],
     time: currentDateTime.toTimeString().split(' ')[0].slice(0, 5),
-    callNumber: callNumber,
-    caseNumber: callNumber, // Case number same as call number
+    callNumber: '',
+    caseNumber: '',
     // Form fields
     callerPhoneNumber: '',
     modeOfCommunication: 'inbound',
@@ -69,6 +69,39 @@ export default function NewCallEntryPage() {
     comment: ''
   })
   
+  // Fetch next available numbers from the backend
+  useEffect(() => {
+    const fetchNextNumbers = async () => {
+      try {
+        const response = await fetch('/api/call-centre/next-numbers')
+        if (response.ok) {
+          const data = await response.json()
+          setNextNumbers({
+            nextCallNumber: data.data.nextCallNumber,
+            nextCaseNumber: data.data.nextCaseNumber,
+            loading: false
+          })
+          
+          // Update form data with the correct call number
+          setFormData(prev => ({
+            ...prev,
+            callNumber: data.data.nextCallNumber
+          }))
+        } else {
+          console.error('Failed to fetch next numbers')
+          setNextNumbers(prev => ({ ...prev, loading: false }))
+        }
+      } catch (error) {
+        console.error('Error fetching next numbers:', error)
+        setNextNumbers(prev => ({ ...prev, loading: false }))
+      }
+    }
+
+    if (session?.user) {
+      fetchNextNumbers()
+    }
+  }, [session])
+  
   // Check user permissions
   const userPermissions = session?.user?.permissions || []
   const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
@@ -99,8 +132,8 @@ export default function NewCallEntryPage() {
     
     // Auto-generate case number if "YES" is selected for case
     if (field === 'isCase' && value === 'YES' && !caseGenerated) {
-      const caseNumber = `CASE-${currentDateTime.getFullYear()}-${String(Math.floor(Math.random() * 99999)).padStart(5, '0')}`
-      setGeneratedCaseNumber(caseNumber)
+      // Use the API-fetched case number instead of random generation
+      setGeneratedCaseNumber(nextNumbers.nextCaseNumber)
       setCaseGenerated(true)
     } else if (field === 'isCase' && value === 'NO') {
       setGeneratedCaseNumber('')
@@ -113,18 +146,30 @@ export default function NewCallEntryPage() {
     setIsSubmitting(true)
     
     try {
+      // Prepare form data, excluding auto-generated numbers (let backend generate them)
+      const submissionData = {
+        ...formData,
+        // Remove auto-generated fields so backend generates them properly
+        callNumber: undefined, // Let backend generate systematic call number
+        caseNumber: caseGenerated ? undefined : undefined, // Let backend generate systematic case number
+        // Add case-specific data if it's a case
+        ...(caseGenerated && { isCase: 'YES' })
+      }
+      
       const response = await fetch('/api/call-centre/calls', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(submissionData)
       })
 
       const result = await response.json()
 
       if (response.ok && result.success) {
-        alert(`Call entry saved successfully! ${caseGenerated ? `Case number: ${generatedCaseNumber}` : `Call Number: ${formData.callNumber}`}`)
+        const actualCallNumber = result.call?.callNumber || 'Generated'
+        const actualCaseNumber = result.call?.caseNumber || 'Generated'
+        alert(`Call entry saved successfully! Call Number: ${actualCallNumber}${caseGenerated ? ` | Case Number: ${actualCaseNumber}` : ''}`)
         // Reset form or redirect as needed
         window.location.href = '/call-centre'
       } else {
@@ -323,7 +368,7 @@ export default function NewCallEntryPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.callNumber}
+                  value={nextNumbers.loading ? 'Loading...' : formData.callNumber}
                   disabled
                   className="w-full px-3 py-2 border border-saywhat-grey rounded-md bg-saywhat-light-grey text-saywhat-dark"
                 />
