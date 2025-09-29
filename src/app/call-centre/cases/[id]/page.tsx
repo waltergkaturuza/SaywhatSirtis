@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import DashboardLayout from "@/components/layout/dashboard-layout"
+import CaseHistory from "@/components/call-centre/CaseHistory"
 import { ArrowLeftIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 export default function CaseViewPage() {
@@ -225,6 +226,9 @@ export default function CaseViewPage() {
                 </div>
               </div>
             </div>
+
+            {/* Case History */}
+            <CaseHistory caseId={params.id as string} />
           </div>
 
           {/* Sidebar */}

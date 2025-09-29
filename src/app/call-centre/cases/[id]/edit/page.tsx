@@ -125,7 +125,13 @@ export default function EditCasePage() {
   const handleSave = async () => {
     if (!caseData) return
     
-    await handleSaveCase(caseData)
+    // Include change reason in the data sent to API
+    const dataToSave = {
+      ...caseData,
+      changeReason: caseData.changeReason || 'Case information updated'
+    }
+    
+    await handleSaveCase(dataToSave)
   }
 
   const handleClose = async () => {
@@ -576,6 +582,27 @@ export default function EditCasePage() {
                   <span className="text-gray-600">Call Purpose:</span>
                   <span className="font-medium">{caseData.callPurpose}</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Change Reason */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Change Reason</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason for Changes <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={caseData.changeReason || ''}
+                  onChange={(e) => handleInputChange('changeReason', e.target.value)}
+                  placeholder="Please describe the reason for these changes (required for audit trail)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  This information will be logged in the case history for audit purposes.
+                </p>
               </div>
             </div>
 

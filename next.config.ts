@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
   },
   // Enable standalone output for Docker and Render deployment
   output: 'standalone',
+  // Configure standalone server
+  env: {
+    PORT: process.env.PORT || '10000',
+  },
   // Compress images for better performance
   images: {
     formats: ['image/webp'],
