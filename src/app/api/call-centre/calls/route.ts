@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       officerName,
       callNumber,
       caseNumber,
-      // Caller Information
+      // ... rest of destructuring
       callerFullName,
       callerPhoneNumber,
       callerAge,
@@ -144,12 +144,50 @@ export async function POST(request: NextRequest) {
       assignedTo
     } = body
 
+    // Generate unique case number if not provided
+    let finalCaseNumber = caseNumber
+    if (!finalCaseNumber) {
+      let attempts = 0
+      const maxAttempts = 5
+      
+      while (attempts < maxAttempts) {
+        const timestamp = Date.now() + attempts // Add attempt counter to ensure uniqueness
+        const randomSuffix = Math.floor(Math.random() * 1000)
+        const tentativeCaseNumber = `CASE-${new Date().getFullYear()}-${String(timestamp).slice(-6)}-${randomSuffix}`
+        
+        // Check if this case number already exists
+        const existingCall = await prisma.call_records.findFirst({
+          where: { caseNumber: tentativeCaseNumber }
+        })
+        
+        if (!existingCall) {
+          finalCaseNumber = tentativeCaseNumber
+          break
+        }
+        
+        attempts++
+      }
+      
+      // If still no unique case number after attempts, use UUID-based approach
+      if (!finalCaseNumber) {
+        finalCaseNumber = `CASE-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`
+      }
+    }
+
+    // Generate unique call number if not provided
+    let finalCallNumber = callNumber
+    if (!finalCallNumber) {
+      const year = new Date().getFullYear()
+      const randomNum = Math.floor(Math.random() * 99999)
+      finalCallNumber = `${String(randomNum).padStart(5, '0')}/${year}`
+    }
+
     // Create new call record
     const call = await prisma.call_records.create({
       data: {
         id: randomUUID(),
-        caseNumber: caseNumber || `CASE-${Date.now()}`,
-        callNumber: callNumber || `${String(Math.floor(Math.random() * 99999)).padStart(5, '0')}/${new Date().getFullYear()}`,
+        caseNumber: finalCaseNumber,
+        callNumber: finalCallNumber,
         officerName: officerName || session.user.name,
         // Caller Information
         callerName: callerFullName || callerName || 'Unknown',
@@ -204,6 +242,16 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
   } catch (error) {
     console.error('Error creating call:', error)
+    
+    // Handle Prisma unique constraint error specifically
+    if (error instanceof Error && 'code' in error && error.code === 'P2002') {
+      return NextResponse.json({ 
+        success: false,
+        error: 'Duplicate case number detected. Please try again.',
+        details: 'A call with this case number already exists. The system will generate a new unique case number.'
+      }, { status: 409 })
+    }
+    
     return NextResponse.json({ 
       success: false,
       error: 'Internal server error',
