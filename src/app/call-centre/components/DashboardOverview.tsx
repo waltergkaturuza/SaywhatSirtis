@@ -187,6 +187,8 @@ const DashboardOverview = () => {
           const tasksData = await tasksResponse.json()
           if (tasksData && Array.isArray(tasksData)) {
             setTasks(ensureArray(tasksData))
+          } else if (tasksData.success && tasksData.data && Array.isArray(tasksData.data.tasks)) {
+            setTasks(ensureArray(tasksData.data.tasks))
           } else if (tasksData.success && Array.isArray(tasksData.tasks)) {
             setTasks(ensureArray(tasksData.tasks))
           } else {
