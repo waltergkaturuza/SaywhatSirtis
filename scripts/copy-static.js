@@ -32,9 +32,9 @@ try {
   const staticSrc = path.join(process.cwd(), '.next', 'static');
   const publicSrc = path.join(process.cwd(), 'public');
   
-  // Destination paths
-  const staticDest = path.join(process.cwd(), '.next', 'standalone', 'Documents', 'SaywhatSirtis', '.next', 'static');
-  const publicDest = path.join(process.cwd(), '.next', 'standalone', 'Documents', 'SaywhatSirtis', 'public');
+  // Destination paths - simplified for cross-platform compatibility
+  const staticDest = path.join(process.cwd(), '.next', 'standalone', '.next', 'static');
+  const publicDest = path.join(process.cwd(), '.next', 'standalone', 'public');
 
   console.log('Copying static files for standalone deployment...');
 
