@@ -185,10 +185,22 @@ const DashboardOverview = () => {
 
         if (tasksResponse.ok) {
           const tasksData = await tasksResponse.json()
-          setTasks(tasksData)
+          if (tasksData && Array.isArray(tasksData)) {
+            setTasks(ensureArray(tasksData))
+          } else if (tasksData.success && Array.isArray(tasksData.tasks)) {
+            setTasks(ensureArray(tasksData.tasks))
+          } else {
+            console.error('Tasks API response format issue:', tasksData)
+            setTasks(ensureArray([]))
+          }
+        } else {
+          console.error('Tasks API request failed:', tasksResponse.status, tasksResponse.statusText)
+          setTasks(ensureArray([]))
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
+        // Ensure tasks array is set to empty array on error
+        setTasks(ensureArray([]))
       } finally {
         setLoading(false)
       }
@@ -224,7 +236,7 @@ const DashboardOverview = () => {
             status: result.data.status || 'pending',
             type: result.data.type || 'general'
           }
-          setTasks(prev => [createdTask, ...prev])
+          setTasks(prev => [createdTask, ...ensureArray(prev)])
           
           // Reset form
           setNewTask({
@@ -253,7 +265,7 @@ const DashboardOverview = () => {
   }
 
   const updateTaskStatus = (taskId: string, status: Task['status']) => {
-    setTasks(prev => prev.map(task => 
+    setTasks(prev => ensureArray(prev).map(task => 
       task.id === taskId ? { ...task, status } : task
     ))
   }
@@ -282,7 +294,7 @@ const DashboardOverview = () => {
 
       if (response.ok && result.success) {
         // Remove completed task from list
-        setTasks(prev => prev.filter(task => task.id !== selectedTask.id))
+        setTasks(prev => ensureArray(prev).filter(task => task.id !== selectedTask.id))
         setShowCompleteModal(false)
         setCompletionNotes('')
         setSelectedTask(null)
@@ -326,7 +338,7 @@ const DashboardOverview = () => {
 
       if (response.ok && result.success) {
         // Update task in list with new details
-        setTasks(prev => prev.map(task => 
+        setTasks(prev => ensureArray(prev).map(task => 
           task.id === selectedTask.id ? {
             ...task,
             dueDate: rescheduleData.newDate,
@@ -669,7 +681,7 @@ const DashboardOverview = () => {
       <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Call Purposes - Today</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {dashboardData.callsByPurpose.map((item) => (
+          {safeMap(dashboardData?.callsByPurpose, (item: any) => (
             <div key={item.purpose} className="flex items-center p-3 border border-gray-200 rounded-lg">
               <div className={`w-4 h-4 rounded-full ${item.color} mr-3`}></div>
               <div className="flex-1">
