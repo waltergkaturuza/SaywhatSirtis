@@ -125,7 +125,7 @@ const DashboardOverview = () => {
       if (casesResponse.ok) {
         const casesData = await casesResponse.json()
         if (casesData.success && Array.isArray(casesData.cases)) {
-          setCases(ensureArray(casesData.cases).map((caseItem: any) => ({
+          setCases(ensureArray<any>(casesData.cases).map((caseItem: any) => ({
             id: caseItem.id,
             caseNumber: caseItem.caseNumber,
             clientName: caseItem.clientName,
@@ -133,7 +133,7 @@ const DashboardOverview = () => {
           })))
         } else {
           console.error('Cases API response format issue:', casesData)
-          setCases(ensureArray([])) // Ensure cases is always an array
+          setCases(ensureArray<CaseOption>([])) // Ensure cases is always an array
         }
       } else {
         console.error('Cases API request failed:', casesResponse.status, casesResponse.statusText)
@@ -143,7 +143,7 @@ const DashboardOverview = () => {
       if (officersResponse.ok) {
         const officersData = await officersResponse.json()
         if (officersData.success && Array.isArray(officersData.officers)) {
-          const mappedOfficers = ensureArray(officersData.officers).map((officer: any) => ({
+          const mappedOfficers = ensureArray<any>(officersData.officers).map((officer: any) => ({
             id: officer.id,
             name: officer.name || officer.displayName,
             email: officer.email,
@@ -153,17 +153,17 @@ const DashboardOverview = () => {
           setOfficers(mappedOfficers)
         } else {
           console.error('Officers API response format issue:', officersData)
-          setOfficers(ensureArray([])) // Ensure officers is always an array
+          setOfficers(ensureArray<OfficerOption>([])) // Ensure officers is always an array
         }
       } else {
         console.error('Officers API request failed:', officersResponse.status, officersResponse.statusText)
-        setOfficers(ensureArray([])) // Ensure officers is always an array
+        setOfficers(ensureArray<OfficerOption>([])) // Ensure officers is always an array
       }
     } catch (error) {
       console.error('Error fetching dropdown data:', error)
       // Ensure arrays are set to empty arrays on error
-      setCases(ensureArray([]))
-      setOfficers(ensureArray([]))
+      setCases(ensureArray<CaseOption>([]))
+      setOfficers(ensureArray<OfficerOption>([]))
     } finally {
       setDropdownsLoading(false)
     }
@@ -186,23 +186,23 @@ const DashboardOverview = () => {
         if (tasksResponse.ok) {
           const tasksData = await tasksResponse.json()
           if (tasksData && Array.isArray(tasksData)) {
-            setTasks(ensureArray(tasksData))
+            setTasks(ensureArray<Task>(tasksData))
           } else if (tasksData.success && tasksData.data && Array.isArray(tasksData.data.tasks)) {
-            setTasks(ensureArray(tasksData.data.tasks))
+            setTasks(ensureArray<Task>(tasksData.data.tasks))
           } else if (tasksData.success && Array.isArray(tasksData.tasks)) {
-            setTasks(ensureArray(tasksData.tasks))
+            setTasks(ensureArray<Task>(tasksData.tasks))
           } else {
             console.error('Tasks API response format issue:', tasksData)
-            setTasks(ensureArray([]))
+            setTasks(ensureArray<Task>([]))
           }
         } else {
           console.error('Tasks API request failed:', tasksResponse.status, tasksResponse.statusText)
-          setTasks(ensureArray([]))
+          setTasks(ensureArray<Task>([]))
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
         // Ensure tasks array is set to empty array on error
-        setTasks(ensureArray([]))
+        setTasks(ensureArray<Task>([]))
       } finally {
         setLoading(false)
       }
@@ -238,7 +238,7 @@ const DashboardOverview = () => {
             status: result.data.status || 'pending',
             type: result.data.type || 'general'
           }
-          setTasks(prev => [createdTask, ...ensureArray(prev)])
+          setTasks(prev => [createdTask, ...ensureArray<Task>(prev)])
           
           // Reset form
           setNewTask({
@@ -267,7 +267,7 @@ const DashboardOverview = () => {
   }
 
   const updateTaskStatus = (taskId: string, status: Task['status']) => {
-    setTasks(prev => ensureArray(prev).map(task => 
+    setTasks(prev => ensureArray<Task>(prev).map(task => 
       task.id === taskId ? { ...task, status } : task
     ))
   }
@@ -296,7 +296,7 @@ const DashboardOverview = () => {
 
       if (response.ok && result.success) {
         // Remove completed task from list
-        setTasks(prev => ensureArray(prev).filter(task => task.id !== selectedTask.id))
+        setTasks(prev => ensureArray<Task>(prev).filter(task => task.id !== selectedTask.id))
         setShowCompleteModal(false)
         setCompletionNotes('')
         setSelectedTask(null)
@@ -340,7 +340,7 @@ const DashboardOverview = () => {
 
       if (response.ok && result.success) {
         // Update task in list with new details
-        setTasks(prev => ensureArray(prev).map(task => 
+        setTasks(prev => ensureArray<Task>(prev).map(task => 
           task.id === selectedTask.id ? {
             ...task,
             dueDate: rescheduleData.newDate,
