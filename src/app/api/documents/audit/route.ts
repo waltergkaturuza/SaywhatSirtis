@@ -21,8 +21,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // Get all documents
+    // Get all published documents (excluding personal repository drafts)
     const documents = await prisma.documents.findMany({
+      where: {
+        isPersonalRepo: false,  // Only audit published documents
+        isDeleted: false       // Only audit non-deleted documents
+      },
       select: {
         id: true,
         filename: true,

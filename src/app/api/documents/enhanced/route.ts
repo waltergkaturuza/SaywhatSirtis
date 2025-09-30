@@ -149,54 +149,118 @@ export async function DELETE(request: NextRequest) {
 
 // Dashboard data aggregation
 async function getDashboardData(userId: string) {
-  const stats = {
-    totalDocuments: 1247,
-    storageUsed: 15.6,
-    viewsThisMonth: 3456,
-    downloadsThisMonth: 1234
+  try {
+    // Get actual document stats from database, excluding personal repository documents
+    const totalDocuments = await prisma.documents.count({
+      where: {
+        isPersonalRepo: false,  // Only count published documents
+        isDeleted: false
+      }
+    }).catch(() => 0)
+    
+    const totalSize = await prisma.documents.aggregate({
+      where: {
+        isPersonalRepo: false,  // Only count published documents
+        isDeleted: false
+      },
+      _sum: {
+        size: true
+      }
+    }).catch(() => ({ _sum: { size: 0 } }))
+    
+    const storageUsed = totalSize._sum.size ? (totalSize._sum.size / 1024 / 1024 / 1024).toFixed(1) : '0'
+
+    const stats = {
+      totalDocuments,
+      storageUsed: `${storageUsed} GB`,
+      viewsThisMonth: 0, // Could be implemented with view tracking
+      downloadsThisMonth: 0 // Could be implemented with download tracking
+    }
+
+    // Get recent files from database, excluding personal repository documents
+    const recentDocuments = await prisma.documents.findMany({
+      where: {
+        isPersonalRepo: false,  // Only show published documents, not personal drafts
+        isDeleted: false
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      },
+      take: 10,
+      select: {
+        id: true,
+        originalName: true,
+        filename: true,
+        mimeType: true,
+        size: true,
+        uploadedBy: true,
+        updatedAt: true,
+        department: true,
+        classification: true
+      }
+    }).catch(() => [])
+
+    // Format recent files for frontend
+    const recentFiles = await Promise.all(
+      recentDocuments.map(async (doc) => {
+        let uploaderName = 'Unknown'
+        if (doc.uploadedBy) {
+          try {
+            const uploader = await prisma.users.findUnique({
+              where: { id: doc.uploadedBy },
+              select: { firstName: true, lastName: true }
+            })
+            if (uploader) {
+              uploaderName = `${uploader.firstName} ${uploader.lastName}`
+            }
+          } catch (error) {
+            // Handle case where uploader doesn't exist
+            uploaderName = 'Unknown'
+          }
+        }
+
+        return {
+          id: doc.id,
+          name: doc.originalName,
+          type: doc.mimeType?.split('/')[1] || 'file',
+          size: `${(doc.size / 1024 / 1024).toFixed(1)} MB`,
+          modifiedBy: uploaderName,
+          modifiedAt: new Date(doc.updatedAt).toLocaleDateString(),
+          department: doc.department || 'Unknown',
+          classification: doc.classification || 'INTERNAL'
+        }
+      })
+    )
+
+    const myTasks = [
+      // This could be populated with actual approval tasks from the database
+    ]
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        stats,
+        recentFiles,
+        myTasks
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error)
+    // Return fallback data on error
+    return NextResponse.json({
+      success: true,
+      data: {
+        stats: {
+          totalDocuments: 0,
+          storageUsed: '0 GB',
+          viewsThisMonth: 0,
+          downloadsThisMonth: 0
+        },
+        recentFiles: [],
+        myTasks: []
+      }
+    })
   }
-
-  const recentFiles = [
-    {
-      id: '1',
-      name: 'Q3 Financial Report.pdf',
-      type: 'pdf',
-      size: '2.4 MB',
-      modifiedBy: 'John Doe',
-      modifiedAt: '2 hours ago',
-      department: 'Finance',
-      classification: 'CONFIDENTIAL'
-    },
-    {
-      id: '2',
-      name: 'Employee Handbook v2.docx',
-      type: 'docx',
-      size: '1.8 MB',
-      modifiedBy: 'Sarah Smith',
-      modifiedAt: '4 hours ago',
-      department: 'HR',
-      classification: 'PUBLIC'
-    }
-  ]
-
-  const myTasks = [
-    {
-      id: '1',
-      type: 'approval',
-      document: 'Contract Amendment v3.pdf',
-      dueDate: '2025-09-12',
-      priority: 'high'
-    }
-  ]
-
-  return NextResponse.json({
-    success: true,
-    data: {
-      stats,
-      recentFiles,
-      myTasks
-    }
-  })
 }
 
 // Browse files with folder hierarchy

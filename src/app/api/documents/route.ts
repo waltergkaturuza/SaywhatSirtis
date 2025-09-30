@@ -28,7 +28,10 @@ export async function GET(request: NextRequest) {
     const eventId = searchParams.get('eventId')
 
     // Build filter
-    const where: any = {}
+    const where: any = {
+      isPersonalRepo: false,  // Only show published documents, not personal drafts
+      isDeleted: false       // Don't show deleted documents
+    }
 
     if (category) {
       where.category = category

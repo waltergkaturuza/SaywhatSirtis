@@ -115,10 +115,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const source = searchParams.get('source');
 
-    // Get external document links
+    // Get external document links (excluding personal repository drafts)
     const whereClause = {
       category: 'OTHER' as const,
       mimeType: 'application/external-link',
+      isPersonalRepo: false,  // Only show published external links
+      isDeleted: false,       // Only show non-deleted links
       ...(source && { 
         customMetadata: {
           path: ['source'],
