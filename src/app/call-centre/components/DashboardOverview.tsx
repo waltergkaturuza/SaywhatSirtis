@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { ensureArray, safeFilter } from '@/lib/array-utils'
+import { ensureArray, safeFilter, safeMap } from '@/lib/array-utils'
 import {
   CalendarIcon,
   MapPinIcon,
@@ -125,19 +125,25 @@ const DashboardOverview = () => {
       if (casesResponse.ok) {
         const casesData = await casesResponse.json()
         if (casesData.success && Array.isArray(casesData.cases)) {
-          setCases(casesData.cases.map((caseItem: any) => ({
+          setCases(ensureArray(casesData.cases).map((caseItem: any) => ({
             id: caseItem.id,
             caseNumber: caseItem.caseNumber,
             clientName: caseItem.clientName,
             status: caseItem.status
           })))
+        } else {
+          console.error('Cases API response format issue:', casesData)
+          setCases(ensureArray([])) // Ensure cases is always an array
         }
+      } else {
+        console.error('Cases API request failed:', casesResponse.status, casesResponse.statusText)
+        setCases([]) // Ensure cases is always an array
       }
 
       if (officersResponse.ok) {
         const officersData = await officersResponse.json()
         if (officersData.success && Array.isArray(officersData.officers)) {
-          const mappedOfficers = officersData.officers.map((officer: any) => ({
+          const mappedOfficers = ensureArray(officersData.officers).map((officer: any) => ({
             id: officer.id,
             name: officer.name || officer.displayName,
             email: officer.email,
@@ -147,12 +153,17 @@ const DashboardOverview = () => {
           setOfficers(mappedOfficers)
         } else {
           console.error('Officers API response format issue:', officersData)
+          setOfficers(ensureArray([])) // Ensure officers is always an array
         }
       } else {
         console.error('Officers API request failed:', officersResponse.status, officersResponse.statusText)
+        setOfficers(ensureArray([])) // Ensure officers is always an array
       }
     } catch (error) {
       console.error('Error fetching dropdown data:', error)
+      // Ensure arrays are set to empty arrays on error
+      setCases(ensureArray([]))
+      setOfficers(ensureArray([]))
     } finally {
       setDropdownsLoading(false)
     }
@@ -459,7 +470,7 @@ const DashboardOverview = () => {
                     disabled={dropdownsLoading}
                   >
                     <option value="">Select a case...</option>
-                    {cases.map((caseItem) => (
+                    {safeMap(cases, (caseItem: any) => (
                       <option key={caseItem.id} value={caseItem.caseNumber}>
                         {caseItem.caseNumber} - {caseItem.clientName}
                       </option>
@@ -478,7 +489,7 @@ const DashboardOverview = () => {
                     disabled={dropdownsLoading}
                   >
                     <option value="">Select an officer...</option>
-                    {officers.map((officer) => (
+                    {safeMap(officers, (officer: any) => (
                       <option key={officer.id} value={officer.name}>
                         {officer.name} ({officer.role})
                       </option>
@@ -762,7 +773,7 @@ const DashboardOverview = () => {
                     disabled={dropdownsLoading}
                   >
                     <option value="">Keep current officer</option>
-                    {officers.map((officer) => (
+                    {safeMap(officers, (officer: any) => (
                       <option key={officer.id} value={officer.name}>
                         {officer.name} ({officer.role})
                       </option>
