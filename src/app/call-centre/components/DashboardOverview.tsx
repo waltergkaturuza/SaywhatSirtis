@@ -1,5 +1,6 @@
 "use client"
 
+// Dashboard Overview Component - Fixed TypeScript errors for production deployment
 import React, { useState, useEffect, useCallback } from 'react'
 import { ensureArray, safeFilter, safeMap } from '@/lib/array-utils'
 import {
