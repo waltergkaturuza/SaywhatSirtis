@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   PhoneIcon,
   ExclamationTriangleIcon,
@@ -40,11 +40,7 @@ const RecentActivities: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchActivitiesData()
-  }, [])
-
-  const fetchActivitiesData = async () => {
+  const fetchActivitiesData = useCallback(async () => {
     try {
       const response = await fetch('/api/call-centre/activities')
       if (!response.ok) {
@@ -58,7 +54,11 @@ const RecentActivities: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchActivitiesData()
+  }, [fetchActivitiesData])
 
   const getStatusIcon = (status: string) => {
     switch (status) {

@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
@@ -76,58 +76,58 @@ export default function NewCallEntryPage() {
   })
   
   // Fetch next available numbers from the backend
-  useEffect(() => {
-    const fetchNextNumbers = async () => {
-      try {
-        const response = await fetch('/api/call-centre/next-numbers')
-        if (response.ok) {
-          const data = await response.json()
-          setNextNumbers({
-            nextCallNumber: data.data.nextCallNumber,
-            nextCaseNumber: data.data.nextCaseNumber,
-            loading: false
-          })
-          
-          // Update form data with the correct call number
-          setFormData(prev => ({
-            ...prev,
-            callNumber: data.data.nextCallNumber
-          }))
-        } else {
-          console.error('Failed to fetch next numbers')
-          setNextNumbers(prev => ({ ...prev, loading: false }))
-        }
-      } catch (error) {
-        console.error('Error fetching next numbers:', error)
+  const fetchNextNumbers = useCallback(async () => {
+    try {
+      const response = await fetch('/api/call-centre/next-numbers')
+      if (response.ok) {
+        const data = await response.json()
+        setNextNumbers({
+          nextCallNumber: data.data.nextCallNumber,
+          nextCaseNumber: data.data.nextCaseNumber,
+          loading: false
+        })
+        
+        // Update form data with the correct call number
+        setFormData(prev => ({
+          ...prev,
+          callNumber: data.data.nextCallNumber
+        }))
+      } else {
+        console.error('Failed to fetch next numbers')
         setNextNumbers(prev => ({ ...prev, loading: false }))
       }
+    } catch (error) {
+      console.error('Error fetching next numbers:', error)
+      setNextNumbers(prev => ({ ...prev, loading: false }))
     }
+  }, [])
 
-    // Fetch referral organizations
-    const fetchReferralOrganizations = async () => {
-      setReferralLoading(true)
-      try {
-        const response = await fetch('/api/call-centre/referrals')
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success && Array.isArray(data.organizations)) {
-            setReferralOrganizations(data.organizations)
-          }
-        } else {
-          console.error('Failed to fetch referral organizations')
+  // Fetch referral organizations
+  const fetchReferralOrganizations = useCallback(async () => {
+    setReferralLoading(true)
+    try {
+      const response = await fetch('/api/call-centre/referrals')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && Array.isArray(data.organizations)) {
+          setReferralOrganizations(data.organizations)
         }
-      } catch (error) {
-        console.error('Error fetching referral organizations:', error)
-      } finally {
-        setReferralLoading(false)
+      } else {
+        console.error('Failed to fetch referral organizations')
       }
+    } catch (error) {
+      console.error('Error fetching referral organizations:', error)
+    } finally {
+      setReferralLoading(false)
     }
+  }, [])
 
+  useEffect(() => {
     if (session?.user) {
       fetchNextNumbers()
       fetchReferralOrganizations()
     }
-  }, [session])
+  }, [session, fetchNextNumbers, fetchReferralOrganizations])
   
   // Check user permissions
   const userPermissions = session?.user?.permissions || []

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { ensureArray, safeFilter } from '@/lib/array-utils'
 import {
   CalendarIcon,
@@ -114,7 +114,7 @@ const DashboardOverview = () => {
   const [showNewTaskForm, setShowNewTaskForm] = useState(false)
 
   // Fetch dropdown data (cases and officers)
-  const fetchDropdownData = async () => {
+  const fetchDropdownData = useCallback(async () => {
     setDropdownsLoading(true)
     try {
       const [casesResponse, officersResponse] = await Promise.all([
@@ -156,7 +156,7 @@ const DashboardOverview = () => {
     } finally {
       setDropdownsLoading(false)
     }
-  }
+  }, [])
 
   // Fetch dashboard data from API
   useEffect(() => {
@@ -185,7 +185,7 @@ const DashboardOverview = () => {
 
     fetchDashboardData()
     fetchDropdownData() // Also fetch dropdown data on component mount
-  }, [])
+  }, [fetchDropdownData])
 
   // Create new task via API
   const handleCreateTask = async () => {

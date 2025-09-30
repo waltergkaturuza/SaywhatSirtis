@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   PhoneIcon,
   ClockIcon,
@@ -44,11 +44,7 @@ const QuickStats = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchQuickStats()
-  }, [])
-
-  const fetchQuickStats = async () => {
+  const fetchQuickStats = useCallback(async () => {
     try {
       const response = await fetch('/api/call-centre/quick-stats')
       if (!response.ok) {
@@ -62,7 +58,11 @@ const QuickStats = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchQuickStats()
+  }, [fetchQuickStats])
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   UserIcon,
   StarIcon,
@@ -41,11 +41,7 @@ const PerformanceMetrics = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchPerformanceData()
-  }, [])
-
-  const fetchPerformanceData = async () => {
+  const fetchPerformanceData = useCallback(async () => {
     try {
       const response = await fetch('/api/call-centre/performance')
       if (!response.ok) {
@@ -59,7 +55,11 @@ const PerformanceMetrics = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchPerformanceData()
+  }, [fetchPerformanceData])
 
   const getStatusColor = (status: string) => {
     switch (status) {
