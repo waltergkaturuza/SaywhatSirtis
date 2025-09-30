@@ -137,14 +137,19 @@ const DashboardOverview = () => {
       if (officersResponse.ok) {
         const officersData = await officersResponse.json()
         if (officersData.success && Array.isArray(officersData.officers)) {
-          setOfficers(officersData.officers.map((officer: any) => ({
+          const mappedOfficers = officersData.officers.map((officer: any) => ({
             id: officer.id,
             name: officer.name || officer.displayName,
             email: officer.email,
             role: officer.role,
             department: officer.department
-          })))
+          }))
+          setOfficers(mappedOfficers)
+        } else {
+          console.error('Officers API response format issue:', officersData)
         }
+      } else {
+        console.error('Officers API request failed:', officersResponse.status, officersResponse.statusText)
       }
     } catch (error) {
       console.error('Error fetching dropdown data:', error)
