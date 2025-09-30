@@ -268,7 +268,7 @@ export default function CallCentreDataSummaryPage() {
     <>
       <Link
         href="/call-centre"
-        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
       >
         <ArrowLeftIcon className="h-4 w-4 mr-2" />
         Back to Call Centre
@@ -276,14 +276,14 @@ export default function CallCentreDataSummaryPage() {
       <div className="flex gap-2">
         <button 
           onClick={exportToCSV}
-          className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700"
+          className="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-green-700 transition-colors"
         >
           <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
           Export CSV
         </button>
         <button 
           onClick={handlePrint}
-          className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700"
+          className="inline-flex items-center px-4 py-2 bg-orange-600 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-orange-700 transition-colors"
         >
           <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
           Print Report
@@ -297,21 +297,21 @@ export default function CallCentreDataSummaryPage() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary Stats</h3>
         <div className="space-y-3">
-          <div className="bg-blue-50 p-3 rounded">
-            <div className="text-2xl font-bold text-blue-600">{summaryStats.totalCalls.toLocaleString()}</div>
-            <div className="text-sm text-blue-800">Total Calls</div>
+          <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500 shadow-sm">
+            <div className="text-2xl font-bold text-orange-600">{summaryStats.totalCalls.toLocaleString()}</div>
+            <div className="text-sm text-gray-700 font-medium">Total Calls</div>
           </div>
-          <div className="bg-green-50 p-3 rounded">
+          <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500 shadow-sm">
             <div className="text-2xl font-bold text-green-600">{summaryStats.validCalls.toLocaleString()}</div>
-            <div className="text-sm text-green-800">Valid Calls</div>
+            <div className="text-sm text-gray-700 font-medium">Valid Calls</div>
           </div>
-          <div className="bg-yellow-50 p-3 rounded">
-            <div className="text-2xl font-bold text-yellow-600">{summaryStats.totalCases}</div>
-            <div className="text-sm text-yellow-800">Total Cases</div>
+          <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-gray-500 shadow-sm">
+            <div className="text-2xl font-bold text-gray-700">{summaryStats.totalCases}</div>
+            <div className="text-sm text-gray-600 font-medium">Total Cases</div>
           </div>
-          <div className="bg-purple-50 p-3 rounded">
-            <div className="text-2xl font-bold text-purple-600">{summaryStats.averageCallDuration}</div>
-            <div className="text-sm text-purple-800">Avg Call Duration</div>
+          <div className="bg-white p-4 rounded-lg border-l-4 border-black shadow-sm">
+            <div className="text-2xl font-bold text-black">{summaryStats.averageCallDuration}</div>
+            <div className="text-sm text-gray-600 font-medium">Avg Call Duration</div>
           </div>
         </div>
       </div>
@@ -321,31 +321,31 @@ export default function CallCentreDataSummaryPage() {
         <div className="space-y-2">
           <button 
             onClick={() => handleFilterChange('validCalls', 'valid')}
-            className="w-full text-left p-2 text-sm text-green-600 hover:bg-green-50 rounded"
+            className="w-full text-left p-3 text-sm text-green-700 hover:bg-green-50 rounded-lg border border-green-200 hover:border-green-300 transition-colors font-medium"
           >
             Valid Calls Only
           </button>
           <button 
             onClick={() => handleFilterChange('validCalls', 'invalid')}
-            className="w-full text-left p-2 text-sm text-red-600 hover:bg-red-50 rounded"
+            className="w-full text-left p-3 text-sm text-orange-700 hover:bg-orange-50 rounded-lg border border-orange-200 hover:border-orange-300 transition-colors font-medium"
           >
             Invalid Calls Only
           </button>
           <button 
             onClick={() => handleFilterChange('purpose', 'HIV Information & Counselling')}
-            className="w-full text-left p-2 text-sm text-gray-600 hover:bg-gray-50 rounded"
+            className="w-full text-left p-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors font-medium"
           >
             HIV Counselling
           </button>
           <button 
             onClick={() => handleFilterChange('purpose', 'Mental Health Support')}
-            className="w-full text-left p-2 text-sm text-gray-600 hover:bg-gray-50 rounded"
+            className="w-full text-left p-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors font-medium"
           >
             Mental Health
           </button>
           <button 
             onClick={clearFilters}
-            className="w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded"
+            className="w-full text-left p-3 text-sm text-black hover:bg-gray-100 rounded-lg border border-gray-300 hover:border-black transition-colors font-medium"
           >
             Clear All Filters
           </button>
@@ -362,8 +362,8 @@ export default function CallCentreDataSummaryPage() {
     >
       <div className="space-y-6">
         {/* Search and Filter Panel */}
-        <div className="bg-white rounded-lg border p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Search Parameters</h2>
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <h2 className="text-xl font-semibold text-black mb-6 border-b border-gray-200 pb-3">Search Parameters</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -374,7 +374,7 @@ export default function CallCentreDataSummaryPage() {
                 type="text"
                 value={filters.officerName}
                 onChange={(e) => handleFilterChange('officerName', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                 placeholder="Search by officer name..."
               />
             </div>
@@ -387,7 +387,7 @@ export default function CallCentreDataSummaryPage() {
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
               />
             </div>
 
@@ -399,7 +399,7 @@ export default function CallCentreDataSummaryPage() {
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => handleFilterChange('dateTo', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
               />
             </div>
 
@@ -410,7 +410,7 @@ export default function CallCentreDataSummaryPage() {
               <select
                 value={filters.province}
                 onChange={(e) => handleFilterChange('province', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
               >
                 <option value="all">All Provinces</option>
                 <option value="Harare">Harare</option>
@@ -434,7 +434,7 @@ export default function CallCentreDataSummaryPage() {
                 type="text"
                 value={filters.callerIdNumber}
                 onChange={(e) => handleFilterChange('callerIdNumber', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                 placeholder="Search by phone number..."
               />
             </div>
@@ -447,7 +447,7 @@ export default function CallCentreDataSummaryPage() {
                 type="text"
                 value={filters.caseNumber}
                 onChange={(e) => handleFilterChange('caseNumber', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                 placeholder="Search by case number..."
               />
             </div>
@@ -459,7 +459,7 @@ export default function CallCentreDataSummaryPage() {
               <select
                 value={filters.gender}
                 onChange={(e) => handleFilterChange('gender', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
               >
                 <option value="all">All Genders</option>
                 <option value="Male">Male</option>
@@ -475,7 +475,7 @@ export default function CallCentreDataSummaryPage() {
               <select
                 value={filters.validCalls}
                 onChange={(e) => handleFilterChange('validCalls', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
               >
                 <option value="all">All Calls</option>
                 <option value="valid">Valid Calls Only</option>
@@ -490,7 +490,7 @@ export default function CallCentreDataSummaryPage() {
               <select
                 value={filters.communicationMode}
                 onChange={(e) => handleFilterChange('communicationMode', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
               >
                 <option value="all">All Modes</option>
                 <option value="inbound">Inbound</option>
@@ -503,12 +503,12 @@ export default function CallCentreDataSummaryPage() {
           </div>
 
           <div className="mt-6 flex space-x-4">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            <button className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium shadow-sm">
               Apply Filters
             </button>
             <button 
               onClick={clearFilters}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Clear Filters
             </button>
@@ -516,37 +516,37 @@ export default function CallCentreDataSummaryPage() {
         </div>
 
         {/* Officer Performance Table */}
-        <div className="bg-white rounded-lg border">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Officer Performance Overview</h2>
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+          <div className="p-6 border-b border-gray-200 bg-gray-50">
+            <h2 className="text-xl font-semibold text-black">Officer Performance Overview</h2>
           </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-black">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Officer Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Total Calls
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Valid Calls
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Cases Created
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Pending Cases
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Closed Cases
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Overdue Cases
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Avg Call Duration
                   </th>
                 </tr>
@@ -557,7 +557,7 @@ export default function CallCentreDataSummaryPage() {
                     <td colSpan={8} className="px-6 py-12 text-center">
                       <div className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                        <span className="ml-3 text-gray-500">Loading performance data...</span>
+                        <span className="ml-3 text-gray-600 font-medium">Loading performance data...</span>
                       </div>
                     </td>
                   </tr>
@@ -569,7 +569,7 @@ export default function CallCentreDataSummaryPage() {
                       <p className="text-sm text-gray-500 mb-4">{error}</p>
                       <button 
                         onClick={fetchSummaryData}
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700"
+                        className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-orange-600 hover:bg-orange-700 transition-colors shadow-sm"
                       >
                         Try Again
                       </button>
@@ -594,8 +594,8 @@ export default function CallCentreDataSummaryPage() {
                         {officer.totalCalls}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className="text-green-600">{officer.validCalls}</span>
-                        <span className="text-gray-400 ml-1">
+                        <span className="text-green-600 font-semibold">{officer.validCalls}</span>
+                        <span className="text-gray-500 ml-1">
                           ({((officer.validCalls / officer.totalCalls) * 100).toFixed(1)}%)
                         </span>
                       </td>
@@ -603,22 +603,22 @@ export default function CallCentreDataSummaryPage() {
                         {officer.cases}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                        <span className="px-3 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800">
                           {officer.pendingCases}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        <span className="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
                           {officer.closedCases}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {officer.overdueCases > 0 ? (
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                          <span className="px-3 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
                             {officer.overdueCases}
                           </span>
                         ) : (
-                          <span className="text-gray-400">0</span>
+                          <span className="text-gray-500 font-medium">0</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -635,17 +635,17 @@ export default function CallCentreDataSummaryPage() {
         {/* Analytics Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cases by Purpose */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Cases by Purpose</h3>
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Cases by Purpose</h3>
             <div className="space-y-3">
               {casesByPurpose.length > 0 ? (
                 casesByPurpose.map((item, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-900">{item.purpose}</div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div className="text-sm font-medium text-black">{item.purpose}</div>
+                      <div className="w-full bg-gray-200 rounded-full h-3 mt-1">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                          className="bg-orange-500 h-3 rounded-full transition-all duration-500" 
                           style={{ width: `${item.percentage}%` }}
                         ></div>
                       </div>
@@ -666,15 +666,15 @@ export default function CallCentreDataSummaryPage() {
           </div>
 
           {/* Calls by Province */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Calls by Province</h3>
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls by Province</h3>
             <div className="space-y-2">
               {callsByProvince.length > 0 ? (
                 callsByProvince.slice(0, 6).map((item, index) => (
-                  <div key={index} className="flex items-center justify-between py-2">
-                    <div className="text-sm font-medium text-gray-900">{item.province}</div>
-                    <div className="text-sm text-gray-500">
-                      <span className="text-green-600">{item.validCalls}</span> / {item.calls}
+                  <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
+                    <div className="text-sm font-medium text-black">{item.province}</div>
+                    <div className="text-sm text-gray-600">
+                      <span className="text-green-600 font-semibold">{item.validCalls}</span> / <span className="text-gray-800">{item.calls}</span>
                     </div>
                   </div>
                 ))
@@ -690,25 +690,25 @@ export default function CallCentreDataSummaryPage() {
         </div>
 
         {/* Case Management Overview */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Case Management Overview</h3>
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Case Management Overview</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-blue-50 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-blue-600">{summaryStats.totalCases}</div>
-              <div className="text-sm text-blue-800">Total Cases</div>
+            <div className="bg-gray-50 p-4 rounded-lg text-center border border-gray-200">
+              <div className="text-2xl font-bold text-black">{summaryStats.totalCases}</div>
+              <div className="text-sm text-gray-600 font-medium">Total Cases</div>
             </div>
-            <div className="bg-yellow-50 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-yellow-600">{summaryStats.pendingCases}</div>
-              <div className="text-sm text-yellow-800">Pending Cases</div>
+            <div className="bg-orange-50 p-4 rounded-lg text-center border border-orange-200">
+              <div className="text-2xl font-bold text-orange-600">{summaryStats.pendingCases}</div>
+              <div className="text-sm text-orange-700 font-medium">Pending Cases</div>
             </div>
-            <div className="bg-green-50 p-4 rounded-lg text-center">
+            <div className="bg-green-50 p-4 rounded-lg text-center border border-green-200">
               <div className="text-2xl font-bold text-green-600">{summaryStats.closedCases}</div>
-              <div className="text-sm text-green-800">Closed Cases</div>
+              <div className="text-sm text-green-700 font-medium">Closed Cases</div>
             </div>
-            <div className="bg-red-50 p-4 rounded-lg text-center">
+            <div className="bg-red-50 p-4 rounded-lg text-center border border-red-200">
               <div className="text-2xl font-bold text-red-600">{summaryStats.overdueCases}</div>
-              <div className="text-sm text-red-800">Overdue Cases</div>
+              <div className="text-sm text-red-700 font-medium">Overdue Cases</div>
             </div>
           </div>
 

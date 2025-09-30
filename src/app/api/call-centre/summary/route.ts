@@ -1,10 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
+import { rateLimit, getClientIP } from '@/lib/production-helpers'
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request)
+    if (!rateLimit(clientIP, true)) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait before trying again.' },
+        { status: 429 }
+      )
+    }
+
+    // Check database connection first
+    const isConnected = await checkDatabaseConnection()
+    if (!isConnected) {
+      console.error('Database connection failed in call centre summary API')
+      return NextResponse.json(
+        { error: 'Database connection unavailable' }, 
+        { status: 503 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session) {
@@ -12,10 +32,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check permissions
-    const hasPermission = session.user?.permissions?.includes('calls.view') ||
+    const hasPermission = session.user?.permissions?.includes('callcentre.access') ||
+                         session.user?.permissions?.includes('calls.view') ||
                          session.user?.permissions?.includes('calls.full_access') ||
                          session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('supervisor')
+                         session.user?.roles?.includes('manager')
 
     if (!hasPermission) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
@@ -33,157 +54,204 @@ export async function GET(request: NextRequest) {
       }
     } : {}
 
-    // Test if CallRecord table exists first
-    let totalCalls, resolvedCalls, pendingCalls
-    
-    try {
-      // Get total call statistics
-      totalCalls = await prisma.call_records.count({
-        where: dateFilter
-      })
+    // Get call statistics
+    const totalCalls = await prisma.call_records.count({
+      where: dateFilter
+    })
 
-      resolvedCalls = await prisma.call_records.count({
-        where: {
-          ...dateFilter,
-          status: 'RESOLVED'
-        }
-      })
-
-      pendingCalls = await prisma.call_records.count({
-        where: {
-          ...dateFilter,
-          status: 'OPEN'
-        }
-      })
-    } catch (dbError) {
-      // Database table doesn't exist or connection issue
-      console.error('Database error in call-centre summary:', dbError)
-      
-      // Return empty data when database is not available
-      return NextResponse.json({
-        overview: {
-          totalCalls: 0,
-          resolvedCalls: 0,
-          pendingCalls: 0,
-          resolutionRate: 0
-        },
-        priorityBreakdown: [],
-        categoryBreakdown: [],
-        officerPerformance: [],
-        recentActivity: [],
-        message: "Call centre data not available - database table may need migration"
-      })
-    }
-
-    // Get calls by priority
-    const priorityStats = await prisma.call_records.groupBy({
-      by: ['priority'],
-      where: dateFilter,
-      _count: {
-        id: true
-      }
-    }).catch(() => [])
-
-    // Get calls by category
-    const categoryStats = await prisma.call_records.groupBy({
-      by: ['category'],
-      where: dateFilter,
-      _count: {
-        id: true
-      }
-    }).catch(() => [])    // Get calls grouped by assigned officer
-    const callsGroupedByOfficer = await prisma.call_records.groupBy({
-      by: ['assignedOfficer'],
+    const validCalls = await prisma.call_records.count({
       where: {
         ...dateFilter,
-        assignedOfficer: {
+        callValidity: 'valid'
+      }
+    })
+
+    const invalidCalls = totalCalls - validCalls
+
+    const totalCases = await prisma.call_records.count({
+      where: {
+        ...dateFilter,
+        isCase: 'YES'
+      }
+    })
+
+    const pendingCases = await prisma.call_records.count({
+      where: {
+        ...dateFilter,
+        isCase: 'YES',
+        status: 'OPEN'
+      }
+    })
+
+    const closedCases = await prisma.call_records.count({
+      where: {
+        ...dateFilter,
+        isCase: 'YES',
+        status: 'CLOSED'
+      }
+    })
+
+    const overdueCases = await prisma.call_records.count({
+      where: {
+        ...dateFilter,
+        isCase: 'YES',
+        status: 'OPEN',
+        followUpDate: {
+          lt: new Date()
+        }
+      }
+    })
+
+    // Calculate average call duration (mock for now)
+    const averageCallDuration = "15 min"
+    const caseConversionRate = totalCalls > 0 ? `${Math.round((totalCases / totalCalls) * 100)}%` : "0%"
+
+    // Get officer performance data
+    const officerStats = await prisma.call_records.groupBy({
+      by: ['officerName'],
+      where: {
+        ...dateFilter,
+        officerName: {
           not: null
         }
       },
       _count: {
         id: true
-      },
-      _avg: {
-        // We'll calculate response time if available
-      }
-    }).catch(() => [])
-
-    // Get officer details for those with calls
-    const officerIds = callsGroupedByOfficer.map(group => group.assignedOfficer).filter(Boolean)
-    const officers = await prisma.users.findMany({
-      where: {
-        id: {
-          in: officerIds as string[]
-        }
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true
-      }
-    }).catch(() => [])
-
-    const officerPerformance = callsGroupedByOfficer.map(group => {
-      const officer = officers.find(o => o.id === group.assignedOfficer);
-      return {
-        officer: officer ? `${officer.firstName} ${officer.lastName}` : group.assignedOfficer,
-        totalCalls: group._count.id,
-        assignedOfficerId: group.assignedOfficer
       }
     })
 
-    // Get recent activity (last 10 calls)
-    const recentCalls = await prisma.call_records.findMany({
-      where: dateFilter,
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 10,
-      select: {
-        id: true,
-        caseNumber: true,
-        callerName: true,
-        summary: true,
-        status: true,
-        priority: true,
-        createdAt: true,
-        assignedOfficer: true
-      }
-    }).catch(() => [])
+    const officers = await Promise.all(
+      officerStats.map(async (officer) => {
+        const officerCalls = await prisma.call_records.findMany({
+          where: {
+            ...dateFilter,
+            officerName: officer.officerName
+          },
+          select: {
+            callValidity: true,
+            isCase: true,
+            status: true,
+            followUpDate: true
+          }
+        })
 
-    // Format the response
-    const summary = {
-      overview: {
-        totalCalls,
-        resolvedCalls,
-        pendingCalls,
-        resolutionRate: totalCalls > 0 ? Math.round((resolvedCalls / totalCalls) * 100) : 0
+        const validCallsCount = officerCalls.filter(c => c.callValidity === 'valid').length
+        const casesCount = officerCalls.filter(c => c.isCase === 'YES').length
+        const pendingCasesCount = officerCalls.filter(c => c.isCase === 'YES' && c.status === 'OPEN').length
+        const closedCasesCount = officerCalls.filter(c => c.isCase === 'YES' && c.status === 'CLOSED').length
+        const overdueCasesCount = officerCalls.filter(c => 
+          c.isCase === 'YES' && 
+          c.status === 'OPEN' && 
+          c.followUpDate && 
+          new Date(c.followUpDate) < new Date()
+        ).length
+
+        return {
+          name: officer.officerName || 'Unknown',
+          totalCalls: officer._count.id,
+          validCalls: validCallsCount,
+          cases: casesCount,
+          pendingCases: pendingCasesCount,
+          closedCases: closedCasesCount,
+          overdueCases: overdueCasesCount,
+          avgCallDuration: "15 min" // Mock data for now
+        }
+      })
+    )
+
+    // Get cases by purpose
+    const purposeStats = await prisma.call_records.groupBy({
+      by: ['purpose'],
+      where: {
+        ...dateFilter,
+        isCase: 'YES',
+        purpose: {
+          not: null
+        }
       },
-      priorityBreakdown: priorityStats.map(stat => ({
-        priority: stat.priority,
-        count: stat._count.id
-      })),
-      categoryBreakdown: categoryStats.map(stat => ({
-        category: stat.category,
-        count: stat._count.id
-      })),
-      officerPerformance,
-      recentActivity: recentCalls.map(call => ({
-        id: call.id,
-        caseNumber: call.caseNumber,
-        caller: call.callerName,
-        summary: call.summary,
-        status: call.status,
-        priority: call.priority,
-        assignedOfficer: call.assignedOfficer,
-        createdAt: call.createdAt.toISOString()
-      }))
+      _count: {
+        id: true
+      }
+    })
+
+    const casesByPurpose = purposeStats.map(stat => ({
+      purpose: stat.purpose || 'Unknown',
+      count: stat._count.id,
+      percentage: totalCases > 0 ? Math.round((stat._count.id / totalCases) * 100) : 0
+    }))
+
+    // Get calls by province
+    const provinceStats = await prisma.call_records.groupBy({
+      by: ['callerProvince'],
+      where: {
+        ...dateFilter,
+        callerProvince: {
+          not: null
+        }
+      },
+      _count: {
+        id: true
+      }
+    })
+
+    const callsByProvince = await Promise.all(
+      provinceStats.map(async (province) => {
+        const validCallsInProvince = await prisma.call_records.count({
+          where: {
+            ...dateFilter,
+            callerProvince: province.callerProvince,
+            callValidity: 'valid'
+          }
+        })
+
+        return {
+          province: province.callerProvince || 'Unknown',
+          calls: province._count.id,
+          validCalls: validCallsInProvince
+        }
+      })
+    )
+
+    // Return data in the format expected by the frontend
+    const response = {
+      stats: {
+        totalCalls,
+        validCalls,
+        invalidCalls,
+        totalCases,
+        pendingCases,
+        closedCases,
+        overdueCases,
+        averageCallDuration,
+        caseConversionRate
+      },
+      officers,
+      casesByPurpose,
+      callsByProvince
     }
 
-    return NextResponse.json(summary)
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('Error fetching call centre summary:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    
+    // Return empty data on error instead of failing completely
+    return NextResponse.json({
+      stats: {
+        totalCalls: 0,
+        validCalls: 0,
+        invalidCalls: 0,
+        totalCases: 0,
+        pendingCases: 0,
+        closedCases: 0,
+        overdueCases: 0,
+        averageCallDuration: "0 min",
+        caseConversionRate: "0%"
+      },
+      officers: [],
+      casesByPurpose: [],
+      callsByProvince: [],
+      error: 'Failed to fetch data'
+    }, { status: 500 })
   }
 }
