@@ -190,15 +190,51 @@ export default function NewCallEntryPage() {
     setIsSubmitting(true)
     
     try {
+      // Validate required fields
+      if (!formData.callerFullName?.trim()) {
+        alert('Caller name is required')
+        setIsSubmitting(false)
+        return
+      }
+
+      // Prepare referral data properly
+      let referralData = formData.referral
+      if (typeof referralData === 'object' && referralData !== null) {
+        // Convert object to string for database storage
+        referralData = JSON.stringify(referralData)
+      }
+
+      // Check data size limits before submission
+      const dataLimits = {
+        callerFullName: 255,
+        callerPhoneNumber: 50,
+        clientName: 255,
+        perpetrator: 255,
+        servicesRecommended: 500,
+        voucherValue: 50
+      }
+
+      for (const [field, limit] of Object.entries(dataLimits)) {
+        const value = formData[field as keyof typeof formData]
+        if (value && typeof value === 'string' && value.length > limit) {
+          alert(`${field} exceeds maximum length of ${limit} characters. Please shorten the text.`)
+          setIsSubmitting(false)
+          return
+        }
+      }
+
       // Prepare form data, excluding auto-generated numbers (let backend generate them)
       const submissionData = {
         ...formData,
+        referral: referralData, // Use processed referral data
         // Remove auto-generated fields so backend generates them properly
         callNumber: undefined, // Let backend generate systematic call number
         caseNumber: caseGenerated ? undefined : undefined, // Let backend generate systematic case number
         // Add case-specific data if it's a case
         ...(caseGenerated && { isCase: 'YES' })
       }
+
+      console.log('Submitting call data:', submissionData)
       
       const response = await fetch('/api/call-centre/calls', {
         method: 'POST',
@@ -207,6 +243,20 @@ export default function NewCallEntryPage() {
         },
         body: JSON.stringify(submissionData)
       })
+
+      // Handle non-JSON responses (like HTML error pages)
+      const contentType = response.headers.get('content-type')
+      if (!contentType?.includes('application/json')) {
+        const htmlText = await response.text()
+        console.error('Received HTML response instead of JSON:', htmlText)
+        
+        if (response.status === 502) {
+          alert('Server temporarily unavailable (502 Error). Please try again in a moment.')
+        } else {
+          alert(`Server error (${response.status}). Please try again or contact support.`)
+        }
+        return
+      }
 
       const result = await response.json()
 
@@ -217,11 +267,25 @@ export default function NewCallEntryPage() {
         // Reset form or redirect as needed
         window.location.href = '/call-centre'
       } else {
-        alert(`Error saving call: ${result.error || 'Unknown error'}`)
+        // Handle specific error codes
+        if (result.code === 'RATE_LIMIT_EXCEEDED') {
+          alert('Too many requests. Please wait a moment before trying again.')
+        } else if (result.code === 'FIELD_TOO_LONG') {
+          alert(`Data validation error: ${result.error}`)
+        } else if (result.code === 'DB_CONNECTION_FAILED') {
+          alert('Database connection issue. Please try again in a moment.')
+        } else {
+          alert(`Error saving call: ${result.error || 'Unknown error'}`)
+        }
       }
     } catch (error) {
       console.error('Error submitting form:', error)
-      alert('Error saving call entry. Please try again.')
+      
+      if (error instanceof SyntaxError && error.message.includes('JSON')) {
+        alert('Server returned an invalid response. This may be a temporary issue. Please try again.')
+      } else {
+        alert('Error saving call entry. Please check your connection and try again.')
+      }
     } finally {
       setIsSubmitting(false)
     }

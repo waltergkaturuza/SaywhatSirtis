@@ -208,10 +208,10 @@ model call_records {
   // Additional Information
   perpetrator        String?
   servicesRecommended String?
-  referral           String?
+  referral           String?   @db.Text
   voucherIssued      String?   @default("NO")
   voucherValue       String?
-  comment            String?
+  comment            String?   @db.Text
   // System Fields
   category           String?   @default("INQUIRY")
   priority           String?   @default("MEDIUM")

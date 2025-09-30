@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 import { randomUUID } from 'crypto'
+import { rateLimit, getClientIP, withErrorHandling } from '@/lib/production-helpers'
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,13 +50,14 @@ export async function GET(request: NextRequest) {
       callerProvince: call.callerProvince,
       callerAddress: call.callerAddress,
       // Call Details
-      communicationMode: call.modeOfCommunication || call.callType || 'inbound',
+      callType: call.callType,
+      modeOfCommunication: call.modeOfCommunication,
       howDidYouHearAboutUs: call.howDidYouHearAboutUs,
       callValidity: call.callValidity,
       newOrRepeatCall: call.newOrRepeatCall,
       language: call.language,
       callDescription: call.callDescription,
-      purpose: call.purpose || 'HIV/AIDS',
+      purpose: call.purpose,
       isCase: call.isCase,
       // Client Information
       clientName: call.clientName,
@@ -71,11 +73,26 @@ export async function GET(request: NextRequest) {
       voucherValue: call.voucherValue,
       comment: call.comment,
       // System fields
-      officer: call.assignedOfficer || call.officerName || 'Unassigned',
-      dateTime: call.createdAt.toISOString(),
+      category: call.category,
+      priority: call.priority,
       status: call.status,
-      notes: call.notes
-    }));
+      subject: call.subject,
+      description: call.description,
+      assignedOfficer: call.assignedOfficer,
+      summary: call.summary,
+      notes: call.notes,
+      resolution: call.resolution,
+      satisfactionRating: call.satisfactionRating,
+      callStartTime: call.callStartTime,
+      callEndTime: call.callEndTime,
+      resolvedAt: call.resolvedAt,
+      district: call.district,
+      ward: call.ward,
+      followUpRequired: call.followUpRequired,
+      followUpDate: call.followUpDate,
+      createdAt: call.createdAt,
+      updatedAt: call.updatedAt
+    }))
 
     return NextResponse.json({
       success: true,
@@ -90,6 +107,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const clientIP = getClientIP(request)
+    if (!rateLimit(clientIP, true)) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait before trying again.', code: 'RATE_LIMIT_EXCEEDED' },
+        { status: 429 }
+      )
+    }
+
     // Check database connection first
     const isConnected = await checkDatabaseConnection()
     if (!isConnected) {
@@ -118,12 +144,50 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    
+    // Validate required fields and data sizes
+    if (!body.callerFullName && !body.callerName) {
+      return NextResponse.json(
+        { error: 'Caller name is required', code: 'VALIDATION_ERROR' },
+        { status: 400 }
+      )
+    }
+
+    // Check referral data size and structure
+    if (body.referral && typeof body.referral === 'object') {
+      // Convert referral object to string if needed
+      body.referral = JSON.stringify(body.referral)
+    }
+
+    // Validate field lengths to prevent database errors
+    const fieldLimits = {
+      callerName: 255,
+      callerPhone: 50,
+      callerEmail: 255,
+      clientName: 255,
+      perpetrator: 255,
+      servicesRecommended: 500,
+      voucherValue: 50
+    }
+
+    for (const [field, limit] of Object.entries(fieldLimits)) {
+      if (body[field] && body[field].length > limit) {
+        return NextResponse.json(
+          { 
+            error: `${field} exceeds maximum length of ${limit} characters`,
+            code: 'FIELD_TOO_LONG'
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     const {
       // Auto-generated fields
       officerName,
       callNumber,
       caseNumber,
-      // ... rest of destructuring
+      // Caller Information
       callerFullName,
       callerPhoneNumber,
       callerAge,
@@ -330,12 +394,35 @@ export async function POST(request: NextRequest) {
     console.error('Error creating call:', error)
     
     // Handle Prisma unique constraint error specifically
-    if (error instanceof Error && 'code' in error && error.code === 'P2002') {
-      return NextResponse.json({ 
-        success: false,
-        error: 'Duplicate case number detected. Please try again.',
-        details: 'A call with this case number already exists. The system will generate a new unique case number.'
-      }, { status: 409 })
+    if (error instanceof Error && 'code' in error) {
+      const prismaError = error as any
+      
+      switch (prismaError.code) {
+        case 'P2002':
+          return NextResponse.json({ 
+            success: false,
+            error: 'Duplicate case number detected. Please try again.',
+            code: 'DUPLICATE_CASE'
+          }, { status: 409 })
+        case 'P2025':
+          return NextResponse.json({ 
+            success: false,
+            error: 'Record not found.',
+            code: 'RECORD_NOT_FOUND'
+          }, { status: 404 })
+        case 'P2003':
+          return NextResponse.json({ 
+            success: false,
+            error: 'Invalid reference data provided.',
+            code: 'INVALID_REFERENCE'
+          }, { status: 400 })
+        default:
+          return NextResponse.json({ 
+            success: false,
+            error: 'Database error occurred.',
+            code: 'DATABASE_ERROR'
+          }, { status: 500 })
+      }
     }
     
     return NextResponse.json({ 
