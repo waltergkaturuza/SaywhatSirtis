@@ -232,7 +232,7 @@ async function getDashboardData(userId: string) {
       })
     )
 
-    const myTasks = [
+    const myTasks: any[] = [
       // This could be populated with actual approval tasks from the database
     ]
 
