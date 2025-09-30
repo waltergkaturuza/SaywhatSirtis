@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
     const staticExists = fs.existsSync(staticPath)
     const publicExists = fs.existsSync(publicPath)
     
-    let staticFiles = []
-    let publicFiles = []
+    let staticFiles: string[] = []
+    let publicFiles: string[] = []
     
     if (staticExists) {
       try {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
           staticFiles = fs.readdirSync(cssPath).filter(f => f.endsWith('.css'))
         }
       } catch (error) {
-        staticFiles = [`Error reading CSS: ${error.message}`]
+        staticFiles = [`Error reading CSS: ${error instanceof Error ? error.message : 'Unknown error'}`]
       }
     }
     
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       try {
         publicFiles = fs.readdirSync(publicPath).slice(0, 5) // First 5 files
       } catch (error) {
-        publicFiles = [`Error reading public: ${error.message}`]
+        publicFiles = [`Error reading public: ${error instanceof Error ? error.message : 'Unknown error'}`]
       }
     }
     
@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     return NextResponse.json({ 
-      error: error.message,
-      stack: error.stack 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace'
     }, { 
       status: 500 
     })
