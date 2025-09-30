@@ -26,6 +26,25 @@ interface Task {
   priority: 'high' | 'medium' | 'low'
   status: 'pending' | 'in-progress' | 'completed'
   type: 'follow-up' | 'documentation' | 'referral' | 'assessment'
+  notes?: string
+  callId?: string
+  clientName?: string
+  phone?: string
+}
+
+interface CaseOption {
+  id: string
+  caseNumber: string
+  clientName: string
+  status: string
+}
+
+interface OfficerOption {
+  id: string
+  name: string
+  email: string
+  role: string
+  department?: string
 }
 
 interface DashboardData {
@@ -72,6 +91,18 @@ const DashboardOverview = () => {
   const [tasks, setTasks] = useState<Task[]>([])
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [cases, setCases] = useState<CaseOption[]>([])
+  const [officers, setOfficers] = useState<OfficerOption[]>([])
+  const [dropdownsLoading, setDropdownsLoading] = useState(false)
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [completionNotes, setCompletionNotes] = useState('')
+  const [rescheduleData, setRescheduleData] = useState({
+    newDate: '',
+    newOfficer: '',
+    rescheduleNotes: ''
+  })
   const [newTask, setNewTask] = useState({
     caseNumber: '',
     title: '',
@@ -81,6 +112,46 @@ const DashboardOverview = () => {
     type: 'follow-up' as Task['type']
   })
   const [showNewTaskForm, setShowNewTaskForm] = useState(false)
+
+  // Fetch dropdown data (cases and officers)
+  const fetchDropdownData = async () => {
+    setDropdownsLoading(true)
+    try {
+      const [casesResponse, officersResponse] = await Promise.all([
+        fetch('/api/call-centre/cases'),
+        fetch('/api/call-centre/officers')
+      ])
+
+      if (casesResponse.ok) {
+        const casesData = await casesResponse.json()
+        if (casesData.success && Array.isArray(casesData.cases)) {
+          setCases(casesData.cases.map((caseItem: any) => ({
+            id: caseItem.id,
+            caseNumber: caseItem.caseNumber,
+            clientName: caseItem.clientName,
+            status: caseItem.status
+          })))
+        }
+      }
+
+      if (officersResponse.ok) {
+        const officersData = await officersResponse.json()
+        if (officersData.success && Array.isArray(officersData.officers)) {
+          setOfficers(officersData.officers.map((officer: any) => ({
+            id: officer.id,
+            name: officer.name || officer.displayName,
+            email: officer.email,
+            role: officer.role,
+            department: officer.department
+          })))
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching dropdown data:', error)
+    } finally {
+      setDropdownsLoading(false)
+    }
+  }
 
   // Fetch dashboard data from API
   useEffect(() => {
@@ -108,6 +179,7 @@ const DashboardOverview = () => {
     }
 
     fetchDashboardData()
+    fetchDropdownData() // Also fetch dropdown data on component mount
   }, [])
 
   // Create new task via API
@@ -122,9 +194,23 @@ const DashboardOverview = () => {
           body: JSON.stringify(newTask),
         })
 
-        if (response.ok) {
-          const createdTask = await response.json()
+        const result = await response.json()
+
+        if (response.ok && result.success) {
+          // Add the created task to the tasks list
+          const createdTask = {
+            id: result.data.id,
+            caseNumber: result.data.caseNumber,
+            title: result.data.title,
+            assignedOfficer: result.data.assignedOfficer,
+            dueDate: result.data.dueDate,
+            priority: result.data.priority,
+            status: result.data.status || 'pending',
+            type: result.data.type || 'general'
+          }
           setTasks(prev => [createdTask, ...prev])
+          
+          // Reset form
           setNewTask({
             caseNumber: '',
             title: '',
@@ -134,12 +220,19 @@ const DashboardOverview = () => {
             type: 'follow-up'
           })
           setShowNewTaskForm(false)
+          
+          // Show success message (optional)
+          console.log('Task created successfully:', result.message)
         } else {
-          console.error('Failed to create task')
+          console.error('Failed to create task:', result.error || result.message)
+          alert(`Failed to create task: ${result.error || result.message}`)
         }
       } catch (error) {
         console.error('Error creating task:', error)
+        alert('Error creating task. Please try again.')
       }
+    } else {
+      alert('Please fill in all required fields (Case Number, Title, and Assigned Officer)')
     }
   }
 
@@ -147,6 +240,94 @@ const DashboardOverview = () => {
     setTasks(prev => prev.map(task => 
       task.id === taskId ? { ...task, status } : task
     ))
+  }
+
+  // Handle follow-up task completion
+  const handleCompleteFollowUp = async () => {
+    if (!selectedTask) return
+
+    try {
+      const response = await fetch('/api/call-centre/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'complete_followup',
+          callId: selectedTask.id,
+          updates: {
+            completionNotes,
+            previousNotes: selectedTask.notes
+          }
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        // Remove completed task from list
+        setTasks(prev => prev.filter(task => task.id !== selectedTask.id))
+        setShowCompleteModal(false)
+        setCompletionNotes('')
+        setSelectedTask(null)
+        alert('Follow-up task completed successfully!')
+      } else {
+        alert(`Failed to complete task: ${result.error || result.message}`)
+      }
+    } catch (error) {
+      console.error('Error completing follow-up:', error)
+      alert('Error completing task. Please try again.')
+    }
+  }
+
+  // Handle follow-up task rescheduling
+  const handleRescheduleFollowUp = async () => {
+    if (!selectedTask || !rescheduleData.newDate) {
+      alert('Please select a new date')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/call-centre/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'reschedule_followup',
+          callId: selectedTask.id,
+          updates: {
+            newDate: rescheduleData.newDate,
+            newOfficer: rescheduleData.newOfficer || selectedTask.assignedOfficer,
+            currentOfficer: selectedTask.assignedOfficer,
+            rescheduleNotes: rescheduleData.rescheduleNotes,
+            previousNotes: selectedTask.notes
+          }
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        // Update task in list with new details
+        setTasks(prev => prev.map(task => 
+          task.id === selectedTask.id ? {
+            ...task,
+            dueDate: rescheduleData.newDate,
+            assignedOfficer: rescheduleData.newOfficer || task.assignedOfficer
+          } : task
+        ))
+        setShowRescheduleModal(false)
+        setRescheduleData({ newDate: '', newOfficer: '', rescheduleNotes: '' })
+        setSelectedTask(null)
+        alert(result.message)
+      } else {
+        alert(`Failed to reschedule task: ${result.error || result.message}`)
+      }
+    } catch (error) {
+      console.error('Error rescheduling follow-up:', error)
+      alert('Error rescheduling task. Please try again.')
+    }
   }
 
   const getPriorityColor = (priority: Task['priority']) => {
@@ -266,23 +447,41 @@ const DashboardOverview = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Case Number</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., 00245/2025"
+                  <select
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                     value={newTask.caseNumber}
                     onChange={(e) => setNewTask({...newTask, caseNumber: e.target.value})}
-                  />
+                    disabled={dropdownsLoading}
+                  >
+                    <option value="">Select a case...</option>
+                    {cases.map((caseItem) => (
+                      <option key={caseItem.id} value={caseItem.caseNumber}>
+                        {caseItem.caseNumber} - {caseItem.clientName}
+                      </option>
+                    ))}
+                  </select>
+                  {dropdownsLoading && (
+                    <p className="text-sm text-gray-500 mt-1">Loading cases...</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Officer</label>
-                  <input
-                    type="text"
-                    placeholder="Officer name"
+                  <select
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
                     value={newTask.assignedOfficer}
                     onChange={(e) => setNewTask({...newTask, assignedOfficer: e.target.value})}
-                  />
+                    disabled={dropdownsLoading}
+                  >
+                    <option value="">Select an officer...</option>
+                    {officers.map((officer) => (
+                      <option key={officer.id} value={officer.name}>
+                        {officer.name} ({officer.role})
+                      </option>
+                    ))}
+                  </select>
+                  {dropdownsLoading && (
+                    <p className="text-sm text-gray-500 mt-1">Loading officers...</p>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
@@ -354,20 +553,52 @@ const DashboardOverview = () => {
                       <p className="text-sm text-gray-600">Due: {task.dueDate}</p>
                     </div>
                     <div className="flex space-x-1 ml-2">
-                      <button
-                        onClick={() => updateTaskStatus(task.id, 'in-progress')}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Start Task"
-                      >
-                        <ArrowPathIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => updateTaskStatus(task.id, 'completed')}
-                        className="p-1 text-green-600 hover:bg-green-50 rounded"
-                        title="Complete Task"
-                      >
-                        <CheckCircleIcon className="h-4 w-4" />
-                      </button>
+                      {task.type === 'follow-up' ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedTask(task)
+                              setShowCompleteModal(true)
+                            }}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            title="Complete Follow-up"
+                          >
+                            <CheckCircleIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedTask(task)
+                              setRescheduleData({
+                                newDate: task.dueDate,
+                                newOfficer: task.assignedOfficer,
+                                rescheduleNotes: ''
+                              })
+                              setShowRescheduleModal(true)
+                            }}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            title="Reschedule Follow-up"
+                          >
+                            <CalendarIcon className="h-4 w-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => updateTaskStatus(task.id, 'in-progress')}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            title="Start Task"
+                          >
+                            <ArrowPathIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => updateTaskStatus(task.id, 'completed')}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            title="Complete Task"
+                          >
+                            <CheckCircleIcon className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -433,6 +664,141 @@ const DashboardOverview = () => {
           ))}
         </div>
       </div>
+
+      {/* Complete Follow-up Modal */}
+      {showCompleteModal && selectedTask && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Complete Follow-up Task</h3>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Case:</strong> {selectedTask.caseNumber}
+                </p>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Task:</strong> {selectedTask.title}
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  <strong>Assigned to:</strong> {selectedTask.assignedOfficer}
+                </p>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Completion Notes (Optional)
+                </label>
+                <textarea
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                  rows={3}
+                  value={completionNotes}
+                  onChange={(e) => setCompletionNotes(e.target.value)}
+                  placeholder="Add any notes about the follow-up completion..."
+                />
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowCompleteModal(false)
+                    setCompletionNotes('')
+                    setSelectedTask(null)
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCompleteFollowUp}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+                >
+                  Complete Task
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Follow-up Modal */}
+      {showRescheduleModal && selectedTask && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Reschedule Follow-up Task</h3>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Case:</strong> {selectedTask.caseNumber}
+                </p>
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Task:</strong> {selectedTask.title}
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  <strong>Current Officer:</strong> {selectedTask.assignedOfficer}
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    New Due Date *
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                    value={rescheduleData.newDate}
+                    onChange={(e) => setRescheduleData({...rescheduleData, newDate: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reassign to Officer (Optional)
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                    value={rescheduleData.newOfficer}
+                    onChange={(e) => setRescheduleData({...rescheduleData, newOfficer: e.target.value})}
+                    disabled={dropdownsLoading}
+                  >
+                    <option value="">Keep current officer</option>
+                    {officers.map((officer) => (
+                      <option key={officer.id} value={officer.name}>
+                        {officer.name} ({officer.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reschedule Notes (Optional)
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange"
+                    rows={3}
+                    value={rescheduleData.rescheduleNotes}
+                    onChange={(e) => setRescheduleData({...rescheduleData, rescheduleNotes: e.target.value})}
+                    placeholder="Reason for rescheduling..."
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowRescheduleModal(false)
+                    setRescheduleData({ newDate: '', newOfficer: '', rescheduleNotes: '' })
+                    setSelectedTask(null)
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRescheduleFollowUp}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                >
+                  Reschedule Task
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
