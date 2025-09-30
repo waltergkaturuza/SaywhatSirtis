@@ -25,6 +25,12 @@ export default function NewCallEntryPage() {
     nextCaseNumber: 'Loading...',
     loading: true
   })
+  
+  // Referral dropdown state
+  const [referralOrganizations, setReferralOrganizations] = useState<any[]>([])
+  const [referralLoading, setReferralLoading] = useState(false)
+  const [showOtherReferral, setShowOtherReferral] = useState(false)
+  const [otherReferralText, setOtherReferralText] = useState('')
 
   // Auto-generated fields
   const currentDateTime = new Date()
@@ -97,8 +103,29 @@ export default function NewCallEntryPage() {
       }
     }
 
+    // Fetch referral organizations
+    const fetchReferralOrganizations = async () => {
+      setReferralLoading(true)
+      try {
+        const response = await fetch('/api/call-centre/referrals')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && Array.isArray(data.organizations)) {
+            setReferralOrganizations(data.organizations)
+          }
+        } else {
+          console.error('Failed to fetch referral organizations')
+        }
+      } catch (error) {
+        console.error('Error fetching referral organizations:', error)
+      } finally {
+        setReferralLoading(false)
+      }
+    }
+
     if (session?.user) {
       fetchNextNumbers()
+      fetchReferralOrganizations()
     }
   }, [session])
   
@@ -139,6 +166,23 @@ export default function NewCallEntryPage() {
       setGeneratedCaseNumber('')
       setCaseGenerated(false)
     }
+  }
+
+  // Handle referral selection
+  const handleReferralChange = (value: string) => {
+    if (value === 'OTHER') {
+      setShowOtherReferral(true)
+      setFormData(prev => ({ ...prev, referral: '' }))
+    } else {
+      setShowOtherReferral(false)
+      setOtherReferralText('')
+      setFormData(prev => ({ ...prev, referral: value }))
+    }
+  }
+
+  const handleOtherReferralChange = (value: string) => {
+    setOtherReferralText(value)
+    setFormData(prev => ({ ...prev, referral: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -725,13 +769,76 @@ export default function NewCallEntryPage() {
                 <label className="block text-sm font-medium text-saywhat-dark mb-2">
                   Referral
                 </label>
-                <input
-                  type="text"
-                  value={formData.referral}
-                  onChange={(e) => handleInputChange('referral', e.target.value)}
+                <select
+                  value={showOtherReferral ? 'OTHER' : formData.referral}
+                  onChange={(e) => handleReferralChange(e.target.value)}
                   className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
-                  placeholder="Referred to which organization/service"
-                />
+                  disabled={referralLoading}
+                >
+                  <option value="">Select organization or service...</option>
+                  {referralLoading ? (
+                    <option value="">Loading organizations...</option>
+                  ) : (
+                    <>
+                      {referralOrganizations.map((org) => (
+                        <option key={org.id} value={org.name}>
+                          {org.name} {org.category && `(${org.category})`}
+                        </option>
+                      ))}
+                      <option value="OTHER">Other (specify below)</option>
+                    </>
+                  )}
+                </select>
+                
+                {/* Show organization details when selected */}
+                {formData.referral && !showOtherReferral && (
+                  (() => {
+                    const selectedOrg = referralOrganizations.find(org => org.name === formData.referral)
+                    return selectedOrg ? (
+                      <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <p className="text-sm text-blue-800">
+                          <strong>{selectedOrg.name}</strong>
+                          {selectedOrg.contact?.phone && (
+                            <span className="block text-xs mt-1">
+                              📞 {selectedOrg.contact.phone}
+                            </span>
+                          )}
+                          {selectedOrg.contact?.email && (
+                            <span className="block text-xs">
+                              📧 {selectedOrg.contact.email}
+                            </span>
+                          )}
+                          {selectedOrg.focusAreas && selectedOrg.focusAreas.length > 0 && (
+                            <span className="block text-xs mt-1">
+                              🎯 Focus: {selectedOrg.focusAreas.join(', ')}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    ) : null
+                  })()
+                )}
+                
+                {/* Show text input when "Other" is selected */}
+                {showOtherReferral && (
+                  <div className="mt-2">
+                    <input
+                      type="text"
+                      value={otherReferralText}
+                      onChange={(e) => handleOtherReferralChange(e.target.value)}
+                      className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
+                      placeholder="Please specify the organization or service..."
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Please provide the name of the organization or service you're referring to.
+                    </p>
+                  </div>
+                )}
+                
+                {referralLoading && (
+                  <p className="text-xs text-gray-500 mt-1">Loading referral organizations...</p>
+                )}
               </div>
 
               <div className="col-span-2">
