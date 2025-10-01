@@ -28,7 +28,7 @@ interface CollapsibleMainSidebarProps {
 // Navigation items based on SIRTIS requirements
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, requiredPermissions: [] },
-  { name: "My HR", href: "/hr", icon: UserGroupIcon, requiredPermissions: ["hr.view"] },
+  { name: "My HR", href: "/hr", icon: UserGroupIcon, requiredPermissions: ["hr.view", "hr.full_access", "hr_full"] },
   { name: "Programs", href: "/programs", icon: DocumentTextIcon, requiredPermissions: [] },
   { name: "Call Centre", href: "/call-centre", icon: PhoneIcon, requiredPermissions: [] },
   { name: "Inventory", href: "/inventory", icon: ArchiveBoxIcon, requiredPermissions: [] },
@@ -39,6 +39,13 @@ const navigation = [
 
 function hasPermission(userPermissions: string[], requiredPermissions: string[]) {
   if (requiredPermissions.length === 0) return true
+  
+  // System administrators and users with full_access should see everything
+  if (userPermissions.includes('full_access') || userPermissions.includes('admin.access')) {
+    return true
+  }
+  
+  // Check if user has any of the required permissions (OR logic)
   return requiredPermissions.some(permission => userPermissions.includes(permission))
 }
 

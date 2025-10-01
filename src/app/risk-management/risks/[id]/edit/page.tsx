@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { ArrowLeft, Save, X } from 'lucide-react'
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 
 // Import Prisma types for consistency
@@ -33,9 +35,39 @@ interface User {
 }
 
 export default function EditRiskPage() {
+  const { data: session } = useSession()
   const params = useParams()
   const router = useRouter()
   const riskId = params.id as string
+  
+  // Check user permissions for edit access
+  const userPermissions = session?.user?.permissions || []
+  const userRoles = session?.user?.roles || []
+  const canEditRisks = userPermissions.includes('risks_edit') || 
+                      userPermissions.includes('risks.edit') || 
+                      userPermissions.includes('admin.access') ||
+                      userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))
+
+  // If user doesn't have permissions, show access denied
+  if (session && !canEditRisks) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-red-500" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Access Denied</h3>
+          <p className="mt-1 text-sm text-gray-500">You don't have permission to edit risks.</p>
+          <div className="mt-6">
+            <Link
+              href="/risk-management"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700"
+            >
+              Back to Risk Management
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
   
   const [risk, setRisk] = useState<Risk | null>(null)
   const [users, setUsers] = useState<User[]>([])

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { 
   Shield, 
   AlertTriangle, 
@@ -67,6 +68,7 @@ interface Risk {
 }
 
 export default function RiskManagementPage() {
+  const { data: session } = useSession()
   const [risks, setRisks] = useState<Risk[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -76,6 +78,14 @@ export default function RiskManagementPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [departments, setDepartments] = useState<Array<{id: string, name: string}>>([])
   const [loadingDepartments, setLoadingDepartments] = useState(true)
+
+  // Check user permissions for edit access
+  const userPermissions = session?.user?.permissions || []
+  const userRoles = session?.user?.roles || []
+  const canEditRisks = userPermissions.includes('risks_edit') || 
+                      userPermissions.includes('risks.edit') || 
+                      userPermissions.includes('admin.access') ||
+                      userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))
 
   // Risk categories
   const riskCategories = [
@@ -307,13 +317,15 @@ export default function RiskManagementPage() {
             </div>
             
             <div className="flex items-center gap-3 flex-shrink-0">
-              <Link
-                href="/risk-management/add"
-                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-lg font-semibold text-sm"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Risk
-              </Link>
+              {canEditRisks && (
+                <Link
+                  href="/risk-management/add"
+                  className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-lg font-semibold text-sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Risk
+                </Link>
+              )}
               <Link
                 href="/risk-management/matrix"
                 className="inline-flex items-center px-4 py-2 bg-white/90 backdrop-blur-sm text-black rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-md hover:shadow-lg font-semibold text-sm"
@@ -600,13 +612,15 @@ export default function RiskManagementPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
-                          <Link
-                            href={`/risk-management/risks/${risk.id}/edit`}
-                            className="p-2 bg-gradient-to-r from-green-100 to-green-200 text-green-600 rounded-xl hover:from-green-200 hover:to-green-300 transition-all duration-300 shadow-md hover:shadow-lg"
-                            title="Edit Risk"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Link>
+                          {canEditRisks && (
+                            <Link
+                              href={`/risk-management/risks/${risk.id}/edit`}
+                              className="p-2 bg-gradient-to-r from-green-100 to-green-200 text-green-600 rounded-xl hover:from-green-200 hover:to-green-300 transition-all duration-300 shadow-md hover:shadow-lg"
+                              title="Edit Risk"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          )}
                           <button 
                             onClick={() => handleViewDocuments(risk.id)}
                             className="p-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-300 shadow-md hover:shadow-lg"
@@ -614,13 +628,15 @@ export default function RiskManagementPage() {
                           >
                             <FileText className="h-4 w-4" />
                           </button>
-                          <button 
-                            onClick={() => handleDeleteRisk(risk.id, risk.title)}
-                            className="p-2 bg-gradient-to-r from-red-100 to-red-200 text-red-600 rounded-xl hover:from-red-200 hover:to-red-300 transition-all duration-300 shadow-md hover:shadow-lg"
-                            title="Delete Risk"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {canEditRisks && (
+                            <button 
+                              onClick={() => handleDeleteRisk(risk.id, risk.title)}
+                              className="p-2 bg-gradient-to-r from-red-100 to-red-200 text-red-600 rounded-xl hover:from-red-200 hover:to-red-300 transition-all duration-300 shadow-md hover:shadow-lg"
+                              title="Delete Risk"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -84,6 +84,17 @@ export async function PUT(
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check permissions for updating risks - Include HR users with risks_edit
+    const userPermissions = session.user.permissions || [];
+    const userRoles = session.user.roles || [];
+    if (!userPermissions.includes('risk.edit') && 
+        !userPermissions.includes('admin.access') &&
+        !userPermissions.includes('risks_edit') &&
+        !userPermissions.includes('risks.edit') &&
+        !userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))) {
+      return Response.json({ error: 'Insufficient permissions to edit risks' }, { status: 403 });
+    }
+
     const body = await request.json()
     const {
       title,
@@ -185,6 +196,17 @@ export async function DELETE(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check permissions for deleting risks - Include HR users with risks_edit
+    const userPermissions = session.user.permissions || [];
+    const userRoles = session.user.roles || [];
+    if (!userPermissions.includes('risk.delete') && 
+        !userPermissions.includes('admin.access') &&
+        !userPermissions.includes('risks_edit') &&
+        !userPermissions.includes('risks.edit') &&
+        !userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))) {
+      return Response.json({ error: 'Insufficient permissions to delete risks' }, { status: 403 });
     }
 
     // Check if risk exists

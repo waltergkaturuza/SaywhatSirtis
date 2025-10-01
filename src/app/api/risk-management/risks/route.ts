@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
     if (!userPermissions.includes('admin.access') && 
         !userPermissions.includes('risk.full_access') &&
         !userPermissions.includes('risks_edit') &&
-        !userRoles.some(role => ['advance_user_1', 'admin', 'manager'].includes(role.toLowerCase()))) {
+        !userPermissions.includes('risks.edit') &&
+        !userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))) {
       where.OR = [
         { department: session.user.department },
         { ownerId: session.user.id },
@@ -135,13 +136,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check permissions for creating risks - Updated to support ADVANCE_USER_1
+    // Check permissions for creating risks - Updated to support HR and ADVANCE_USER_1
     const userPermissions = session.user.permissions || [];
     const userRoles = session.user.roles || [];
     if (!userPermissions.includes('risk.create') && 
         !userPermissions.includes('admin.access') &&
         !userPermissions.includes('risks_edit') &&
-        !userRoles.some(role => ['advance_user_1', 'admin', 'manager'].includes(role.toLowerCase()))) {
+        !userPermissions.includes('risks.edit') &&
+        !userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 

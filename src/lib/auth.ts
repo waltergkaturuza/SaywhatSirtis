@@ -265,7 +265,9 @@ function getUserPermissions(role: string, department: string): string[] {
       'employee_reports',
       'documents.view',
       'documents.create',
-      'documents.edit'
+      'documents.edit',
+      'risks_edit',
+      'risks.edit'
     ],
     'SYSTEM_ADMINISTRATOR': [
       'full_access',
