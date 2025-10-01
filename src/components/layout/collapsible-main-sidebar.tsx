@@ -29,11 +29,11 @@ interface CollapsibleMainSidebarProps {
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: HomeIcon, requiredPermissions: [] },
   { name: "My HR", href: "/hr", icon: UserGroupIcon, requiredPermissions: ["hr.view"] },
-  { name: "Programs", href: "/programs", icon: DocumentTextIcon, requiredPermissions: ["programs.view"] },
-  { name: "Call Centre", href: "/call-centre", icon: PhoneIcon, requiredPermissions: ["callcentre.access"] },
-  { name: "Inventory", href: "/inventory", icon: ArchiveBoxIcon, requiredPermissions: ["inventory.view"] },
+  { name: "Programs", href: "/programs", icon: DocumentTextIcon, requiredPermissions: [] },
+  { name: "Call Centre", href: "/call-centre", icon: PhoneIcon, requiredPermissions: [] },
+  { name: "Inventory", href: "/inventory", icon: ArchiveBoxIcon, requiredPermissions: [] },
   { name: "Risk Management", href: "/risk-management", icon: ExclamationTriangleIcon, requiredPermissions: [] },
-  { name: "Documents", href: "/documents", icon: FolderIcon, requiredPermissions: ["documents.view"] },
+  { name: "Documents", href: "/documents", icon: FolderIcon, requiredPermissions: [] },
   { name: "Admin", href: "/admin", icon: Cog6ToothIcon, requiredPermissions: ["admin.access"] },
 ]
 

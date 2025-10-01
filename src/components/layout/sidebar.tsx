@@ -37,7 +37,7 @@ const navigation = [
   { name: "Call Centre", href: "/call-centre", icon: PhoneIcon, requiredPermissions: ["callcentre.access"] },
   { name: "My HR", href: "/hr", icon: UserGroupIcon, requiredPermissions: ["hr.view"] },
   { name: "Inventory Tracking", href: "/inventory", icon: ArchiveBoxIcon, requiredPermissions: ["inventory.view"] },
-  { name: "Document Repository", href: "/documents", icon: FolderIcon, requiredPermissions: ["documents.view"] },
+  { name: "Document Repository", href: "/documents", icon: FolderIcon, requiredPermissions: [] },
   { name: "Settings", href: "/settings", icon: CogIcon, requiredPermissions: [] },
   { name: "System Admin", href: "/admin", icon: Cog6ToothIcon, requiredPermissions: ["admin.access"] },
   { name: "About SIRTIS", href: "/about", icon: InformationCircleIcon, requiredPermissions: [] },

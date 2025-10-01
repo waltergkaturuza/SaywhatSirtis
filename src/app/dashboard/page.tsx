@@ -120,11 +120,11 @@ export default function DashboardPage() {
     return null
   }
 
-  // Check if user has dashboard access
+  // Check if user has dashboard access - Updated to support ADVANCE_USER_1 permissions
   const hasDashboardAccess = session?.user?.permissions?.includes("dashboard.view") ||
                             session?.user?.permissions?.includes("dashboard.full_access") ||
-                            session?.user?.roles?.includes("admin") ||
-                            session?.user?.roles?.includes("manager")
+                            session?.user?.permissions?.includes("dashboard") ||
+                            session?.user?.roles?.some(role => ['admin', 'manager', 'advance_user_1'].includes(role.toLowerCase()))
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -567,7 +567,11 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {(session?.user?.permissions?.includes("calls.view") || session?.user?.permissions?.includes("calls.full_access")) && (
+                {(session?.user?.permissions?.includes("calls.view") || 
+                  session?.user?.permissions?.includes("calls.full_access") ||
+                  session?.user?.permissions?.includes("call_center_full") ||
+                  session?.user?.permissions?.includes("callcentre.access") ||
+                  session?.user?.roles?.some(role => ['advance_user_1', 'basic_user_1'].includes(role.toLowerCase()))) && (
                   <Button 
                     variant="outline" 
                     className="h-20 flex-col space-y-2 border-saywhat-orange hover:bg-saywhat-orange hover:text-white" 
@@ -577,7 +581,10 @@ export default function DashboardPage() {
                     <span className="text-xs">Call Centre</span>
                   </Button>
                 )}
-                {(session?.user?.permissions?.includes("programs.view") || session?.user?.permissions?.includes("programs.full_access")) && (
+                {(session?.user?.permissions?.includes("programs.view") || 
+                  session?.user?.permissions?.includes("programs.full_access") ||
+                  session?.user?.permissions?.includes("programs_edit") ||
+                  session?.user?.roles?.some(role => ['advance_user_1', 'advance_user_2', 'basic_user_2'].includes(role.toLowerCase()))) && (
                   <Button 
                     variant="outline" 
                     className="h-20 flex-col space-y-2 border-saywhat-red hover:bg-saywhat-red hover:text-white" 
@@ -585,6 +592,29 @@ export default function DashboardPage() {
                   >
                     <Target className="h-6 w-6" />
                     <span className="text-xs">Programs</span>
+                  </Button>
+                )}
+                {/* Document Repository - Available to ALL authenticated users */}
+                {session?.user && (
+                  <Button 
+                    variant="outline" 
+                    className="h-20 flex-col space-y-2 border-blue-500 hover:bg-blue-500 hover:text-white" 
+                    onClick={() => window.location.href = '/documents'}
+                  >
+                    <FileText className="h-6 w-6" />
+                    <span className="text-xs">Document Repository</span>
+                  </Button>
+                )}
+                {/* Risk Management - Available to ADVANCE_USER_1 and above */}
+                {(session?.user?.permissions?.includes("risks_edit") ||
+                  session?.user?.roles?.some(role => ['advance_user_1', 'admin', 'manager'].includes(role.toLowerCase()))) && (
+                  <Button 
+                    variant="outline" 
+                    className="h-20 flex-col space-y-2 border-red-500 hover:bg-red-500 hover:text-white" 
+                    onClick={() => window.location.href = '/risk-management'}
+                  >
+                    <Shield className="h-6 w-6" />
+                    <span className="text-xs">Risk Management</span>
                   </Button>
                 )}
                 {(session?.user?.permissions?.includes("hr.view") || session?.user?.permissions?.includes("hr.full_access")) && (

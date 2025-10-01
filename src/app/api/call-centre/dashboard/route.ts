@@ -27,11 +27,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permissions
+    // Check permissions - Updated to recognize ADVANCE_USER_1 permissions
     const hasPermission = session.user?.permissions?.includes('calls.view') ||
                          session.user?.permissions?.includes('calls.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('manager')
+                         session.user?.permissions?.includes('call_center_full') ||
+                         session.user?.permissions?.includes('callcentre.access') ||
+                         session.user?.permissions?.includes('callcentre.officer') ||
+                         session.user?.roles?.some(role => ['admin', 'manager', 'advance_user_1'].includes(role.toLowerCase()))
 
     if (!hasPermission) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })

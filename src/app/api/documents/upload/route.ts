@@ -17,10 +17,14 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Check permissions
+    // Check permissions - Allow all authenticated users to upload documents
     const hasPermission = session.user?.permissions?.includes('documents.create') ||
                          session.user?.permissions?.includes('documents.full_access') ||
-                         session.user?.roles?.includes('admin')
+                         session.user?.permissions?.includes('documents') ||
+                         session.user?.permissions?.includes('documents_edit') ||
+                         session.user?.permissions?.includes('documents_view') ||
+                         session.user?.roles?.some(role => ['admin', 'manager', 'advance_user_1', 'advance_user_2', 'basic_user_1', 'basic_user_2', 'hr'].includes(role.toLowerCase())) ||
+                         session.user; // Allow all authenticated users
 
     if (!hasPermission) {
       return NextResponse.json({ 

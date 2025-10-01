@@ -52,7 +52,7 @@ export default function EditCasePage() {
 
   // Permissions
   const userPermissions = (session?.user as any)?.permissions || []
-  const canAccessCallCentre = userPermissions.includes('callcentre.access') || userPermissions.includes('programs.head') || userPermissions.includes('callcentre.officer')
+  const canAccessCallCentre = userPermissions.includes('callcentre.access') || userPermissions.includes('programs.head') || userPermissions.includes('callcentre.officer') || userPermissions.includes('call_center_full') || userPermissions.includes('call_center_view') || userPermissions.includes('callcentre.view') || session?.user?.roles?.some(role => ['advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))
 
   // Load case data
   useEffect(() => {

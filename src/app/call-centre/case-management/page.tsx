@@ -53,7 +53,10 @@ export default function CaseManagementPage() {
   const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
                              userPermissions.includes('programs.head') ||
                              userPermissions.includes('callcentre.officer') ||
-                             userRoles.some(role => ['admin', 'super_user'].includes(role.toLowerCase()))
+                             userPermissions.includes('call_center_full') ||
+                             userPermissions.includes('call_center_view') ||
+                             userPermissions.includes('callcentre.view') ||
+                             userRoles.some(role => ['advance_user_1', 'advance_user_2', 'admin', 'super_user', 'manager'].includes(role.toLowerCase()))
 
   useEffect(() => {
     if (canAccessCallCentre) {

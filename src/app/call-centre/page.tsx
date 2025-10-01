@@ -39,11 +39,16 @@ export default function CallCentrePage() {
     setMounted(true)
   }, [])
 
-  // Check user permissions
+  // Check user permissions - Updated to support ADVANCE_USER_1 and ADVANCE_USER_2
   const userPermissions = session?.user?.permissions || []
+  const userRoles = session?.user?.roles || []
   const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
                              userPermissions.includes('programs.head') ||
-                             userPermissions.includes('callcentre.officer')
+                             userPermissions.includes('callcentre.officer') ||
+                             userPermissions.includes('call_center_full') ||
+                             userPermissions.includes('call_center_view') ||
+                             userPermissions.includes('callcentre.view') ||
+                             userRoles.some(role => ['advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))
 
   if (!mounted) {
     return <div className="flex items-center justify-center min-h-screen">

@@ -41,9 +41,37 @@ function getRolePermissions(role: string): string[] {
     ],
     'ADVANCE_USER_2': [
       ...basePermissions,
+      // Call Centre - view only
+      'call_center_view',
+      'callcentre.access',
+      'callcentre.view',
+      // Programs - full access
       'programs_full',
-      'documents_edit',
+      'programs.full_access',
+      'programs.view',
+      'programs.create',
+      'programs.edit',
+      'programs.delete',
+      // HR - none (no HR permissions)
+      // Inventory - edit access
       'inventory_edit',
+      'inventory.view',
+      'inventory.edit',
+      'inventory.create',
+      // Risk Management - edit access  
+      'risks_edit',
+      'risk.view',
+      'risk.edit',
+      'risk.create',
+      // Documents - edit access (up to SECRET level)
+      'documents_edit',
+      'documents.view',
+      'documents.create',
+      'documents.edit',
+      'documents.upload',
+      'documents.download',
+      'documents.share',
+      // Reporting
       'reports_generate'
     ],
     'HR': [

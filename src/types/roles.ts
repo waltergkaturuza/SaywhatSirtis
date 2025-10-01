@@ -94,14 +94,14 @@ export const ROLE_DEFINITIONS: Record<UserRole, RolePermissions> = {
   },
   
   [UserRole.ADVANCE_USER_2]: {
-    callCenter: 'view', // Programs access
-    dashboard: 'view', // ALL Basic User 1 access  
+    callCenter: 'view', // Call Centre view only
+    dashboard: 'view', // Main dashboard access  
     personalProfile: 'full', // Personal profile access
     programs: 'full', // Full programs access
-    documents: 'edit', // Same document access as Advance User 1
-    inventory: 'view', // Same inventory access
+    documents: 'edit', // Document editing up to SECRET level
+    inventory: 'edit', // Inventory edit access
     hr: 'none', // No HR access
-    risks: 'view', // View risks only
+    risks: 'edit', // Risk edit access
     documentLevel: 'SECRET',
     canViewOthersProfiles: false,
     canManageUsers: false,

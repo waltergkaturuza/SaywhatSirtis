@@ -191,12 +191,14 @@ function getUserPermissions(role: string, department: string): string[] {
     'BASIC_USER_1': [
       ...basePermissions,
       'call_center_view',
-      'documents_view'
+      'documents_view',
+      'documents.view'
     ],
     'BASIC_USER_2': [
       ...basePermissions,
       'programs_view',
-      'inventory_view'
+      'inventory_view',
+      'documents.view'
     ],
     'ADVANCE_USER_1': [
       ...basePermissions,
@@ -207,13 +209,51 @@ function getUserPermissions(role: string, department: string): string[] {
       'callcentre.access',
       'callcentre.officer',
       'callcentre.cases',
-      'callcentre.data_entry'
+      'callcentre.data_entry',
+      // Document Repository permissions
+      'documents.view',
+      'documents.create',
+      'documents.edit',
+      'documents_edit',
+      'documents_view',
+      // Risk Management permissions
+      'risk.view',
+      'risk.edit',
+      'risk.create'
     ],
     'ADVANCE_USER_2': [
       ...basePermissions,
+      // Call Centre - view only
+      'call_center_view',
+      'callcentre.access',
+      'callcentre.view',
+      // Programs - full access
       'programs_full',
-      'documents_edit',
+      'programs.full_access',
+      'programs.view',
+      'programs.create',
+      'programs.edit',
+      'programs.delete',
+      // HR - none (no HR permissions)
+      // Inventory - edit access
       'inventory_edit',
+      'inventory.view',
+      'inventory.edit',
+      'inventory.create',
+      // Risk Management - edit access  
+      'risks_edit',
+      'risk.view',
+      'risk.edit',
+      'risk.create',
+      // Documents - edit access (up to SECRET level)
+      'documents_edit',
+      'documents.view',
+      'documents.create',
+      'documents.edit',
+      'documents.upload',
+      'documents.download',
+      'documents.share',
+      // Reporting
       'reports_generate'
     ],
     'HR': [
@@ -222,7 +262,10 @@ function getUserPermissions(role: string, department: string): string[] {
       'view_other_profiles',
       'manage_performance',
       'recruitment',
-      'employee_reports'
+      'employee_reports',
+      'documents.view',
+      'documents.create',
+      'documents.edit'
     ],
     'SYSTEM_ADMINISTRATOR': [
       'full_access',
@@ -378,7 +421,7 @@ export const authOptions: NextAuthOptions = {
           department: user.department,
           position: user.position,
           roles: user.roles,
-          permissions: user.permissions
+          permissions: getUserPermissions(user.roles[0] || 'BASIC_USER_1', user.department || '')
         }
       }
     })

@@ -120,11 +120,15 @@ export default function CallCentreAnalyticsPage() {
   const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
                              userPermissions.includes('calls.view') ||
                              userPermissions.includes('calls.full_access') ||
+                             userPermissions.includes('call_center_full') ||
+                             userPermissions.includes('call_center_view') ||
+                             userPermissions.includes('callcentre.view') ||
                              userPermissions.includes('programs.head') ||
                              userPermissions.includes('callcentre.officer') ||
                              userPermissions.includes('admin') ||
                              session?.user?.roles?.includes('admin') ||
-                             session?.user?.roles?.includes('manager')
+                             session?.user?.roles?.includes('manager') ||
+                             session?.user?.roles?.some(role => ['advance_user_1', 'advance_user_2'].includes(role.toLowerCase()))
 
   const metadata = {
     title: "Call Centre Analytics",

@@ -216,7 +216,11 @@ export default function CallCentreDataSummaryPage() {
   const userPermissions = session?.user?.permissions || []
   const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
                              userPermissions.includes('programs.head') ||
-                             userPermissions.includes('callcentre.officer')
+                             userPermissions.includes('callcentre.officer') ||
+                             userPermissions.includes('call_center_full') ||
+                             userPermissions.includes('call_center_view') ||
+                             userPermissions.includes('callcentre.view') ||
+                             session?.user?.roles?.some(role => ['advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))
 
   if (!canAccessCallCentre) {
     return (

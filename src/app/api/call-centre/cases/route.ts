@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
     // Harmonized permission logic with other call centre endpoints
     const hasPermission = session.user.permissions?.includes('calls.view') ||
       session.user.permissions?.includes('calls.full_access') ||
-      session.user.roles?.some(role => ['admin', 'manager', 'super_user'].includes(role.toLowerCase()));
+      session.user.permissions?.includes('call_center_full') ||
+      session.user.permissions?.includes('callcentre.access') ||
+      session.user.permissions?.includes('callcentre.officer') ||
+      session.user.roles?.some(role => ['admin', 'manager', 'super_user', 'advance_user_1'].includes(role.toLowerCase()));
 
     if (!hasPermission) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
