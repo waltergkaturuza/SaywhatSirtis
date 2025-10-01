@@ -41,6 +41,14 @@ export async function GET(request: NextRequest) {
       callNumber: call.callNumber || call.id,
       caseNumber: call.caseNumber,
       officerName: call.officerName,
+      officer: call.officerName || call.assignedOfficer || 'N/A', // Map for frontend compatibility
+      communicationMode: call.modeOfCommunication || 'N/A', // Map for frontend
+      validity: call.callValidity || 'N/A',
+      dateTime: call.createdAt,
+      duration: call.callEndTime && call.callStartTime ? 
+        `${Math.round((new Date(call.callEndTime).getTime() - new Date(call.callStartTime).getTime()) / 60000)} min` : 'N/A',
+      voucherIssued: call.voucherIssued || 'N/A',
+      referredTo: call.referral,
       // Caller Information
       callerName: call.callerName,
       callerPhone: call.callerPhone,
