@@ -53,23 +53,23 @@ export async function GET(
       status: call.status || 'OPEN',
       priority: call.priority || 'MEDIUM',
       // Client Information (use actual database fields)
-      clientName: call.callerName || call.clientName,
-      clientPhone: call.callerPhone,
-      clientEmail: call.callerEmail,
-      clientAge: call.callerAge,
-      clientGender: call.callerGender,
-      clientAddress: call.callerAddress,
-      clientProvince: call.callerProvince,
+      clientName: call.callerName || call.clientName || '',
+      clientPhone: call.callerPhone || '',
+      clientEmail: call.callerEmail || '',
+      clientAge: call.callerAge || '',
+      clientGender: call.callerGender || '',
+      clientAddress: call.callerAddress || '',
+      clientProvince: call.callerProvince || '',
       // Call Information
-      callType: call.callType,
-      modeOfCommunication: call.modeOfCommunication,
-      callDescription: call.callDescription,
-      purpose: call.purpose,
+      callType: call.callType || '',
+      modeOfCommunication: call.modeOfCommunication || '',
+      callDescription: call.callDescription || '',
+      purpose: call.purpose || '',
       // Case Management
-      assignedOfficer: call.assignedOfficer,
-      notes: call.notes,
-      summary: call.summary,
-      resolution: call.resolution,
+      assignedOfficer: call.assignedOfficer || '',
+      notes: call.notes || '',
+      summary: call.summary || '',
+      resolution: call.resolution || '',
       followUpRequired: call.followUpRequired,
       followUpDate: call.followUpDate,
       // Dates
@@ -77,16 +77,18 @@ export async function GET(
       updatedAt: call.updatedAt,
       callStartTime: call.callStartTime,
       callEndTime: call.callEndTime,
+      duration: call.callEndTime && call.callStartTime ? 
+        `${Math.round((new Date(call.callEndTime).getTime() - new Date(call.callStartTime).getTime()) / 60000)} min` : 'N/A',
       resolvedAt: call.resolvedAt,
       // Additional fields for frontend compatibility
       createdDate: call.createdAt.toISOString().split('T')[0],
       lastUpdated: call.updatedAt.toISOString().split('T')[0],
       callPurpose: call.subject || 'General Inquiry',
       caseType: call.category || 'General',
-      description: call.description || 'No description available',
-      actionsTaken: call.notes || 'No actions recorded',
-      nextAction: call.resolution || 'Pending review',
-      referrals: 'N/A', // Not available in CallRecord model
+      description: call.description || '',
+      actionsTaken: call.notes || '',
+      nextAction: call.resolution || '',
+      referrals: '', // Empty string instead of 'N/A'
       outcome: call.status === 'RESOLVED' ? 'Resolved' : 'Pending'
     };
 
@@ -156,7 +158,7 @@ export async function PUT(
       'callerName', 'callerPhone', 'callerEmail', 'callerAge', 'callerGender', 
       'callerAddress', 'callerProvince', 'subject', 'category', 'description', 
       'summary', 'notes', 'resolution', 'status', 'priority', 'assignedOfficer', 
-      'followUpRequired', 'followUpDate', 'callDescription', 'purpose'
+      'followUpRequired', 'followUpDate', 'callDescription', 'purpose', 'duration'
     ];
 
     fieldsToTrack.forEach(field => {
@@ -205,20 +207,25 @@ export async function PUT(
       ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     };
 
-    // Log the change to audit_logs
-    await prisma.audit_logs.create({
-      data: {
-        id: require('crypto').randomUUID(),
-        userId: session.user.id,
-        action: 'UPDATE',
-        resource: 'CASE',
-        resourceId: caseId,
-        details: changeDetails,
-        ipAddress: changeDetails.ipAddress,
-        userAgent: changeDetails.userAgent,
-        timestamp: new Date()
-      }
-    });
+    // Log the change to audit_logs (with proper error handling for foreign key)
+    try {
+      await prisma.audit_logs.create({
+        data: {
+          id: require('crypto').randomUUID(),
+          userId: session.user.id || session.user.email || 'system',
+          action: 'UPDATE',
+          resource: 'CASE',
+          resourceId: caseId,
+          details: changeDetails,
+          ipAddress: changeDetails.ipAddress,
+          userAgent: changeDetails.userAgent,
+          timestamp: new Date()
+        }
+      });
+    } catch (auditError) {
+      console.warn('Failed to create audit log entry:', auditError);
+      // Continue with the update even if audit logging fails
+    }
 
     // Update the call record with proper field mapping
     const updatedCall = await prisma.call_records.update({
@@ -246,6 +253,17 @@ export async function PUT(
         // Follow-up
         followUpRequired: body.followUpRequired !== undefined ? body.followUpRequired : call.followUpRequired,
         followUpDate: changes.followUpDate ? changes.followUpDate.to : call.followUpDate,
+        // Duration handling - convert manual duration to callEndTime
+        callEndTime: body.duration && body.duration !== 'N/A' && call.callStartTime ? 
+          (() => {
+            const durationMatch = body.duration.match(/(\d+)/);
+            if (durationMatch) {
+              const minutes = parseInt(durationMatch[1]);
+              const startTime = new Date(call.callStartTime);
+              return new Date(startTime.getTime() + minutes * 60000);
+            }
+            return call.callEndTime;
+          })() : call.callEndTime,
         // Call Details
         callDescription: body.callDescription || call.callDescription,
         purpose: body.purpose || call.purpose,

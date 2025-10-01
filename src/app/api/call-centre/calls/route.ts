@@ -225,6 +225,7 @@ export async function POST(request: NextRequest) {
       comment,
       callStartTime,
       callEndTime,
+      callDuration,
       // Legacy fields for compatibility
       callerName,
       callerPhone,
@@ -340,6 +341,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Handle call duration - use manual duration if provided, otherwise use actual times
+    let finalCallStartTime = callStartTime ? new Date(callStartTime) : new Date()
+    let finalCallEndTime = null
+
+    if (callDuration && !isNaN(parseInt(callDuration))) {
+      // Manual duration provided - calculate end time
+      const durationMinutes = parseInt(callDuration)
+      finalCallEndTime = new Date(finalCallStartTime.getTime() + (durationMinutes * 60 * 1000))
+    } else if (callEndTime) {
+      // Actual end time provided
+      finalCallEndTime = new Date(callEndTime)
+    }
+
     // Create new call record
     const call = await prisma.call_records.create({
       data: {
@@ -388,8 +402,8 @@ export async function POST(request: NextRequest) {
         notes: comment || description,
         assignedOfficer: assignedTo || session.user.name,
         status: 'OPEN',
-        callStartTime: callStartTime ? new Date(callStartTime) : new Date(),
-        callEndTime: callEndTime ? new Date(callEndTime) : null,
+        callStartTime: finalCallStartTime,
+        callEndTime: finalCallEndTime,
         updatedAt: new Date()
       }
     })

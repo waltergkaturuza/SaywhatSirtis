@@ -52,7 +52,35 @@ export default function EditCasePage() {
         }
 
         if (data.success && data.case) {
-          setCaseData(data.case)
+          // Ensure all form fields have default values to prevent controlled/uncontrolled component warnings
+          const caseWithDefaults = {
+            ...data.case,
+            caseNumber: data.case.caseNumber || '',
+            duration: data.case.duration || '',
+            status: data.case.status || 'Open',
+            priority: data.case.priority || 'Medium',
+            clientName: data.case.clientName || '',
+            clientPhone: data.case.clientPhone || '',
+            clientEmail: data.case.clientEmail || '',
+            clientAge: data.case.clientAge || '',
+            clientGender: data.case.clientGender || '',
+            clientAddress: data.case.clientAddress || '',
+            clientProvince: data.case.clientProvince || '',
+            assignedOfficer: data.case.assignedOfficer || '',
+            notes: data.case.notes || '',
+            summary: data.case.summary || '',
+            resolution: data.case.resolution || '',
+            callDescription: data.case.callDescription || '',
+            purpose: data.case.purpose || '',
+            followUpDate: data.case.followUpDate || '',
+            caseType: data.case.caseType || '',
+            description: data.case.description || '',
+            actionsTaken: data.case.actionsTaken || '',
+            nextAction: data.case.nextAction || '',
+            referrals: data.case.referrals || '',
+            outcome: data.case.outcome || ''
+          }
+          setCaseData(caseWithDefaults)
         } else {
           throw new Error('Case data not found')
         }
@@ -288,6 +316,19 @@ export default function EditCasePage() {
                     value={caseData.caseNumber}
                     disabled
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Call Duration
+                  </label>
+                  <input
+                    type="text"
+                    value={caseData.duration || 'N/A'}
+                    onChange={(e) => handleInputChange('duration', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., 15 min"
                   />
                 </div>
 

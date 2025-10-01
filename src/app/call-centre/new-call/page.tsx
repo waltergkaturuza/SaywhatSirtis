@@ -75,7 +75,8 @@ export default function NewCallEntryPage() {
     comment: '',
     // Call timing for duration calculation
     callStartTime: new Date().toISOString(),
-    callEndTime: null
+    callEndTime: null,
+    callDuration: '' // Manual duration input in minutes
   })
   
   // Fetch next available numbers from the backend
@@ -795,6 +796,24 @@ export default function NewCallEntryPage() {
                     </p>
                   </div>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-saywhat-dark mb-2">
+                  Call Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={formData.callDuration}
+                  onChange={(e) => handleInputChange('callDuration', e.target.value)}
+                  className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
+                  placeholder="Enter call duration in minutes (e.g., 5)"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Optional: Manually enter the call duration if not automatically tracked
+                </p>
               </div>
             </div>
           </div>
