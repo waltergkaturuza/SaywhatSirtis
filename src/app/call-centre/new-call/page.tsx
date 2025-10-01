@@ -135,6 +135,7 @@ export default function NewCallEntryPage() {
   
   // Check user permissions
   const userPermissions = session?.user?.permissions || []
+  const userRoles = session?.user?.roles || []
   const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
                              userPermissions.includes('programs.head') ||
                              userPermissions.includes('callcentre.officer') ||
