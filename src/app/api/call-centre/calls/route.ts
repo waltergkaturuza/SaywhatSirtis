@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       officer: call.officerName || call.assignedOfficer || 'N/A', // Map for frontend compatibility
       communicationMode: call.modeOfCommunication || 'N/A', // Map for frontend
       validity: call.callValidity || 'N/A',
-      dateTime: call.createdAt,
+      dateTime: call.createdAt?.toISOString() || new Date().toISOString(),
       duration: call.callEndTime && call.callStartTime ? 
         `${Math.round((new Date(call.callEndTime).getTime() - new Date(call.callStartTime).getTime()) / 60000)} min` : 'N/A',
       voucherIssued: call.voucherIssued || 'N/A',
@@ -59,7 +59,6 @@ export async function GET(request: NextRequest) {
       callerAddress: call.callerAddress,
       // Call Details
       callType: call.callType,
-      modeOfCommunication: call.modeOfCommunication,
       howDidYouHearAboutUs: call.howDidYouHearAboutUs,
       callValidity: call.callValidity,
       newOrRepeatCall: call.newOrRepeatCall,
@@ -77,7 +76,6 @@ export async function GET(request: NextRequest) {
       perpetrator: call.perpetrator,
       servicesRecommended: call.servicesRecommended,
       referral: call.referral,
-      voucherIssued: call.voucherIssued,
       voucherValue: call.voucherValue,
       comment: call.comment,
       // System fields
@@ -225,6 +223,8 @@ export async function POST(request: NextRequest) {
       voucherIssued,
       voucherValue,
       comment,
+      callStartTime,
+      callEndTime,
       // Legacy fields for compatibility
       callerName,
       callerPhone,
@@ -388,7 +388,8 @@ export async function POST(request: NextRequest) {
         notes: comment || description,
         assignedOfficer: assignedTo || session.user.name,
         status: 'OPEN',
-        callStartTime: new Date(),
+        callStartTime: callStartTime ? new Date(callStartTime) : new Date(),
+        callEndTime: callEndTime ? new Date(callEndTime) : null,
         updatedAt: new Date()
       }
     })

@@ -501,7 +501,14 @@ export default function AllCallsPage() {
                             </button>
                             {canEdit && (
                               <>
-                                <button className="text-indigo-600 hover:text-indigo-900">
+                                <button 
+                                  className="text-indigo-600 hover:text-indigo-900"
+                                  onClick={() => {
+                                    // Navigate to edit page
+                                    window.location.href = `/call-centre/cases/${call.id}/edit`;
+                                  }}
+                                  title="Edit Call"
+                                >
                                   <PencilIcon className="h-5 w-5" />
                                 </button>
                                 <button 

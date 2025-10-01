@@ -72,7 +72,10 @@ export default function NewCallEntryPage() {
     // Voucher Information (replaces Additional Information)
     voucherIssued: 'NO',
     voucherValue: '0',
-    comment: ''
+    comment: '',
+    // Call timing for duration calculation
+    callStartTime: new Date().toISOString(),
+    callEndTime: null
   })
   
   // Fetch next available numbers from the backend
@@ -227,6 +230,7 @@ export default function NewCallEntryPage() {
       const submissionData = {
         ...formData,
         referral: referralData, // Use processed referral data
+        callEndTime: new Date().toISOString(), // Set call end time for duration calculation
         // Remove auto-generated fields so backend generates them properly
         callNumber: undefined, // Let backend generate systematic call number
         caseNumber: caseGenerated ? undefined : undefined, // Let backend generate systematic case number
