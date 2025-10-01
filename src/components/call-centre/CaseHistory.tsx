@@ -32,15 +32,19 @@ export default function CaseHistory({ caseId }: CaseHistoryProps) {
     const fetchHistory = async () => {
       try {
         setLoading(true)
+        console.log('[CASE_HISTORY] Fetching history for case:', caseId)
         const response = await fetch(`/api/call-centre/cases/${caseId}/history`)
+        console.log('[CASE_HISTORY] Response status:', response.status)
         const data = await response.json()
+        console.log('[CASE_HISTORY] Response data:', data)
 
         if (!response.ok) {
           throw new Error(data.error || 'Failed to fetch case history')
         }
 
         if (data.success) {
-          setHistory(data.history)
+          console.log('[CASE_HISTORY] Setting history entries:', data.history?.length || 0)
+          setHistory(data.history || [])
         }
       } catch (err) {
         console.error('Error fetching case history:', err)

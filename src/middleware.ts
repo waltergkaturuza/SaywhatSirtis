@@ -34,11 +34,22 @@ function createHealthResponse(): NextResponse {
  */
 const RATE_LIMIT_CONFIG = {
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: process.env.NODE_ENV === 'development' ? 1000 : 100, // Higher limit for development
+  maxRequests: process.env.NODE_ENV === 'development' ? 5000 : 500, // Much higher limit to prevent 502 errors
   message: 'Too many requests, please try again later',
   skipSuccessfulRequests: false,
   skipFailedRequests: false
 }
+
+/**
+ * Endpoints that should be excluded from rate limiting
+ */
+const RATE_LIMIT_EXCLUDED_PATHS = [
+  '/api/test/hello',
+  '/api/auth',
+  '/api/health',
+  '/_next',
+  '/favicon.ico'
+]
 
 /**
  * Get client IP address
@@ -181,8 +192,12 @@ export async function middleware(request: NextRequest) {
     // Ignore token errors for public routes
   }
   
-  // Check rate limit for API routes (but skip auth routes to prevent login issues)
-  if (request.nextUrl.pathname.startsWith('/api/') && !request.nextUrl.pathname.startsWith('/api/auth/')) {
+  // Check rate limit for API routes (but skip auth routes and excluded paths to prevent login issues)
+  const shouldSkipRateLimit = RATE_LIMIT_EXCLUDED_PATHS.some(path => 
+    request.nextUrl.pathname.startsWith(path)
+  )
+  
+  if (request.nextUrl.pathname.startsWith('/api/') && !shouldSkipRateLimit) {
     const clientId = userId || getClientIP(request)
     const rateLimit = checkRateLimit(clientId)
     

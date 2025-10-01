@@ -73,6 +73,8 @@ export async function GET(
       }
     });
 
+    console.log(`[CASE_HISTORY] Found ${auditHistory.length} audit entries for case ${caseRecord.caseNumber} (ID: ${caseRecord.id})`)
+
     // Transform history data for frontend display
     const historyEntries = auditHistory.map(entry => {
       const details = entry.details as any;
