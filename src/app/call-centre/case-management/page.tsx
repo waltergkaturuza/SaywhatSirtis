@@ -48,9 +48,12 @@ export default function CaseManagementPage() {
   
   // Check user permissions after all hooks
   const userPermissions = session?.user?.permissions || []
+  const userRoles = session?.user?.roles || []
+  
   const canAccessCallCentre = userPermissions.includes('callcentre.access') || 
                              userPermissions.includes('programs.head') ||
-                             userPermissions.includes('callcentre.officer')
+                             userPermissions.includes('callcentre.officer') ||
+                             userRoles.some(role => ['admin', 'super_user'].includes(role.toLowerCase()))
 
   useEffect(() => {
     if (canAccessCallCentre) {
@@ -65,6 +68,21 @@ export default function CaseManagementPage() {
         throw new Error('Failed to fetch cases')
       }
       const data = await response.json()
+      
+      // Debug: Log what we receive from API
+      console.log('=== FRONTEND DEBUG: API Response ===')
+      console.log('Raw API data:', data)
+      console.log('Cases array:', data.cases)
+      console.log('Cases length:', data.cases?.length)
+      
+      if (data.cases && Array.isArray(data.cases)) {
+        const statusCounts: Record<string, number> = {}
+        data.cases.forEach((c: any) => {
+          statusCounts[c.status] = (statusCounts[c.status] || 0) + 1
+        })
+        console.log('Status counts from API:', statusCounts)
+      }
+      
       setCases(data.cases || [])
     } catch (error) {
       console.error('Error fetching cases:', error)
@@ -120,6 +138,13 @@ export default function CaseManagementPage() {
     closedCases: safeFilter(cases, (c: CaseData) => c.status === 'closed').length,
     overdueCases: safeFilter(cases, (c: CaseData) => c.isOverdue).length
   }
+
+  // Debug: Log the stats calculation
+  console.log('=== FRONTEND DEBUG: Stats Calculation ===')
+  console.log('safeCases length:', safeCases.length)
+  console.log('Raw cases:', cases)
+  console.log('Cases with status details:', cases.map(c => ({ id: c.caseNumber || c.id, status: c.status })))
+  console.log('Calculated stats:', stats)
 
   const getStatusColor = (status: string) => {
     switch (status) {

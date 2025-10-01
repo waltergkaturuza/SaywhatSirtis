@@ -24,8 +24,7 @@ export async function GET(request: NextRequest) {
     // Harmonized permission logic with other call centre endpoints
     const hasPermission = session.user.permissions?.includes('calls.view') ||
       session.user.permissions?.includes('calls.full_access') ||
-      session.user.roles?.includes('admin') ||
-      session.user.roles?.includes('manager');
+      session.user.roles?.some(role => ['admin', 'manager', 'super_user'].includes(role.toLowerCase()));
 
     if (!hasPermission) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -71,21 +70,25 @@ export async function GET(request: NextRequest) {
       const dueDate = new Date(createdDate);
       dueDate.setDate(dueDate.getDate() + 7); // Default 7 days from creation
       
+      // Normalize status to lowercase with hyphens for frontend
+      const normalizedStatus = (call.status || 'OPEN').toLowerCase().replace('_', '-');
+      
       return {
         id: call.id,
         caseNumber: call.caseNumber, // Use actual case number from database
         callNumber: call.callNumber || call.id,
         clientName: call.callerName,
         phone: call.callerPhone,
-        purpose: call.summary || 'General Inquiry',
+        purpose: call.summary || call.purpose || 'General Inquiry',
         officer: call.assignedOfficer,
-        status: (call.status || 'OPEN').toLowerCase().replace('_', '-'),
+        status: normalizedStatus,
         priority: (call.priority || 'MEDIUM').toLowerCase(),
         createdDate: createdDate.toISOString().split('T')[0],
         dueDate: dueDate.toISOString().split('T')[0],
         lastUpdate: call.updatedAt.toISOString().split('T')[0],
-        isOverdue: now > dueDate && call.status !== 'CLOSED',
-        description: call.notes || 'No description available'
+        // Fix isOverdue logic to use uppercase database value
+        isOverdue: now > dueDate && (call.status || '').toUpperCase() !== 'CLOSED',
+        description: call.notes || call.description || 'No description available'
       };
     });
 

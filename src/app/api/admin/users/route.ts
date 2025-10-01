@@ -506,8 +506,18 @@ export async function POST(request: NextRequest) {
 
           // Hash password if provided
           if (userData.password && userData.password.trim()) {
-            updateData.password = await bcrypt.hash(userData.password, 10)
+            console.log('🔒 Password update requested for user:', userId)
+            console.log('🔒 Password length:', userData.password.length)
+            updateData.passwordHash = await bcrypt.hash(userData.password, 10)
+            console.log('🔒 Password hashed successfully, hash length:', updateData.passwordHash.length)
+          } else {
+            console.log('🔒 No password update requested')
           }
+
+          console.log('🔄 Updating user with data:', {
+            ...updateData,
+            passwordHash: updateData.passwordHash ? '[HASHED]' : undefined
+          })
 
           // Update user
           const updatedUser = await prisma.users.update({

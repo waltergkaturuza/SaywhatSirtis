@@ -1,5 +1,7 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { prisma } from "@/lib/prisma"
+import * as bcrypt from 'bcryptjs'
 
 // Development users (in production, this would come from database)
 const developmentUsers = [
@@ -173,6 +175,88 @@ const developmentUsers = [
   }
 ]
 
+// Helper function to get user permissions based on role and department
+function getUserPermissions(role: string, department: string): string[] {
+  // Common baseline permissions for all users
+  const basePermissions = [
+    'dashboard',
+    'personalProfile',
+    'documents',
+    'performance_plans',
+    'appraisals',
+    'training'
+  ]
+
+  const rolePermissions = {
+    'BASIC_USER_1': [
+      ...basePermissions,
+      'call_center_view',
+      'documents_view'
+    ],
+    'BASIC_USER_2': [
+      ...basePermissions,
+      'programs_view',
+      'inventory_view'
+    ],
+    'ADVANCE_USER_1': [
+      ...basePermissions,
+      'call_center_full',
+      'programs_edit',
+      'risks_edit',
+      'reports_generate',
+      'callcentre.access',
+      'callcentre.officer',
+      'callcentre.cases',
+      'callcentre.data_entry'
+    ],
+    'ADVANCE_USER_2': [
+      ...basePermissions,
+      'programs_full',
+      'documents_edit',
+      'inventory_edit',
+      'reports_generate'
+    ],
+    'HR': [
+      ...basePermissions,
+      'hr_full',
+      'view_other_profiles',
+      'manage_performance',
+      'recruitment',
+      'employee_reports'
+    ],
+    'SYSTEM_ADMINISTRATOR': [
+      'full_access',
+      'admin_panel',
+      'user_management',
+      'system_settings',
+      'security_management',
+      'audit_logs',
+      'hr.full_access',
+      'programs.full_access',
+      'callcentre.access',
+      'callcentre.admin',
+      'inventory.full_access',
+      'documents.full_access',
+      'analytics.full_access',
+      'admin.access'
+    ]
+  }
+  
+  const departmentPermissions: Record<string, string[]> = {
+    'Call Center (CC)': ['callcentre.access', 'callcentre.officer', 'callcentre.cases'],
+    'HR': ['hr_policies', 'staff_management'],
+    'FINANCE': ['financial_reports', 'budget_management'],
+    'PROGRAMS': ['project_management', 'field_operations']
+  }
+  
+  const rolePerms = rolePermissions[role as keyof typeof rolePermissions] || basePermissions
+  const deptPerms = departmentPermissions[department] || []
+  
+  // Combine and deduplicate permissions
+  const combined = rolePerms.concat(deptPerms)
+  return Array.from(new Set(combined))
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -186,13 +270,107 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // Find user in development users
+        console.log('🔐 LOGIN ATTEMPT:', credentials.email)
+
+        try {
+          // First, try to find user in database
+          console.log('🔍 Checking database for user...')
+          const dbUser = await prisma.users.findUnique({
+            where: { email: credentials.email },
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              passwordHash: true,
+              department: true,
+              position: true,
+              role: true,
+              roles: true,
+              isActive: true
+            }
+          })
+
+          if (dbUser && dbUser.isActive) {
+            console.log('✅ Database user found:', dbUser.email)
+            console.log('🔍 Password hash exists:', !!dbUser.passwordHash)
+            console.log('🔍 Password hash length:', dbUser.passwordHash ? dbUser.passwordHash.length : 0)
+            
+            // Verify password against hash - only if hash exists
+            if (!dbUser.passwordHash) {
+              console.log('⚠️ No password hash found for database user, skipping database auth')
+            } else {
+              try {
+                const passwordMatch = await bcrypt.compare(credentials.password, String(dbUser.passwordHash))
+                
+                if (passwordMatch) {
+                  console.log('✅ Password verified for database user')
+                  // Update lastLogin timestamp for database users
+                  try {
+                    await prisma.users.update({
+                      where: { id: dbUser.id },
+                      data: { lastLogin: new Date() }
+                    })
+                    console.log('✅ Updated lastLogin for user:', dbUser.email)
+                  } catch (updateError) {
+                    console.error('❌ Failed to update lastLogin:', updateError)
+                  }
+
+                  // Map database user to auth format
+                  return {
+                    id: dbUser.id,
+                    email: dbUser.email,
+                    name: `${dbUser.firstName} ${dbUser.lastName}`,
+                    department: dbUser.department || 'Unassigned',
+                    position: dbUser.position || 'No Position',
+                    roles: dbUser.roles || [dbUser.role || 'BASIC_USER_1'],
+                    permissions: getUserPermissions(dbUser.role || 'BASIC_USER_1', dbUser.department || '')
+                  }
+                } else {
+                  console.log('❌ Password mismatch for database user')
+                }
+              } catch (bcryptError) {
+                console.error('❌ bcrypt comparison error:', bcryptError)
+              }
+            }
+          } else {
+            console.log('⚠️ User not found in database or inactive')
+          }
+        } catch (error) {
+          console.error('❌ Database authentication error:', error)
+          // Continue to development users fallback
+        }
+
+        // Fallback to development users for development/testing
+        console.log('🔄 Falling back to development users...')
         const user = developmentUsers.find(u => u.email === credentials.email)
         
         if (!user || user.password !== credentials.password) {
+          console.log('❌ User not found in development users or password mismatch')
           return null
         }
 
+        console.log('✅ Development user authenticated:', user.email)
+        
+        // Try to update lastLogin for development user if they exist in database
+        try {
+          const dbUserForUpdate = await prisma.users.findUnique({
+            where: { email: user.email }
+          })
+          
+          if (dbUserForUpdate) {
+            await prisma.users.update({
+              where: { email: user.email },
+              data: { lastLogin: new Date() }
+            })
+            console.log('✅ Updated lastLogin for development user in database:', user.email)
+          } else {
+            console.log('⚠️ Development user not found in database, cannot update lastLogin')
+          }
+        } catch (updateError) {
+          console.error('❌ Failed to update lastLogin for development user:', updateError)
+        }
+        
         return {
           id: user.id,
           email: user.email,
@@ -215,10 +393,10 @@ export const authOptions: NextAuthOptions = {
       // Handle new login
       if (user) {
         token.id = user.id
-        token.department = user.department
-        token.position = user.position
-        token.roles = user.roles
-        token.permissions = user.permissions
+        token.department = (user as any).department
+        token.position = (user as any).position
+        token.roles = (user as any).roles
+        token.permissions = (user as any).permissions
       }
       return token
     },
@@ -226,11 +404,11 @@ export const authOptions: NextAuthOptions = {
       // Handle potential token decryption issues gracefully
       try {
         if (token) {
-          session.user.id = token.id as string
-          session.user.department = token.department as string
-          session.user.position = token.position as string
-          session.user.roles = token.roles as string[]
-          session.user.permissions = token.permissions as string[]
+          (session.user as any).id = token.id as string
+          (session.user as any).department = token.department as string
+          (session.user as any).position = token.position as string
+          (session.user as any).roles = token.roles as string[]
+          (session.user as any).permissions = token.permissions as string[]
         }
       } catch (error) {
         console.error('Session callback error:', error)

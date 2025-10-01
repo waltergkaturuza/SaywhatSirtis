@@ -125,6 +125,7 @@ export async function GET() {
         
         // Employee-specific data
         startDate: emp.startDate || emp.hireDate || emp.createdAt,
+        hireDate: emp.hireDate || emp.startDate || emp.createdAt, // Add hireDate field for frontend compatibility
         status: emp.status?.toLowerCase() || 'active',
         employmentType: emp.employmentType,
         salary: emp.salary,

@@ -55,6 +55,19 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>("")
 
+  // Helper function to format dates safely
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return 'Not Set'
+    
+    try {
+      const date = new Date(dateValue)
+      if (isNaN(date.getTime())) return 'Invalid Date'
+      return date.toLocaleDateString()
+    } catch (error) {
+      return 'Invalid Date'
+    }
+  }
+
   // Fetch employees from API
   const fetchEmployees = async () => {
     try {
@@ -171,7 +184,7 @@ export default function EmployeesPage() {
             emp.position,
             emp.employeeId,
             emp.status,
-            emp.hireDate
+            formatDate(emp.hireDate)
           ])
         }}
         filename="employees-export"
@@ -587,7 +600,7 @@ export default function EmployeesPage() {
         ['Department', employee.department],
         ['Position', employee.position],
         ['Employee ID', employee.employeeId],
-        ['Hire Date', employee.hireDate],
+        ['Hire Date', formatDate(employee.hireDate)],
         ['Status', employee.status],
         ['Performance', employee.performance.toString()],
         ['Location', employee.location]
@@ -744,7 +757,7 @@ export default function EmployeesPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-saywhat-black flex items-center font-medium">
                         <CalendarIcon className="h-4 w-4 mr-2 text-saywhat-green" />
-                        {new Date(employee.hireDate).toLocaleDateString()}
+                        {formatDate(employee.hireDate)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -840,7 +853,7 @@ export default function EmployeesPage() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Hire Date</Label>
-                  <p className="mt-1 text-sm text-gray-900">{new Date(selectedEmployee.hireDate).toLocaleDateString()}</p>
+                  <p className="mt-1 text-sm text-gray-900">{formatDate(selectedEmployee.hireDate)}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Status</Label>
@@ -910,7 +923,7 @@ export default function EmployeesPage() {
                         <div>
                           <p className="text-sm font-medium text-gray-900">{cert.name}</p>
                           <p className="text-xs text-gray-500">
-                            {cert.issuer} • {new Date(cert.dateCompleted).toLocaleDateString()}
+                            {cert.issuer} • {formatDate(cert.dateCompleted)}
                           </p>
                           <p className="text-xs text-gray-400">Cert #: {cert.certificateNumber}</p>
                         </div>

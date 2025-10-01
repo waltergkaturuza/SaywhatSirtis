@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Testing Case Management API</h1>
+    <div id="output"></div>
+    
+    <script>
+// Check the actual API response to debug the case stats issue
+const API_URL = '/api/call-centre/cases';
+
+const outputDiv = document.getElementById('output');
+
+function log(message) {
+    console.log(message);
+    outputDiv.innerHTML += message + '<br>';
+}
+
+// Create a simple fetch request
+fetch(API_URL, {
+  headers: {
+    'Content-Type': 'application/json',
+  }
+})
+.then(response => response.json())
+.then(data => {
+  log('=== API RESPONSE FOR CASES ===');
+  log('Success: ' + data.success);
+  
+  if (data.cases) {
+    log('');
+    log(`Total cases returned: ${data.cases.length}`);
+    
+    // Analyze each case
+    const statusCounts = {};
+    data.cases.forEach((c, index) => {
+      log(`${index + 1}. Case ${c.caseNumber}: Status="${c.status}", Officer="${c.officer}"`);
+      statusCounts[c.status] = (statusCounts[c.status] || 0) + 1;
+    });
+    
+    log('');
+    log('=== STATUS BREAKDOWN FROM API ===');
+    Object.entries(statusCounts).forEach(([status, count]) => {
+      log(`${status}: ${count} cases`);
+    });
+    
+  } else {
+    log('No cases found or error: ' + JSON.stringify(data));
+  }
+})
+.catch(error => {
+  log('Error: ' + error.message);
+});
+    </script>
+</body>
+</html>
