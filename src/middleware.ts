@@ -169,6 +169,12 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 export async function middleware(request: NextRequest) {
   const startTime = Date.now()
   
+  // Handle CORS preflight early
+  if (request.method === 'OPTIONS') {
+    const res = new NextResponse(null, { status: 204 })
+    return addSecurityHeaders(res)
+  }
+
   // FAST HEALTH CHECK BYPASS - Critical for Render deployment
   if (request.nextUrl.pathname === '/api/health') {
     return createHealthResponse();
@@ -253,8 +259,9 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public (public files)
+     * - api/auth (NextAuth routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|public).*)',
   ],
 }
 

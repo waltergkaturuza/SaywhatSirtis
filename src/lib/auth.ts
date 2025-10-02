@@ -12,7 +12,7 @@ const developmentUsers = [
     name: "System Administrator",
     department: "HR",
     position: "System Administrator",
-    roles: ["superuser", "admin"],
+    roles: ["SYSTEM_ADMINISTRATOR"],
     permissions: [
       // HR Module - Full Access
       "hr.full_access", "hr.view", "hr.create", "hr.edit", "hr.delete", 
@@ -175,6 +175,42 @@ const developmentUsers = [
   }
 ]
 
+// Helper function to normalize role names to handle different formats
+function normalizeRoleName(role: string): string {
+  if (!role) return 'BASIC_USER_1'
+  // Uppercase and unify common separators to underscore
+  const upper = role.trim().toUpperCase().replace(/[-\s]+/g, '_')
+
+  // Map common role variations to standard names
+  const roleMap: Record<string, string> = {
+    'SUPERUSER': 'SYSTEM_ADMINISTRATOR',
+    'ADMIN': 'SYSTEM_ADMINISTRATOR',
+    'ADMINISTRATOR': 'SYSTEM_ADMINISTRATOR',
+    'SYS_ADMIN': 'SYSTEM_ADMINISTRATOR',
+    'SYSTEM_ADMIN': 'SYSTEM_ADMINISTRATOR',
+    'SYSTEM_ADMINISTRATOR': 'SYSTEM_ADMINISTRATOR',
+    'HR_MANAGER': 'HR',
+    'HR_OFFICER': 'HR',
+    'HUMAN_RESOURCES': 'HR'
+  }
+
+  return roleMap[upper] || upper
+}
+
+// Get union permissions for multiple roles
+function getPermissionsForRoles(roles: string[] | undefined | null, department: string): string[] {
+  const roleList = (roles && roles.length ? roles : ['BASIC_USER_1']).map(r => normalizeRoleName(r))
+  // Deduplicate normalized roles to avoid redundant work
+  const uniqueRoles = Array.from(new Set(roleList))
+  const collected = new Set<string>()
+  // Always include baseline permissions
+  ;['dashboard','personalProfile','documents','performance_plans','appraisals','training'].forEach(p => collected.add(p))
+  for (const r of uniqueRoles) {
+    getUserPermissions(r, department).forEach(p => collected.add(p))
+  }
+  return Array.from(collected)
+}
+
 // Helper function to get user permissions based on role and department
 function getUserPermissions(role: string, department: string): string[] {
   // Common baseline permissions for all users
@@ -186,6 +222,9 @@ function getUserPermissions(role: string, department: string): string[] {
     'appraisals',
     'training'
   ]
+
+  // Normalize role names to handle different formats
+  const normalizedRole = normalizeRoleName(role)
 
   const rolePermissions = {
     'BASIC_USER_1': [
@@ -276,14 +315,104 @@ function getUserPermissions(role: string, department: string): string[] {
       'system_settings',
       'security_management',
       'audit_logs',
+      // HR
       'hr.full_access',
+      'hr.view',
+      'hr_full',
+      // Programs
       'programs.full_access',
+      // Call Centre
       'callcentre.access',
       'callcentre.admin',
+      // Inventory
       'inventory.full_access',
+      // Documents
       'documents.full_access',
+      // Analytics
       'analytics.full_access',
-      'admin.access'
+      // Admin - comprehensive permissions
+      'admin.access',
+      'admin.users',
+      'admin.roles',
+      'admin.settings',
+      'admin.audit',
+      'admin.apikeys',
+      'admin.database',
+      'admin.server',
+      // Risk Management
+      'risks_edit',
+      'risks.edit',
+      // Dashboard (ensure full dashboard access)
+      'dashboard',
+      'dashboard.view',
+      'dashboard.full_access'
+    ],
+    // Legacy role mappings for backward compatibility
+    'superuser': [
+      'full_access',
+      'admin.access',
+      'admin.users',
+      'admin.roles',
+      'admin.settings',
+      'admin.audit',
+      'admin.apikeys',
+      'admin.database',
+      'admin.server',
+      // HR
+      'hr.full_access',
+      'hr.view',
+      'hr_full',
+      // Programs
+      'programs.full_access',
+      // Call Centre
+      'callcentre.access',
+      'callcentre.admin',
+      // Inventory
+      'inventory.full_access',
+      // Documents
+      'documents.full_access',
+      // Analytics
+      'analytics.full_access',
+      // Risk Management
+      'risks_edit',
+      'risks.edit',
+      // Dashboard
+      'dashboard',
+      'dashboard.view',
+      'dashboard.full_access'
+    ],
+    'admin': [
+      'full_access',
+      'admin.access',
+      'admin.users',
+      'admin.roles',
+      'admin.settings',
+      'admin.audit',
+      'admin.apikeys',
+      'admin.database',
+      'admin.server',
+      // HR
+      'hr.full_access',
+      'hr.view',
+      'hr_full',
+      // Programs
+      'programs.full_access',
+      // Call Centre
+      'callcentre.access',
+      'callcentre.admin',
+      // Inventory
+      'inventory.full_access',
+      // Documents
+      'documents.full_access',
+      // Analytics
+      'analytics.full_access',
+      // Risk Management
+      'risks_edit',
+      'risks.edit',
+      // Dashboard
+      'dashboard',
+      'dashboard.view',
+      'dashboard.full_access'
     ]
   }
   
@@ -294,11 +423,14 @@ function getUserPermissions(role: string, department: string): string[] {
     'PROGRAMS': ['project_management', 'field_operations']
   }
   
-  const rolePerms = rolePermissions[role as keyof typeof rolePermissions] || basePermissions
+  const rolePerms = rolePermissions[normalizedRole as keyof typeof rolePermissions] || []
   const deptPerms = departmentPermissions[department] || []
   
-  // Combine and deduplicate permissions
-  const combined = rolePerms.concat(deptPerms)
+  // Debug logging for role resolution
+  console.log(`🔍 Role Resolution: '${role}' -> '${normalizedRole}' -> permissions:`, rolePerms.length)
+  
+  // Combine and deduplicate permissions (always include baseline permissions)
+  const combined = basePermissions.concat(rolePerms, deptPerms)
   return Array.from(new Set(combined))
 }
 
@@ -362,14 +494,17 @@ export const authOptions: NextAuthOptions = {
                   }
 
                   // Map database user to auth format
+                  const userRoles = dbUser.roles && dbUser.roles.length ? dbUser.roles : [dbUser.role || 'BASIC_USER_1']
+                  
                   return {
                     id: dbUser.id,
                     email: dbUser.email,
                     name: `${dbUser.firstName} ${dbUser.lastName}`,
                     department: dbUser.department || 'Unassigned',
                     position: dbUser.position || 'No Position',
-                    roles: dbUser.roles || [dbUser.role || 'BASIC_USER_1'],
-                    permissions: getUserPermissions(dbUser.role || 'BASIC_USER_1', dbUser.department || '')
+                    roles: userRoles,
+                    // Union permissions across all roles so admins don't lose capabilities
+                    permissions: getPermissionsForRoles(userRoles, dbUser.department || '')
                   }
                 } else {
                   console.log('❌ Password mismatch for database user')
@@ -423,7 +558,8 @@ export const authOptions: NextAuthOptions = {
           department: user.department,
           position: user.position,
           roles: user.roles,
-          permissions: getUserPermissions(user.roles[0] || 'BASIC_USER_1', user.department || '')
+          // Use union for dev users too
+          permissions: getPermissionsForRoles(user.roles, user.department || '')
         }
       }
     })

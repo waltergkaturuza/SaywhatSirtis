@@ -121,10 +121,28 @@ export default function DashboardPage() {
   }
 
   // Check if user has dashboard access - Updated to support ADVANCE_USER_1 permissions
-  const hasDashboardAccess = session?.user?.permissions?.includes("dashboard.view") ||
-                            session?.user?.permissions?.includes("dashboard.full_access") ||
-                            session?.user?.permissions?.includes("dashboard") ||
-                            session?.user?.roles?.some(role => ['admin', 'manager', 'advance_user_1'].includes(role.toLowerCase()))
+  const hasDashboardAccess =
+    // Explicit dashboard permissions
+    session?.user?.permissions?.includes('dashboard') ||
+    session?.user?.permissions?.includes('dashboard.view') ||
+    session?.user?.permissions?.includes('dashboard.full_access') ||
+    // Global/full access implies dashboard access
+    session?.user?.permissions?.includes('full_access') ||
+    session?.user?.permissions?.includes('admin.access') ||
+    // Any recognized elevated role
+    (session?.user?.roles || []).some(r => {
+      const rl = r.toLowerCase()
+      return [
+        'system_administrator',
+        'system administrator',
+        'administrator',
+        'admin',
+        'superuser',
+        'manager',
+        'advance_user_1',
+        'advance_user_2'
+      ].includes(rl)
+    })
 
   const handleRefresh = async () => {
     setRefreshing(true)

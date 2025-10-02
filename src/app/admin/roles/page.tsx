@@ -20,8 +20,24 @@ export default function AdminRolesPage() {
       return
     }
 
-    // Check admin permissions
-    if (!session.user?.email?.includes("admin") && !session.user?.email?.includes("john.doe")) {
+    // Standardized admin access: by permissions or elevated roles
+    const roles = (session.user?.roles || []).map(r => r.toLowerCase())
+    const permissions = session.user?.permissions || []
+    const isAdmin =
+      permissions.includes("admin.access") ||
+      permissions.includes("full_access") ||
+      roles.some(r => [
+        "system_administrator",
+        "system administrator",
+        "administrator",
+        "admin",
+        "superuser",
+        "manager",
+        "advance_user_1",
+        "advance_user_2"
+      ].includes(r))
+
+    if (!isAdmin) {
       router.push("/dashboard")
       return
     }

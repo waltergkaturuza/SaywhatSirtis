@@ -724,56 +724,49 @@ export const modulesConfig: ModuleConfig[] = [
         name: "User Management",
         href: "/admin/users",
         icon: UserIcon,
-        description: "Manage user accounts and permissions",
-        requiredPermissions: ["admin.users"]
+        description: "Manage user accounts and permissions"
       },
       {
         id: "role-management",
         name: "Role Management",
         href: "/admin/roles",
         icon: ShieldCheckIcon,
-        description: "Manage roles and access permissions",
-        requiredPermissions: ["admin.roles"]
+        description: "Manage roles and access permissions"
       },
       {
         id: "system-settings",
         name: "System Settings",
         href: "/admin/settings",
         icon: CogIcon,
-        description: "Configure system-wide settings",
-        requiredPermissions: ["admin.settings"]
+        description: "Configure system-wide settings"
       },
       {
         id: "audit-logs",
         name: "Audit Logs",
         href: "/admin/audit",
         icon: ClipboardDocumentListIcon,
-        description: "View system audit logs",
-        requiredPermissions: ["admin.audit"]
+        description: "View system audit logs"
       },
       {
         id: "api-keys",
         name: "API Keys",
         href: "/admin/api-keys",
         icon: KeyIcon,
-        description: "Manage API keys for integrations",
-        requiredPermissions: ["admin.apikeys"]
+        description: "Manage API keys for integrations"
       },
       {
         id: "database",
         name: "Database Management",
         href: "/admin/database",
         icon: ServerIcon,
-        description: "Manage database connections and settings",
-        requiredPermissions: ["admin.database"]
+        description: "Manage database connections and settings"
       },
       {
         id: "server-status",
         name: "Server Status",
         href: "/admin/server-status",
         icon: ServerIcon,
-        description: "View server status and performance metrics",
-        requiredPermissions: ["admin.server"]
+        description: "View server status and performance metrics"
       }
     ]
   }
