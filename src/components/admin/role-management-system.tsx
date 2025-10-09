@@ -143,7 +143,7 @@ export default function RoleManagementSystem() {
     setTimeout(() => setMessage(null), 5000)
   }
 
-  const filteredUsers = data?.users.filter(user => {
+  const filteredUsers = (data?.users || []).filter(user => {
     const matchesSearch = searchTerm === '' || 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,7 +152,7 @@ export default function RoleManagementSystem() {
     const matchesRole = selectedRole === 'ALL' || user.role === selectedRole
     
     return matchesSearch && matchesRole
-  }) || []
+  })
 
   const getRoleIcon = (role: UserRole) => {
     switch (role) {

@@ -6,6 +6,20 @@ import { UserRole, Department, DEPARTMENT_DEFAULT_ROLES, ROLE_DEFINITIONS, getRo
 import { UserRole as PrismaUserRole } from '@prisma/client'
 import { randomUUID } from 'crypto'
 
+// Helper functions
+const getRoleHierarchy = (role: UserRole): number => {
+  const hierarchyMap: Record<UserRole, number> = {
+    BASIC_USER_1: 1,
+    BASIC_USER_2: 2,
+    ADVANCE_USER_1: 3,
+    ADVANCE_USER_2: 4,
+    HR: 5,
+    SUPERUSER: 6,
+    SYSTEM_ADMINISTRATOR: 7
+  }
+  return hierarchyMap[role] || 1
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -36,6 +50,21 @@ export async function GET(request: NextRequest) {
               userCount: 0 // TODO: Get actual user count from database
             })),
             availableRoles: Object.values(UserRole),
+            roleDefinitions: ROLE_DEFINITIONS
+          }
+        })
+
+      case 'permissions':
+        return NextResponse.json({
+          success: true,
+          data: {
+            availableRoles: Object.values(UserRole).map(role => ({
+              value: role,
+              label: getRoleDisplayName(role),
+              description: getRoleDescription(role),
+              permissions: ROLE_DEFINITIONS[role] || [],
+              hierarchy: getRoleHierarchy(role)
+            })),
             roleDefinitions: ROLE_DEFINITIONS
           }
         })
@@ -95,9 +124,66 @@ export async function GET(request: NextRequest) {
         })
 
       default:
+        // Get all users with their roles for the main role management view
+        const allUsers = await prisma.users.findMany({
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            department: true,
+            role: true,
+            isActive: true,
+            createdAt: true,
+            lastLogin: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        })
+
+        const allTransformedUsers = allUsers.map(user => ({
+          id: user.id,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
+          email: user.email,
+          department: user.department || 'UNASSIGNED',
+          role: user.role || 'BASIC_USER_1',
+          position: user.department || 'Staff',
+          isActive: user.isActive,
+          lastLogin: user.lastLogin?.toISOString(),
+          createdAt: user.createdAt.toISOString(),
+          roleInfo: {
+            permissions: ROLE_DEFINITIONS[user.role as UserRole || UserRole.BASIC_USER_1] || [],
+            hierarchy: getRoleHierarchy(user.role as UserRole || UserRole.BASIC_USER_1),
+            description: getRoleDescription(user.role as UserRole || UserRole.BASIC_USER_1)
+          },
+          canEditRole: true
+        }))
+
+        // Calculate role statistics
+        const roleStats = Object.values(UserRole).map(role => {
+          const rolePermissions = ROLE_DEFINITIONS[role] || {}
+          const permissionCount = Object.values(rolePermissions).filter(perm => 
+            perm !== 'none' && perm !== false
+          ).length
+          
+          return {
+            role,
+            count: allUsers.filter(user => user.role === role).length,
+            label: getRoleDisplayName(role),
+            permissions: permissionCount
+          }
+        })
+
+        const activeUsers = allUsers.filter(user => user.isActive).length
+
         return NextResponse.json({
           success: true,
           data: {
+            users: allTransformedUsers,
+            roleStats,
+            totalUsers: allUsers.length,
+            activeUsers,
             roles: Object.values(UserRole),
             departments: Object.values(Department),
             roleDefinitions: ROLE_DEFINITIONS,
