@@ -28,6 +28,7 @@ import {
   ShieldCheckIcon,
   MagnifyingGlassIcon,
   PlusIcon,
+  CloudArrowUpIcon,
   ArrowTrendingUpIcon,
   CurrencyDollarIcon,
   UserIcon,
@@ -290,15 +291,25 @@ export const modulesConfig: ModuleConfig[] = [
             id: "add-employee",
             name: "Add Employee",
             href: "/hr/employees/add",
-            icon: PlusIcon,
-            requiredPermissions: ["hr.employees.create"]
+            icon: PlusIcon
+          },
+          {
+            id: "bulk-import",
+            name: "Bulk Import",
+            href: "/hr/employees/bulk-import",
+            icon: CloudArrowUpIcon
+          },
+          {
+            id: "employee-manage",
+            name: "Manage Employees",
+            href: "/hr/employees/manage",
+            icon: Cog6ToothIcon
           },
           {
             id: "employee-archive",
             name: "Archived Staff",
             href: "/hr/employees/archived",
-            icon: ArchiveBoxIcon,
-            requiredPermissions: ["hr.employees.archive"]
+            icon: ArchiveBoxIcon
           }
         ]
       },
