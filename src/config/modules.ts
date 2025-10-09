@@ -36,7 +36,6 @@ import {
   ExclamationTriangleIcon,
   ClockIcon,
   DocumentChartBarIcon,
-  CloudArrowUpIcon,
   FolderOpenIcon,
   ShareIcon,
   ArrowPathIcon,
