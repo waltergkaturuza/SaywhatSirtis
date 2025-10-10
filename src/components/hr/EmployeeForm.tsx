@@ -7,7 +7,30 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { UserRole, Department, getDefaultRoleForDepartment, getRoleDisplayName, ROLE_DEFINITIONS } from "@/types/roles"
-import { UserIcon, EnvelopeIcon, PhoneIcon, IdentificationIcon, BriefcaseIcon, AcademicCapIcon, KeyIcon, DocumentTextIcon } from "@heroicons/react/24/outline"
+import { UserIcon, EnvelopeIcon, PhoneIcon, IdentificationIcon, BriefcaseIcon, AcademicCapIcon, KeyIcon, DocumentTextIcon, BuildingOfficeIcon, ExclamationTriangleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline"
+
+interface RolePermissions {
+  callCenter: 'none' | 'view' | 'edit' | 'full'
+  programs: 'none' | 'view' | 'edit' | 'full'
+  hr: 'none' | 'view' | 'edit' | 'full'
+  documents: 'none' | 'view' | 'edit' | 'full'
+  inventory: 'none' | 'view' | 'edit' | 'full'
+  risks: 'none' | 'view' | 'edit' | 'full'
+  dashboard: 'none' | 'view' | 'edit' | 'full'
+  personalProfile: 'none' | 'view' | 'edit' | 'full'
+}
+
+interface SystemRole {
+  id: string
+  name: string
+  value: string
+  permissions: RolePermissions
+  documentLevel: 'PUBLIC' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET'
+  canViewOthersProfiles: boolean
+  canManageUsers: boolean
+  fullAccess: boolean
+  description: string
+}
 
 interface EmployeeFormData {
   // Personal Information
@@ -31,10 +54,13 @@ interface EmployeeFormData {
   departmentId: string
   position: string
   supervisorId: string
+  reviewerId: string
   startDate: string
   hireDate: string
   employmentType: string
   workLocation: string
+  country: string
+  province: string
   isSupervisor: boolean
   isReviewer: boolean
   
@@ -43,30 +69,57 @@ interface EmployeeFormData {
   currency: string
   payGrade: string
   payFrequency: string
-  benefits: string[]
   
   // Additional Benefits
+  healthInsurance: boolean
+  dentalCoverage: boolean
+  visionCoverage: boolean
+  lifeInsurance: boolean
+  retirementPlan: boolean
+  flexiblePTO: boolean
   medicalAid: boolean
   funeralCover: boolean
   vehicleBenefit: boolean
   fuelAllowance: boolean
   airtimeAllowance: boolean
-  otherBenefits: string[]
+  otherBenefits: string
   
-  // Education & Skills
+  // Education & Skills (matching create form structure)
   education: string
-  skills: string[]
-  certifications: string[]
-  trainingRequired: string[]
+  skills: string
+  certifications: string
+  orientationTrainingRequired: boolean
+  securityTrainingRequired: boolean
+  departmentSpecificTrainingRequired: boolean
   
   // Access & Security
   accessLevel: string
-  securityClearance: string
+  userRole: string
   systemAccess: string[]
+  documentSecurityClearance: string
+  
+  // Job Description
+  jobDescription: {
+    jobTitle: string
+    location: string
+    jobSummary: string
+    keyResponsibilities: Array<{
+      description: string
+      weight: number
+      tasks: string
+    }>
+    essentialExperience: string
+    essentialSkills: string
+    acknowledgment: boolean
+    signatureFile: File | null
+  }
+  
+  // Documents
   contractSigned: boolean
   backgroundCheckCompleted: boolean
   medicalCheckCompleted: boolean
   trainingCompleted: boolean
+  initialTrainingCompleted: boolean
   additionalNotes: string
   
   // Documents
@@ -83,6 +136,11 @@ interface EmployeeFormData {
   alternativePhone: string
   nationality: string
   nationalId: string
+  
+  // Legacy compatibility fields
+  trainingRequired: string[]
+  benefits: string[]
+  securityClearance: string
 }
 
 interface EmployeeFormProps {
@@ -110,6 +168,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     department: string
   }>>([])
   
+  const [roles, setRoles] = useState<SystemRole[]>([])
+  const [loadingRoles, setLoadingRoles] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<EmployeeFormData>({
     firstName: "",
     lastName: "",
@@ -129,43 +190,90 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     departmentId: "",
     position: "",
     supervisorId: "",
+    reviewerId: "",
     startDate: "",
     hireDate: "",
     employmentType: "FULL_TIME",
     workLocation: "",
+    country: "",
+    province: "",
     isSupervisor: false,
     isReviewer: false,
     baseSalary: "",
     currency: "USD",
     payGrade: "",
     payFrequency: "monthly",
-    benefits: [],
+    healthInsurance: false,
+    dentalCoverage: false,
+    visionCoverage: false,
+    lifeInsurance: false,
+    retirementPlan: false,
+    flexiblePTO: false,
     medicalAid: false,
     funeralCover: false,
     vehicleBenefit: false,
     fuelAllowance: false,
     airtimeAllowance: false,
-    otherBenefits: [],
+    otherBenefits: "",
     education: "",
-    skills: [],
-    certifications: [],
-    trainingRequired: [],
+    skills: "",
+    certifications: "",
+    orientationTrainingRequired: false,
+    securityTrainingRequired: false,
+    departmentSpecificTrainingRequired: false,
     accessLevel: "basic",
-    securityClearance: "none",
+    userRole: "",
     systemAccess: [],
+    documentSecurityClearance: "PUBLIC",
+    jobDescription: {
+      jobTitle: "",
+      location: "",
+      jobSummary: "",
+      keyResponsibilities: [
+        { description: "", weight: 0, tasks: "" }
+      ],
+      essentialExperience: "",
+      essentialSkills: "",
+      acknowledgment: false,
+      signatureFile: null
+    },
     contractSigned: false,
     backgroundCheckCompleted: false,
     medicalCheckCompleted: false,
     trainingCompleted: false,
+    initialTrainingCompleted: false,
     additionalNotes: "",
     uploadedDocuments: [],
     status: "ACTIVE",
     alternativePhone: "",
     nationality: "",
-    nationalId: ""
+    nationalId: "",
+    // Legacy compatibility
+    trainingRequired: [],
+    benefits: [],
+    securityClearance: "none"
   })
 
   const totalSteps = 6 // Complete form with all sections
+
+  // Helper function to get permission display color
+  const getPermissionColor = (permission: string) => {
+    switch (permission) {
+      case 'none': return 'text-gray-600'
+      case 'view': return 'text-blue-600'
+      case 'edit': return 'text-yellow-600'
+      case 'full': return 'text-green-600'
+      default: return 'text-gray-600'
+    }
+  }
+
+  // Helper function to get role border color
+  const getRoleBorderColor = (role: SystemRole) => {
+    if (role.fullAccess) return 'border-green-200 bg-green-50'
+    if (role.permissions.hr === 'full') return 'border-purple-200 bg-purple-50'
+    if (role.permissions.callCenter === 'full' || role.permissions.programs === 'full') return 'border-blue-200 bg-blue-50'
+    return 'border-gray-200'
+  }
 
   // Load employee data in edit mode
   useEffect(() => {
@@ -181,48 +289,76 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         email: employeeData.email || "",
         personalEmail: employeeData.personalEmail || "",
         address: employeeData.address || "",
-        emergencyContactName: employeeData.emergencyContact || "",
-        emergencyContactPhone: employeeData.emergencyPhone || "",
-        emergencyContactRelationship: employeeData.emergencyRelationship || "",
+        emergencyContactName: employeeData.emergencyContactName || employeeData.emergencyContact || "",
+        emergencyContactPhone: employeeData.emergencyContactPhone || employeeData.emergencyPhone || "",
+        emergencyContactRelationship: employeeData.emergencyContactRelationship || employeeData.emergencyRelationship || "",
         employeeId: employeeData.employeeId || "",
         department: employeeData.department || "",
         departmentId: employeeData.departmentId || "",
         position: employeeData.position || "",
         supervisorId: employeeData.supervisorId || "",
+        reviewerId: employeeData.reviewerId || "",
         startDate: employeeData.startDate ? new Date(employeeData.startDate).toISOString().split('T')[0] : "",
         hireDate: employeeData.hireDate ? new Date(employeeData.hireDate).toISOString().split('T')[0] : "",
         employmentType: employeeData.employmentType || "FULL_TIME",
         workLocation: employeeData.workLocation || "",
+        country: employeeData.country || "",
+        province: employeeData.province || "",
         isSupervisor: employeeData.isSupervisor || false,
         isReviewer: employeeData.isReviewer || false,
-        baseSalary: employeeData.salary?.toString() || "",
+        baseSalary: employeeData.baseSalary || employeeData.salary?.toString() || "",
         currency: employeeData.currency || "USD",
         payGrade: employeeData.payGrade || "",
         payFrequency: employeeData.payFrequency || "monthly",
-        benefits: employeeData.benefits || [],
+        healthInsurance: employeeData.healthInsurance || false,
+        dentalCoverage: employeeData.dentalCoverage || false,
+        visionCoverage: employeeData.visionCoverage || false,
+        lifeInsurance: employeeData.lifeInsurance || false,
+        retirementPlan: employeeData.retirementPlan || false,
+        flexiblePTO: employeeData.flexiblePTO || false,
         medicalAid: employeeData.medicalAid || false,
         funeralCover: employeeData.funeralCover || false,
         vehicleBenefit: employeeData.vehicleBenefit || false,
         fuelAllowance: employeeData.fuelAllowance || false,
         airtimeAllowance: employeeData.airtimeAllowance || false,
-        otherBenefits: employeeData.otherBenefits || [],
+        otherBenefits: employeeData.otherBenefits || (Array.isArray(employeeData.otherBenefits) ? employeeData.otherBenefits.join(', ') : ""),
         education: employeeData.education || "",
-        skills: employeeData.skills || [],
-        certifications: employeeData.certifications || [],
-        trainingRequired: employeeData.trainingRequired || [],
+        skills: employeeData.skills || (Array.isArray(employeeData.skills) ? employeeData.skills.join(', ') : ""),
+        certifications: employeeData.certifications || (Array.isArray(employeeData.certifications) ? employeeData.certifications.join(', ') : ""),
+        orientationTrainingRequired: employeeData.orientationTrainingRequired || false,
+        securityTrainingRequired: employeeData.securityTrainingRequired || false,
+        departmentSpecificTrainingRequired: employeeData.departmentSpecificTrainingRequired || false,
         accessLevel: employeeData.accessLevel || "basic",
-        securityClearance: employeeData.securityClearance || "none",
+        userRole: employeeData.userRole || "",
         systemAccess: employeeData.systemAccess || [],
+        documentSecurityClearance: employeeData.documentSecurityClearance || employeeData.securityClearance || "PUBLIC",
+        jobDescription: employeeData.jobDescription || {
+          jobTitle: employeeData.position || "",
+          location: employeeData.workLocation || "",
+          jobSummary: "",
+          keyResponsibilities: [
+            { description: "", weight: 0, tasks: "" }
+          ],
+          essentialExperience: "",
+          essentialSkills: "",
+          acknowledgment: false,
+          signatureFile: null
+        },
         contractSigned: employeeData.contractSigned || false,
         backgroundCheckCompleted: employeeData.backgroundCheckCompleted || false,
         medicalCheckCompleted: employeeData.medicalCheckCompleted || false,
         trainingCompleted: employeeData.trainingCompleted || false,
+        initialTrainingCompleted: employeeData.initialTrainingCompleted || false,
         additionalNotes: employeeData.additionalNotes || "",
         uploadedDocuments: employeeData.uploadedDocuments || [],
         status: employeeData.status || "ACTIVE",
         alternativePhone: employeeData.alternativePhone || "",
         nationality: employeeData.nationality || "",
-        nationalId: employeeData.nationalId || ""
+        nationalId: employeeData.nationalId || "",
+        // Legacy compatibility
+        trainingRequired: employeeData.trainingRequired || [],
+        benefits: employeeData.benefits || [],
+        securityClearance: employeeData.securityClearance || "none"
       })
     }
   }, [mode, employeeData])
@@ -255,9 +391,30 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     }
   }
 
+  // Fetch roles
+  const fetchRoles = async () => {
+    try {
+      setLoadingRoles(true)
+      const response = await fetch('/api/hr/roles')
+      const result = await response.json()
+      if (result.success && result.data?.roles && Array.isArray(result.data.roles)) {
+        setRoles(result.data.roles)
+      } else {
+        console.warn('Invalid roles data received:', result)
+        setRoles([])
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error)
+      setRoles([])
+    } finally {
+      setLoadingRoles(false)
+    }
+  }
+
   useEffect(() => {
     fetchDepartments()
     fetchSupervisors()
+    fetchRoles()
   }, [])
 
   const handleInputChange = (field: keyof EmployeeFormData, value: any) => {
@@ -268,16 +425,101 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
   }
 
   const handleSubmit = async () => {
-    // Convert to format expected by APIs
-    const apiData = {
-      ...formData,
-      salary: formData.baseSalary, // Map baseSalary to salary
-      emergencyContact: formData.emergencyContactName,
-      emergencyPhone: formData.emergencyContactPhone,
-      emergencyRelationship: formData.emergencyContactRelationship
-    }
+    setIsSubmitting(true)
     
-    await onSubmit(apiData)
+    try {
+      // First, save the employee documents to the Document Repository
+      if (formData.uploadedDocuments && formData.uploadedDocuments.length > 0) {
+        await saveEmployeeDocumentsToRepository()
+      }
+      
+      // Convert to format expected by APIs
+      const apiData = {
+        ...formData,
+        salary: formData.baseSalary, // Map baseSalary to salary
+        emergencyContact: formData.emergencyContactName,
+        emergencyPhone: formData.emergencyContactPhone,
+        emergencyRelationship: formData.emergencyContactRelationship
+      }
+      
+      await onSubmit(apiData)
+    } catch (error) {
+      console.error('Error during form submission:', error)
+      // You might want to show an error message to the user here
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const saveEmployeeDocumentsToRepository = async () => {
+    try {
+      const employeeId = formData.employeeId || `EMP_${Date.now()}`
+      
+      for (const document of formData.uploadedDocuments) {
+        // Create the folder structure: HR/Employee_Particulars/EmployeeID/DocumentKind
+        const folderPath = `HR/Employee_Particulars/${employeeId}/${getCategoryDisplayName(document.category)}`
+        
+        // Ensure the folder structure exists
+        await fetch('/api/documents/folders/ensure', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            path: folderPath,
+            department: 'HR',
+            category: 'Employee_Particulars'
+          })
+        })
+        
+        // Upload the document to the repository
+        const uploadFormData = new FormData()
+        
+        // Convert the document data back to a file-like object for upload
+        const blob = new Blob([(document as any).data || ''], { type: document.type })
+        const file = new File([blob], document.name, { type: document.type })
+        
+        uploadFormData.append('file', file)
+        uploadFormData.append('title', `${document.name} - ${formData.firstName} ${formData.lastName}`)
+        uploadFormData.append('category', 'Employee_Particulars')
+        uploadFormData.append('classification', 'CONFIDENTIAL') // HR documents are confidential
+        uploadFormData.append('accessLevel', 'hr_only')
+        uploadFormData.append('department', 'HR')
+        uploadFormData.append('folderPath', folderPath)
+        uploadFormData.append('employeeId', employeeId)
+        uploadFormData.append('documentType', document.category)
+        uploadFormData.append('isPersonalRepo', 'false')
+        uploadFormData.append('status', 'active')
+        
+        const uploadResponse = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: uploadFormData
+        })
+        
+        if (!uploadResponse.ok) {
+          console.error(`Failed to upload document ${document.name}:`, await uploadResponse.text())
+        } else {
+          console.log(`✅ Successfully uploaded ${document.name} to ${folderPath}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error saving employee documents to repository:', error)
+      throw error
+    }
+  }
+
+  const getCategoryDisplayName = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+      'cv': 'CV_Resume',
+      'identification': 'ID_Copy',
+      'qualifications': 'Qualifications',
+      'contracts': 'Contracts', 
+      'medical': 'Medical',
+      'references': 'References',
+      'bank': 'Bank_Details',
+      'other': 'Other'
+    }
+    return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1)
   }
 
   const sortDepartmentsHierarchically = (departments: any[]) => {
@@ -762,252 +1004,514 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
   const renderStep5 = () => {
     return (
-      <div className="space-y-4">
-      <h3 className="text-lg font-medium">Education & Skills</h3>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="education">Education Level</Label>
-          <Select value={formData.education} onValueChange={(value) => handleInputChange('education', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select education level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="High School">High School</SelectItem>
-              <SelectItem value="Certificate">Certificate</SelectItem>
-              <SelectItem value="Diploma">Diploma</SelectItem>
-              <SelectItem value="Bachelor's Degree">Bachelor's Degree</SelectItem>
-              <SelectItem value="Master's Degree">Master's Degree</SelectItem>
-              <SelectItem value="PhD">PhD</SelectItem>
-              <SelectItem value="Other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="skills">Skills (comma-separated)</Label>
-          <Input
-            id="skills"
-            value={Array.isArray(formData.skills) ? formData.skills.join(', ') : ''}
-            onChange={(e) => handleInputChange('skills', e.target.value.split(',').map(s => s.trim()))}
-            placeholder="e.g., JavaScript, Project Management, etc."
-          />
-        </div>
-        <div>
-          <Label htmlFor="certifications">Certifications (comma-separated)</Label>
-          <Input
-            id="certifications"
-            value={Array.isArray(formData.certifications) ? formData.certifications.join(', ') : ''}
-            onChange={(e) => handleInputChange('certifications', e.target.value.split(',').map(c => c.trim()))}
-            placeholder="e.g., PMP, AWS Certified, etc."
-          />
-        </div>
-        <div>
-          <Label htmlFor="trainingRequired">Training Required (comma-separated)</Label>
-          <Input
-            id="trainingRequired"
-            value={Array.isArray(formData.trainingRequired) ? formData.trainingRequired.join(', ') : ''}
-            onChange={(e) => handleInputChange('trainingRequired', e.target.value.split(',').map(t => t.trim()))}
-            placeholder="e.g., Safety Training, Software Training, etc."
-          />
+      <div className="space-y-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-6">Access Level</h3>
+
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-4">
+              User Role & Access Level *
+            </label>
+            
+            {loadingRoles ? (
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                <span className="ml-2 text-gray-600">Loading roles...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {Array.isArray(roles) && roles.map((role) => (
+                  <div key={role.id} className={`border rounded-lg p-4 ${getRoleBorderColor(role)}`}>
+                    <div className="flex items-start mb-3">
+                      <input
+                        type="radio"
+                        id={role.id}
+                        name="userRole"
+                        value={role.id}
+                        checked={formData.userRole === role.id}
+                        onChange={(e) => {
+                          handleInputChange("userRole", e.target.value)
+                          // Automatically set document security clearance based on role
+                          handleInputChange("documentSecurityClearance", role.documentLevel)
+                          // Set access level based on role permissions
+                          const accessLevel = role.fullAccess ? 'full' : 
+                                             (role.permissions.hr === 'full' || role.permissions.callCenter === 'full') ? 'advanced' : 'basic'
+                          handleInputChange("accessLevel", accessLevel)
+                        }}
+                        className="mr-3 h-4 w-4 text-orange-600 focus:ring-orange-500 mt-1"
+                      />
+                      <div className="flex-1">
+                        <label htmlFor={role.id} className="text-sm font-medium text-gray-900 block mb-1">
+                          {role.name}
+                          {role.fullAccess && <span className=" ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">Full Access</span>}
+                        </label>
+                        <p className="text-xs text-gray-600 mb-3">{role.description}</p>
+                        
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+                          <span className={`${getPermissionColor(role.permissions.callCenter)} font-medium`}>
+                            Call Centre: {role.permissions.callCenter}
+                          </span>
+                          <span className={`${getPermissionColor(role.permissions.programs)} font-medium`}>
+                            Programs: {role.permissions.programs}
+                          </span>
+                          <span className={`${getPermissionColor(role.permissions.hr)} font-medium`}>
+                            HR: {role.permissions.hr}
+                          </span>
+                          <span className={`${getPermissionColor(role.permissions.documents)} font-medium`}>
+                            Documents: {role.permissions.documents}
+                          </span>
+                          <span className={`${getPermissionColor(role.permissions.inventory)} font-medium`}>
+                            Inventory: {role.permissions.inventory}
+                          </span>
+                          <span className={`${getPermissionColor(role.permissions.risks)} font-medium`}>
+                            Risks: {role.permissions.risks}
+                          </span>
+                          <span className="text-gray-700 font-medium">
+                            Max Doc Level: <span className="text-sm">{role.documentLevel.replace('_', ' ')}</span>
+                          </span>
+                          {role.canViewOthersProfiles && (
+                            <span className="text-purple-600 font-medium text-xs">
+                              ✓ View Others' Profiles
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {Array.isArray(roles) && roles.length === 0 && !loadingRoles && (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No roles available. Please contact your administrator.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* SAYWHAT Department Structure */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
+              <BuildingOfficeIcon className="w-4 h-4 mr-2" />
+              SAYWHAT Department Structure
+            </h3>
+            
+            <div className="space-y-2 text-sm">
+              <div className="font-medium text-gray-900">Main Departments:</div>
+              <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                <li>Executive Directors Office
+                  <ul className="list-disc list-inside ml-4 text-gray-600">
+                    <li>Subunit: Research and Development</li>
+                  </ul>
+                </li>
+                <li>Human Resource Management</li>
+                <li>Finance and Administration</li>
+                <li>Programs
+                  <ul className="list-disc list-inside ml-4 text-gray-600">
+                    <li>Subunits: MEAL and Call Center</li>
+                  </ul>
+                </li>
+                <li>Grants and Compliance</li>
+                <li>Communications and Advocacy</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Document Security Clearance */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Document Security Clearance Level *
+            </label>
+            <select
+              value={formData.documentSecurityClearance}
+              onChange={(e) => handleInputChange("documentSecurityClearance", e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="PUBLIC">PUBLIC (Public documents only)</option>
+              <option value="CONFIDENTIAL">CONFIDENTIAL (Internal and confidential documents)</option>
+              <option value="SECRET">SECRET (Up to secret level documents)</option>
+              <option value="TOP_SECRET">TOP SECRET (All document levels)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Determines the highest level of classified documents this user can access. 
+              {formData.userRole && Array.isArray(roles) && roles.find(r => r.id === formData.userRole) && (
+                <span className="text-orange-600 font-medium ml-1">
+                  (Automatically set to {roles.find(r => r.id === formData.userRole)?.documentLevel.replace('_', ' ')} based on selected role)
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* System Module Access */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-gray-900">System Module Access (Based on Selected Role):</h3>
+            
+            {formData.userRole && Array.isArray(roles) && roles.find(r => r.id === formData.userRole) ? (
+              <div className="space-y-3">
+                {(() => {
+                  const selectedRole = Array.isArray(roles) ? roles.find(r => r.id === formData.userRole) : null
+                  if (!selectedRole) return null
+                  const moduleNames = [
+                    { key: 'callCenter', label: 'Call Center' },
+                    { key: 'dashboard', label: 'Dashboard' },
+                    { key: 'personalProfile', label: 'Personal Profile' },
+                    { key: 'programs', label: 'Programs' },
+                    { key: 'documents', label: 'Documents' },
+                    { key: 'inventory', label: 'Inventory' },
+                    { key: 'hr', label: 'HR' },
+                    { key: 'risks', label: 'Risks' }
+                  ]
+                  
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {moduleNames.map(({ key, label }) => {
+                          const permission = selectedRole.permissions[key as keyof RolePermissions]
+                          return (
+                            <div key={key} className="flex flex-col">
+                              <div className="text-sm font-medium text-gray-700 mb-1">{label}</div>
+                              <div className={`text-sm font-medium ${getPermissionColor(permission)} capitalize`}>
+                                {permission}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <div className="text-sm text-blue-800">
+                          <strong>Special Permissions:</strong>
+                          <div className="mt-1 space-y-1">
+                            {selectedRole.canViewOthersProfiles && (
+                              <div>✓ Can view other employees' profiles</div>
+                            )}
+                            {selectedRole.canManageUsers && (
+                              <div>✓ Can manage user accounts</div>
+                            )}
+                            {selectedRole.fullAccess && (
+                              <div>✓ Full superuser access</div>
+                            )}
+                            <div>✓ Maximum document clearance: <span className="font-medium">{selectedRole.documentLevel.replace('_', ' ')}</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 italic">
+                Please select a user role above to see the system module access permissions.
+              </div>
+            )}
+          </div>
+
+          {/* Required Security Setup Tasks */}
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <div className="flex items-center mb-3">
+              <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500 mr-2" />
+              <h3 className="text-sm font-medium text-yellow-800">Required Security Setup Tasks</h3>
+            </div>
+            
+            <div className="space-y-2 text-sm text-yellow-700">
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
+                Badge/ID card creation required
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
+                System accounts to be provisioned
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
+                Access permissions to be configured automatically
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
+                Security training to be scheduled
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
+                Department-based role assignment will be applied
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
     )
   }
 
   const renderStep6 = () => {
     return (
       <div className="space-y-6">
-      <h3 className="text-lg font-medium">Access, Permissions & Documents</h3>
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isSupervisor"
-              checked={formData.isSupervisor}
-              onCheckedChange={(checked) => handleInputChange('isSupervisor', checked)}
-            />
-            <Label htmlFor="isSupervisor">Is Supervisor</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isReviewer"
-              checked={formData.isReviewer}
-              onCheckedChange={(checked) => handleInputChange('isReviewer', checked)}
-            />
-            <Label htmlFor="isReviewer">Is Reviewer</Label>
+      <h3 className="text-lg font-medium text-gray-900 mb-6">Skills</h3>
+      <div className="space-y-6">
+        {/* Education Level */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Education Level *
+          </label>
+          <select
+            value={formData.education || ''}
+            onChange={(e) => handleInputChange('education', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+          >
+            <option value="">Select education level</option>
+            <option value="High School">High School</option>
+            <option value="Certificate">Certificate</option>
+            <option value="Diploma">Diploma</option>
+            <option value="Bachelor's Degree">Bachelor's Degree</option>
+            <option value="Master's Degree">Master's Degree</option>
+            <option value="PhD">PhD</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        {/* Skills */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Skills *
+          </label>
+          <textarea
+            value={Array.isArray(formData.skills) ? formData.skills.join(', ') : formData.skills || ''}
+            onChange={(e) => {
+              const skillsArray = e.target.value.split(',').map(skill => skill.trim()).filter(skill => skill.length > 0)
+              handleInputChange('skills', skillsArray)
+            }}
+            placeholder="Enter skills separated by commas (e.g., Microsoft Office, Project Management, Communication, etc.)"
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">Separate multiple skills with commas</p>
+        </div>
+
+        {/* Certifications */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Certifications
+          </label>
+          <textarea
+            value={Array.isArray(formData.certifications) ? formData.certifications.join(', ') : formData.certifications || ''}
+            onChange={(e) => {
+              const certificationsArray = e.target.value.split(',').map(cert => cert.trim()).filter(cert => cert.length > 0)
+              handleInputChange('certifications', certificationsArray)
+            }}
+            placeholder="Enter certifications separated by commas (e.g., PMP, AWS Certified, Microsoft Certified, etc.)"
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">Separate multiple certifications with commas</p>
+        </div>
+
+        {/* Training Required */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-4">
+            Training Requirements
+          </label>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="orientationTraining"
+                checked={formData.orientationTrainingRequired}
+                onChange={(e) => handleInputChange('orientationTrainingRequired', e.target.checked)}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+              />
+              <label htmlFor="orientationTraining" className="text-sm text-gray-700">
+                Orientation Training Required
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="securityTraining"
+                checked={formData.securityTrainingRequired}
+                onChange={(e) => handleInputChange('securityTrainingRequired', e.target.checked)}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+              />
+              <label htmlFor="securityTraining" className="text-sm text-gray-700">
+                Security Training Required
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="departmentTraining"
+                checked={formData.departmentSpecificTrainingRequired}
+                onChange={(e) => handleInputChange('departmentSpecificTrainingRequired', e.target.checked)}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+              />
+              <label htmlFor="departmentTraining" className="text-sm text-gray-700">
+                Department-Specific Training Required
+              </label>
+            </div>
           </div>
         </div>
 
-        <div className="border-t pt-4">
-          <h4 className="text-md font-medium mb-3">System Access</h4>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="accessLevel">Access Level</Label>
-              <Select value={formData.accessLevel} onValueChange={(value) => handleInputChange('accessLevel', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="basic">Basic</SelectItem>
-                  <SelectItem value="intermediate">Intermediate</SelectItem>
-                  <SelectItem value="advanced">Advanced</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="securityClearance">Security Clearance</Label>
-              <Select value={formData.securityClearance} onValueChange={(value) => handleInputChange('securityClearance', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="basic">Basic</SelectItem>
-                  <SelectItem value="confidential">Confidential</SelectItem>
-                  <SelectItem value="secret">Secret</SelectItem>
-                  <SelectItem value="top-secret">Top Secret</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <Label htmlFor="systemAccess">System Access (comma-separated)</Label>
-            <Input
-              id="systemAccess"
-              value={Array.isArray(formData.systemAccess) ? formData.systemAccess.join(', ') : ''}
-              onChange={(e) => handleInputChange('systemAccess', e.target.value.split(',').map(s => s.trim()))}
-              placeholder="e.g., HR System, Finance System, etc."
-            />
-          </div>
+        {/* Additional Notes */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Additional Notes
+          </label>
+          <textarea
+            value={formData.additionalNotes || ''}
+            onChange={(e) => handleInputChange('additionalNotes', e.target.value)}
+            placeholder="Any additional notes, languages, or other relevant information..."
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+          />
         </div>
 
-        <div className="border-t pt-4">
-          <h4 className="text-md font-medium mb-3">Document Status</h4>
+        {/* Document Status */}
+        <div className="border-t pt-6">
+          <h4 className="text-md font-medium mb-4">Document Status</h4>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center space-x-2">
-              <Checkbox
+              <input
+                type="checkbox"
                 id="contractSigned"
                 checked={formData.contractSigned}
-                onCheckedChange={(checked) => handleInputChange('contractSigned', checked)}
+                onChange={(e) => handleInputChange('contractSigned', e.target.checked)}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
               />
-              <Label htmlFor="contractSigned">Contract Signed</Label>
+              <label htmlFor="contractSigned" className="text-sm text-gray-700">
+                Contract Signed
+              </label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox
+              <input
+                type="checkbox"
                 id="backgroundCheckCompleted"
                 checked={formData.backgroundCheckCompleted}
-                onCheckedChange={(checked) => handleInputChange('backgroundCheckCompleted', checked)}
+                onChange={(e) => handleInputChange('backgroundCheckCompleted', e.target.checked)}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
               />
-              <Label htmlFor="backgroundCheckCompleted">Background Check Completed</Label>
+              <label htmlFor="backgroundCheckCompleted" className="text-sm text-gray-700">
+                Background Check Completed
+              </label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox
+              <input
+                type="checkbox"
                 id="medicalCheckCompleted"
                 checked={formData.medicalCheckCompleted}
-                onCheckedChange={(checked) => handleInputChange('medicalCheckCompleted', checked)}
+                onChange={(e) => handleInputChange('medicalCheckCompleted', e.target.checked)}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
               />
-              <Label htmlFor="medicalCheckCompleted">Medical Check Completed</Label>
+              <label htmlFor="medicalCheckCompleted" className="text-sm text-gray-700">
+                Medical Check Completed
+              </label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox
+              <input
+                type="checkbox"
                 id="trainingCompleted"
                 checked={formData.trainingCompleted}
-                onCheckedChange={(checked) => handleInputChange('trainingCompleted', checked)}
+                onChange={(e) => handleInputChange('trainingCompleted', e.target.checked)}
+                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
               />
-              <Label htmlFor="trainingCompleted">Training Completed</Label>
+              <label htmlFor="trainingCompleted" className="text-sm text-gray-700">
+                Training Completed
+              </label>
             </div>
           </div>
+        </div>
 
-          {/* Documents Section */}
-          <div className="border-t pt-6 mt-6">
-            <h4 className="text-md font-medium mb-4 flex items-center">
-              <DocumentTextIcon className="h-5 w-5 mr-2" />
-              Employee Documents
-            </h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { name: "CV/Resume", category: "cv", icon: "📄" },
-                { name: "ID Copy", category: "identification", icon: "🆔" },
-                { name: "Qualifications", category: "qualifications", icon: "🎓" },
-                { name: "Contracts", category: "contracts", icon: "📋" },
-                { name: "Medical", category: "medical", icon: "🏥" },
-                { name: "References", category: "references", icon: "📝" },
-                { name: "Bank Details", category: "banking", icon: "🏦" },
-                { name: "Other", category: "other", icon: "📁" }
-              ].map((docType) => (
-                <div
-                  key={docType.category}
-                  className="border border-gray-200 rounded-lg p-3 text-center hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => {
-                    // Create a file input for document upload
-                    const input = document.createElement('input')
-                    input.type = 'file'
-                    input.multiple = true
-                    input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png'
-                    input.onchange = (e) => {
-                      const files = (e.target as HTMLInputElement).files
-                      if (files) {
-                        const newDocs = Array.from(files).map(file => ({
-                          id: Math.random().toString(36).substr(2, 9),
-                          name: file.name,
-                          type: file.type,
-                          size: file.size,
-                          category: docType.category
-                        }))
-                        handleInputChange('uploadedDocuments', [...formData.uploadedDocuments, ...newDocs])
-                      }
-                    }
-                    input.click()
-                  }}
-                >
-                  <div className="text-2xl mb-1">{docType.icon}</div>
-                  <div className="text-xs font-medium">{docType.name}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {formData.uploadedDocuments.filter(doc => doc.category === docType.category).length} files
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Uploaded Documents List */}
-            {formData.uploadedDocuments.length > 0 && (
-              <div className="mt-4">
-                <h5 className="text-sm font-medium text-gray-900 mb-2">Uploaded Documents ({formData.uploadedDocuments.length})</h5>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {formData.uploadedDocuments.map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded border">
-                      <div className="flex items-center space-x-2">
-                        <DocumentTextIcon className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm">{doc.name}</span>
-                        <span className="text-xs text-gray-500">({doc.category})</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updatedDocs = formData.uploadedDocuments.filter(d => d.id !== doc.id)
-                          handleInputChange('uploadedDocuments', updatedDocs)
-                        }}
-                        className="text-red-500 hover:text-red-700 text-xs"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
+        {/* Employee Documents */}
+        <div className="border-t pt-6">
+          <h4 className="text-md font-medium mb-4 flex items-center">
+            <DocumentTextIcon className="w-5 h-5 mr-2" />
+            Employee Documents
+          </h4>
+          
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            {/* CV/Resume */}
+            <div className="text-center p-4 border border-gray-200 rounded-lg">
+              <div className="w-12 h-12 mx-auto mb-2 bg-purple-100 rounded-lg flex items-center justify-center">
+                <DocumentTextIcon className="w-6 h-6 text-purple-600" />
               </div>
-            )}
-          </div>
+              <div className="text-sm font-medium text-gray-900">CV/Resume</div>
+              <div className="text-xs text-gray-500">
+                {formData.uploadedDocuments?.filter(doc => doc.category === 'cv')?.length || 0} files
+              </div>
+            </div>
 
-          <div className="mt-4">
-            <Label htmlFor="additionalNotes">Additional Notes</Label>
-            <Input
-              id="additionalNotes"
-              value={formData.additionalNotes}
-              onChange={(e) => handleInputChange('additionalNotes', e.target.value)}
-              placeholder="Any additional notes or comments"
-            />
+            {/* ID Copy */}
+            <div className="text-center p-4 border border-gray-200 rounded-lg">
+              <div className="w-12 h-12 mx-auto mb-2 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <IdentificationIcon className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div className="text-sm font-medium text-gray-900">ID Copy</div>
+              <div className="text-xs text-gray-500">
+                {formData.uploadedDocuments?.filter(doc => doc.category === 'identification')?.length || 0} files
+              </div>
+            </div>
+
+            {/* Qualifications */}
+            <div className="text-center p-4 border border-gray-200 rounded-lg">
+              <div className="w-12 h-12 mx-auto mb-2 bg-green-100 rounded-lg flex items-center justify-center">
+                <AcademicCapIcon className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="text-sm font-medium text-gray-900">Qualifications</div>
+              <div className="text-xs text-gray-500">
+                {formData.uploadedDocuments?.filter(doc => doc.category === 'qualifications')?.length || 0} files
+              </div>
+            </div>
+
+            {/* Contracts */}
+            <div className="text-center p-4 border border-gray-200 rounded-lg">
+              <div className="w-12 h-12 mx-auto mb-2 bg-orange-100 rounded-lg flex items-center justify-center">
+                <DocumentTextIcon className="w-6 h-6 text-orange-600" />
+              </div>
+              <div className="text-sm font-medium text-gray-900">Contracts</div>
+              <div className="text-xs text-gray-500">
+                {formData.uploadedDocuments?.filter(doc => doc.category === 'contracts')?.length || 0} files
+              </div>
+            </div>
+
+            {/* Medical */}
+            <div className="text-center p-4 border border-gray-200 rounded-lg">
+              <div className="w-12 h-12 mx-auto mb-2 bg-pink-100 rounded-lg flex items-center justify-center">
+                <DocumentTextIcon className="w-6 h-6 text-pink-600" />
+              </div>
+              <div className="text-sm font-medium text-gray-900">Medical</div>
+              <div className="text-xs text-gray-500">
+                {formData.uploadedDocuments?.filter(doc => doc.category === 'medical')?.length || 0} files
+              </div>
+            </div>
+
+            {/* References */}
+            <div className="text-center p-4 border border-gray-200 rounded-lg">
+              <div className="w-12 h-12 mx-auto mb-2 bg-blue-100 rounded-lg flex items-center justify-center">
+                <DocumentTextIcon className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="text-sm font-medium text-gray-900">References</div>
+              <div className="text-xs text-gray-500">
+                {formData.uploadedDocuments?.filter(doc => doc.category === 'references')?.length || 0} files
+              </div>
+            </div>
+
+            {/* Bank Details */}
+            <div className="text-center p-4 border border-gray-200 rounded-lg">
+              <div className="w-12 h-12 mx-auto mb-2 bg-gray-100 rounded-lg flex items-center justify-center">
+                <BuildingOfficeIcon className="w-6 h-6 text-gray-600" />
+              </div>
+              <div className="text-sm font-medium text-gray-900">Bank Details</div>
+              <div className="text-xs text-gray-500">
+                {formData.uploadedDocuments?.filter(doc => doc.category === 'bank')?.length || 0} files
+              </div>
+            </div>
+
+            {/* Other */}
+            <div className="text-center p-4 border border-gray-200 rounded-lg">
+              <div className="w-12 h-12 mx-auto mb-2 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <DocumentTextIcon className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div className="text-sm font-medium text-gray-900">Other</div>
+              <div className="text-xs text-blue-600 font-semibold">
+                {formData.uploadedDocuments?.filter(doc => doc.category === 'other')?.length || 0} files
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1119,8 +1623,8 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             { label: 'Contact', color: 'text-saywhat-grey' },
             { label: 'Employment', color: 'text-saywhat-grey' },
             { label: 'Compensation', color: 'text-saywhat-grey' },
-            { label: 'Skills', color: 'text-saywhat-grey' },
-            { label: 'Access', color: 'text-saywhat-grey' }
+            { label: 'Access', color: 'text-saywhat-grey' },
+            { label: 'Skills', color: 'text-saywhat-grey' }
           ].map((item, index) => (
             <span 
               key={index}
@@ -1192,16 +1696,16 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={isLoading || isSubmitting}
                 className="bg-gradient-to-r from-saywhat-green to-emerald-600 hover:from-emerald-600 hover:to-saywhat-green text-saywhat-white px-10 py-3 rounded-lg font-bold shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
               >
-                {isLoading ? (
+                {isLoading || isSubmitting ? (
                   <>
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-saywhat-white" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Saving Employee...
+                    {isSubmitting ? 'Saving Documents & Employee...' : 'Saving Employee...'}
                   </>
                 ) : (
                   <>

@@ -103,6 +103,23 @@ interface EmployeeFormData {
   systemAccess: string[]
   documentSecurityClearance: string
 
+  // Document Status
+  contractSigned: boolean
+  backgroundCheckCompleted: boolean
+  medicalCheckCompleted: boolean
+  trainingCompleted: boolean
+  initialTrainingCompleted: boolean
+
+  // Uploaded Documents
+  uploadedDocuments: Array<{
+    id: string
+    name: string
+    type: string
+    size: number
+    category: string
+    data?: any
+  }>
+
   // Job Description
   jobDescription: {
     jobTitle: string
@@ -119,11 +136,7 @@ interface EmployeeFormData {
     signatureFile: File | null
   }
 
-  // Documents
-  contractSigned: boolean
-  backgroundCheckCompleted: boolean
-  medicalCheckCompleted: boolean
-  initialTrainingCompleted: boolean
+  // Additional Notes
   additionalNotes: string
 }
 
@@ -171,7 +184,8 @@ export default function AddEmployeePage() {
     reviewers: false,
     countries: false,
     provinces: false,
-    roles: false
+    roles: false,
+    submitting: false
   })
   
   const [formData, setFormData] = useState<EmployeeFormData>({
@@ -232,6 +246,16 @@ export default function AddEmployeePage() {
     userRole: "",
     systemAccess: [],
     documentSecurityClearance: "PUBLIC",
+
+    // Document Status
+    contractSigned: false,
+    backgroundCheckCompleted: false,
+    medicalCheckCompleted: false,
+    trainingCompleted: false,
+    initialTrainingCompleted: false,
+
+    // Uploaded Documents
+    uploadedDocuments: [],
     
     // Job Description
     jobDescription: {
@@ -247,11 +271,7 @@ export default function AddEmployeePage() {
       signatureFile: null
     },
     
-    // Documents
-    contractSigned: false,
-    backgroundCheckCompleted: false,
-    medicalCheckCompleted: false,
-    initialTrainingCompleted: false,
+    // Additional Notes
     additionalNotes: ""
   })
 
@@ -443,6 +463,8 @@ export default function AddEmployeePage() {
 
   const handleSubmit = async () => {
     try {
+      setLoading(prev => ({ ...prev, submitting: true }))
+      
       // Basic validation
       if (!formData.firstName || !formData.lastName || !formData.email || !formData.position) {
         alert("Please fill in all required fields (First Name, Last Name, Email, Position)")
@@ -497,6 +519,11 @@ export default function AddEmployeePage() {
       if (!formData.jobDescription.acknowledgment) {
         alert("Please acknowledge the job description declaration")
         return
+      }
+
+      // Save employee documents to Document Repository first
+      if (formData.uploadedDocuments && formData.uploadedDocuments.length > 0) {
+        await saveEmployeeDocumentsToRepository()
       }
 
       console.log("Submitting employee data:", formData)
@@ -558,7 +585,80 @@ export default function AddEmployeePage() {
     } catch (error) {
       console.error("Submit error:", error)
       alert("An error occurred while creating the employee. Please try again.")
+    } finally {
+      setLoading(prev => ({ ...prev, submitting: false }))
     }
+  }
+
+  const saveEmployeeDocumentsToRepository = async () => {
+    try {
+      const employeeId = formData.employeeId || `EMP_${Date.now()}`
+      
+      for (const document of formData.uploadedDocuments) {
+        // Create the folder structure: HR/Employee_Particulars/EmployeeID/DocumentKind
+        const folderPath = `HR/Employee_Particulars/${employeeId}/${getCategoryDisplayName(document.category)}`
+        
+        // Ensure the folder structure exists
+        await fetch('/api/documents/folders/ensure', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            path: folderPath,
+            department: 'HR',
+            category: 'Employee_Particulars'
+          })
+        })
+        
+        // Upload the document to the repository
+        const uploadFormData = new FormData()
+        
+        // Convert the document data back to a file-like object for upload
+        const blob = new Blob([document.data || ''], { type: document.type })
+        const file = new File([blob], document.name, { type: document.type })
+        
+        uploadFormData.append('file', file)
+        uploadFormData.append('title', `${document.name} - ${formData.firstName} ${formData.lastName}`)
+        uploadFormData.append('category', 'Employee_Particulars')
+        uploadFormData.append('classification', 'CONFIDENTIAL') // HR documents are confidential
+        uploadFormData.append('accessLevel', 'hr_only')
+        uploadFormData.append('department', 'HR')
+        uploadFormData.append('folderPath', folderPath)
+        uploadFormData.append('employeeId', employeeId)
+        uploadFormData.append('documentType', document.category)
+        uploadFormData.append('isPersonalRepo', 'false')
+        uploadFormData.append('status', 'active')
+        
+        const uploadResponse = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: uploadFormData
+        })
+        
+        if (!uploadResponse.ok) {
+          console.error(`Failed to upload document ${document.name}:`, await uploadResponse.text())
+        } else {
+          console.log(`✅ Successfully uploaded ${document.name} to ${folderPath}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error saving employee documents to repository:', error)
+      throw error
+    }
+  }
+
+  const getCategoryDisplayName = (category: string): string => {
+    const categoryMap: Record<string, string> = {
+      'cv': 'CV_Resume',
+      'identification': 'ID_Copy',
+      'qualifications': 'Qualifications',
+      'contracts': 'Contracts', 
+      'medical': 'Medical',
+      'references': 'References',
+      'bank': 'Bank_Details',
+      'other': 'Other'
+    }
+    return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1)
   }
 
   // Step validation function
@@ -1953,84 +2053,173 @@ export default function AddEmployeePage() {
               </div>
 
               {/* Document Upload Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                    <DocumentTextIcon className="w-5 h-5 text-orange-500 mr-2" />
-                    Document Upload & Repository
-                  </h3>
-                  <span className="text-sm text-gray-500">0 documents uploaded</span>
-                </div>
-
-                {/* File Upload Area */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-400 transition-colors">
-                  <CloudArrowUpIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">Upload Employee Documents</h4>
-                  <p className="text-gray-600 mb-4">Drag and drop files here, or click to select files</p>
-                  
-                  <button className="px-6 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors">
-                    <DocumentTextIcon className="w-4 h-4 inline mr-2" />
-                    Choose Files
-                  </button>
-                  
-                  <p className="text-xs text-gray-500 mt-2">
-                    Supported formats: PDF, DOC, DOCX, TXT, JPG, PNG (Max 10MB each)
-                  </p>
-                </div>
-
-                {/* Document Categories */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-                  <div className="text-center">
-                    <h4 className="font-medium text-gray-900 mb-2">Personal Documents</h4>
-                    <p className="text-sm text-gray-500">0 files</p>
-                  </div>
-                  <div className="text-center">
-                    <h4 className="font-medium text-gray-900 mb-2">Employment Documents</h4>
-                    <p className="text-sm text-gray-500">0 files</p>
-                  </div>
-                  <div className="text-center">
-                    <h4 className="font-medium text-gray-900 mb-2">Medical Documents</h4>
-                    <p className="text-sm text-gray-500">0 files</p>
-                  </div>
-                  <div className="text-center">
-                    <h4 className="font-medium text-gray-900 mb-2">Training Documents</h4>
-                    <p className="text-sm text-gray-500">0 files</p>
-                  </div>
-                </div>
-
-                {/* Search Documents */}
-                <div className="mt-6">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search documents"
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
-                    <div className="absolute left-3 top-2.5">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
+              <div className="space-y-6 border-t pt-6">
+                {/* Document Status */}
+                <div>
+                  <h4 className="text-md font-medium mb-4">Document Status</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="contractSigned"
+                        checked={formData.contractSigned}
+                        onChange={(e) => setFormData(prev => ({ ...prev, contractSigned: e.target.checked }))}
+                        className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="contractSigned" className="text-sm text-gray-700">
+                        Contract Signed
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="backgroundCheckCompleted"
+                        checked={formData.backgroundCheckCompleted}
+                        onChange={(e) => setFormData(prev => ({ ...prev, backgroundCheckCompleted: e.target.checked }))}
+                        className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="backgroundCheckCompleted" className="text-sm text-gray-700">
+                        Background Check Completed
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="medicalCheckCompleted"
+                        checked={formData.medicalCheckCompleted}
+                        onChange={(e) => setFormData(prev => ({ ...prev, medicalCheckCompleted: e.target.checked }))}
+                        className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="medicalCheckCompleted" className="text-sm text-gray-700">
+                        Medical Check Completed
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="trainingCompleted"
+                        checked={formData.trainingCompleted}
+                        onChange={(e) => setFormData(prev => ({ ...prev, trainingCompleted: e.target.checked }))}
+                        className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="trainingCompleted" className="text-sm text-gray-700">
+                        Training Completed
+                      </label>
                     </div>
                   </div>
                 </div>
 
-                {/* Uploaded Documents List */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Uploaded Documents</h4>
-                  <p className="text-sm text-gray-500 text-center py-8">No documents uploaded yet</p>
-                </div>
-              </div>
+                {/* Employee Documents */}
+                <div>
+                  <h4 className="text-md font-medium mb-4 flex items-center">
+                    <DocumentTextIcon className="w-5 h-5 mr-2" />
+                    Employee Documents
+                  </h4>
+                  
+                  <div className="grid grid-cols-4 gap-4 mb-6">
+                    {/* CV/Resume */}
+                    <div className="text-center p-4 border border-gray-200 rounded-lg">
+                      <div className="w-12 h-12 mx-auto mb-2 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <DocumentTextIcon className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">CV/Resume</div>
+                      <div className="text-xs text-gray-500">
+                        {formData.uploadedDocuments?.filter(doc => doc.category === 'cv')?.length || 0} files
+                      </div>
+                    </div>
 
-              {/* Additional Notes */}
-              <div className="mt-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Notes</h3>
-                <textarea
-                  value={formData.additionalNotes}
-                  onChange={(e) => handleInputChange("additionalNotes", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  rows={4}
-                  placeholder="Any additional notes or special requirements for this employee..."
-                />
+                    {/* ID Copy */}
+                    <div className="text-center p-4 border border-gray-200 rounded-lg">
+                      <div className="w-12 h-12 mx-auto mb-2 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        <UserIcon className="w-6 h-6 text-indigo-600" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">ID Copy</div>
+                      <div className="text-xs text-gray-500">
+                        {formData.uploadedDocuments?.filter(doc => doc.category === 'identification')?.length || 0} files
+                      </div>
+                    </div>
+
+                    {/* Qualifications */}
+                    <div className="text-center p-4 border border-gray-200 rounded-lg">
+                      <div className="w-12 h-12 mx-auto mb-2 bg-green-100 rounded-lg flex items-center justify-center">
+                        <AcademicCapIcon className="w-6 h-6 text-green-600" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">Qualifications</div>
+                      <div className="text-xs text-gray-500">
+                        {formData.uploadedDocuments?.filter(doc => doc.category === 'qualifications')?.length || 0} files
+                      </div>
+                    </div>
+
+                    {/* Contracts */}
+                    <div className="text-center p-4 border border-gray-200 rounded-lg">
+                      <div className="w-12 h-12 mx-auto mb-2 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <DocumentTextIcon className="w-6 h-6 text-orange-600" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">Contracts</div>
+                      <div className="text-xs text-gray-500">
+                        {formData.uploadedDocuments?.filter(doc => doc.category === 'contracts')?.length || 0} files
+                      </div>
+                    </div>
+
+                    {/* Medical */}
+                    <div className="text-center p-4 border border-gray-200 rounded-lg">
+                      <div className="w-12 h-12 mx-auto mb-2 bg-pink-100 rounded-lg flex items-center justify-center">
+                        <DocumentTextIcon className="w-6 h-6 text-pink-600" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">Medical</div>
+                      <div className="text-xs text-gray-500">
+                        {formData.uploadedDocuments?.filter(doc => doc.category === 'medical')?.length || 0} files
+                      </div>
+                    </div>
+
+                    {/* References */}
+                    <div className="text-center p-4 border border-gray-200 rounded-lg">
+                      <div className="w-12 h-12 mx-auto mb-2 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <DocumentTextIcon className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">References</div>
+                      <div className="text-xs text-gray-500">
+                        {formData.uploadedDocuments?.filter(doc => doc.category === 'references')?.length || 0} files
+                      </div>
+                    </div>
+
+                    {/* Bank Details */}
+                    <div className="text-center p-4 border border-gray-200 rounded-lg">
+                      <div className="w-12 h-12 mx-auto mb-2 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <BuildingOfficeIcon className="w-6 h-6 text-gray-600" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">Bank Details</div>
+                      <div className="text-xs text-gray-500">
+                        {formData.uploadedDocuments?.filter(doc => doc.category === 'bank')?.length || 0} files
+                      </div>
+                    </div>
+
+                    {/* Other */}
+                    <div className="text-center p-4 border border-gray-200 rounded-lg">
+                      <div className="w-12 h-12 mx-auto mb-2 bg-yellow-100 rounded-lg flex items-center justify-center">
+                        <DocumentTextIcon className="w-6 h-6 text-yellow-600" />
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">Other</div>
+                      <div className="text-xs text-blue-600 font-semibold">
+                        {formData.uploadedDocuments?.filter(doc => doc.category === 'other')?.length || 0} files
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Additional Notes
+                  </label>
+                  <textarea
+                    value={formData.additionalNotes || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, additionalNotes: e.target.value }))}
+                    placeholder="Any additional notes or comments"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -2073,10 +2262,23 @@ export default function AddEmployeePage() {
               ) : (
                 <button
                   onClick={handleSubmit}
-                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center"
+                  disabled={loading.submitting}
+                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <CheckCircleIcon className="w-4 h-4 mr-2" />
-                  Create Employee
+                  {loading.submitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving Documents & Employee...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircleIcon className="w-4 h-4 mr-2" />
+                      Create Employee
+                    </>
+                  )}
                 </button>
               )}
             </div>

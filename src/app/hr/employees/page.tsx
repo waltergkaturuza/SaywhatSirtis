@@ -40,6 +40,7 @@ export default function EmployeesPage() {
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
   const [showViewModal, setShowViewModal] = useState(false)
+  const [activeViewTab, setActiveViewTab] = useState('personal')
   const [showEditModal, setShowEditModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showArchiveModal, setShowArchiveModal] = useState(false)
@@ -316,46 +317,142 @@ export default function EmployeesPage() {
     return matchesSearch && matchesDepartment && matchesStatus
   })
 
-  const handleViewEmployee = (employee: any) => {
-    setSelectedEmployee(employee)
-    setShowViewModal(true)
+  const handleViewEmployee = async (employee: any) => {
+    try {
+      setLoading(true)
+      // Reset tab to personal when opening
+      setActiveViewTab('personal')
+      // Fetch complete employee data from the API
+      const response = await fetch(`/api/hr/employees/${employee.id}`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          console.log('✅ Employee API data received:', result.data)
+          console.log('📞 Phone Number:', result.data.phoneNumber)
+          console.log('📍 Address:', result.data.address)
+          setSelectedEmployee(result.data)
+        } else {
+          console.error('Failed to fetch employee details:', result.error)
+          setSelectedEmployee(employee) // Fallback to basic data
+        }
+      } else {
+        console.error('Failed to fetch employee details')
+        setSelectedEmployee(employee) // Fallback to basic data
+      }
+    } catch (error) {
+      console.error('Error fetching employee details:', error)
+      setSelectedEmployee(employee) // Fallback to basic data
+    } finally {
+      setLoading(false)
+      setShowViewModal(true)
+    }
   }
 
   // Convert snake_case database fields to camelCase for form
   const convertDbDataToFormFormat = (dbData: any) => {
     return {
       id: dbData.id,
+      // Personal Information
       firstName: dbData.firstName,
       lastName: dbData.lastName,
       middleName: dbData.middleName,
-      email: dbData.email,
-      phoneNumber: dbData.phoneNumber,
-      alternativePhone: dbData.alternativePhone,
-      address: dbData.address,
       dateOfBirth: dbData.dateOfBirth,
       gender: dbData.gender,
-      nationality: dbData.nationality,
-      nationalId: dbData.nationalId,
-      emergencyContact: dbData.emergencyContact,
-      emergencyPhone: dbData.emergencyPhone,
+      maritalStatus: dbData.maritalStatus || "",
+      phoneNumber: dbData.phoneNumber,
+      email: dbData.email,
+      personalEmail: dbData.personalEmail,
+      address: dbData.address,
+      emergencyContactName: dbData.emergencyContact,
+      emergencyContact: dbData.emergencyContact, // For EmployeeForm compatibility
+      emergencyContactPhone: dbData.emergencyPhone,
+      emergencyPhone: dbData.emergencyPhone, // For EmployeeForm compatibility
+      emergencyContactRelationship: dbData.emergencyContactRelationship,
+      emergencyRelationship: dbData.emergencyContactRelationship, // For EmployeeForm compatibility
+      
+      // Employment Information
       employeeId: dbData.employeeId,
-      position: dbData.position,
+      department: dbData.department || "",
       departmentId: dbData.departmentId,
-      employmentType: dbData.employmentType,
+      position: dbData.position,
+      supervisorId: dbData.supervisor_id,
+      reviewerId: dbData.reviewerId || "",
       startDate: dbData.startDate,
       hireDate: dbData.hireDate,
-      salary: dbData.salary?.toString() || '',
-      currency: dbData.currency,
-      status: dbData.status,
-      supervisorId: dbData.supervisor_id,
+      employmentType: dbData.employmentType || "FULL_TIME",
+      workLocation: dbData.workLocation || "",
+      country: dbData.country || "",
+      province: dbData.province || "",
       isSupervisor: dbData.is_supervisor || false,
       isReviewer: dbData.is_reviewer || false,
+      
+      // Compensation
+      baseSalary: dbData.salary?.toString() || "",
+      salary: dbData.salary?.toString() || "", // For EmployeeForm compatibility
+      currency: dbData.currency || "USD",
+      payGrade: dbData.payGrade || "",
+      payFrequency: dbData.payFrequency || "monthly",
+      benefits: dbData.benefits || [],
+      
+      // Additional Benefits (new fields)
+      healthInsurance: dbData.healthInsurance || false,
+      dentalCoverage: dbData.dentalCoverage || false,
+      visionCoverage: dbData.visionCoverage || false,
+      lifeInsurance: dbData.lifeInsurance || false,
+      retirementPlan: dbData.retirementPlan || false,
+      flexiblePTO: dbData.flexiblePTO || false,
       medicalAid: dbData.medical_aid || false,
       funeralCover: dbData.funeral_cover || false,
       vehicleBenefit: dbData.vehicle_benefit || false,
       fuelAllowance: dbData.fuel_allowance || false,
       airtimeAllowance: dbData.airtime_allowance || false,
-      otherBenefits: dbData.other_benefits || []
+      otherBenefits: dbData.other_benefits || [],
+      
+      // Education & Skills (updated to match create form)
+      education: dbData.education || "",
+      skills: dbData.skills || [],
+      certifications: dbData.certifications || [],
+      orientationTrainingRequired: dbData.orientationTrainingRequired || false,
+      securityTrainingRequired: dbData.securityTrainingRequired || false,
+      departmentSpecificTrainingRequired: dbData.departmentSpecificTrainingRequired || false,
+      trainingRequired: dbData.trainingRequired || [],
+      
+      // Access & Security (updated)
+      accessLevel: dbData.accessLevel || "basic",
+      userRole: dbData.userRole || "",
+      securityClearance: dbData.securityClearance || "none",
+      documentSecurityClearance: dbData.documentSecurityClearance || dbData.securityClearance || "PUBLIC",
+      systemAccess: dbData.systemAccess || [],
+      
+      // Job Description (new)
+      jobDescription: dbData.jobDescription || {
+        jobTitle: dbData.position || "",
+        location: dbData.workLocation || "",
+        jobSummary: "",
+        keyResponsibilities: [
+          { description: "", weight: 0, tasks: "" }
+        ],
+        essentialExperience: "",
+        essentialSkills: "",
+        acknowledgment: false,
+        signatureFile: null
+      },
+      
+      contractSigned: dbData.contractSigned || false,
+      backgroundCheckCompleted: dbData.backgroundCheckCompleted || false,
+      medicalCheckCompleted: dbData.medicalCheckCompleted || false,
+      trainingCompleted: dbData.trainingCompleted || false,
+      initialTrainingCompleted: dbData.initialTrainingCompleted || false,
+      additionalNotes: dbData.additionalNotes || "",
+      
+      // Documents
+      uploadedDocuments: dbData.uploadedDocuments || [],
+      
+      // System fields
+      status: dbData.status || "ACTIVE",
+      alternativePhone: dbData.alternativePhone,
+      nationality: dbData.nationality,
+      nationalId: dbData.nationalId
     }
   }
 
@@ -390,35 +487,46 @@ export default function EmployeesPage() {
     }
   }
 
-  // Prepare form data for API (already in camelCase format expected by API)
+  // Prepare form data for API (convert form format to API format)
   const prepareFormDataForApi = (formData: any) => {
     return {
       id: formData.id,
+      // Personal Information
       firstName: formData.firstName,
       lastName: formData.lastName,
       middleName: formData.middleName,
-      email: formData.email,
-      phoneNumber: formData.phoneNumber,
-      alternativePhone: formData.alternativePhone,
-      address: formData.address,
       dateOfBirth: formData.dateOfBirth,
       gender: formData.gender,
-      nationality: formData.nationality,
-      nationalId: formData.nationalId,
-      emergencyContact: formData.emergencyContact,
-      emergencyPhone: formData.emergencyPhone,
+      maritalStatus: formData.maritalStatus,
+      phoneNumber: formData.phoneNumber,
+      email: formData.email,
+      personalEmail: formData.personalEmail,
+      address: formData.address,
+      emergencyContact: formData.emergencyContactName,
+      emergencyPhone: formData.emergencyContactPhone,
+      emergencyContactRelationship: formData.emergencyContactRelationship,
+      
+      // Employment Information
       employeeId: formData.employeeId,
-      position: formData.position,
+      department: formData.department,
       departmentId: formData.departmentId,
-      employmentType: formData.employmentType,
+      position: formData.position,
+      supervisorId: formData.supervisorId,
       startDate: formData.startDate,
       hireDate: formData.hireDate,
-      salary: formData.salary,
-      currency: formData.currency,
-      status: formData.status,
-      supervisorId: formData.supervisorId,
+      employmentType: formData.employmentType,
+      workLocation: formData.workLocation,
       isSupervisor: formData.isSupervisor || false,
       isReviewer: formData.isReviewer || false,
+      
+      // Compensation
+      salary: formData.baseSalary,
+      currency: formData.currency,
+      payGrade: formData.payGrade,
+      payFrequency: formData.payFrequency,
+      benefits: formData.benefits,
+      
+      // Additional Benefits
       medicalAid: formData.medicalAid || false,
       funeralCover: formData.funeralCover || false,
       vehicleBenefit: formData.vehicleBenefit || false,
@@ -426,7 +534,32 @@ export default function EmployeesPage() {
       airtimeAllowance: formData.airtimeAllowance || false,
       otherBenefits: formData.otherBenefits ? 
         (Array.isArray(formData.otherBenefits) ? formData.otherBenefits : formData.otherBenefits.split(',').map((b: string) => b.trim())) 
-        : []
+        : [],
+      
+      // Education & Skills
+      education: formData.education,
+      skills: formData.skills,
+      certifications: formData.certifications,
+      trainingRequired: formData.trainingRequired,
+      
+      // Access & Security
+      accessLevel: formData.accessLevel,
+      securityClearance: formData.securityClearance,
+      systemAccess: formData.systemAccess,
+      contractSigned: formData.contractSigned,
+      backgroundCheckCompleted: formData.backgroundCheckCompleted,
+      medicalCheckCompleted: formData.medicalCheckCompleted,
+      trainingCompleted: formData.trainingCompleted,
+      additionalNotes: formData.additionalNotes,
+      
+      // Documents
+      uploadedDocuments: formData.uploadedDocuments,
+      
+      // System fields
+      status: formData.status,
+      alternativePhone: formData.alternativePhone,
+      nationality: formData.nationality,
+      nationalId: formData.nationalId
     }
   }
 
@@ -815,168 +948,373 @@ export default function EmployeesPage() {
 
       {/* View Employee Modal */}
       <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Employee Details</DialogTitle>
+            <DialogTitle>Employee Profile</DialogTitle>
           </DialogHeader>
           {selectedEmployee && (
-            <div className="space-y-6">
-              <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <span className="text-xl font-medium text-indigo-600">
-                    {selectedEmployee.name.split(' ').map((n: string) => n[0]).join('')}
-                  </span>
+            <div className="space-y-8">
+              {/* Header Section */}
+              <div className="flex items-center space-x-6 bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl border-l-4 border-orange-500">
+                <div className="h-20 w-20 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                  {(selectedEmployee.firstName?.[0] || '') + (selectedEmployee.lastName?.[0] || '')}
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">{selectedEmployee.name}</h3>
-                  <p className="text-gray-600">{selectedEmployee.position}</p>
-                  <p className="text-sm text-gray-500">ID: {selectedEmployee.employeeId}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Email</Label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedEmployee.email}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Phone</Label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedEmployee.phone}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Department</Label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedEmployee.department}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Location</Label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedEmployee.location}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Hire Date</Label>
-                  <p className="mt-1 text-sm text-gray-900">{formatDate(selectedEmployee.hireDate)}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Status</Label>
-                  <span className={`mt-1 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedEmployee.status)}`}>
-                    {getStatusText(selectedEmployee.status)}
-                  </span>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-700">Performance Rating</Label>
-                  <div className="mt-1 flex items-center">
-                    <div className="flex">{renderStars(selectedEmployee.performance)}</div>
-                    <span className="ml-2 text-sm text-gray-600">{selectedEmployee.performance}</span>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {selectedEmployee.firstName} {selectedEmployee.middleName} {selectedEmployee.lastName}
+                  </h3>
+                  <p className="text-lg text-gray-600">{selectedEmployee.position}</p>
+                  <div className="flex items-center space-x-4 mt-2">
+                    <span className="text-sm text-gray-500">ID: {selectedEmployee.employeeId}</span>
+                    <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedEmployee.status)}`}>
+                      {getStatusText(selectedEmployee.status)}
+                    </span>
                   </div>
                 </div>
               </div>
-              
-              {/* Training Certificates Section */}
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-medium text-gray-900">Training Certificates</h4>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      // TODO: Open certificate upload modal
-                      alert('Certificate upload functionality will be implemented')
-                    }}
-                  >
-                    <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
-                    Upload Certificate
-                  </Button>
-                </div>
-                
-                <div className="space-y-3">
-                  {/* Sample certificates - replace with actual data */}
+
+              {/* Tabbed Content */}
+              <div className="border-b border-gray-200">
+                <nav className="-mb-px flex space-x-8">
                   {[
-                    {
-                      id: 1,
-                      name: "Leadership Training Certificate",
-                      issuer: "Agora Learning Platform",
-                      dateCompleted: "2024-01-15",
-                      certificateNumber: "AGR-2024-001",
-                      status: "verified"
-                    },
-                    {
-                      id: 2,
-                      name: "Data Protection & Privacy",
-                      issuer: "Learner's Hub",
-                      dateCompleted: "2024-02-28",
-                      certificateNumber: "LH-2024-047",
-                      status: "verified"
-                    },
-                    {
-                      id: 3,
-                      name: "Project Management Basics",
-                      issuer: "Agora Learning Platform",
-                      dateCompleted: "2024-03-10",
-                      certificateNumber: "AGR-2024-089",
-                      status: "pending"
-                    }
-                  ].map((cert) => (
-                    <div key={cert.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-2 h-2 rounded-full ${
-                          cert.status === 'verified' ? 'bg-green-500' : 'bg-yellow-500'
-                        }`} />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{cert.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {cert.issuer} • {formatDate(cert.dateCompleted)}
-                          </p>
-                          <p className="text-xs text-gray-400">Cert #: {cert.certificateNumber}</p>
-                        </div>
+                    { id: 'personal', label: 'Personal Info', icon: '👤' },
+                    { id: 'employment', label: 'Employment', icon: '💼' },
+                    { id: 'compensation', label: 'Compensation', icon: '💰' },
+                    { id: 'skills', label: 'Skills & Education', icon: '🎓' },
+                    { id: 'access', label: 'Access & Security', icon: '🔐' },
+                    { id: 'documents', label: 'Documents', icon: '📄' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveViewTab(tab.id)}
+                      className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                        activeViewTab === tab.id
+                          ? 'border-orange-500 text-orange-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className="mr-2">{tab.icon}</span>
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Tab Content */}
+              <div className="py-6">
+                {activeViewTab === 'personal' && (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Full Name</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.firstName} {selectedEmployee.middleName} {selectedEmployee.lastName}
+                        </p>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          cert.status === 'verified' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {cert.status === 'verified' ? 'Verified' : 'Pending'}
-                        </span>
-                        <Button size="sm" variant="ghost">
-                          <EyeIcon className="w-4 h-4" />
-                        </Button>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Date of Birth</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.dateOfBirth ? formatDate(selectedEmployee.dateOfBirth) : 'Not provided'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Gender</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.gender || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Marital Status</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.maritalStatus || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Nationality</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.nationality || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">National ID</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.nationalId || 'Not provided'}</p>
                       </div>
                     </div>
-                  ))}
-                  
-                  {/* Add certificate button */}
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                    <p className="text-sm text-gray-500 mb-2">Upload additional certificates</p>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => {
-                        // TODO: Implement certificate upload
-                        const input = document.createElement('input')
-                        input.type = 'file'
-                        input.accept = '.pdf,.jpg,.jpeg,.png'
-                        input.multiple = true
-                        input.onchange = (e) => {
-                          const files = (e.target as HTMLInputElement).files
-                          if (files) {
-                            console.log('Certificate files selected:', files)
-                            alert(`Selected ${files.length} certificate(s) for upload`)
-                          }
-                        }
-                        input.click()
-                      }}
-                    >
-                      <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
-                      Choose Files
-                    </Button>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Email</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.email}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Personal Email</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.personalEmail || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Phone Number</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.phoneNumber || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Alternative Phone</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.alternativePhone || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Address</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.address || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Emergency Contact</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.emergencyContact || 'Not provided'}
+                          {selectedEmployee.emergencyPhone && ` - ${selectedEmployee.emergencyPhone}`}
+                          {selectedEmployee.emergencyContactRelationship && ` (${selectedEmployee.emergencyContactRelationship})`}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {activeViewTab === 'employment' && (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Employee ID</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.employeeId}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Position</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.position}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Department</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.department}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Supervisor</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.supervisor 
+                            ? `${selectedEmployee.supervisor.firstName} ${selectedEmployee.supervisor.lastName}` 
+                            : 'Not assigned'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Work Location</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.workLocation || 'Not specified'}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Start Date</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.startDate ? formatDate(selectedEmployee.startDate) : 'Not provided'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Hire Date</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.hireDate ? formatDate(selectedEmployee.hireDate) : 'Not provided'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Employment Type</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.employmentType || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Supervisor Role</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.isSupervisor ? 'Yes' : 'No'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Reviewer Role</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.isReviewer ? 'Yes' : 'No'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeViewTab === 'compensation' && (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Salary</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.salary 
+                            ? `${selectedEmployee.currency || 'USD'} ${Number(selectedEmployee.salary).toLocaleString()}`
+                            : 'Not specified'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Pay Grade</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.payGrade || 'Not assigned'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Pay Frequency</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.payFrequency || 'Not specified'}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Benefits</Label>
+                        <div className="mt-2 space-y-1">
+                          {[
+                            { key: 'medicalAid', label: 'Medical Aid' },
+                            { key: 'funeralCover', label: 'Funeral Cover' },
+                            { key: 'vehicleBenefit', label: 'Vehicle Benefit' },
+                            { key: 'fuelAllowance', label: 'Fuel Allowance' },
+                            { key: 'airtimeAllowance', label: 'Airtime Allowance' }
+                          ].map(benefit => (
+                            <div key={benefit.key} className="flex items-center">
+                              <span className={`w-2 h-2 rounded-full mr-2 ${
+                                selectedEmployee[benefit.key] ? 'bg-green-500' : 'bg-gray-300'
+                              }`} />
+                              <span className="text-sm text-gray-700">{benefit.label}</span>
+                            </div>
+                          ))}
+                          {selectedEmployee.otherBenefits && selectedEmployee.otherBenefits.length > 0 && (
+                            <div className="mt-2">
+                              <Label className="text-xs font-medium text-gray-600">Other Benefits:</Label>
+                              <p className="text-sm text-gray-900">{selectedEmployee.otherBenefits.join(', ')}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeViewTab === 'skills' && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Education Level</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.education || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Skills</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {Array.isArray(selectedEmployee.skills) 
+                            ? selectedEmployee.skills.join(', ') 
+                            : selectedEmployee.skills || 'Not specified'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Certifications</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {Array.isArray(selectedEmployee.certifications) 
+                            ? selectedEmployee.certifications.join(', ') 
+                            : selectedEmployee.certifications || 'None listed'}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700">Training Requirements</Label>
+                      <div className="mt-2 space-y-1">
+                        {[
+                          { key: 'orientationTrainingRequired', label: 'Orientation Training' },
+                          { key: 'securityTrainingRequired', label: 'Security Training' },
+                          { key: 'departmentSpecificTrainingRequired', label: 'Department-Specific Training' }
+                        ].map(training => (
+                          <div key={training.key} className="flex items-center">
+                            <span className={`w-2 h-2 rounded-full mr-2 ${
+                              selectedEmployee[training.key] ? 'bg-orange-500' : 'bg-gray-300'
+                            }`} />
+                            <span className="text-sm text-gray-700">{training.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {selectedEmployee.additionalNotes && (
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Additional Notes</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.additionalNotes}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeViewTab === 'access' && (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Access Level</Label>
+                        <p className="mt-1 text-sm text-gray-900 capitalize">{selectedEmployee.accessLevel || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Security Clearance</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.securityClearance || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">System Access</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {Array.isArray(selectedEmployee.systemAccess) && selectedEmployee.systemAccess.length > 0
+                            ? selectedEmployee.systemAccess.join(', ')
+                            : 'No special access granted'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Document Status</Label>
+                        <div className="mt-2 space-y-1">
+                          {[
+                            { key: 'contractSigned', label: 'Contract Signed' },
+                            { key: 'backgroundCheckCompleted', label: 'Background Check' },
+                            { key: 'medicalCheckCompleted', label: 'Medical Check' },
+                            { key: 'trainingCompleted', label: 'Training Completed' }
+                          ].map(status => (
+                            <div key={status.key} className="flex items-center">
+                              <span className={`w-2 h-2 rounded-full mr-2 ${
+                                selectedEmployee[status.key] ? 'bg-green-500' : 'bg-red-500'
+                              }`} />
+                              <span className="text-sm text-gray-700">{status.label}</span>
+                              <span className={`ml-2 text-xs ${
+                                selectedEmployee[status.key] ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {selectedEmployee[status.key] ? 'Completed' : 'Pending'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeViewTab === 'documents' && (
+                  <div className="space-y-6">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-700 mb-4 block">Employee Documents</Label>
+                      <div className="grid grid-cols-4 gap-4">
+                        {[
+                          { category: 'cv', label: 'CV/Resume', icon: '📄', color: 'purple' },
+                          { category: 'identification', label: 'ID Copy', icon: '🆔', color: 'indigo' },
+                          { category: 'qualifications', label: 'Qualifications', icon: '🎓', color: 'green' },
+                          { category: 'contracts', label: 'Contracts', icon: '📋', color: 'orange' },
+                          { category: 'medical', label: 'Medical', icon: '🏥', color: 'pink' },
+                          { category: 'references', label: 'References', icon: '📝', color: 'blue' },
+                          { category: 'bank', label: 'Bank Details', icon: '🏦', color: 'gray' },
+                          { category: 'other', label: 'Other', icon: '📁', color: 'yellow' }
+                        ].map(docType => {
+                          const count = selectedEmployee.uploadedDocuments
+                            ? selectedEmployee.uploadedDocuments.filter((doc: any) => doc.category === docType.category).length
+                            : 0
+                          return (
+                            <div key={docType.category} className="text-center p-4 border border-gray-200 rounded-lg">
+                              <div className={`w-12 h-12 mx-auto mb-2 bg-${docType.color}-100 rounded-lg flex items-center justify-center text-2xl`}>
+                                {docType.icon}
+                              </div>
+                              <div className="text-sm font-medium text-gray-900">{docType.label}</div>
+                              <div className="text-xs text-gray-500">{count} file{count !== 1 ? 's' : ''}</div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              
-              <div className="flex justify-end space-x-3">
+
+              <div className="flex justify-end space-x-3 border-t pt-6">
                 <DownloadPDFButton
                   data={[selectedEmployee]}
                   filename={`employee-${selectedEmployee.employeeId}-profile`}
-                  title={`${selectedEmployee.name} - Employee Profile`}
+                  title={`${selectedEmployee.firstName} ${selectedEmployee.lastName} - Employee Profile`}
                   headers={['Name', 'Email', 'Phone', 'Department', 'Position', 'Status']}
                   variant="outline"
                   iconOnly={false}

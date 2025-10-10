@@ -63,35 +63,35 @@ model assets {
   name                String
   description         String?
   category            String
-  assetType           String?
   brand               String?
   model               String?
   serialNumber        String?
   purchaseDate        DateTime?
   purchasePrice       Float?
   currentValue        Float?
-  depreciationRate    Float?                @default(0)
-  depreciationMethod  String?               @default("straight-line")
-  fundingSource       String?
   location            String?
-  department          String?
-  assignedTo          String?
-  assignedEmail       String?
   condition           AssetCondition        @default(GOOD)
   status              String                @default("ACTIVE")
   warrantyExpiry      DateTime?
-  rfidTag             String?
-  qrCode              String?
-  barcodeId           String?
-  insuranceValue      Float?
-  insurancePolicy     String?
-  images              String[]              @default([])
-  documents           String[]              @default([])
   createdAt           DateTime              @default(now())
   updatedAt           DateTime
+  assetType           String?
+  assignedEmail       String?
+  assignedTo          String?
+  barcodeId           String?
+  department          String?
+  depreciationMethod  String?               @default("straight-line")
+  depreciationRate    Float?                @default(0)
+  documents           String[]              @default([])
+  fundingSource       String?
+  images              String[]              @default([])
+  insurancePolicy     String?
+  insuranceValue      Float?
+  qrCode              String?
+  rfidTag             String?
   asset_audits        asset_audits[]
   maintenance_records maintenance_records[]
-  audits              Audit[]              @relation("AuditAssets")
+  audits              Audit[]               @relation("AuditAssets")
 
   @@index([assetTag])
   @@index([category])
@@ -106,42 +106,26 @@ model assets {
 }
 
 model Audit {
-  id              String       @id @default(uuid())
+  id              String      @id @default(uuid())
   name            String
   type            AuditType
-  status          AuditStatus  @default(PENDING)
+  status          AuditStatus @default(PENDING)
   scheduledDate   DateTime
   completedDate   DateTime?
   auditor         String
   description     String?
-  findings        String[]     @default([])
-  recommendations String[]     @default([])
-  documents       String[]     @default([])
-  progress        Int?         @default(0)
-  assets          assets[]     @relation("AuditAssets")
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  findings        String[]    @default([])
+  recommendations String[]    @default([])
+  progress        Int?        @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  documents       String[]    @default([])
+  assets          assets[]    @relation("AuditAssets")
 
   @@index([status])
   @@index([type])
   @@index([scheduledDate])
   @@index([auditor])
-}
-
-enum AuditType {
-  FULL_INVENTORY
-  PARTIAL_INVENTORY
-  COMPLIANCE_AUDIT
-  FINANCIAL_AUDIT
-  SECURITY_AUDIT
-  QUALITY_AUDIT
-}
-
-enum AuditStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
 }
 
 model audit_logs {
@@ -176,62 +160,57 @@ model batch_analyses {
 }
 
 model call_records {
-  id                 String    @id
-  caseNumber         String    @unique
-  callNumber         String?
-  officerName        String?
-  // Caller Information
-  callerName         String
-  callerPhone        String?
-  callerEmail        String?
-  callerAge          String?
-  callerGender       String?
-  callerKeyPopulation String?
-  callerProvince     String?
-  callerAddress      String?
-  // Call Details
-  callType           String?   @default("INBOUND")
-  modeOfCommunication String?
+  id                   String    @id
+  caseNumber           String    @unique
+  callNumber           String?
+  officerName          String?
+  callerName           String
+  callerPhone          String?
+  callerEmail          String?
+  callerAge            String?
+  callerGender         String?
+  callerKeyPopulation  String?
+  callerProvince       String?
+  callerAddress        String?
+  callType             String?   @default("INBOUND")
+  modeOfCommunication  String?
   howDidYouHearAboutUs String?
-  callValidity       String?   @default("valid")
-  newOrRepeatCall    String?   @default("new")
-  language           String?   @default("English")
-  callDescription    String?
-  purpose            String?   @default("HIV/AIDS")
-  isCase             String?   @default("NO")
-  // Client Information (person who needs help)
-  clientName         String?
-  clientAge          String?
-  clientSex          String?
-  clientAddress      String?
-  clientProvince     String?
-  // Additional Information
-  perpetrator        String?
-  servicesRecommended String?
-  referral           String?   @db.Text
-  voucherIssued      String?   @default("NO")
-  voucherValue       String?
-  comment            String?   @db.Text
-  // System Fields
-  category           String?   @default("INQUIRY")
-  priority           String?   @default("MEDIUM")
-  status             String?   @default("OPEN")
-  subject            String
-  description        String?
-  assignedOfficer    String?
-  summary            String?
-  notes              String?
-  resolution         String?
-  satisfactionRating Int?
-  callStartTime      DateTime?
-  callEndTime        DateTime?
-  resolvedAt         DateTime?
-  district           String?
-  ward               String?
-  followUpRequired   Boolean   @default(false)
-  followUpDate       DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime
+  callValidity         String?   @default("valid")
+  newOrRepeatCall      String?   @default("new")
+  language             String?   @default("English")
+  callDescription      String?
+  purpose              String?   @default("HIV/AIDS")
+  isCase               String?   @default("NO")
+  clientName           String?
+  clientAge            String?
+  clientSex            String?
+  clientAddress        String?
+  clientProvince       String?
+  perpetrator          String?
+  servicesRecommended  String?
+  referral             String?
+  voucherIssued        String?   @default("NO")
+  voucherValue         String?
+  comment              String?
+  category             String?   @default("INQUIRY")
+  priority             String?   @default("MEDIUM")
+  status               String?   @default("OPEN")
+  subject              String
+  description          String?
+  assignedOfficer      String?
+  summary              String?
+  notes                String?
+  resolution           String?
+  satisfactionRating   Int?
+  callStartTime        DateTime?
+  callEndTime          DateTime?
+  resolvedAt           DateTime?
+  district             String?
+  ward                 String?
+  followUpRequired     Boolean   @default(false)
+  followUpDate         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime
 
   @@index([assignedOfficer])
   @@index([callStartTime])
@@ -535,14 +514,11 @@ model documents {
   author                     String?
   department                 String?
   departmentId               String?
-  folderPath                 String? // Auto-generated path: "Department/Category"
   projectId                  String?
   customMetadata             Json?
   approvalStatus             DocumentApprovalStatus      @default(DRAFT)
   approvedBy                 String?
   approvedAt                 DateTime?
-  isPersonalRepo             Boolean                     @default(true) // Documents start in personal repo
-  publishedAt                DateTime? // When moved to main repository
   reviewStatus               DocumentReviewStatus        @default(PENDING)
   sentimentScore             Float?
   readabilityScore           Float?
@@ -562,6 +538,9 @@ model documents {
   deletedBy                  String?
   createdAt                  DateTime                    @default(now())
   updatedAt                  DateTime
+  folderPath                 String?
+  isPersonalRepo             Boolean                     @default(true)
+  publishedAt                DateTime?
   document_activities        document_activities[]
   document_analysis          document_analysis?
   document_audit_logs        document_audit_logs[]
@@ -597,15 +576,15 @@ model documents {
 
 model document_category_folders {
   id            String   @id @default(cuid())
-  path          String   @unique // Full path: "Department/Category"
-  department    String   // Department name
-  category      String   // Document category
+  path          String   @unique
+  department    String
+  category      String
   documentCount Int      @default(0) @map("document_count")
   createdBy     String?  @map("created_by")
   createdAt     DateTime @default(now()) @map("created_at")
   lastUpdated   DateTime @default(now()) @updatedAt @map("last_updated")
   isActive      Boolean  @default(true) @map("is_active")
-  metadata      Json?    // Additional folder metadata
+  metadata      Json?
 
   @@unique([department, category])
   @@index([department])
@@ -615,65 +594,92 @@ model document_category_folders {
 }
 
 model employees {
-  id                       String                     @id
-  userId                   String                     @unique
-  employeeId               String                     @unique
-  firstName                String
-  lastName                 String
-  middleName               String?
-  dateOfBirth              DateTime?
-  gender                   String?
-  nationality              String?
-  nationalId               String?                    @unique
-  passportNumber           String?
-  email                    String                     @unique
-  phoneNumber              String?
-  alternativePhone         String?
-  personalEmail            String?
-  alternativeEmail         String?
-  address                  String?
-  emergencyContact         String?
-  emergencyPhone           String?
-  emergencyContactAddress  String?
-  emergencyContactRelationship String?
-  profilePicture           String?
-  department               String?
-  position                 String
-  employmentType           String                     @default("FULL_TIME")
-  startDate                DateTime
-  endDate                  DateTime?
-  salary                   Float?
-  currency                 String?                    @default("USD")
-  status                   String                     @default("ACTIVE")
-  supervisor_id            String?
-  is_supervisor            Boolean                    @default(false)
-  is_reviewer              Boolean                    @default(false)
-  medical_aid              Boolean                    @default(false)
-  funeral_cover            Boolean                    @default(false)
-  vehicle_benefit          Boolean                    @default(false)
-  fuel_allowance           Boolean                    @default(false)
-  airtime_allowance        Boolean                    @default(false)
-  other_benefits           String[]                   @default([])
-  archived_at              DateTime?
-  archive_reason           String?
-  access_revoked           Boolean                    @default(false)
-  createdAt                DateTime                   @default(now())
-  updatedAt                DateTime
-  hireDate                 DateTime?
-  departmentId             String?
-  departments              departments?               @relation(fields: [departmentId], references: [id])
-  employees                employees?                 @relation("employeesToemployees", fields: [supervisor_id], references: [id])
-  other_employees          employees[]                @relation("employeesToemployees")
-  users                    users                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job_descriptions         job_descriptions?
-  notifications            notifications[]
-  performance_achievements performance_achievements[]
-  performance_appraisals   performance_appraisals[]
-  performance_plans        performance_plans[]
-  performance_reviews      performance_reviews[]
-  qualifications           qualifications[]
-  training_attendance      training_attendance[]
-  training_enrollments     training_enrollments[]
+  id                                    String                     @id
+  userId                                String                     @unique
+  employeeId                            String                     @unique
+  firstName                             String
+  lastName                              String
+  middleName                            String?
+  dateOfBirth                           DateTime?
+  gender                                String?
+  nationality                           String?
+  nationalId                            String?                    @unique
+  passportNumber                        String?
+  email                                 String                     @unique
+  phoneNumber                           String?
+  alternativePhone                      String?
+  personalEmail                         String?
+  alternativeEmail                      String?
+  address                               String?
+  emergencyContact                      String?
+  emergencyPhone                        String?
+  emergencyContactAddress               String?
+  emergencyContactRelationship          String?
+  profilePicture                        String?
+  department                            String?
+  position                              String
+  employmentType                        String                     @default("FULL_TIME")
+  startDate                             DateTime
+  endDate                               DateTime?
+  salary                                Float?
+  currency                              String?                    @default("USD")
+  status                                String                     @default("ACTIVE")
+  supervisor_id                         String?
+  is_supervisor                         Boolean                    @default(false)
+  is_reviewer                           Boolean                    @default(false)
+  medical_aid                           Boolean                    @default(false)
+  funeral_cover                         Boolean                    @default(false)
+  vehicle_benefit                       Boolean                    @default(false)
+  fuel_allowance                        Boolean                    @default(false)
+  airtime_allowance                     Boolean                    @default(false)
+  other_benefits                        String[]                   @default([])
+  archived_at                           DateTime?
+  archive_reason                        String?
+  access_revoked                        Boolean                    @default(false)
+  createdAt                             DateTime                   @default(now())
+  updatedAt                             DateTime
+  hireDate                              DateTime?
+  departmentId                          String?
+  marital_status                        String?                    @db.VarChar(255)
+  country                               String?                    @db.VarChar(255)
+  province                              String?                    @db.VarChar(255)
+  work_location                         String?                    @db.VarChar(255)
+  pay_grade                             String?                    @db.VarChar(255)
+  pay_frequency                         String?                    @default("MONTHLY") @db.VarChar(255)
+  education                             String?
+  skills                                String[]                   @default([])
+  certifications                        String[]                   @default([])
+  health_insurance                      Boolean?                   @default(false)
+  dental_coverage                       Boolean?                   @default(false)
+  vision_coverage                       Boolean?                   @default(false)
+  life_insurance                        Boolean?                   @default(false)
+  retirement_plan                       Boolean?                   @default(false)
+  flexible_pto                          Boolean?                   @default(false)
+  orientation_training_required         Boolean?                   @default(false)
+  security_training_required            Boolean?                   @default(false)
+  department_specific_training_required Boolean?                   @default(false)
+  training_completed                    Boolean?                   @default(false)
+  initial_training_completed            Boolean?                   @default(false)
+  access_level                          String?                    @default("BASIC") @db.VarChar(255)
+  user_role                             String?                    @default("EMPLOYEE") @db.VarChar(255)
+  system_access                         String[]                   @default([])
+  document_security_clearance           String?                    @default("STANDARD") @db.VarChar(255)
+  contract_signed                       Boolean?                   @default(false)
+  background_check_completed            Boolean?                   @default(false)
+  medical_check_completed               Boolean?                   @default(false)
+  departments                           departments?               @relation(fields: [departmentId], references: [id])
+  employees                             employees?                 @relation("employeesToemployees", fields: [supervisor_id], references: [id])
+  other_employees                       employees[]                @relation("employeesToemployees")
+  users                                 users                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job_descriptions                      job_descriptions?
+  notifications                         notifications[]
+  performance_achievements              performance_achievements[]
+  performance_appraisals                performance_appraisals[]
+  performance_plans                     performance_plans[]
+  performance_reviews                   performance_reviews[]
+  qualifications                        qualifications[]
+  training_attendance                   training_attendance[]
+  training_enrollments                  training_enrollments[]
 
   @@index([archived_at])
   @@index([department])
@@ -1440,6 +1446,22 @@ model verificationtokens {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+enum AuditType {
+  FULL_INVENTORY
+  PARTIAL_INVENTORY
+  COMPLIANCE_AUDIT
+  FINANCIAL_AUDIT
+  SECURITY_AUDIT
+  QUALITY_AUDIT
+}
+
+enum AuditStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
 enum ActivityStatus {

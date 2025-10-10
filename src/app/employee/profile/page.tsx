@@ -23,6 +23,9 @@ import {
   IdentificationIcon,
   BriefcaseIcon,
   ShieldCheckIcon,
+  LockClosedIcon,
+  EyeIcon,
+  EyeSlashIcon,
 } from "@heroicons/react/24/outline";
 
 interface ProfileData {
@@ -55,6 +58,17 @@ export default function EmployeeProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Password change state
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     phoneNumber: '',
@@ -94,6 +108,35 @@ export default function EmployeeProfilePage() {
         emergencyContactRelationship: data.emergencyContactRelationship || '',
         profilePicture: data.profilePicture || ''
       });
+      
+      // Check for backup data from localStorage
+      const backup = localStorage.getItem('profileUpdateBackup');
+      if (backup) {
+        try {
+          const { data: backupData, timestamp } = JSON.parse(backup);
+          const backupAge = new Date().getTime() - new Date(timestamp).getTime();
+          
+          // If backup is less than 1 hour old, offer to restore it
+          if (backupAge < 3600000) {
+            const shouldRestore = confirm(
+              'Found unsaved changes from your previous session. Would you like to restore them?'
+            );
+            if (shouldRestore) {
+              setFormData(backupData);
+              setEditMode(true);
+              setSuccessMessage('Previous unsaved changes restored. You can save them now.');
+            } else {
+              localStorage.removeItem('profileUpdateBackup');
+            }
+          } else {
+            // Remove old backup
+            localStorage.removeItem('profileUpdateBackup');
+          }
+        } catch (e) {
+          console.error('Error parsing backup data:', e);
+          localStorage.removeItem('profileUpdateBackup');
+        }
+      }
     } catch (err) {
       console.error('Error loading profile:', err);
       setError('Failed to load profile. Please try again.');
@@ -108,6 +151,14 @@ export default function EmployeeProfilePage() {
       setError(null);
       setSuccessMessage(null);
 
+      console.log('Sending profile update with data:', formData);
+      
+      // Save to localStorage as backup
+      localStorage.setItem('profileUpdateBackup', JSON.stringify({
+        data: formData,
+        timestamp: new Date().toISOString()
+      }));
+
       const response = await fetch('/api/employee/profile', {
         method: 'PUT',
         headers: {
@@ -116,11 +167,33 @@ export default function EmployeeProfilePage() {
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
-      }
-
+      console.log('Response status:', response.status);
+      
       const updatedProfile = await response.json();
+      console.log('Updated profile received:', updatedProfile);
+      
+      // Handle fallback response (database issues)
+      if (updatedProfile._fallback) {
+        setSuccessMessage(updatedProfile.message || 'Profile update is being processed. Please refresh to see changes.');
+        // Don't update the profile state since the update might not have persisted
+        setEditMode(false);
+        setTimeout(() => {
+          setSuccessMessage(null);
+          // Suggest refreshing the page to check if changes persisted
+          setSuccessMessage('💡 Tip: Refresh the page to check if your changes were saved.');
+        }, 8000);
+        return;
+      }
+      
+      if (!response.ok) {
+        const errorData = updatedProfile;
+        console.error('Error response:', errorData);
+        throw new Error(errorData.error || 'Failed to update profile');
+      }
+      
+      // Clear backup on successful save
+      localStorage.removeItem('profileUpdateBackup');
+      
       setProfile(updatedProfile);
       setEditMode(false);
       setSuccessMessage('Profile updated successfully!');
@@ -128,9 +201,73 @@ export default function EmployeeProfilePage() {
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       console.error('Error saving profile:', err);
-      setError('Failed to save profile. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    try {
+      setPasswordLoading(true);
+      setPasswordError(null);
+      setPasswordSuccess(null);
+
+      // Validation
+      if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+        setPasswordError('All fields are required');
+        return;
+      }
+
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        setPasswordError('New passwords do not match');
+        return;
+      }
+
+      if (passwordData.newPassword.length < 8) {
+        setPasswordError('New password must be at least 8 characters long');
+        return;
+      }
+
+      // Password strength validation
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+      if (!passwordRegex.test(passwordData.newPassword)) {
+        setPasswordError('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
+        return;
+      }
+
+      const response = await fetch('/api/employee/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+          confirmPassword: passwordData.confirmPassword
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update password');
+      }
+
+      setPasswordSuccess('Password updated successfully!');
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setShowPasswordChange(false);
+      
+      setTimeout(() => setPasswordSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('Error changing password:', err);
+      setPasswordError(err.message || 'Failed to change password. Please try again.');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -540,6 +677,129 @@ export default function EmployeeProfilePage() {
                           )}
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security Section */}
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                  <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
+                    <h3 className="text-xl font-bold text-white flex items-center">
+                      <ShieldCheckIcon className="mr-3 h-6 w-6" />
+                      Security Settings
+                    </h3>
+                  </div>
+                  <div className="p-6">
+                    {/* Password Management */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                            <LockClosedIcon className="mr-2 h-5 w-5 text-blue-600" />
+                            Password
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">Change your account password</p>
+                        </div>
+                        <button
+                          onClick={() => setShowPasswordChange(!showPasswordChange)}
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <LockClosedIcon className="h-4 w-4 mr-2" />
+                          Change Password
+                        </button>
+                      </div>
+
+                      {/* Password Change Form */}
+                      {showPasswordChange && (
+                        <div className="mt-4 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                          <h5 className="text-lg font-semibold text-gray-900 mb-4">Change Password</h5>
+                          
+                          {passwordError && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-sm text-red-600">{passwordError}</p>
+                            </div>
+                          )}
+
+                          {passwordSuccess && (
+                            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <p className="text-sm text-green-600">{passwordSuccess}</p>
+                            </div>
+                          )}
+
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Current Password
+                              </label>
+                              <input
+                                type="password"
+                                value={passwordData.currentPassword}
+                                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter current password"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                New Password
+                              </label>
+                              <input
+                                type="password"
+                                value={passwordData.newPassword}
+                                onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter new password"
+                                minLength={8}
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Must be at least 8 characters with uppercase, lowercase, number, and special character
+                              </p>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Confirm New Password
+                              </label>
+                              <input
+                                type="password"
+                                value={passwordData.confirmPassword}
+                                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Confirm new password"
+                                minLength={8}
+                              />
+                            </div>
+
+                            <div className="flex space-x-3 pt-2">
+                              <button
+                                onClick={handlePasswordChange}
+                                disabled={passwordLoading}
+                                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                              >
+                                <CheckIcon className="h-4 w-4 mr-2" />
+                                {passwordLoading ? 'Updating...' : 'Update Password'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowPasswordChange(false);
+                                  setPasswordData({
+                                    currentPassword: '',
+                                    newPassword: '',
+                                    confirmPassword: ''
+                                  });
+                                  setPasswordError(null);
+                                  setPasswordSuccess(null);
+                                }}
+                                className="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                              >
+                                <XMarkIcon className="h-4 w-4 mr-2" />
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
