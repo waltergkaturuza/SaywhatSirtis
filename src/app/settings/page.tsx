@@ -3,6 +3,7 @@
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import RoleManagementSystem from "@/components/admin/role-management-system"
 import RoleManagement from "@/components/admin/RoleManagement"
+import { AdminOnly } from "@/components/auth/role-guard"
 import { useState, useEffect } from "react"
 import {
   Cog6ToothIcon,
@@ -330,10 +331,19 @@ export default function SettingsPage() {
 
 
   return (
-    <ModulePage
-      metadata={metadata}
-      sidebar={sidebar}
-    >
+    <AdminOnly fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-4">You don't have permission to access system settings.</p>
+          <p className="text-sm text-gray-500">Only system administrators can access this page.</p>
+        </div>
+      </div>
+    }>
+      <ModulePage
+        metadata={metadata}
+        sidebar={sidebar}
+      >
       <div className="space-y-6">
         {/* Settings Navigation */}
         <div className="bg-white shadow rounded-lg">
@@ -1135,5 +1145,6 @@ export default function SettingsPage() {
         </div>
       </div>
     </ModulePage>
+    </AdminOnly>
   )
 }

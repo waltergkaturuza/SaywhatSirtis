@@ -25,9 +25,17 @@ interface HeaderProps {
 export default function Header({ onMenuClick, currentModule }: HeaderProps) {
   const { data: session } = useSession()
 
+  // Check if user is system administrator
+  const isSystemAdmin = () => {
+    if (!session?.user) return false
+    const userRoles = session.user.roles as string[] || []
+    return userRoles.includes('ADMIN') || userRoles.includes('SUPER_ADMIN')
+  }
+
+  // Filter user navigation based on role
   const userNavigation = [
     { name: "Your Profile", href: "/profile" },
-    { name: "Settings", href: "/settings" },
+    ...(isSystemAdmin() ? [{ name: "Settings", href: "/settings" }] : []),
     { name: "Sign out", onClick: () => signOut({ callbackUrl: "/auth/signin" }) }
   ]
 
