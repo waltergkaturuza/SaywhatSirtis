@@ -830,7 +830,7 @@ export default function EmployeesPage() {
                   <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Contact
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider max-w-40">
                     Department
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
@@ -874,9 +874,9 @@ export default function EmployeesPage() {
                         {employee.phone}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-saywhat-black font-medium">{employee.department}</div>
-                      <div className="text-sm text-saywhat-grey">{employee.location}</div>
+                    <td className="px-6 py-4 max-w-40">
+                      <div className="text-sm text-saywhat-black font-medium break-words">{employee.department}</div>
+                      <div className="text-sm text-saywhat-grey break-words">{employee.location}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(employee.status)}`}>

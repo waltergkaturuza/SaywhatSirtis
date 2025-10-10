@@ -82,9 +82,33 @@ export function DownloadButton({
       // Prepare export data in the expected format
       const exportData = {
         headers: headers || (data.length > 0 ? Object.keys(data[0]) : []),
-        rows: data.map(item => 
-          (headers || Object.keys(item)).map(header => item[header] || '')
-        ),
+        rows: data.map(item => {
+          if (headers) {
+            // Map display headers to actual object properties
+            return headers.map(header => {
+              switch (header) {
+                case 'Name': return item.name || item.fullName || ''
+                case 'Email': return item.email || ''
+                case 'Phone': return item.phone || item.phoneNumber || ''
+                case 'Department': return item.department || item.departmentName || ''
+                case 'Position': return item.position || item.jobTitle || ''
+                case 'Employee ID': return item.employeeId || item.employee_id || ''
+                case 'Status': return item.status || ''
+                case 'Hire Date': return item.hireDate || item.hire_date || ''
+                default: 
+                  // Try to find property with similar name (case insensitive)
+                  const key = Object.keys(item).find(k => 
+                    k.toLowerCase() === header.toLowerCase() ||
+                    k.toLowerCase().replace(/[_\s]/g, '') === header.toLowerCase().replace(/[_\s]/g, '')
+                  )
+                  return key ? item[key] : ''
+              }
+            })
+          } else {
+            // Use object keys directly
+            return Object.keys(item).map(key => item[key] || '')
+          }
+        }),
         title: exportMetadata.title,
         metadata: exportMetadata
       }
@@ -97,6 +121,13 @@ export function DownloadButton({
         includeTimestamp: true,
         watermark: true
       }
+
+      console.log('PDF export data preparation:', {
+        originalData: data,
+        headers: exportData.headers,
+        rows: exportData.rows,
+        title: exportData.title
+      })
 
       switch (format) {
         case 'pdf':

@@ -23,7 +23,7 @@ export interface ExportData {
 }
 
 class ExportService {
-  private readonly logoBase64 = this.getLogoBase64()
+  private logoBase64: string | null = null
   private readonly saywhatBranding = {
     organizationName: 'SAYWHAT',
     systemName: 'SIRTIS',
@@ -37,39 +37,85 @@ class ExportService {
     }
   }
 
-  private getLogoBase64(): string {
-    // This would normally be loaded from the actual logo file
-    // For now, we'll use a placeholder that represents the SAYWHAT logo
-    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+  private async getLogoBase64(): Promise<string | null> {
+    if (this.logoBase64) {
+      return this.logoBase64
+    }
+
+    try {
+      // Load the actual SAYWHAT logo
+      const response = await fetch('/assets/saywhat-logo.png')
+      if (!response.ok) {
+        console.warn('Could not load SAYWHAT logo for export')
+        return null
+      }
+      
+      const blob = await response.blob()
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          this.logoBase64 = reader.result as string
+          resolve(this.logoBase64)
+        }
+        reader.readAsDataURL(blob)
+      })
+    } catch (error) {
+      console.error('Error loading logo:', error)
+      return null
+    }
   }
 
   async exportToPDF(data: ExportData, options: ExportOptions = { format: 'pdf' }): Promise<void> {
-    const pdf = new jsPDF({
-      orientation: options.orientation || 'portrait',
-      unit: 'mm',
-      format: options.pageSize || 'a4'
-    })
+    try {
+      console.log('Starting PDF export with data:', { 
+        headers: data.headers, 
+        rowCount: data.rows?.length,
+        title: data.title 
+      })
 
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const margin = 20
+      const pdf = new jsPDF({
+        orientation: options.orientation || 'portrait',
+        unit: 'mm',
+        format: options.pageSize || 'a4'
+      })
 
-    // Add SAYWHAT logo and branding
-    if (options.includeLogo !== false) {
-      // Add logo (placeholder - would use actual logo)
-      pdf.setFillColor(30, 64, 175) // SAYWHAT blue
-      pdf.rect(margin, margin, 30, 15, 'F')
-      
-      // Add organization name
-      pdf.setFontSize(16)
-      pdf.setTextColor(30, 64, 175)
-      pdf.text(this.saywhatBranding.organizationName, margin + 35, margin + 8)
-      
-      // Add system name
-      pdf.setFontSize(12)
-      pdf.setTextColor(100, 116, 139)
-      pdf.text(this.saywhatBranding.systemName, margin + 35, margin + 15)
-    }
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 20
+
+      // Load logo if needed
+      const logoBase64 = options.includeLogo !== false ? await this.getLogoBase64() : null
+
+      // Add SAYWHAT logo and branding
+      if (options.includeLogo !== false) {
+        if (logoBase64) {
+          try {
+            // Add actual logo
+            pdf.addImage(logoBase64, 'PNG', margin, margin, 30, 15)
+            console.log('Logo added successfully')
+          } catch (error) {
+            console.warn('Could not add logo to PDF, using fallback', error)
+            // Fallback to colored rectangle
+            pdf.setFillColor(30, 64, 175) // SAYWHAT blue
+            pdf.rect(margin, margin, 30, 15, 'F')
+          }
+        } else {
+          // Fallback to colored rectangle if logo can't be loaded
+          console.log('Using fallback rectangle for logo')
+          pdf.setFillColor(30, 64, 175) // SAYWHAT blue
+          pdf.rect(margin, margin, 30, 15, 'F')
+        }
+        
+        // Add organization name
+        pdf.setFontSize(16)
+        pdf.setTextColor(30, 64, 175)
+        pdf.text(this.saywhatBranding.organizationName, margin + 35, margin + 8)
+        
+        // Add system name
+        pdf.setFontSize(12)
+        pdf.setTextColor(100, 116, 139)
+        pdf.text(this.saywhatBranding.systemName, margin + 35, margin + 15)
+      }
 
     // Add title
     if (data.title || options.title) {
@@ -94,51 +140,87 @@ class ExportService {
     }
 
     // Add table data
-    if (data.headers && data.rows) {
+    if (data.headers && data.rows && data.rows.length > 0) {
       let yPosition = margin + 80
-      const cellHeight = 8
-      const cellPadding = 2
+      const cellHeight = 10
+      const cellPadding = 3
 
-      // Calculate column widths
+      // Calculate column widths - distribute available width
       const availableWidth = pageWidth - (2 * margin)
-      const columnWidth = availableWidth / data.headers.length
+      const columnCount = data.headers.length
+      const columnWidth = Math.max(availableWidth / columnCount, 25) // Minimum 25mm per column
 
-      // Add headers
-      pdf.setFillColor(30, 64, 175)
+      // Add headers with background
+      pdf.setFillColor(30, 64, 175) // SAYWHAT blue
       pdf.rect(margin, yPosition, availableWidth, cellHeight, 'F')
       
-      pdf.setFontSize(10)
+      pdf.setFontSize(9)
       pdf.setTextColor(255, 255, 255)
       
       data.headers.forEach((header, index) => {
         const x = margin + (index * columnWidth) + cellPadding
-        pdf.text(header, x, yPosition + 5)
+        const maxWidth = columnWidth - (2 * cellPadding)
+        
+        // Wrap header text if needed
+        const headerText = String(header || '').substring(0, 15)
+        pdf.text(headerText, x, yPosition + 6)
       })
 
       yPosition += cellHeight
 
       // Add rows
       pdf.setTextColor(0, 0, 0)
+      pdf.setFontSize(8)
+      
       data.rows.forEach((row, rowIndex) => {
-        // Alternate row colors
+        // Check if we need a new page
+        if (yPosition > pageHeight - 40) {
+          pdf.addPage()
+          yPosition = margin
+          
+          // Re-add headers on new page
+          pdf.setFillColor(30, 64, 175)
+          pdf.rect(margin, yPosition, availableWidth, cellHeight, 'F')
+          pdf.setFontSize(9)
+          pdf.setTextColor(255, 255, 255)
+          
+          data.headers.forEach((header, index) => {
+            const x = margin + (index * columnWidth) + cellPadding
+            const headerText = String(header || '').substring(0, 15)
+            pdf.text(headerText, x, yPosition + 6)
+          })
+          
+          yPosition += cellHeight
+          pdf.setTextColor(0, 0, 0)
+          pdf.setFontSize(8)
+        }
+
+        // Alternate row colors for better readability
         if (rowIndex % 2 === 1) {
           pdf.setFillColor(248, 250, 252)
           pdf.rect(margin, yPosition, availableWidth, cellHeight, 'F')
         }
 
+        // Add cell data
         row.forEach((cell, cellIndex) => {
-          const x = margin + (cellIndex * columnWidth) + cellPadding
-          const cellText = String(cell || '').substring(0, 20) // Truncate long text
-          pdf.text(cellText, x, yPosition + 5)
+          if (cellIndex < data.headers.length) { // Ensure we don't exceed column count
+            const x = margin + (cellIndex * columnWidth) + cellPadding
+            const maxWidth = columnWidth - (2 * cellPadding)
+            
+            // Format cell content
+            let cellText = String(cell || '')
+            
+            // Truncate text to fit column width (approximate)
+            const maxChars = Math.floor(maxWidth / 2) // Rough estimate
+            if (cellText.length > maxChars) {
+              cellText = cellText.substring(0, maxChars - 3) + '...'
+            }
+            
+            pdf.text(cellText, x, yPosition + 6)
+          }
         })
 
         yPosition += cellHeight
-
-        // Add new page if needed
-        if (yPosition > pageHeight - margin) {
-          pdf.addPage()
-          yPosition = margin
-        }
       })
     }
 
@@ -162,7 +244,14 @@ class ExportService {
 
     // Save the PDF
     const filename = options.filename || `${data.title || 'export'}_${Date.now()}.pdf`
+    console.log('Saving PDF with filename:', filename)
     pdf.save(filename)
+    console.log('PDF export completed successfully')
+    
+    } catch (error) {
+      console.error('Error in PDF export:', error)
+      throw error
+    }
   }
 
   async exportToExcel(data: ExportData, options: ExportOptions = { format: 'excel' }): Promise<void> {
