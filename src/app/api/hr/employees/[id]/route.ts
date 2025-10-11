@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { sanitizeInput } from '@/lib/api-utils'
 
 export async function GET(
   request: NextRequest,
@@ -530,6 +531,116 @@ export async function PUT(
     })
     return NextResponse.json(
       { error: 'Internal server error', details: errorMessage },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id: employeeId } = await params
+    const formData = await request.json()
+
+    // Check permissions
+    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
+                         session.user?.permissions?.includes('hr.full_access') ||
+                         session.user?.roles?.includes('admin') ||
+                         session.user?.roles?.includes('hr_manager')
+
+    if (!hasPermission) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    // Verify employee exists
+    const existingEmployee = await prisma.employees.findUnique({
+      where: { id: employeeId }
+    })
+
+    if (!existingEmployee) {
+      return NextResponse.json({ 
+        error: 'Employee not found',
+        message: `Employee with ID ${employeeId} does not exist.`
+      }, { status: 404 })
+    }
+
+    // Prepare update data
+    const updateData: any = {}
+
+    // Personal Information
+    if (formData.firstName) updateData.firstName = sanitizeInput(formData.firstName)
+    if (formData.lastName) updateData.lastName = sanitizeInput(formData.lastName)
+    if (formData.middleName !== undefined) updateData.middleName = formData.middleName ? sanitizeInput(formData.middleName) : null
+    if (formData.email) updateData.email = formData.email.toLowerCase().trim()
+    if (formData.phoneNumber !== undefined) updateData.phoneNumber = formData.phoneNumber ? sanitizeInput(formData.phoneNumber) : null
+    if (formData.address !== undefined) updateData.address = formData.address ? sanitizeInput(formData.address) : null
+    if (formData.dateOfBirth) updateData.dateOfBirth = new Date(formData.dateOfBirth)
+    if (formData.gender !== undefined) updateData.gender = formData.gender
+    if (formData.nationality !== undefined) updateData.nationality = formData.nationality
+
+    // Employment Information
+    if (formData.position) updateData.position = sanitizeInput(formData.position)
+    if (formData.department !== undefined) updateData.department = formData.department ? sanitizeInput(formData.department) : null
+    if (formData.departmentId !== undefined) updateData.departmentId = formData.departmentId
+    if (formData.employmentType !== undefined) updateData.employmentType = formData.employmentType
+    if (formData.startDate) updateData.startDate = new Date(formData.startDate)
+    if (formData.hireDate) updateData.hireDate = new Date(formData.hireDate)
+    if (formData.workLocation !== undefined) updateData.work_location = formData.workLocation ? sanitizeInput(formData.workLocation) : null
+
+    // Supervisor Information
+    if (formData.supervisorId !== undefined) {
+      if (formData.supervisorId === null || formData.supervisorId === 'no-supervisor') {
+        updateData.supervisor_id = null
+      } else {
+        // Validate supervisor exists and get their employee ID
+        const supervisor = await prisma.employees.findFirst({
+          where: {
+            OR: [
+              { id: formData.supervisorId },
+              { userId: formData.supervisorId }
+            ]
+          }
+        })
+        updateData.supervisor_id = supervisor?.id || null
+      }
+    }
+
+    // Compensation
+    if (formData.baseSalary !== undefined) updateData.salary = formData.baseSalary ? parseFloat(formData.baseSalary) : null
+    if (formData.currency !== undefined) updateData.currency = formData.currency
+
+    // Emergency Contact
+    if (formData.emergencyContactName !== undefined) updateData.emergencyContact = formData.emergencyContactName ? sanitizeInput(formData.emergencyContactName) : null
+    if (formData.emergencyContactPhone !== undefined) updateData.emergencyPhone = formData.emergencyContactPhone ? sanitizeInput(formData.emergencyContactPhone) : null
+    if (formData.emergencyContactRelationship !== undefined) updateData.emergencyContactRelationship = formData.emergencyContactRelationship ? sanitizeInput(formData.emergencyContactRelationship) : null
+
+    // Set update timestamp
+    updateData.updatedAt = new Date()
+
+    // Update employee
+    const updatedEmployee = await prisma.employees.update({
+      where: { id: employeeId },
+      data: updateData
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Employee updated successfully',
+      employee: updatedEmployee
+    })
+
+  } catch (error) {
+    console.error('Error updating employee:', error)
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

@@ -647,7 +647,7 @@ export default function EmployeesPage() {
       console.log('Updating employee with data:', apiFormData)
 
       const response = await fetch(`/api/hr/employees/${selectedEmployee.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },

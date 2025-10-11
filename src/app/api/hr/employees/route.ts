@@ -360,6 +360,7 @@ export async function POST(request: Request) {
       departmentId: validDepartmentId, // Use validated departmentId for proper relation
       position: sanitizeInput(formData.position),
       employmentType: formData.employmentType || 'FULL_TIME',
+      workLocation: formData.workLocation ? sanitizeInput(formData.workLocation) : null,
       // Fix date field mapping - use startDate from form, not hireDate
       startDate: formData.startDate ? new Date(formData.startDate) : new Date(),
       hireDate: formData.startDate ? new Date(formData.startDate) : new Date(),
@@ -511,6 +512,7 @@ export async function POST(request: Request) {
           employmentType: sanitizedData.employmentType,
           startDate: sanitizedData.startDate,
           hireDate: sanitizedData.hireDate,
+          work_location: sanitizedData.workLocation,
           salary: sanitizedData.salary,
           currency: sanitizedData.currency,
           status: sanitizedData.status,

@@ -661,7 +661,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
       </div>
       
       <div className="bg-gradient-to-br from-saywhat-white to-saywhat-light-grey/50 p-8 rounded-xl border border-saywhat-grey/20 shadow-lg">
-        <div className="grid grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
           <div className="space-y-2">
             <Label htmlFor="firstName" className="text-saywhat-black font-semibold flex items-center">
               First Name *
@@ -802,7 +802,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
       </div>
       
       <div className="bg-gradient-to-br from-saywhat-white to-saywhat-light-grey/50 p-8 rounded-xl border border-saywhat-grey/20 shadow-lg">
-        <div className="grid grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
           <div className="space-y-2">
             <Label htmlFor="emergencyContactName" className="text-saywhat-black font-semibold">Emergency Contact Name</Label>
             <Input
@@ -853,7 +853,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
           <p className="text-saywhat-grey text-sm">Work details and organizational structure</p>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
         {mode === 'edit' && (
           <div>
             <Label htmlFor="employeeId" className="text-saywhat-black font-semibold">Employee ID</Label>
@@ -987,6 +987,16 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             </SelectContent>
           </Select>
         </div>
+        <div>
+          <Label htmlFor="workLocation">Work Location</Label>
+          <Input
+            id="workLocation"
+            value={formData.workLocation}
+            onChange={(e) => handleInputChange('workLocation', e.target.value)}
+            className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200"
+            placeholder="Enter work location"
+          />
+        </div>
       </div>
     </div>
     )
@@ -996,7 +1006,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     return (
       <div className="space-y-4">
       <h3 className="text-lg font-medium">Compensation</h3>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <div>
           <Label htmlFor="baseSalary">Base Salary</Label>
           <Input
@@ -1541,7 +1551,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             Employee Documents
           </h4>
           
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
             {/* CV/Resume */}
             <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-purple-300 transition-all">
               <div className="w-12 h-12 mx-auto mb-2 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -1812,7 +1822,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
   }
 
   return (
-    <div className="max-w-7xl mx-auto bg-saywhat-white shadow-2xl rounded-xl border border-saywhat-grey/20">
+    <div className="w-full bg-saywhat-white shadow-2xl rounded-xl border border-saywhat-grey/20">
       {/* Header with SAYWHAT Branding */}
       <div className="bg-gradient-to-r from-saywhat-black via-saywhat-dark to-saywhat-grey text-saywhat-white p-6 rounded-t-xl relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-saywhat-orange/10 to-saywhat-red/5"></div>
@@ -1850,7 +1860,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
           </div>
         </div>
         
-        <div className="flex space-x-4 mb-8">
+        <div className="flex justify-between mb-8">
           {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
             <button
               key={step}
