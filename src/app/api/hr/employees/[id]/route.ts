@@ -368,6 +368,30 @@ export async function PUT(
         }
       }
     })
+
+    // Sync key changes to the users table
+    const userUpdateData: any = {}
+    if (formData.firstName !== undefined) userUpdateData.firstName = formData.firstName
+    if (formData.lastName !== undefined) userUpdateData.lastName = formData.lastName
+    if (formData.email !== undefined) userUpdateData.email = formData.email.toLowerCase().trim()
+
+    // Only update users table if there are fields to sync
+    if (Object.keys(userUpdateData).length > 0) {
+      try {
+        console.log(`Syncing user data for employee ${requestId}:`, userUpdateData)
+        await prisma.users.update({
+          where: { id: existingEmployee.userId },
+          data: {
+            ...userUpdateData,
+            updatedAt: new Date()
+          }
+        })
+        console.log(`Successfully synced user data for employee ${requestId}`)
+      } catch (userUpdateError) {
+        console.error(`Failed to sync user data for employee ${requestId}:`, userUpdateError)
+        // Don't fail the entire operation if user sync fails
+      }
+    }
     // Transform updated employee data for frontend
     const transformedEmployee = {
       id: updatedEmployee.id,
