@@ -141,6 +141,19 @@ export async function GET() {
         } : null,
         isSystemUser: !!emp.users,
         
+        // Role and security information
+        userRole: emp.users?.role || emp.user_role || 'EMPLOYEE', // Actual role from user account
+        accessLevel: emp.access_level || 'BASIC',
+        documentSecurityClearance: emp.document_security_clearance || 'PUBLIC',
+        systemAccess: emp.system_access || [],
+        securityClearance: emp.document_security_clearance || 'PUBLIC', // Legacy field for backward compatibility
+        
+        // Security status
+        contractSigned: emp.contract_signed || false,
+        backgroundCheckCompleted: emp.background_check_completed || false,
+        medicalCheckCompleted: emp.medical_check_completed || false,
+        trainingCompleted: emp.training_completed || false,
+        
         // Additional info
         createdAt: emp.createdAt,
         updatedAt: emp.updatedAt
@@ -442,6 +455,22 @@ export async function POST(request: Request) {
       const userRole = formData.role || formData.userRole || 'BASIC_USER_1'
       const permissions = formData.permissions || {}
       
+      // Calculate access level and document security clearance based on role
+      const getAccessLevelFromRole = (role: string) => {
+        const roleMap: Record<string, { accessLevel: string, documentLevel: string }> = {
+          'BASIC_USER_1': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
+          'BASIC_USER_2': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
+          'ADVANCE_USER_1': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
+          'ADVANCE_USER_2': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
+          'HR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
+          'SUPERUSER': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
+          'SYSTEM_ADMINISTRATOR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' }
+        }
+        return roleMap[role] || { accessLevel: 'BASIC', documentLevel: 'PUBLIC' }
+      }
+      
+      const roleConfig = getAccessLevelFromRole(userRole)
+      
       const newUser = await tx.users.create({
         data: {
           id: randomUUID(),
@@ -488,12 +517,27 @@ export async function POST(request: Request) {
           supervisor_id: supervisorEmployeeId, // resolved supervisor employee id
           is_supervisor: sanitizedData.isSupervisor,
           is_reviewer: sanitizedData.isReviewer,
+          
+          // Role and security fields - properly sync with user account
+          user_role: userRole,
+          access_level: roleConfig.accessLevel,
+          document_security_clearance: roleConfig.documentLevel,
+          system_access: formData.systemAccess || [],
+          
+          // Benefits
           medical_aid: sanitizedData.medicalAid,
           funeral_cover: sanitizedData.funeralCover,
           vehicle_benefit: sanitizedData.vehicleBenefit,
           fuel_allowance: sanitizedData.fuelAllowance,
           airtime_allowance: sanitizedData.airtimeAllowance,
           other_benefits: sanitizedData.otherBenefits,
+          
+          // Security status
+          contract_signed: formData.contractSigned || false,
+          background_check_completed: formData.backgroundCheckCompleted || false,
+          medical_check_completed: formData.medicalCheckCompleted || false,
+          training_completed: formData.trainingCompleted || false,
+          
           updatedAt: new Date()
         }
       })

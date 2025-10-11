@@ -1232,31 +1232,53 @@ export default function EmployeesPage() {
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div>
-                        <Label className="text-sm font-medium text-gray-700">Access Level</Label>
-                        <p className="mt-1 text-sm text-gray-900 capitalize">{selectedEmployee.accessLevel || 'Not set'}</p>
+                        <Label className="text-sm font-medium text-gray-700">User Role</Label>
+                        <p className="mt-1 text-sm text-gray-900 font-medium">
+                          {selectedEmployee.userRole ? 
+                            selectedEmployee.userRole.replace(/_/g, ' ').toUpperCase() : 
+                            'Not set'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Determines system module access permissions
+                        </p>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-700">Security Clearance</Label>
-                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.securityClearance || 'Not set'}</p>
+                        <Label className="text-sm font-medium text-gray-700">Document Security Clearance</Label>
+                        <p className={`mt-1 text-sm font-medium ${
+                          selectedEmployee.documentSecurityClearance === 'TOP_SECRET' ? 'text-red-600' :
+                          selectedEmployee.documentSecurityClearance === 'SECRET' ? 'text-orange-600' :
+                          selectedEmployee.documentSecurityClearance === 'CONFIDENTIAL' ? 'text-yellow-600' :
+                          'text-green-600'
+                        }`}>
+                          {selectedEmployee.documentSecurityClearance ? 
+                            selectedEmployee.documentSecurityClearance.replace(/_/g, ' ') : 
+                            'PUBLIC'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Maximum document classification level accessible
+                        </p>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-700">System Access</Label>
+                        <Label className="text-sm font-medium text-gray-700">System Access Modules</Label>
                         <p className="mt-1 text-sm text-gray-900">
                           {Array.isArray(selectedEmployee.systemAccess) && selectedEmployee.systemAccess.length > 0
                             ? selectedEmployee.systemAccess.join(', ')
-                            : 'No special access granted'}
+                            : 'Based on assigned role'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Available system modules and permission levels
                         </p>
                       </div>
                     </div>
                     <div className="space-y-4">
                       <div>
-                        <Label className="text-sm font-medium text-gray-700">Document Status</Label>
+                        <Label className="text-sm font-medium text-gray-700">Security Status</Label>
                         <div className="mt-2 space-y-1">
                           {[
                             { key: 'contractSigned', label: 'Contract Signed' },
                             { key: 'backgroundCheckCompleted', label: 'Background Check' },
                             { key: 'medicalCheckCompleted', label: 'Medical Check' },
-                            { key: 'trainingCompleted', label: 'Training Completed' }
+                            { key: 'trainingCompleted', label: 'Security Training' }
                           ].map(status => (
                             <div key={status.key} className="flex items-center">
                               <span className={`w-2 h-2 rounded-full mr-2 ${
@@ -1271,6 +1293,15 @@ export default function EmployeesPage() {
                             </div>
                           ))}
                         </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Access Level (Legacy)</Label>
+                        <p className="mt-1 text-sm text-gray-500 italic">
+                          {selectedEmployee.accessLevel || 'Not set'}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          ⚠️ Legacy field - Use Document Security Clearance above
+                        </p>
                       </div>
                     </div>
                   </div>

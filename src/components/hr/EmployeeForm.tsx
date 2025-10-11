@@ -129,6 +129,8 @@ interface EmployeeFormData {
     type: string
     size: number
     category: string
+    file?: File // The actual file object
+    tempUrl?: string // Temporary URL for preview
   }>
   
   // System fields
@@ -417,6 +419,18 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     fetchRoles()
   }, [])
 
+  // Cleanup temporary URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clean up any temporary URLs to prevent memory leaks
+      formData.uploadedDocuments?.forEach(doc => {
+        if (doc.tempUrl) {
+          URL.revokeObjectURL(doc.tempUrl)
+        }
+      })
+    }
+  }, [])
+
   const handleInputChange = (field: keyof EmployeeFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -424,102 +438,205 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     }))
   }
 
+  // File upload handler
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, category: string) => {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+
+    try {
+      const newDocuments: Array<{
+        id: string
+        name: string
+        type: string
+        size: number
+        category: string
+        file: File
+        tempUrl: string
+      }> = []
+      
+      for (const file of Array.from(files)) {
+        // Validate file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+          alert(`File ${file.name} is too large. Maximum size is 10MB.`)
+          continue
+        }
+
+        // Validate file type based on category
+        const allowedTypes = getAllowedFileTypes(category)
+        if (!allowedTypes.some(type => file.type.includes(type) || file.name.toLowerCase().endsWith(type))) {
+          alert(`File ${file.name} is not a supported format for ${category}.`)
+          continue
+        }
+
+        // Create document object
+        const document = {
+          id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          category: category,
+          file: file, // Store the actual file for later upload
+          tempUrl: URL.createObjectURL(file) // For preview if needed
+        }
+
+        newDocuments.push(document)
+      }
+
+      // Add to form data
+      setFormData(prev => ({
+        ...prev,
+        uploadedDocuments: [...(prev.uploadedDocuments || []), ...newDocuments]
+      }))
+
+      // Reset the input
+      event.target.value = ''
+      
+      console.log(`Added ${newDocuments.length} documents to ${category} category`)
+      
+    } catch (error) {
+      console.error('Error uploading files:', error)
+      alert('Error uploading files. Please try again.')
+    }
+  }
+
+  // Get allowed file types for each category
+  const getAllowedFileTypes = (category: string): string[] => {
+    switch (category) {
+      case 'cv':
+      case 'contracts':
+        return ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.pdf', '.doc', '.docx']
+      case 'identification':
+      case 'medical':
+      case 'references':
+      case 'bank':
+        return ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png', '.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']
+      case 'qualifications':
+        return ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png', '.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png']
+      case 'other':
+        return ['*'] // Allow all file types for other category
+      default:
+        return ['application/pdf', '.pdf']
+    }
+  }
+
+  // Remove document from the list
+  const removeDocument = (index: number) => {
+    setFormData(prev => {
+      const updatedDocuments = [...(prev.uploadedDocuments || [])]
+      
+      // Clean up temporary URL if it exists
+      if (updatedDocuments[index]?.tempUrl) {
+        URL.revokeObjectURL(updatedDocuments[index].tempUrl)
+      }
+      
+      updatedDocuments.splice(index, 1)
+      
+      return {
+        ...prev,
+        uploadedDocuments: updatedDocuments
+      }
+    })
+  }
+
+  // Upload documents to repository
+  const uploadDocumentsToRepository = async (employeeId: string, employeeName: string) => {
+    if (!formData.uploadedDocuments || formData.uploadedDocuments.length === 0) {
+      return []
+    }
+
+    const uploadedDocumentIds: Array<{
+      documentId: string
+      category: string
+      originalName: string
+      repositoryTitle: string
+    }> = []
+
+    try {
+      for (const document of formData.uploadedDocuments) {
+        if (!document.file) continue // Skip if no actual file
+
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', document.file)
+        uploadFormData.append('title', `${employeeName} - ${document.category.toUpperCase()} - ${document.name}`)
+        uploadFormData.append('description', `Employee document for ${employeeName} (ID: ${employeeId})`)
+        uploadFormData.append('tags', JSON.stringify([
+          'employee-document',
+          `employee-${employeeId}`,
+          `category-${document.category}`,
+          'hr-document'
+        ]))
+        uploadFormData.append('category', 'hr')
+        uploadFormData.append('subcategory', `employee-${document.category}`)
+        uploadFormData.append('securityLevel', 'CONFIDENTIAL') // Default security level
+        uploadFormData.append('department', 'Human Resource Management')
+        uploadFormData.append('relatedEmployeeId', employeeId)
+
+        const response = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: uploadFormData
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload ${document.name}`)
+        }
+
+        const result = await response.json()
+        if (result.success) {
+          uploadedDocumentIds.push({
+            documentId: result.data.id,
+            category: document.category,
+            originalName: document.name,
+            repositoryTitle: result.data.title
+          })
+        }
+      }
+
+      console.log(`Successfully uploaded ${uploadedDocumentIds.length} documents to repository`)
+      return uploadedDocumentIds
+      
+    } catch (error) {
+      console.error('Error uploading documents to repository:', error)
+      throw error
+    }
+  }
+
   const handleSubmit = async () => {
     setIsSubmitting(true)
     
     try {
-      // First, save the employee documents to the Document Repository
-      if (formData.uploadedDocuments && formData.uploadedDocuments.length > 0) {
-        await saveEmployeeDocumentsToRepository()
-      }
-      
-      // Convert to format expected by APIs
-      const apiData = {
+      // Prepare the employee data
+      const employeeData = {
         ...formData,
         salary: formData.baseSalary, // Map baseSalary to salary
         emergencyContact: formData.emergencyContactName,
         emergencyPhone: formData.emergencyContactPhone,
         emergencyRelationship: formData.emergencyContactRelationship
       }
+
+      // Submit the employee data first
+      await onSubmit(employeeData)
       
-      await onSubmit(apiData)
+      // After successful employee creation/update, upload documents to repository
+      if (formData.uploadedDocuments && formData.uploadedDocuments.length > 0) {
+        const employeeName = `${formData.firstName} ${formData.lastName}`.trim()
+        const employeeId = formData.employeeId || `EMP_${Date.now()}`
+        
+        try {
+          await uploadDocumentsToRepository(employeeId, employeeName)
+          console.log('Documents successfully uploaded to repository')
+        } catch (docError) {
+          console.error('Warning: Employee created but some documents failed to upload:', docError)
+          // Don't fail the entire process if document upload fails
+          alert('Employee was created successfully, but some documents failed to upload. You can upload them later from the employee profile.')
+        }
+      }
+      
     } catch (error) {
       console.error('Error during form submission:', error)
-      // You might want to show an error message to the user here
+      alert('Error saving employee. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  const saveEmployeeDocumentsToRepository = async () => {
-    try {
-      const employeeId = formData.employeeId || `EMP_${Date.now()}`
-      
-      for (const document of formData.uploadedDocuments) {
-        // Create the folder structure: HR/Employee_Particulars/EmployeeID/DocumentKind
-        const folderPath = `HR/Employee_Particulars/${employeeId}/${getCategoryDisplayName(document.category)}`
-        
-        // Ensure the folder structure exists
-        await fetch('/api/documents/folders/ensure', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            path: folderPath,
-            department: 'HR',
-            category: 'Employee_Particulars'
-          })
-        })
-        
-        // Upload the document to the repository
-        const uploadFormData = new FormData()
-        
-        // Convert the document data back to a file-like object for upload
-        const blob = new Blob([(document as any).data || ''], { type: document.type })
-        const file = new File([blob], document.name, { type: document.type })
-        
-        uploadFormData.append('file', file)
-        uploadFormData.append('title', `${document.name} - ${formData.firstName} ${formData.lastName}`)
-        uploadFormData.append('category', 'Employee_Particulars')
-        uploadFormData.append('classification', 'CONFIDENTIAL') // HR documents are confidential
-        uploadFormData.append('accessLevel', 'hr_only')
-        uploadFormData.append('department', 'HR')
-        uploadFormData.append('folderPath', folderPath)
-        uploadFormData.append('employeeId', employeeId)
-        uploadFormData.append('documentType', document.category)
-        uploadFormData.append('isPersonalRepo', 'false')
-        uploadFormData.append('status', 'active')
-        
-        const uploadResponse = await fetch('/api/documents/upload', {
-          method: 'POST',
-          body: uploadFormData
-        })
-        
-        if (!uploadResponse.ok) {
-          console.error(`Failed to upload document ${document.name}:`, await uploadResponse.text())
-        } else {
-          console.log(`✅ Successfully uploaded ${document.name} to ${folderPath}`)
-        }
-      }
-    } catch (error) {
-      console.error('Error saving employee documents to repository:', error)
-      throw error
-    }
-  }
-
-  const getCategoryDisplayName = (category: string): string => {
-    const categoryMap: Record<string, string> = {
-      'cv': 'CV_Resume',
-      'identification': 'ID_Copy',
-      'qualifications': 'Qualifications',
-      'contracts': 'Contracts', 
-      'medical': 'Medical',
-      'references': 'References',
-      'bank': 'Bank_Details',
-      'other': 'Other'
-    }
-    return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1)
   }
 
   const sortDepartmentsHierarchically = (departments: any[]) => {
@@ -1426,90 +1543,246 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
           
           <div className="grid grid-cols-4 gap-4 mb-6">
             {/* CV/Resume */}
-            <div className="text-center p-4 border border-gray-200 rounded-lg">
+            <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-purple-300 transition-all">
               <div className="w-12 h-12 mx-auto mb-2 bg-purple-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-purple-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">CV/Resume</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 mb-2">
                 {formData.uploadedDocuments?.filter(doc => doc.category === 'cv')?.length || 0} files
               </div>
+              <label className="cursor-pointer inline-flex items-center px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, 'cv')}
+                />
+              </label>
             </div>
 
             {/* ID Copy */}
-            <div className="text-center p-4 border border-gray-200 rounded-lg">
+            <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-indigo-300 transition-all">
               <div className="w-12 h-12 mx-auto mb-2 bg-indigo-100 rounded-lg flex items-center justify-center">
                 <IdentificationIcon className="w-6 h-6 text-indigo-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">ID Copy</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 mb-2">
                 {formData.uploadedDocuments?.filter(doc => doc.category === 'identification')?.length || 0} files
               </div>
+              <label className="cursor-pointer inline-flex items-center px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, 'identification')}
+                />
+              </label>
             </div>
 
             {/* Qualifications */}
-            <div className="text-center p-4 border border-gray-200 rounded-lg">
+            <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-green-300 transition-all">
               <div className="w-12 h-12 mx-auto mb-2 bg-green-100 rounded-lg flex items-center justify-center">
                 <AcademicCapIcon className="w-6 h-6 text-green-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Qualifications</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 mb-2">
                 {formData.uploadedDocuments?.filter(doc => doc.category === 'qualifications')?.length || 0} files
               </div>
+              <label className="cursor-pointer inline-flex items-center px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, 'qualifications')}
+                />
+              </label>
             </div>
 
             {/* Contracts */}
-            <div className="text-center p-4 border border-gray-200 rounded-lg">
+            <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-orange-300 transition-all">
               <div className="w-12 h-12 mx-auto mb-2 bg-orange-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-orange-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Contracts</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 mb-2">
                 {formData.uploadedDocuments?.filter(doc => doc.category === 'contracts')?.length || 0} files
               </div>
+              <label className="cursor-pointer inline-flex items-center px-3 py-1 text-xs bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, 'contracts')}
+                />
+              </label>
             </div>
 
             {/* Medical */}
-            <div className="text-center p-4 border border-gray-200 rounded-lg">
+            <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-pink-300 transition-all">
               <div className="w-12 h-12 mx-auto mb-2 bg-pink-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-pink-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Medical</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 mb-2">
                 {formData.uploadedDocuments?.filter(doc => doc.category === 'medical')?.length || 0} files
               </div>
+              <label className="cursor-pointer inline-flex items-center px-3 py-1 text-xs bg-pink-100 text-pink-700 rounded-md hover:bg-pink-200 transition-colors">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, 'medical')}
+                />
+              </label>
             </div>
 
             {/* References */}
-            <div className="text-center p-4 border border-gray-200 rounded-lg">
+            <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-all">
               <div className="w-12 h-12 mx-auto mb-2 bg-blue-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-blue-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">References</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 mb-2">
                 {formData.uploadedDocuments?.filter(doc => doc.category === 'references')?.length || 0} files
               </div>
+              <label className="cursor-pointer inline-flex items-center px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, 'references')}
+                />
+              </label>
             </div>
 
             {/* Bank Details */}
-            <div className="text-center p-4 border border-gray-200 rounded-lg">
+            <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
               <div className="w-12 h-12 mx-auto mb-2 bg-gray-100 rounded-lg flex items-center justify-center">
                 <BuildingOfficeIcon className="w-6 h-6 text-gray-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Bank Details</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 mb-2">
                 {formData.uploadedDocuments?.filter(doc => doc.category === 'bank')?.length || 0} files
               </div>
+              <label className="cursor-pointer inline-flex items-center px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, 'bank')}
+                />
+              </label>
             </div>
 
             {/* Other */}
-            <div className="text-center p-4 border border-gray-200 rounded-lg">
+            <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-yellow-300 transition-all">
               <div className="w-12 h-12 mx-auto mb-2 bg-yellow-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-yellow-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Other</div>
-              <div className="text-xs text-blue-600 font-semibold">
+              <div className="text-xs text-blue-600 font-semibold mb-2">
                 {formData.uploadedDocuments?.filter(doc => doc.category === 'other')?.length || 0} files
+              </div>
+              <label className="cursor-pointer inline-flex items-center px-3 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200 transition-colors">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Upload
+                <input
+                  type="file"
+                  multiple
+                  accept="*/*"
+                  className="hidden"
+                  onChange={(e) => handleFileUpload(e, 'other')}
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Uploaded Files List */}
+          {formData.uploadedDocuments && formData.uploadedDocuments.length > 0 && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h5 className="text-sm font-medium text-gray-900 mb-3">Uploaded Documents</h5>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {formData.uploadedDocuments.map((doc, index) => (
+                  <div key={index} className="flex items-center justify-between bg-white p-3 rounded-md border">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
+                        <DocumentTextIcon className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{doc.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {doc.category.toUpperCase()} • {(doc.size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeDocument(index)}
+                      className="text-red-600 hover:text-red-800 p-1 rounded-md hover:bg-red-50"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Upload Instructions */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-start space-x-3">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h6 className="text-sm font-medium text-blue-900 mb-1">Document Upload Guidelines</h6>
+                <ul className="text-xs text-blue-800 space-y-1">
+                  <li>• Supported formats: PDF, DOC, DOCX, JPG, PNG</li>
+                  <li>• Maximum file size: 10MB per file</li>
+                  <li>• Documents will be saved to the central Document Repository</li>
+                  <li>• Files can be accessed from HR module and employee profiles</li>
+                  <li>• Document security clearance will be applied based on employee role</li>
+                </ul>
               </div>
             </div>
           </div>

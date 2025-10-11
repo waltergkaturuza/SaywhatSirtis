@@ -305,7 +305,27 @@ export async function PUT(
     
     // NEW ACCESS/SECURITY FIELDS - map camelCase to snake_case
     if (formData.accessLevel !== undefined) updateData.access_level = formData.accessLevel
-    if (formData.userRole !== undefined) updateData.user_role = formData.userRole
+    if (formData.userRole !== undefined) {
+      updateData.user_role = formData.userRole
+      
+      // Automatically calculate access level and document security clearance based on role
+      const getAccessLevelFromRole = (role: string) => {
+        const roleMap: Record<string, { accessLevel: string, documentLevel: string }> = {
+          'BASIC_USER_1': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
+          'BASIC_USER_2': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
+          'ADVANCE_USER_1': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
+          'ADVANCE_USER_2': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
+          'HR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
+          'SUPERUSER': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
+          'SYSTEM_ADMINISTRATOR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' }
+        }
+        return roleMap[role] || { accessLevel: 'BASIC', documentLevel: 'PUBLIC' }
+      }
+      
+      const roleConfig = getAccessLevelFromRole(formData.userRole)
+      updateData.access_level = roleConfig.accessLevel
+      updateData.document_security_clearance = roleConfig.documentLevel
+    }
     if (formData.systemAccess !== undefined) updateData.system_access = Array.isArray(formData.systemAccess) ? formData.systemAccess : []
     if (formData.documentSecurityClearance !== undefined) updateData.document_security_clearance = formData.documentSecurityClearance
     
@@ -374,6 +394,9 @@ export async function PUT(
     if (formData.firstName !== undefined) userUpdateData.firstName = formData.firstName
     if (formData.lastName !== undefined) userUpdateData.lastName = formData.lastName
     if (formData.email !== undefined) userUpdateData.email = formData.email.toLowerCase().trim()
+    if (formData.userRole !== undefined) userUpdateData.role = formData.userRole // Sync role to user account
+    if (formData.position !== undefined) userUpdateData.position = formData.position
+    if (formData.department !== undefined) userUpdateData.department = formData.department
 
     // Only update users table if there are fields to sync
     if (Object.keys(userUpdateData).length > 0) {
