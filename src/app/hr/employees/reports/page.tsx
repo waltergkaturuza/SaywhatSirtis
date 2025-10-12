@@ -113,11 +113,29 @@ export default function EmployeeReports() {
   const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/test/employees')
+      
+      // Try HR API first
+      let response = await fetch('/api/hr/employees')
+      let result
+      let employeeData = []
+      
       if (response.ok) {
-        const result = await response.json()
-        // Handle the structured response format
-        const employeeData = result.employees || result.data || result || []
+        result = await response.json()
+        employeeData = result.data || result || []
+        console.log('Loaded from HR API:', employeeData.length, 'employees')
+      } else if (response.status === 401) {
+        // Fall back to test API if not authenticated
+        console.log('HR API requires authentication, falling back to test API')
+        response = await fetch('/api/test/employees')
+        if (response.ok) {
+          result = await response.json()
+          employeeData = result.employees || result.data || result || []
+          console.log('Loaded from test API:', employeeData.length, 'employees')
+        }
+      }
+      
+      if (employeeData.length > 0) {
+      if (employeeData.length > 0) {
         setEmployees(employeeData)
         setFilteredEmployees(employeeData)
         
@@ -130,10 +148,25 @@ export default function EmployeeReports() {
         // Calculate analytics
         calculateAnalytics(employeeData)
       } else {
-        console.error('Failed to fetch employees')
+        console.error('No employee data received')
+        setEmployees([])
+        setFilteredEmployees([])
+        setDepartments([])
+        setAnalytics(null)
+      }
+      } else {
+        console.error('Failed to fetch employees from both HR and test APIs')
+        setEmployees([])
+        setFilteredEmployees([])
+        setDepartments([])
+        setAnalytics(null)
       }
     } catch (error) {
       console.error('Error fetching employees:', error)
+      setEmployees([])
+      setFilteredEmployees([])
+      setDepartments([])
+      setAnalytics(null)
     } finally {
       setLoading(false)
     }
@@ -813,49 +846,65 @@ export default function EmployeeReports() {
           {/* Department Analysis - Span 2 columns for better label display */}
           <div className="lg:col-span-2 bg-gray-800 border border-cyan-400 rounded-lg p-6">
             <h3 className="text-cyan-400 text-lg font-semibold mb-4">Department Analysis</h3>
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart 
-                data={analytics?.departmentDistribution ? Object.entries(analytics.departmentDistribution)
-                  .sort(([,a], [,b]) => b - a)
-                  .map(([key, value]) => ({ 
-                    name: key.length > 30 ? key.substring(0, 27) + '...' : key, 
-                    fullName: key,
-                    count: value 
-                  })) : []}
-                layout="horizontal"
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis 
-                  type="number" 
-                  tick={{ fill: '#06B6D4', fontSize: 12 }}
-                  axisLine={{ stroke: '#374151' }}
-                  tickLine={{ stroke: '#374151' }}
-                />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  tick={{ fill: '#06B6D4', fontSize: 11 }}
-                  width={200}
-                  axisLine={{ stroke: '#374151' }}
-                  tickLine={{ stroke: '#374151' }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1F2937', 
-                    border: '1px solid #06B6D4', 
-                    borderRadius: '8px',
-                    fontSize: '12px'
-                  }}
-                  formatter={(value, name, props) => [
-                    `${value} employees`,
-                    props.payload.fullName
-                  ]}
-                  labelFormatter={() => ''}
-                />
-                <Bar dataKey="count" fill="#06B6D4" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {analytics?.departmentDistribution && Object.keys(analytics.departmentDistribution).length > 0 ? (
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart 
+                  data={Object.entries(analytics.departmentDistribution)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([key, value]) => ({ 
+                      name: key.length > 25 ? key.substring(0, 22) + '...' : key, 
+                      fullName: key,
+                      count: value 
+                    }))}
+                  layout="horizontal"
+                  margin={{ top: 20, right: 40, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis 
+                    type="number" 
+                    domain={[0, 'dataMax + 2']}
+                    tick={{ fill: '#06B6D4', fontSize: 12 }}
+                    axisLine={{ stroke: '#374151' }}
+                    tickLine={{ stroke: '#374151' }}
+                  />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    tick={{ fill: '#06B6D4', fontSize: 10 }}
+                    width={200}
+                    axisLine={{ stroke: '#374151' }}
+                    tickLine={{ stroke: '#374151' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1F2937', 
+                      border: '1px solid #06B6D4', 
+                      borderRadius: '8px',
+                      fontSize: '12px'
+                    }}
+                    formatter={(value, name, props) => [
+                      `${value} employees`,
+                      props.payload.fullName
+                    ]}
+                    labelFormatter={() => ''}
+                  />
+                  <Bar 
+                    dataKey="count" 
+                    fill="#06B6D4" 
+                    stroke="#22D3EE"
+                    strokeWidth={1}
+                    radius={[0, 4, 4, 0]} 
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[350px] text-gray-400">
+                <div className="text-center">
+                  <p className="text-lg">No department data available</p>
+                  <p className="text-sm">Please check your permissions or try refreshing the page</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Key Insights - Moved to right column */}
