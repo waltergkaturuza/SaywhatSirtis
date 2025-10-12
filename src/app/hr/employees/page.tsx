@@ -61,6 +61,14 @@ export default function EmployeesPage() {
   const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>("")
+
+  // Calculate employee statistics from the employees array
+  const employeeStats = {
+    total: Array.isArray(employees) ? employees.length : 0,
+    active: Array.isArray(employees) ? employees.filter(emp => emp.status === 'ACTIVE' || emp.status === 'active').length : 0,
+    onLeave: Array.isArray(employees) ? employees.filter(emp => emp.status === 'ON_LEAVE' || emp.status === 'on-leave').length : 0,
+    inactive: Array.isArray(employees) ? employees.filter(emp => emp.status === 'INACTIVE' || emp.status === 'inactive').length : 0
+  }
   
   // Employee documents state
   const [employeeDocuments, setEmployeeDocuments] = useState<any[]>([])
@@ -222,7 +230,7 @@ export default function EmployeesPage() {
       <ExportButton
         data={{
           headers: ['Name', 'Email', 'Phone', 'Department', 'Position', 'Employee ID', 'Status', 'Hire Date'],
-          rows: employees.map(emp => [
+          rows: Array.isArray(employees) ? employees.map(emp => [
             emp.name,
             emp.email,
             emp.phone,
@@ -231,7 +239,7 @@ export default function EmployeesPage() {
             emp.employeeId,
             emp.status,
             formatDate(emp.hireDate)
-          ])
+          ]) : []
         }}
         filename="employees-export"
         title="Export Employees"
@@ -256,19 +264,19 @@ export default function EmployeesPage() {
         <div className="space-y-3">
           <div className="flex justify-between items-center p-2 bg-saywhat-white/50 rounded-md">
             <span className="text-sm text-saywhat-grey font-medium">Total Employees</span>
-            <span className="font-bold text-saywhat-black bg-saywhat-orange/10 px-2 py-1 rounded">-</span>
+            <span className="font-bold text-saywhat-black bg-saywhat-orange/10 px-2 py-1 rounded">{employeeStats.total}</span>
           </div>
           <div className="flex justify-between items-center p-2 bg-saywhat-white/50 rounded-md">
             <span className="text-sm text-saywhat-grey font-medium">Active</span>
-            <span className="font-bold text-saywhat-green bg-saywhat-green/10 px-2 py-1 rounded">-</span>
+            <span className="font-bold text-saywhat-green bg-saywhat-green/10 px-2 py-1 rounded">{employeeStats.active}</span>
           </div>
           <div className="flex justify-between items-center p-2 bg-saywhat-white/50 rounded-md">
             <span className="text-sm text-saywhat-grey font-medium">On Leave</span>
-            <span className="font-bold text-saywhat-orange bg-saywhat-orange/10 px-2 py-1 rounded">-</span>
+            <span className="font-bold text-saywhat-orange bg-saywhat-orange/10 px-2 py-1 rounded">{employeeStats.onLeave}</span>
           </div>
           <div className="flex justify-between items-center p-2 bg-saywhat-white/50 rounded-md">
             <span className="text-sm text-saywhat-grey font-medium">Inactive</span>
-            <span className="font-bold text-saywhat-grey bg-saywhat-grey/10 px-2 py-1 rounded">-</span>
+            <span className="font-bold text-saywhat-grey bg-saywhat-grey/10 px-2 py-1 rounded">{employeeStats.inactive}</span>
           </div>
         </div>
       </div>
@@ -279,9 +287,35 @@ export default function EmployeesPage() {
           Departments
         </h3>
         <div className="space-y-2">
-          <div className="text-sm text-saywhat-grey text-center py-4 bg-saywhat-white/50 rounded-md">
-            Loading departments...
-          </div>
+          {departments.length === 0 ? (
+            <div className="text-sm text-saywhat-grey text-center py-4 bg-saywhat-white/50 rounded-md">
+              Loading departments...
+            </div>
+          ) : (
+            <div className="max-h-48 overflow-y-auto space-y-2">
+              {sortDepartmentsHierarchically(departments).map((dept) => (
+                <div
+                  key={dept.id}
+                  className={`p-2 text-xs rounded-md cursor-pointer transition-colors ${
+                    selectedDepartment === dept.name
+                      ? 'bg-saywhat-orange text-saywhat-white'
+                      : 'bg-saywhat-white/50 text-saywhat-grey hover:bg-saywhat-orange/10'
+                  }`}
+                  onClick={() => setSelectedDepartment(dept.name)}
+                >
+                  <div className="font-medium">{dept.name}</div>
+                  {dept.type && (
+                    <div className="text-xs opacity-75 mt-1">{dept.type}</div>
+                  )}
+                  {dept.subunits && dept.subunits.length > 0 && (
+                    <div className="text-xs opacity-75 mt-1">
+                      {dept.subunits.length} subunit{dept.subunits.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -351,16 +385,19 @@ export default function EmployeesPage() {
     ))
   }
 
-  const filteredEmployees = employees.filter(employee => {
+  const filteredEmployees = Array.isArray(employees) ? employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          employee.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          employee.employeeId.toLowerCase().includes(searchQuery.toLowerCase())
     
-    const matchesDepartment = selectedDepartment === "all" || employee.department === selectedDepartment
+    const matchesDepartment = selectedDepartment === "all" || 
+      employee.department === selectedDepartment ||
+      employee.department?.includes(selectedDepartment) ||
+      (employee.departmentInfo && employee.departmentInfo.name === selectedDepartment)
     const matchesStatus = selectedStatus === "all" || employee.status === selectedStatus
     
     return matchesSearch && matchesDepartment && matchesStatus
-  })
+  }) : []
 
   const handleViewEmployee = async (employee: any) => {
     try {
