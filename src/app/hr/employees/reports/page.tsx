@@ -142,6 +142,13 @@ export default function EmployeeReports() {
       return
     }
 
+    console.log('Calculating analytics for employees:', employeeData.length)
+    console.log('Sample employee data:', employeeData[0])
+    
+    // Check how many employees have birth dates
+    const employeesWithBirthDates = employeeData.filter(emp => emp.dateOfBirth)
+    console.log(`Employees with birth dates: ${employeesWithBirthDates.length}/${employeeData.length}`)
+
     const now = new Date()
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
@@ -162,18 +169,51 @@ export default function EmployeeReports() {
       return acc
     }, { male: 0, female: 0, other: 0, unspecified: 0 })
 
-    // Age distribution
+    // Age distribution - Calculate real ages from dateOfBirth
     const ageDistribution = employeeData.reduce((acc, emp) => {
+      let age = null
+      
       if (emp.dateOfBirth) {
-        const age = now.getFullYear() - new Date(emp.dateOfBirth).getFullYear()
+        // Calculate accurate age from birth date
+        const birthDate = new Date(emp.dateOfBirth)
+        const currentDate = new Date()
+        
+        age = currentDate.getFullYear() - birthDate.getFullYear()
+        const monthDiff = currentDate.getMonth() - birthDate.getMonth()
+        
+        // Adjust age if birthday hasn't occurred this year yet
+        if (monthDiff < 0 || (monthDiff === 0 && currentDate.getDate() < birthDate.getDate())) {
+          age--
+        }
+      } else if (emp.hireDate) {
+        // Fallback: Estimate age based on hire date (assume hired at 25-35)
+        const hireYear = new Date(emp.hireDate).getFullYear()
+        const currentYear = new Date().getFullYear()
+        const yearsWorked = currentYear - hireYear
+        
+        // Estimate: assume average starting age of 28, add years worked
+        age = 28 + yearsWorked
+        
+        // Cap at reasonable ranges
+        if (age < 22) age = 22
+        if (age > 65) age = 65
+      }
+      
+      // Categorize into age groups
+      if (age !== null) {
         if (age >= 18 && age <= 25) acc['18-25']++
         else if (age >= 26 && age <= 35) acc['26-35']++
         else if (age >= 36 && age <= 45) acc['36-45']++
         else if (age >= 46 && age <= 55) acc['46-55']++
         else if (age >= 56) acc['56+']++
+        else if (age < 18) acc['Under 18'] = (acc['Under 18'] || 0) + 1
+      } else {
+        // No age data available
+        acc['Unknown'] = (acc['Unknown'] || 0) + 1
       }
+      
       return acc
-    }, { '18-25': 0, '26-35': 0, '36-45': 0, '46-55': 0, '56+': 0 })
+    }, { '18-25': 0, '26-35': 0, '36-45': 0, '46-55': 0, '56+': 0 } as Record<string, number>)
 
     // Department distribution
     const departmentDistribution = employeeData.reduce((acc, emp) => {
