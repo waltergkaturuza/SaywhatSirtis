@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
     const search = searchParams.get('search')
     const eventId = searchParams.get('eventId')
+    const employeeId = searchParams.get('employeeId') // Add employee filter
 
     // Build filter
     const where: any = {
@@ -45,6 +46,14 @@ export async function GET(request: NextRequest) {
       where.customMetadata = {
         path: ['eventId'],
         equals: eventId
+      }
+    }
+
+    // Add employee filter using custom metadata
+    if (employeeId) {
+      where.customMetadata = {
+        path: ['relatedEmployeeId'],
+        equals: employeeId
       }
     }
 

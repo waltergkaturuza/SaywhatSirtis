@@ -61,6 +61,10 @@ export default function EmployeesPage() {
   const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>("")
+  
+  // Employee documents state
+  const [employeeDocuments, setEmployeeDocuments] = useState<any[]>([])
+  const [documentsLoading, setDocumentsLoading] = useState(false)
 
   // Helper function to format dates safely
   const formatDate = (dateValue: any) => {
@@ -109,6 +113,26 @@ export default function EmployeesPage() {
       setEmployees([]) // Empty state instead of mock data
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Fetch employee documents from API
+  const fetchEmployeeDocuments = async (employeeId: string) => {
+    try {
+      setDocumentsLoading(true)
+      
+      const response = await fetch(`/api/documents?employeeId=${employeeId}`)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const documents = await response.json()
+      setEmployeeDocuments(documents || [])
+    } catch (err) {
+      console.error('Failed to fetch employee documents:', err)
+      setEmployeeDocuments([])
+    } finally {
+      setDocumentsLoading(false)
     }
   }
 
@@ -352,6 +376,9 @@ export default function EmployeesPage() {
           console.log('📞 Phone Number:', result.data.phoneNumber)
           console.log('📍 Address:', result.data.address)
           setSelectedEmployee(result.data)
+          
+          // Fetch employee documents using employee ID
+          await fetchEmployeeDocuments(result.data.id)
         } else {
           console.error('Failed to fetch employee details:', result.error)
           setSelectedEmployee(employee) // Fallback to basic data
@@ -1378,31 +1405,147 @@ export default function EmployeesPage() {
                   <div className="space-y-6">
                     <div>
                       <Label className="text-sm font-medium text-gray-700 mb-4 block">Employee Documents</Label>
-                      <div className="grid grid-cols-4 gap-4">
-                        {[
-                          { category: 'cv', label: 'CV/Resume', icon: '📄', color: 'purple' },
-                          { category: 'identification', label: 'ID Copy', icon: '🆔', color: 'indigo' },
-                          { category: 'qualifications', label: 'Qualifications', icon: '🎓', color: 'green' },
-                          { category: 'contracts', label: 'Contracts', icon: '📋', color: 'orange' },
-                          { category: 'medical', label: 'Medical', icon: '🏥', color: 'pink' },
-                          { category: 'references', label: 'References', icon: '📝', color: 'blue' },
-                          { category: 'bank', label: 'Bank Details', icon: '🏦', color: 'gray' },
-                          { category: 'other', label: 'Other', icon: '📁', color: 'yellow' }
-                        ].map(docType => {
-                          const count = selectedEmployee.uploadedDocuments
-                            ? selectedEmployee.uploadedDocuments.filter((doc: any) => doc.category === docType.category).length
-                            : 0
-                          return (
-                            <div key={docType.category} className="text-center p-4 border border-gray-200 rounded-lg">
-                              <div className={`w-12 h-12 mx-auto mb-2 bg-${docType.color}-100 rounded-lg flex items-center justify-center text-2xl`}>
-                                {docType.icon}
+                      
+                      {documentsLoading ? (
+                        <div className="flex justify-center items-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                          <span className="ml-2 text-gray-600">Loading documents...</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-4">
+                          {[
+                            { category: 'cv', label: 'CV/Resume', icon: '📄', color: 'purple' },
+                            { category: 'identification', label: 'ID Copy', icon: '🆔', color: 'indigo' },
+                            { category: 'qualifications', label: 'Qualifications', icon: '🎓', color: 'green' },
+                            { category: 'contracts', label: 'Contracts', icon: '📋', color: 'orange' },
+                            { category: 'medical', label: 'Medical', icon: '🏥', color: 'pink' },
+                            { category: 'references', label: 'References', icon: '📝', color: 'blue' },
+                            { category: 'bank', label: 'Bank Details', icon: '🏦', color: 'gray' },
+                            { category: 'other', label: 'Other', icon: '📁', color: 'yellow' }
+                          ].map(docType => {
+                            // Filter documents by category
+                            const categoryDocs = employeeDocuments.filter((doc: any) => {
+                              // Map uploaded category to display category
+                              const categoryMap: { [key: string]: string } = {
+                                'cv': 'cv',
+                                'education': 'qualifications',
+                                'identification': 'identification',
+                                'contracts': 'contracts',
+                                'medical': 'medical',
+                                'references': 'references',
+                                'bank': 'bank',
+                                'other': 'other'
+                              }
+                              return categoryMap[doc.category?.toLowerCase()] === docType.category ||
+                                     doc.fileName?.toLowerCase().includes(docType.category) ||
+                                     doc.title?.toLowerCase().includes(docType.category)
+                            })
+                            
+                            const count = categoryDocs.length
+                            
+                            return (
+                              <div 
+                                key={docType.category} 
+                                className={`text-center p-4 border border-gray-200 rounded-lg transition-all ${
+                                  count > 0 ? 'hover:border-orange-300 cursor-pointer hover:shadow-md' : ''
+                                }`}
+                                onClick={() => {
+                                  if (count > 0) {
+                                    // Handle document category click
+                                    console.log(`Documents for category ${docType.category}:`, categoryDocs)
+                                  }
+                                }}
+                              >
+                                <div className={`w-12 h-12 mx-auto mb-2 bg-${docType.color}-100 rounded-lg flex items-center justify-center text-2xl`}>
+                                  {docType.icon}
+                                </div>
+                                <div className="text-sm font-medium text-gray-900">{docType.label}</div>
+                                <div className="text-xs text-gray-500">{count} file{count !== 1 ? 's' : ''}</div>
+                                
+                                {/* Show document list if there are documents */}
+                                {count > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {categoryDocs.slice(0, 3).map((doc: any, index: number) => (
+                                      <div 
+                                        key={index}
+                                        className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer truncate"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          // Open document in new tab
+                                          window.open(`/documents/view/${doc.id}`, '_blank')
+                                        }}
+                                        title={doc.title}
+                                      >
+                                        {doc.title}
+                                      </div>
+                                    ))}
+                                    {count > 3 && (
+                                      <div className="text-xs text-gray-500">
+                                        +{count - 3} more
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <div className="text-sm font-medium text-gray-900">{docType.label}</div>
-                              <div className="text-xs text-gray-500">{count} file{count !== 1 ? 's' : ''}</div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* All Documents List */}
+                      {!documentsLoading && employeeDocuments.length > 0 && (
+                        <div className="mt-8">
+                          <h4 className="text-md font-medium text-gray-900 mb-4">All Documents ({employeeDocuments.length})</h4>
+                          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="max-h-60 overflow-y-auto">
+                              {employeeDocuments.map((doc: any, index: number) => (
+                                <div 
+                                  key={index}
+                                  className="flex items-center justify-between p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                  onClick={() => window.open(`/documents/view/${doc.id}`, '_blank')}
+                                >
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                                      <span className="text-xs font-medium text-blue-600">
+                                        {doc.type || 'DOC'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900">{doc.title}</div>
+                                      <div className="text-xs text-gray-500">
+                                        {doc.uploadDate} • {doc.size} • {doc.uploadedBy}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                      doc.classification === 'PUBLIC' ? 'bg-green-100 text-green-800' :
+                                      doc.classification === 'INTERNAL' ? 'bg-blue-100 text-blue-800' :
+                                      doc.classification === 'CONFIDENTIAL' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-red-100 text-red-800'
+                                    }`}>
+                                      {doc.classification}
+                                    </span>
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          )
-                        })}
-                      </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {!documentsLoading && employeeDocuments.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <p className="mt-2">No documents found for this employee</p>
+                          <p className="text-sm text-gray-400">Documents uploaded during employee creation will appear here</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

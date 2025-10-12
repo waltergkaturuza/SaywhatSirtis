@@ -26,6 +26,7 @@ import {
   LockClosedIcon,
   EyeIcon,
   EyeSlashIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 
 interface ProfileData {
@@ -70,6 +71,10 @@ export default function EmployeeProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   
+  // Documents state
+  const [employeeDocuments, setEmployeeDocuments] = useState<any[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     phoneNumber: '',
     alternativePhone: '',
@@ -109,41 +114,78 @@ export default function EmployeeProfilePage() {
         profilePicture: data.profilePicture || ''
       });
       
-      // Check for backup data from localStorage
-      const backup = localStorage.getItem('profileUpdateBackup');
-      if (backup) {
-        try {
-          const { data: backupData, timestamp } = JSON.parse(backup);
-          const backupAge = new Date().getTime() - new Date(timestamp).getTime();
-          
-          // If backup is less than 1 hour old, offer to restore it
-          if (backupAge < 3600000) {
-            const shouldRestore = confirm(
-              'Found unsaved changes from your previous session. Would you like to restore them?'
-            );
-            if (shouldRestore) {
-              setFormData(backupData);
-              setEditMode(true);
-              setSuccessMessage('Previous unsaved changes restored. You can save them now.');
-            } else {
-              localStorage.removeItem('profileUpdateBackup');
-            }
-          } else {
-            // Remove old backup
-            localStorage.removeItem('profileUpdateBackup');
-          }
-        } catch (e) {
-          console.error('Error parsing backup data:', e);
-          localStorage.removeItem('profileUpdateBackup');
-        }
+      // Fetch employee documents if we have employee data
+      if (data.employeeId) {
+        await fetchEmployeeDocuments(data.employeeId);
       }
     } catch (err) {
       console.error('Error loading profile:', err);
-      setError('Failed to load profile. Please try again.');
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
+
+  // Fetch employee documents from API
+  const fetchEmployeeDocuments = async (employeeId: string) => {
+    try {
+      setDocumentsLoading(true);
+      
+      const response = await fetch(`/api/documents?employeeId=${employeeId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const documents = await response.json();
+      setEmployeeDocuments(documents || []);
+    } catch (err) {
+      console.error('Failed to fetch employee documents:', err);
+      setEmployeeDocuments([]);
+    } finally {
+      setDocumentsLoading(false);
+    }
+  };
+
+  const handleFormChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Backup to localStorage
+    const backup = { ...formData, [field]: value };
+    localStorage.setItem('profileUpdateBackup', JSON.stringify(backup));
+  };
+
+  useEffect(() => {
+    loadProfile();
+    
+    // Check for backup data from localStorage
+    const backup = localStorage.getItem('profileUpdateBackup');
+    if (backup) {
+      try {
+        const { data: backupData, timestamp } = JSON.parse(backup);
+        const backupAge = new Date().getTime() - new Date(timestamp).getTime();
+        
+        // If backup is less than 1 hour old, offer to restore it
+        if (backupAge < 3600000) {
+          const shouldRestore = confirm(
+            'Found unsaved changes from your previous session. Would you like to restore them?'
+          );
+          if (shouldRestore) {
+            setFormData(backupData);
+            setEditMode(true);
+            setSuccessMessage('Previous unsaved changes restored. You can save them now.');
+          } else {
+            localStorage.removeItem('profileUpdateBackup');
+          }
+        } else {
+          // Remove old backup
+          localStorage.removeItem('profileUpdateBackup');
+        }
+      } catch (e) {
+        console.error('Error parsing backup data:', e);
+        localStorage.removeItem('profileUpdateBackup');
+      }
+    }
+  }, []);
 
   const handleSaveProfile = async () => {
     try {
@@ -905,6 +947,76 @@ export default function EmployeeProfilePage() {
                       <p className="text-xs text-gray-600">Employee portal home</p>
                     </div>
                   </Link>
+                </div>
+              </div>
+
+              {/* Employee Documents Section */}
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                <div className="bg-gradient-to-r from-purple-600 to-purple-500 px-4 py-3">
+                  <h3 className="text-lg font-bold text-white flex items-center">
+                    <DocumentTextIcon className="mr-2 h-5 w-5" />
+                    My Documents
+                  </h3>
+                </div>
+                <div className="p-4">
+                  {documentsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                      <span className="ml-2 text-gray-600">Loading documents...</span>
+                    </div>
+                  ) : employeeDocuments.length === 0 ? (
+                    <div className="text-center py-8">
+                      <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500 font-medium">No documents available</p>
+                      <p className="text-gray-400 text-sm">Documents uploaded for you will appear here</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {employeeDocuments.map((doc, index) => (
+                        <div
+                          key={doc.id || index}
+                          className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-transparent rounded-lg border border-purple-100 hover:border-purple-300 transition-colors group"
+                        >
+                          <div className="flex items-center space-x-3 flex-1 min-w-0">
+                            <DocumentTextIcon className="h-5 w-5 text-purple-600 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {doc.fileName || doc.title || 'Untitled Document'}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {doc.customMetadata?.securityClassification && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mr-2">
+                                    {doc.customMetadata.securityClassification}
+                                  </span>
+                                )}
+                                {doc.customMetadata?.category || 'General'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <a
+                              href={`/api/documents/${doc.id}/view`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 rounded hover:bg-purple-200 transition-colors"
+                              title="View document"
+                            >
+                              <EyeIcon className="h-3 w-3 mr-1" />
+                              View
+                            </a>
+                            <a
+                              href={`/api/documents/${doc.id}/download`}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                              title="Download document"
+                            >
+                              <ArrowDownTrayIcon className="h-3 w-3 mr-1" />
+                              Download
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               </div>
