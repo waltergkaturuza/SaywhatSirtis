@@ -54,6 +54,8 @@ interface Employee {
   education?: string
   skills?: string | string[] // Support both string and array formats
   accessLevel?: string
+  userRole?: string // User role from system
+  role?: string // Alternative role field
   salary?: number
 }
 
@@ -66,6 +68,7 @@ interface AnalyticsData {
   ageDistribution: { '18-25': number; '26-35': number; '36-45': number; '46-55': number; '56+': number }
   departmentDistribution: Record<string, number>
   accessLevelDistribution: Record<string, number>
+  rolesDistribution: Record<string, number>
   skillsDistribution: Record<string, number>
   averageTenure: number
   retentionRate: number
@@ -292,6 +295,26 @@ export default function EmployeeReports() {
       return acc
     }, {} as Record<string, number>)
 
+    // Roles distribution - Use captured role data
+    const rolesDistribution = employeeData.reduce((acc, emp) => {
+      // Try multiple sources for role information
+      const role = emp.userRole || emp.role || emp.position || 'Employee'
+      
+      // Normalize role names
+      const normalizedRole = role.replace(/_/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
+      
+      console.log(`Employee ${emp.firstName} ${emp.lastName} - Role: "${role}" -> "${normalizedRole}"`)
+      
+      acc[normalizedRole] = (acc[normalizedRole] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+
+    console.log('Access levels distribution:', accessLevelDistribution)
+    console.log('Roles distribution:', rolesDistribution)
+
     // Skills distribution - Handle both array and string formats
     const skillsDistribution = employeeData.reduce((acc, emp) => {
       let skills: string[] = []
@@ -364,6 +387,7 @@ export default function EmployeeReports() {
       ageDistribution,
       departmentDistribution,
       accessLevelDistribution,
+      rolesDistribution,
       skillsDistribution: finalSkillsDistribution, // Use enhanced skills distribution
       averageTenure,
       retentionRate
@@ -722,33 +746,71 @@ export default function EmployeeReports() {
             </div>
           </div>
 
-          {/* Access Level Distribution */}
+          {/* Access Levels & Roles Distribution */}
           <div className="bg-gray-800 border border-cyan-400 rounded-lg p-6">
-            <h3 className="text-cyan-400 text-lg font-semibold mb-4">Access Level Distribution</h3>
-            <div className="space-y-4">
-              {analytics?.accessLevelDistribution && Object.entries(analytics.accessLevelDistribution)
-                .sort(([,a], [,b]) => b - a)
-                .map(([level, count], index) => {
-                  const percentage = ((count / analytics.totalEmployees) * 100).toFixed(1)
-                  return (
-                    <div key={level} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="text-white font-semibold">{level}</div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="w-32 bg-gray-700 rounded-full h-6 overflow-hidden">
-                          <div 
-                            className="h-full bg-cyan-400 rounded-full flex items-center justify-center"
-                            style={{ width: `${percentage}%` }}
-                          >
-                            <span className="text-gray-900 text-xs font-bold">{count}</span>
+            <h3 className="text-cyan-400 text-lg font-semibold mb-4">Access Levels & Roles Distribution</h3>
+            <div className="space-y-6">
+              
+              {/* Access Levels Section */}
+              <div>
+                <h4 className="text-cyan-300 text-sm font-semibold mb-3 uppercase tracking-wide">Access Levels</h4>
+                <div className="space-y-3">
+                  {analytics?.accessLevelDistribution && Object.entries(analytics.accessLevelDistribution)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([level, count], index) => {
+                      const percentage = ((count / analytics.totalEmployees) * 100).toFixed(1)
+                      return (
+                        <div key={level} className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="text-white font-semibold text-sm">{level}</div>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="w-32 bg-gray-700 rounded-full h-5 overflow-hidden">
+                              <div 
+                                className="h-full bg-cyan-400 rounded-full flex items-center justify-center"
+                                style={{ width: `${percentage}%` }}
+                              >
+                                <span className="text-gray-900 text-xs font-bold">{count}</span>
+                              </div>
+                            </div>
+                            <div className="text-cyan-400 text-sm w-12 text-right">{percentage}%</div>
                           </div>
                         </div>
-                        <div className="text-cyan-400 text-sm w-12 text-right">{percentage}%</div>
-                      </div>
-                    </div>
-                  )
-                })}
+                      )
+                    })}
+                </div>
+              </div>
+
+              {/* Roles Section */}
+              <div className="border-t border-gray-600 pt-4">
+                <h4 className="text-green-300 text-sm font-semibold mb-3 uppercase tracking-wide">User Roles</h4>
+                <div className="space-y-3">
+                  {analytics?.rolesDistribution && Object.entries(analytics.rolesDistribution)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 6) // Show top 6 roles
+                    .map(([role, count], index) => {
+                      const percentage = ((count / analytics.totalEmployees) * 100).toFixed(1)
+                      return (
+                        <div key={role} className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="text-white font-semibold text-sm">{role}</div>
+                          </div>
+                          <div className="flex items-center space-x-4">
+                            <div className="w-32 bg-gray-700 rounded-full h-5 overflow-hidden">
+                              <div 
+                                className="h-full bg-green-400 rounded-full flex items-center justify-center"
+                                style={{ width: `${percentage}%` }}
+                              >
+                                <span className="text-gray-900 text-xs font-bold">{count}</span>
+                              </div>
+                            </div>
+                            <div className="text-green-400 text-sm w-12 text-right">{percentage}%</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
