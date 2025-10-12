@@ -40,12 +40,17 @@ export async function POST(request: NextRequest) {
     const classification = formData.get('classification') as string
     const accessLevel = formData.get('accessLevel') as string
     const eventId = formData.get('eventId') as string
+    const customFolderPath = formData.get('folderPath') as string
     
     // Personal repository fields
     const uploadedBy = formData.get('uploadedBy') as string
     const department = formData.get('department') as string
     const isPersonalRepo = formData.get('isPersonalRepo') === 'true'
     const status = formData.get('status') as string
+
+    // Additional metadata
+    const customMetadata = formData.get('customMetadata') ? 
+      JSON.parse(formData.get('customMetadata') as string) : {}
 
     // Access level specific selections
     const selectedIndividuals = formData.get('selectedIndividuals') ? 
@@ -145,10 +150,17 @@ export async function POST(request: NextRequest) {
     const documentId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
     const filename = `${documentId}_${file.name}`
     
-    // Create dynamic folder structure: uploads/department/category/
-    const departmentFolder = department || 'General'
-    const categoryFolder = categoryMap[category] || 'OTHER'
-    const folderPath = `uploads/${departmentFolder}/${categoryFolder}`
+    // Create folder structure: use custom folderPath if provided, otherwise use default
+    let folderPath: string
+    if (customFolderPath) {
+      folderPath = `uploads/${customFolderPath}`
+    } else {
+      // Default folder structure: uploads/department/category/
+      const departmentFolder = department || 'General'
+      const categoryFolder = categoryMap[category] || 'OTHER'
+      folderPath = `uploads/${departmentFolder}/${categoryFolder}`
+    }
+    
     const filePath = `${folderPath}/${filename}`
     
     // Initialize metadata variables
@@ -247,10 +259,10 @@ export async function POST(request: NextRequest) {
         isPublic: classification === 'PUBLIC',
         uploadedBy: extractedMetadata.author || uploadedBy || session.user?.name || session.user?.email || 'Unknown User',
         department: department || 'Unknown Department',
-        folderPath: `${department || 'Unknown Department'}/${mappedCategory}`,
+        folderPath: customFolderPath || `${department || 'Unknown Department'}/${mappedCategory}`,
         isPersonalRepo: isPersonalRepo,
-        approvalStatus: isPersonalRepo ? 'DRAFT' : 'PENDING_REVIEW',
-        reviewStatus: 'PENDING',
+        approvalStatus: status === 'APPROVED' ? 'APPROVED' : (isPersonalRepo ? 'DRAFT' : 'PENDING_REVIEW'),
+        reviewStatus: status === 'APPROVED' ? 'APPROVED' : 'PENDING',
         customMetadata: {
           ...(eventId ? { eventId } : {}),
           ...(selectedIndividuals.length > 0 ? { selectedIndividuals } : {}),
@@ -260,7 +272,9 @@ export async function POST(request: NextRequest) {
           // Add extracted metadata
           ...extractedMetadata,
           extractedKeywords,
-          documentProcessed: true
+          documentProcessed: true,
+          // Add custom metadata from form
+          ...customMetadata
         },
         updatedAt: new Date()
       }

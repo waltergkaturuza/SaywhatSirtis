@@ -555,21 +555,48 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
       for (const document of formData.uploadedDocuments) {
         if (!document.file) continue // Skip if no actual file
 
+        // Create folder structure: HR/Employee Profiles/[Category]/[Employee Name or ID]/[Document Name]
+        const sanitizedEmployeeName = employeeName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')
+        const documentCategory = document.category.charAt(0).toUpperCase() + document.category.slice(1).toLowerCase()
+        const folderPath = `HR/Employee_Profiles/${documentCategory}_Files/${sanitizedEmployeeName}_${employeeId}`
+
         const uploadFormData = new FormData()
         uploadFormData.append('file', document.file)
         uploadFormData.append('title', `${employeeName} - ${document.category.toUpperCase()} - ${document.name}`)
-        uploadFormData.append('description', `Employee document for ${employeeName} (ID: ${employeeId})`)
+        uploadFormData.append('description', `Employee ${document.category} document for ${employeeName} (ID: ${employeeId})`)
+        
+        // Document Repository required fields
+        uploadFormData.append('category', 'Employee Documents') // Use proper category
+        uploadFormData.append('classification', 'CONFIDENTIAL') // Employee docs are confidential
+        uploadFormData.append('accessLevel', 'department') // HR department access
+        uploadFormData.append('department', 'Human Resource Management')
+        uploadFormData.append('uploadedBy', employeeName)
+        uploadFormData.append('isPersonalRepo', 'false') // Main repository, not personal
+        uploadFormData.append('status', 'APPROVED') // HR documents are pre-approved
+        
+        // Folder structure for organized storage
+        uploadFormData.append('folderPath', folderPath)
+        
+        // Selected access (HR department access)
+        uploadFormData.append('selectedDepartments', JSON.stringify(['Human Resource Management']))
+        
+        // Tags for better organization
         uploadFormData.append('tags', JSON.stringify([
           'employee-document',
           `employee-${employeeId}`,
           `category-${document.category}`,
-          'hr-document'
+          'hr-document',
+          employeeName.toLowerCase().replace(/\s+/g, '-')
         ]))
-        uploadFormData.append('category', 'hr')
-        uploadFormData.append('subcategory', `employee-${document.category}`)
-        uploadFormData.append('securityLevel', 'CONFIDENTIAL') // Default security level
-        uploadFormData.append('department', 'Human Resource Management')
-        uploadFormData.append('relatedEmployeeId', employeeId)
+
+        // Custom metadata for tracking
+        const customMetadata = {
+          relatedEmployeeId: employeeId,
+          employeeName: employeeName,
+          documentCategory: document.category,
+          uploadContext: 'employee-form'
+        }
+        uploadFormData.append('customMetadata', JSON.stringify(customMetadata))
 
         const response = await fetch('/api/documents/upload', {
           method: 'POST',
@@ -577,16 +604,17 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         })
 
         if (!response.ok) {
-          throw new Error(`Failed to upload ${document.name}`)
+          const errorData = await response.json()
+          throw new Error(`Failed to upload ${document.name}: ${errorData.error || 'Unknown error'}`)
         }
 
         const result = await response.json()
         if (result.success) {
           uploadedDocumentIds.push({
-            documentId: result.data.id,
+            documentId: result.document?.id || result.data?.id,
             category: document.category,
             originalName: document.name,
-            repositoryTitle: result.data.title
+            repositoryTitle: result.document?.title || result.data?.title
           })
         }
       }

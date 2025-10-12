@@ -50,6 +50,12 @@ export default function EmployeesPage() {
   const [editFormData, setEditFormData] = useState<any>({})
   const [formLoading, setFormLoading] = useState(false)
   
+  // Notification state
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | null
+    message: string
+  }>({ type: null, message: '' })
+  
   // API state
   const [employees, setEmployees] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
@@ -67,6 +73,21 @@ export default function EmployeesPage() {
     } catch (error) {
       return 'Invalid Date'
     }
+  }
+
+  // Notification functions
+  const showSuccessNotification = (message: string) => {
+    setNotification({ type: 'success', message })
+    setTimeout(() => {
+      setNotification({ type: null, message: '' })
+    }, 5000) // Auto hide after 5 seconds
+  }
+
+  const showErrorNotification = (message: string) => {
+    setNotification({ type: 'error', message })
+    setTimeout(() => {
+      setNotification({ type: null, message: '' })
+    }, 7000) // Auto hide after 7 seconds for errors
   }
 
   // Fetch employees from API
@@ -585,18 +606,18 @@ export default function EmployeesPage() {
       
       if (result.success) {
         // Refresh employee list
-        fetchEmployees()
+        await fetchEmployees()
         setShowEditModal(false)
         setEditFormData({})
-        // You can add a toast notification here
+        showSuccessNotification('Employee updated successfully!')
         console.log('Employee updated successfully')
       } else {
         console.error('Failed to update employee:', result.error)
-        alert('Failed to update employee: ' + (result.error || 'Unknown error'))
+        showErrorNotification('Failed to update employee: ' + (result.error || 'Unknown error'))
       }
     } catch (error) {
       console.error('Error updating employee:', error)
-      alert('Error updating employee. Please try again.')
+      showErrorNotification('Error updating employee. Please try again.')
     } finally {
       setFormLoading(false)
     }
@@ -617,21 +638,21 @@ export default function EmployeesPage() {
 
       if (response.ok) {
         // Success - refresh employee list and close modal
-        fetchEmployees()
+        await fetchEmployees()
         setShowCreateModal(false)
         console.log('Employee created successfully')
-        alert('Employee created successfully!')
+        showSuccessNotification('Employee created successfully!')
       } else {
         // Handle different error types
         if (response.status === 401) {
-          alert('Authentication required. Please log in to create employees.')
+          showErrorNotification('Authentication required. Please log in to create employees.')
         } else {
-          alert(result.error || result.message || 'Failed to create employee')
+          showErrorNotification(result.error || result.message || 'Failed to create employee')
         }
       }
     } catch (error) {
       console.error("Error creating employee:", error)
-      alert('An error occurred while creating the employee. Please try again.')
+      showErrorNotification('An error occurred while creating the employee. Please try again.')
     } finally {
       setFormLoading(false)
     }
@@ -657,20 +678,25 @@ export default function EmployeesPage() {
       const result = await response.json()
       
       if (result.success) {
-        // Refresh employee list and close modal
-        fetchEmployees()
+        console.log('Employee updated successfully')
+        
+        // Wait for employee list to refresh completely before proceeding
+        await fetchEmployees()
+        
+        // Close modal and clear form data
         setShowEditModal(false)
         setEditFormData({})
         setSelectedEmployee(null)
-        console.log('Employee updated successfully')
-        alert('Employee updated successfully!')
+        
+        // Show success notification after everything is complete
+        showSuccessNotification('Employee updated successfully!')
       } else {
         console.error('Failed to update employee:', result.error)
-        alert('Failed to update employee: ' + (result.error || 'Unknown error'))
+        showErrorNotification('Failed to update employee: ' + (result.error || 'Unknown error'))
       }
     } catch (error) {
       console.error('Error updating employee:', error)
-      alert('Error updating employee. Please try again.')
+      showErrorNotification('Error updating employee. Please try again.')
     } finally {
       setFormLoading(false)
     }
@@ -692,7 +718,7 @@ export default function EmployeesPage() {
 
   const confirmArchiveEmployee = async () => {
     if (!archiveReason) {
-      alert('Please select a reason for archiving.')
+      showErrorNotification('Please select a reason for archiving.')
       return
     }
 
@@ -709,17 +735,18 @@ export default function EmployeesPage() {
       })
 
       if (response.ok) {
-        fetchEmployees()
+        await fetchEmployees()
         setShowArchiveModal(false)
         setSelectedEmployee(null)
+        showSuccessNotification('Employee archived successfully!')
         console.log('Employee archived successfully:', selectedEmployee.id)
       } else {
         const error = await response.json()
-        alert(`Failed to archive employee: ${error.message || 'Unknown error'}`)
+        showErrorNotification(`Failed to archive employee: ${error.message || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error archiving employee:', error)
-      alert('Failed to archive employee. Please try again.')
+      showErrorNotification('Failed to archive employee. Please try again.')
     }
   }
 
@@ -751,6 +778,46 @@ export default function EmployeesPage() {
       sidebar={sidebar}
     >
       <div className="space-y-6">
+        {/* Notification Component */}
+        {notification.type && (
+          <div 
+            className={`fixed top-4 right-4 z-50 max-w-sm w-full transform transition-all duration-300 ease-in-out ${
+              notification.type === 'success' 
+                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/30' 
+                : 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/30'
+            } rounded-lg border border-white/20 backdrop-blur-sm`}
+          >
+            <div className="flex items-start p-4">
+              <div className="flex-shrink-0">
+                {notification.type === 'success' ? (
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-white">
+                  {notification.message}
+                </p>
+              </div>
+              <div className="ml-4 flex-shrink-0">
+                <button
+                  onClick={() => setNotification({ type: null, message: '' })}
+                  className="inline-flex text-white hover:text-gray-200 focus:outline-none"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Search and Filters */}
         <div className="bg-gradient-to-r from-saywhat-white to-saywhat-light-grey rounded-xl border-2 border-saywhat-orange/20 p-6 shadow-lg">
           <div className="flex flex-col sm:flex-row gap-4">
