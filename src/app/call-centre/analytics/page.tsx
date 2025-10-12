@@ -69,12 +69,14 @@ interface CallTrend {
   calls: number
   answered: number
   resolved: number
+  [key: string]: any // Add index signature for Recharts compatibility
 }
 
 interface CallType {
   type: string
   count: number
   percentage: number
+  [key: string]: any // Add index signature for Recharts compatibility
 }
 
 interface AgentPerformance {
@@ -83,12 +85,14 @@ interface AgentPerformance {
   avgSatisfaction: number
   responseTime: string
   efficiency: number
+  [key: string]: any // Add index signature for Recharts compatibility
 }
 
 interface HourlyData {
   hour: string
   calls: number
   answered: number
+  [key: string]: any // Add index signature for Recharts compatibility
 }
 
 interface AnalyticsData {

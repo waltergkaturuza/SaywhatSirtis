@@ -74,6 +74,7 @@ interface DepartmentData {
   turnoverRate: number
   performanceScore: number
   satisfactionScore: number
+  [key: string]: any // Add index signature for Recharts compatibility
 }
 
 interface TurnoverData {
@@ -82,18 +83,21 @@ interface TurnoverData {
   hires: number
   netChange: number
   turnoverRate: number
+  [key: string]: any // Add index signature for Recharts compatibility
 }
 
 interface PerformanceData {
   rating: string
   count: number
   percentage: number
+  [key: string]: any // Add index signature for Recharts compatibility
 }
 
 interface SalaryData {
   range: string
   count: number
   avgSalary: number
+  [key: string]: any // Add index signature for Recharts compatibility
 }
 
 
