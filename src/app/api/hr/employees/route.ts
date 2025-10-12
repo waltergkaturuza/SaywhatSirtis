@@ -120,6 +120,12 @@ export async function GET() {
         position: emp.position || 'N/A',
         phone: emp.phoneNumber || 'N/A',
         
+        // Personal information
+        dateOfBirth: emp.dateOfBirth,
+        gender: emp.gender,
+        nationality: emp.nationality,
+        maritalStatus: emp.marital_status,
+        
         // Supervisor info - Note: This would need to be fetched separately if needed
         supervisor: null,
         

@@ -159,15 +159,27 @@ export default function EmployeeReports() {
       emp.hireDate && new Date(emp.hireDate) >= currentMonthStart
     ).length
 
-    // Gender distribution
+    // Gender distribution - Use real captured gender data
     const genderDistribution = employeeData.reduce((acc, emp) => {
-      const gender = emp.gender?.toLowerCase() || 'unspecified'
-      if (gender === 'male') acc.male++
-      else if (gender === 'female') acc.female++
-      else if (gender === 'other') acc.other++
-      else acc.unspecified++
+      const gender = emp.gender?.toLowerCase()?.trim() || 'unspecified'
+      
+      console.log(`Employee ${emp.firstName} ${emp.lastName} - Gender: "${emp.gender}" -> "${gender}"`)
+      
+      // Handle various gender input formats
+      if (gender === 'male' || gender === 'm' || gender === 'man') {
+        acc.male++
+      } else if (gender === 'female' || gender === 'f' || gender === 'woman') {
+        acc.female++
+      } else if (gender === 'other' || gender === 'non-binary' || gender === 'prefer not to say') {
+        acc.other++
+      } else {
+        acc.unspecified++
+      }
+      
       return acc
     }, { male: 0, female: 0, other: 0, unspecified: 0 })
+
+    console.log('Final gender distribution:', genderDistribution)
 
     // Age distribution - Calculate real ages from dateOfBirth
     const ageDistribution = employeeData.reduce((acc, emp) => {
@@ -215,12 +227,25 @@ export default function EmployeeReports() {
       return acc
     }, { '18-25': 0, '26-35': 0, '36-45': 0, '46-55': 0, '56+': 0 } as Record<string, number>)
 
-    // Department distribution
+    // Department distribution - Enhanced analysis with real data
     const departmentDistribution = employeeData.reduce((acc, emp) => {
-      const dept = emp.departmentInfo?.name || emp.department || 'Unassigned'
-      acc[dept] = (acc[dept] || 0) + 1
+      // Try multiple sources for department information
+      const dept = emp.departmentInfo?.name || 
+                   emp.department || 
+                   emp.departmentInfo?.departmentName ||
+                   'Unassigned'
+      
+      // Normalize department names (handle case variations)
+      const normalizedDept = dept.trim()
+      
+      console.log(`Employee ${emp.firstName} ${emp.lastName} - Department: "${dept}" -> "${normalizedDept}"`)
+      
+      acc[normalizedDept] = (acc[normalizedDept] || 0) + 1
       return acc
     }, {} as Record<string, number>)
+
+    console.log('Department distribution:', departmentDistribution)
+    console.log('Unique departments found:', Object.keys(departmentDistribution))
 
     // Access level distribution
     const accessLevelDistribution = employeeData.reduce((acc, emp) => {
