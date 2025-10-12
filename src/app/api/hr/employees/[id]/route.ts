@@ -156,6 +156,9 @@ export async function GET(
       backgroundCheckCompleted: employee.background_check_completed,
       medicalCheckCompleted: employee.medical_check_completed,
       
+      // Additional notes
+      additionalNotes: employee.additional_notes,
+      
       // Role Information
       supervisorId: employee.supervisor_id,
       isSupervisor: employee.is_supervisor,
@@ -334,6 +337,9 @@ export async function PUT(
     if (formData.contractSigned !== undefined) updateData.contract_signed = formData.contractSigned
     if (formData.backgroundCheckCompleted !== undefined) updateData.background_check_completed = formData.backgroundCheckCompleted
     if (formData.medicalCheckCompleted !== undefined) updateData.medical_check_completed = formData.medicalCheckCompleted
+    
+    // Additional notes
+    if (formData.additionalNotes !== undefined) updateData.additional_notes = formData.additionalNotes
     
     // Handle supervisor relationship - use correct database field name
     if (formData.supervisorId !== undefined) {

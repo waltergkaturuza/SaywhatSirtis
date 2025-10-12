@@ -154,6 +154,15 @@ export async function GET() {
         medicalCheckCompleted: emp.medical_check_completed || false,
         trainingCompleted: emp.training_completed || false,
         
+        // Education & Skills information
+        education: emp.education,
+        skills: emp.skills || [],
+        certifications: emp.certifications || [],
+        orientationTrainingRequired: emp.orientation_training_required || false,
+        securityTrainingRequired: emp.security_training_required || false,
+        departmentSpecificTrainingRequired: emp.department_specific_training_required || false,
+        additionalNotes: emp.additional_notes,
+        
         // Additional info
         createdAt: emp.createdAt,
         updatedAt: emp.updatedAt
@@ -533,6 +542,19 @@ export async function POST(request: Request) {
           fuel_allowance: sanitizedData.fuelAllowance,
           airtime_allowance: sanitizedData.airtimeAllowance,
           other_benefits: sanitizedData.otherBenefits,
+          
+          // Education & Skills fields
+          education: formData.education || null,
+          skills: Array.isArray(formData.skills) ? formData.skills : (typeof formData.skills === 'string' ? formData.skills.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0) : []),
+          certifications: Array.isArray(formData.certifications) ? formData.certifications : (typeof formData.certifications === 'string' ? formData.certifications.split(',').map((c: string) => c.trim()).filter((c: string) => c.length > 0) : []),
+          
+          // Training requirements
+          orientation_training_required: formData.orientationTrainingRequired || false,
+          security_training_required: formData.securityTrainingRequired || false,
+          department_specific_training_required: formData.departmentSpecificTrainingRequired || false,
+          
+          // Additional notes
+          additional_notes: formData.additionalNotes || null,
           
           // Security status
           contract_signed: formData.contractSigned || false,

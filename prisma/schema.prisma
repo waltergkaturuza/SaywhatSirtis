@@ -667,6 +667,7 @@ model employees {
   contract_signed                       Boolean?                   @default(false)
   background_check_completed            Boolean?                   @default(false)
   medical_check_completed               Boolean?                   @default(false)
+  additional_notes                      String?                    @db.Text
   departments                           departments?               @relation(fields: [departmentId], references: [id])
   employees                             employees?                 @relation("employeesToemployees", fields: [supervisor_id], references: [id])
   other_employees                       employees[]                @relation("employeesToemployees")
