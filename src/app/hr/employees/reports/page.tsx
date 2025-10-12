@@ -65,7 +65,7 @@ interface AnalyticsData {
   newHiresThisMonth: number
   turnoverRate: number
   genderDistribution: { male: number; female: number; other: number; unspecified: number }
-  ageDistribution: { '18-25': number; '26-35': number; '36-45': number; '46-55': number; '56+': number }
+  ageDistribution: Record<string, number>
   departmentDistribution: Record<string, number>
   accessLevelDistribution: Record<string, number>
   rolesDistribution: Record<string, number>
@@ -113,11 +113,11 @@ export default function EmployeeReports() {
   const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/hr/employees')
+      const response = await fetch('/api/test/employees')
       if (response.ok) {
         const result = await response.json()
         // Handle the structured response format
-        const employeeData = result.data || result || []
+        const employeeData = result.employees || result.data || result || []
         setEmployees(employeeData)
         setFilteredEmployees(employeeData)
         
@@ -195,7 +195,9 @@ export default function EmployeeReports() {
 
     // Basic counts
     const totalEmployees = employeeData.length
-    const activeEmployees = employeeData.filter(emp => emp.status === 'ACTIVE' || emp.status === 'active').length
+    const activeEmployees = employeeData.filter(emp => 
+      emp.status === 'ACTIVE' || emp.status === 'active' || !emp.status // If no status field, assume active
+    ).length || totalEmployees // Fallback to total if no status data
     const newHiresThisMonth = employeeData.filter(emp => 
       emp.hireDate && new Date(emp.hireDate) >= currentMonthStart
     ).length
@@ -203,8 +205,6 @@ export default function EmployeeReports() {
     // Gender distribution - Use real captured gender data
     const genderDistribution = employeeData.reduce((acc, emp) => {
       const gender = emp.gender?.toLowerCase()?.trim() || 'unspecified'
-      
-      console.log(`Employee ${emp.firstName} ${emp.lastName} - Gender: "${emp.gender}" -> "${gender}"`)
       
       // Handle various gender input formats
       if (gender === 'male' || gender === 'm' || gender === 'man') {
@@ -219,8 +219,6 @@ export default function EmployeeReports() {
       
       return acc
     }, { male: 0, female: 0, other: 0, unspecified: 0 })
-
-    console.log('Final gender distribution:', genderDistribution)
 
     // Age distribution - Calculate real ages from dateOfBirth
     const ageDistribution = employeeData.reduce((acc, emp) => {
@@ -266,26 +264,23 @@ export default function EmployeeReports() {
       }
       
       return acc
-    }, { '18-25': 0, '26-35': 0, '36-45': 0, '46-55': 0, '56+': 0 } as Record<string, number>)
+    }, { '18-25': 0, '26-35': 0, '36-45': 0, '46-55': 0, '56+': 0, 'Unknown': 0 } as Record<string, number>)
 
     // Department distribution - Enhanced analysis with real data
     const departmentDistribution = employeeData.reduce((acc, emp) => {
       // Try multiple sources for department information
       const dept = emp.departmentInfo?.name || 
                    emp.department || 
-                   emp.departmentInfo?.departmentName ||
                    'Unassigned'
       
       // Normalize department names (handle case variations)
       const normalizedDept = dept.trim()
       
-      console.log(`Employee ${emp.firstName} ${emp.lastName} - Department: "${dept}" -> "${normalizedDept}"`)
-      
       acc[normalizedDept] = (acc[normalizedDept] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 
-    console.log('Department distribution:', departmentDistribution)
+    console.log('Final Department distribution:', departmentDistribution)
     console.log('Unique departments found:', Object.keys(departmentDistribution))
 
     // Access level distribution
@@ -305,8 +300,6 @@ export default function EmployeeReports() {
         .split(' ')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ')
-      
-      console.log(`Employee ${emp.firstName} ${emp.lastName} - Role: "${role}" -> "${normalizedRole}"`)
       
       acc[normalizedRole] = (acc[normalizedRole] || 0) + 1
       return acc
@@ -817,65 +810,55 @@ export default function EmployeeReports() {
 
         {/* Additional Analytics Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Department Salary Analysis */}
-          <div className="bg-gray-800 border border-cyan-400 rounded-lg p-6">
+          {/* Department Analysis - Span 2 columns for better label display */}
+          <div className="lg:col-span-2 bg-gray-800 border border-cyan-400 rounded-lg p-6">
             <h3 className="text-cyan-400 text-lg font-semibold mb-4">Department Analysis</h3>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={350}>
               <BarChart 
                 data={analytics?.departmentDistribution ? Object.entries(analytics.departmentDistribution)
                   .sort(([,a], [,b]) => b - a)
-                  .slice(0, 5)
-                  .map(([key, value]) => ({ name: key.substring(0, 10), count: value })) : []}
+                  .map(([key, value]) => ({ 
+                    name: key.length > 30 ? key.substring(0, 27) + '...' : key, 
+                    fullName: key,
+                    count: value 
+                  })) : []}
                 layout="horizontal"
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis type="number" tick={{ fill: '#06B6D4' }} />
-                <YAxis dataKey="name" type="category" tick={{ fill: '#06B6D4' }} width={80} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #06B6D4', borderRadius: '8px' }}
+                <XAxis 
+                  type="number" 
+                  tick={{ fill: '#06B6D4', fontSize: 12 }}
+                  axisLine={{ stroke: '#374151' }}
+                  tickLine={{ stroke: '#374151' }}
                 />
-                <Bar dataKey="count" fill="#06B6D4" />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  tick={{ fill: '#06B6D4', fontSize: 11 }}
+                  width={200}
+                  axisLine={{ stroke: '#374151' }}
+                  tickLine={{ stroke: '#374151' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#1F2937', 
+                    border: '1px solid #06B6D4', 
+                    borderRadius: '8px',
+                    fontSize: '12px'
+                  }}
+                  formatter={(value, name, props) => [
+                    `${value} employees`,
+                    props.payload.fullName
+                  ]}
+                  labelFormatter={() => ''}
+                />
+                <Bar dataKey="count" fill="#06B6D4" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Gender Distribution */}
-          <div className="bg-gray-800 border border-cyan-400 rounded-lg p-6">
-            <h3 className="text-cyan-400 text-lg font-semibold mb-4">Gender Distribution</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={analytics?.genderDistribution ? [
-                    { name: 'Male', value: analytics.genderDistribution.male, fill: '#06B6D4' },
-                    { name: 'Female', value: analytics.genderDistribution.female, fill: '#10B981' },
-                    { name: 'Other', value: analytics.genderDistribution.other, fill: '#F59E0B' },
-                    { name: 'Unspecified', value: analytics.genderDistribution.unspecified, fill: '#EF4444' }
-                  ].filter(item => item.value > 0) : []}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {analytics?.genderDistribution && [
-                    { name: 'Male', value: analytics.genderDistribution.male, fill: '#06B6D4' },
-                    { name: 'Female', value: analytics.genderDistribution.female, fill: '#10B981' },
-                    { name: 'Other', value: analytics.genderDistribution.other, fill: '#F59E0B' },
-                    { name: 'Unspecified', value: analytics.genderDistribution.unspecified, fill: '#EF4444' }
-                  ].filter(item => item.value > 0).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #06B6D4', borderRadius: '8px' }}
-                />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Key Insights */}
+          {/* Key Insights - Moved to right column */}
           <div className="bg-gray-800 border border-cyan-400 rounded-lg p-6">
             <h3 className="text-cyan-400 text-lg font-semibold mb-4">Key Insights</h3>
             <div className="space-y-4">
@@ -897,6 +880,75 @@ export default function EmployeeReports() {
                 <div className="text-white font-semibold">Average Tenure</div>
                 <div className="text-yellow-400 text-sm">
                   {analytics?.averageTenure ? `${analytics.averageTenure.toFixed(1)} years average service` : 'No data available'}
+                </div>
+              </div>
+              <div className="border-l-4 border-purple-400 pl-4">
+                <div className="text-white font-semibold">Departments</div>
+                <div className="text-purple-400 text-sm">
+                  {analytics?.departmentDistribution ? Object.keys(analytics.departmentDistribution).length : 0} active departments
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Gender Distribution - Separate row for better visibility */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-gray-800 border border-cyan-400 rounded-lg p-6">
+            <h3 className="text-cyan-400 text-lg font-semibold mb-4">Gender Distribution</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={analytics?.genderDistribution ? [
+                    { name: 'Male', value: analytics.genderDistribution.male, fill: '#06B6D4' },
+                    { name: 'Female', value: analytics.genderDistribution.female, fill: '#10B981' },
+                    { name: 'Other', value: analytics.genderDistribution.other, fill: '#F59E0B' },
+                    { name: 'Unspecified', value: analytics.genderDistribution.unspecified, fill: '#EF4444' }
+                  ].filter(item => item.value > 0) : []}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {analytics?.genderDistribution && [
+                    { name: 'Male', value: analytics.genderDistribution.male, fill: '#06B6D4' },
+                    { name: 'Female', value: analytics.genderDistribution.female, fill: '#10B981' },
+                    { name: 'Other', value: analytics.genderDistribution.other, fill: '#F59E0B' },
+                    { name: 'Unspecified', value: analytics.genderDistribution.unspecified, fill: '#EF4444' }
+                  ].filter(item => item.value > 0).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #06B6D4', borderRadius: '8px' }}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Additional Metrics */}
+          <div className="bg-gray-800 border border-cyan-400 rounded-lg p-6">
+            <h3 className="text-cyan-400 text-lg font-semibold mb-4">Additional Metrics</h3>
+            <div className="space-y-4">
+              <div className="border-l-4 border-cyan-400 pl-4">
+                <div className="text-white font-semibold">Retention Rate</div>
+                <div className="text-cyan-400 text-sm">
+                  {analytics?.retentionRate ? `${analytics.retentionRate.toFixed(1)}%` : 'Calculating...'}
+                </div>
+              </div>
+              <div className="border-l-4 border-green-400 pl-4">
+                <div className="text-white font-semibold">Active Employees</div>
+                <div className="text-green-400 text-sm">
+                  {analytics?.activeEmployees || 0} of {analytics?.totalEmployees || 0} employees
+                </div>
+              </div>
+              <div className="border-l-4 border-yellow-400 pl-4">
+                <div className="text-white font-semibold">New Hires (This Month)</div>
+                <div className="text-yellow-400 text-sm">
+                  {analytics?.newHiresThisMonth || 0} employees joined
                 </div>
               </div>
             </div>
