@@ -23,7 +23,10 @@ export default function PerformancePage() {
   const [activeTab, setActiveTab] = useState("reviews")
   const [performanceReviews, setPerformanceReviews] = useState<any[]>([])
   const [goals, setGoals] = useState<any[]>([])
+  const [stats, setStats] = useState<any>({})
+  const [analytics, setAnalytics] = useState<any>({})
   const [loading, setLoading] = useState(true)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Fetch performance data from backend
@@ -37,9 +40,14 @@ export default function PerformancePage() {
         
         const response = await fetch('/api/hr/performance')
         if (response.ok) {
-          const data = await response.json()
-          setPerformanceReviews(data.reviews || [])
-          setGoals(data.goals || [])
+          const result = await response.json()
+          if (result.success) {
+            setPerformanceReviews(result.data.reviews || [])
+            setGoals(result.data.goals || [])
+            setStats(result.data.stats || {})
+          } else {
+            setError(result.error || 'Failed to fetch performance data')
+          }
         } else {
           const errorData = await response.json()
           setError(errorData.error || 'Failed to fetch performance data')
@@ -54,6 +62,31 @@ export default function PerformancePage() {
 
     fetchPerformanceData()
   }, [session])
+
+  // Fetch analytics data when analytics tab is selected
+  const fetchAnalyticsData = async () => {
+    try {
+      setAnalyticsLoading(true)
+      const response = await fetch('/api/hr/performance/analytics')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setAnalytics(result.data)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching analytics data:', error)
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }
+
+  // Fetch analytics when tab changes to analytics
+  useEffect(() => {
+    if (activeTab === 'analytics' && session) {
+      fetchAnalyticsData()
+    }
+  }, [activeTab, session])
 
   const metadata = {
     title: "Performance Management",
@@ -72,7 +105,7 @@ export default function PerformancePage() {
         Export Report
       </button>
       <Link href="/hr/performance/schedule">
-        <button className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700">
+        <button className="inline-flex items-center px-4 py-2 bg-orange-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-orange-700">
           <PlusIcon className="h-4 w-4 mr-2" />
           Schedule Review
         </button>
@@ -87,19 +120,27 @@ export default function PerformancePage() {
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Average Rating</span>
-            <span className="font-semibold text-yellow-600">4.7/5</span>
+            <span className="font-semibold text-orange-600">
+              {loading ? '---' : `${(stats.averageRating || 0).toFixed(1)}/5`}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Reviews Due</span>
-            <span className="font-semibold text-red-600">15</span>
+            <span className="font-semibold text-red-600">
+              {loading ? '---' : (stats.reviewsDue || 0)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Completed</span>
-            <span className="font-semibold text-green-600">234</span>
+            <span className="font-semibold text-green-600">
+              {loading ? '---' : (stats.completedReviews || 0)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">In Progress</span>
-            <span className="font-semibold text-blue-600">23</span>
+            <span className="font-semibold text-orange-600">
+              {loading ? '---' : (stats.inProgress || 0)}
+            </span>
           </div>
         </div>
       </div>
@@ -120,7 +161,7 @@ export default function PerformancePage() {
             <span className="text-sm text-gray-600">Good (3.5-4.4)</span>
             <div className="flex items-center space-x-2">
               <div className="w-16 bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: "35%" }}></div>
+                <div className="bg-orange-500 h-2 rounded-full" style={{ width: "35%" }}></div>
               </div>
               <span className="text-xs text-gray-500">35%</span>
             </div>
@@ -149,17 +190,17 @@ export default function PerformancePage() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="space-y-2">
-          <Link href="/hr/performance/schedule" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
-            Schedule Review
+          <Link href="/hr/performance/plans/create" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
+            Create New Plan
           </Link>
-          <Link href="/hr/performance/templates" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
-            Review Templates
+          <Link href="/hr/performance/plans/templates" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
+            Plan Templates
           </Link>
-          <Link href="/hr/performance/goals" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
-            Goal Setting
+          <Link href="/hr/performance/plans/bulk-approve" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
+            Bulk Approve
           </Link>
-          <Link href="/hr/performance/reports" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
-            Performance Reports
+          <Link href="/hr/performance/appraisals" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
+            View Appraisals
           </Link>
         </div>
       </div>
@@ -169,10 +210,13 @@ export default function PerformancePage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
+      case "approved":
         return "bg-green-100 text-green-800"
       case "in-progress":
-        return "bg-blue-100 text-blue-800"
+      case "submitted":
+        return "bg-orange-100 text-orange-800"
       case "scheduled":
+      case "draft":
         return "bg-gray-100 text-gray-800"
       case "overdue":
         return "bg-red-100 text-red-800"
@@ -184,9 +228,11 @@ export default function PerformancePage() {
   const getGoalStatusColor = (status: string) => {
     switch (status) {
       case "on-track":
+      case "approved":
         return "bg-green-100 text-green-800"
       case "at-risk":
-        return "bg-yellow-100 text-yellow-800"
+      case "pending":
+        return "bg-orange-100 text-orange-800"
       case "behind":
         return "bg-red-100 text-red-800"
       default:
@@ -199,7 +245,7 @@ export default function PerformancePage() {
       case "high":
         return "bg-red-100 text-red-800"
       case "medium":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-orange-100 text-orange-800"
       case "low":
         return "bg-green-100 text-green-800"
       default:
@@ -242,74 +288,98 @@ export default function PerformancePage() {
       <div className="space-y-6">
         {/* Performance Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg border p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <StarIcon className="w-6 h-6 text-yellow-600" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <StarIcon className="w-6 h-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">4.7</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {loading ? '---' : (stats.averageRating || 0).toFixed(1)}
+                </h3>
                 <p className="text-sm text-gray-500">Average Rating</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Out of 5.0</span>
-                <span className="text-green-600 font-medium">Excellent</span>
+                <span className={`font-medium ${
+                  (stats.averageRating || 0) >= 4.5 ? 'text-green-600' : 
+                  (stats.averageRating || 0) >= 3.5 ? 'text-orange-600' : 'text-gray-600'
+                }`}>
+                  {(stats.averageRating || 0) >= 4.5 ? 'Excellent' : 
+                   (stats.averageRating || 0) >= 3.5 ? 'Good' : 'Average'}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="p-2 bg-red-100 rounded-lg">
                 <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">15</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {loading ? '---' : (stats.reviewsDue || 0)}
+                </h3>
                 <p className="text-sm text-gray-500">Reviews Due</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Action needed</span>
-                <span className="text-red-600 font-medium">Overdue</span>
+                <span className={`font-medium ${
+                  (stats.overdueReviews || 0) > 0 ? 'text-red-600' : 'text-gray-600'
+                }`}>
+                  {(stats.overdueReviews || 0) > 0 ? 'Overdue' : 'On Track'}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
                 <CheckCircleIcon className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">234</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {loading ? '---' : (stats.completedReviews || 0)}
+                </h3>
                 <p className="text-sm text-gray-500">Completed Reviews</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">This year</span>
-                <span className="text-green-600 font-medium">+12%</span>
+                <span className={`font-medium ${
+                  (stats.growthPercentage || 0) > 0 ? 'text-green-600' : 
+                  (stats.growthPercentage || 0) < 0 ? 'text-red-600' : 'text-gray-600'
+                }`}>
+                  {(stats.growthPercentage || 0) > 0 ? '+' : ''}
+                  {stats.growthPercentage || 0}%
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border p-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <ClockIcon className="w-6 h-6 text-blue-600" />
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <ClockIcon className="w-6 h-6 text-orange-600" />
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">23</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {loading ? '---' : (stats.inProgress || 0)}
+                </h3>
                 <p className="text-sm text-gray-500">In Progress</p>
               </div>
             </div>
             <div className="mt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Active reviews</span>
-                <span className="text-blue-600 font-medium">Ongoing</span>
+                <span className="text-orange-600 font-medium">Ongoing</span>
               </div>
             </div>
           </div>
@@ -325,7 +395,7 @@ export default function PerformancePage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`py-4 px-6 text-sm font-medium border-b-2 flex items-center space-x-2 ${
                     activeTab === tab.id
-                      ? "border-blue-500 text-blue-600"
+                      ? "border-orange-500 text-orange-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
@@ -339,7 +409,7 @@ export default function PerformancePage() {
           <div className="p-6">
             {loading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
                 <p className="text-gray-600 mt-4">Loading performance data...</p>
               </div>
             ) : error ? (
@@ -370,7 +440,7 @@ export default function PerformancePage() {
                           <option>Scheduled</option>
                         </select>
                         <Link href="/hr/performance/schedule">
-                          <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                          <button className="bg-orange-600 text-white px-4 py-2 rounded-md text-sm hover:bg-orange-700">
                             Schedule Review
                           </button>
                         </Link>
@@ -383,7 +453,7 @@ export default function PerformancePage() {
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">No Performance Reviews</h3>
                         <p className="text-gray-600">No performance reviews found. Schedule a review to get started.</p>
                         <Link href="/hr/performance/schedule">
-                          <button className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                          <button className="mt-4 bg-orange-600 text-white px-4 py-2 rounded-md text-sm hover:bg-orange-700">
                             Schedule Review
                           </button>
                         </Link>
@@ -443,7 +513,7 @@ export default function PerformancePage() {
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center space-x-2">
                               <Link href={`/hr/performance/reviews/${review.id}`}>
-                                <button className="text-blue-600 hover:text-blue-900">
+                                <button className="text-orange-600 hover:text-orange-900">
                                   <EyeIcon className="h-4 w-4" />
                                 </button>
                               </Link>
@@ -470,7 +540,7 @@ export default function PerformancePage() {
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold text-gray-900">Employee Goals & Objectives</h3>
                   <Link href="/hr/performance/goals/add">
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                    <button className="bg-orange-600 text-white px-4 py-2 rounded-md text-sm hover:bg-orange-700">
                       Add Goal
                     </button>
                   </Link>
@@ -484,7 +554,7 @@ export default function PerformancePage() {
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No Goals Set</h3>
                     <p className="text-gray-600">No employee goals found. Add a goal to get started.</p>
                     <Link href="/hr/performance/goals/add">
-                      <button className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                      <button className="mt-4 bg-orange-600 text-white px-4 py-2 rounded-md text-sm hover:bg-orange-700">
                         Add Goal
                       </button>
                     </Link>
@@ -546,7 +616,7 @@ export default function PerformancePage() {
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold text-gray-900">Performance Analytics Overview</h3>
                   <Link href="/hr/performance/analytics">
-                    <button className="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700">
+                    <button className="inline-flex items-center px-4 py-2 bg-orange-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-orange-700">
                       <ChartBarIcon className="h-4 w-4 mr-2" />
                       View Full Analytics
                     </button>
@@ -559,40 +629,88 @@ export default function PerformancePage() {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Average Performance Rating</span>
-                        <span className="font-semibold">4.2/5.0</span>
+                        <span className="font-semibold text-orange-600">
+                          {analyticsLoading ? '---' : `${(analytics.stats?.averageRating || 0).toFixed(1)}/5.0`}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Reviews Completed This Quarter</span>
-                        <span className="font-semibold">156</span>
+                        <span className="text-sm text-gray-600">Reviews Completed {analytics.periodLabel || 'This Quarter'}</span>
+                        <span className="font-semibold">
+                          {analyticsLoading ? '---' : (analytics.stats?.reviewsThisQuarter || 0)}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Improvement Rate</span>
-                        <span className="font-semibold text-green-600">+15%</span>
+                        <span className={`font-semibold ${
+                          (analytics.stats?.improvementRate || 0) > 0 ? 'text-green-600' : 
+                          (analytics.stats?.improvementRate || 0) < 0 ? 'text-red-600' : 'text-gray-600'
+                        }`}>
+                          {analyticsLoading ? '---' : 
+                           `${(analytics.stats?.improvementRate || 0) > 0 ? '+' : ''}${analytics.stats?.improvementRate || 0}%`}
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h4 className="text-md font-semibold text-gray-900 mb-4">Department Comparison</h4>
-                    <div className="h-64 flex items-center justify-center">
-                      <p className="text-gray-500">Department comparison chart will be implemented here</p>
-                    </div>
+                    {analyticsLoading ? (
+                      <div className="h-64 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
+                          <p className="text-gray-500">Loading department data...</p>
+                        </div>
+                      </div>
+                    ) : analytics.departmentComparison?.length > 0 ? (
+                      <div className="space-y-3">
+                        {analytics.departmentComparison.slice(0, 5).map((dept: any, index: number) => (
+                          <div key={dept.department} className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex justify-between text-sm">
+                                <span className="font-medium text-gray-900">{dept.department}</span>
+                                <span className="text-orange-600 font-semibold">{dept.rating.toFixed(1)}</span>
+                              </div>
+                              <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-orange-500 h-2 rounded-full transition-all duration-300" 
+                                  style={{ width: `${(dept.rating / 5) * 100}%` }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>{dept.employees} employees</span>
+                                <span>{dept.completionRate}% completion</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="h-64 flex items-center justify-center">
+                        <p className="text-gray-500">No department data available</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="bg-white border rounded-lg p-6">
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <h4 className="text-md font-semibold text-gray-900 mb-4">Key Performance Insights</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">87%</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {analyticsLoading ? '---' : `${analytics.stats?.goalCompletionRate || 0}%`}
+                      </div>
                       <div className="text-sm text-gray-600">Goal Completion Rate</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">4.7</div>
+                      <div className="text-2xl font-bold text-orange-600">
+                        {analyticsLoading ? '---' : (analytics.stats?.averageRating || 0).toFixed(1)}
+                      </div>
                       <div className="text-sm text-gray-600">Average Performance Rating</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">92%</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {analyticsLoading ? '---' : `${analytics.stats?.reviewCompletionRate || 0}%`}
+                      </div>
                       <div className="text-sm text-gray-600">Review Completion Rate</div>
                     </div>
                   </div>
