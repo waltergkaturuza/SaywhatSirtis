@@ -293,18 +293,6 @@ export const modulesConfig: ModuleConfig[] = [
             icon: PlusIcon
           },
           {
-            id: "bulk-import",
-            name: "Bulk Import",
-            href: "/hr/employees/bulk-import",
-            icon: CloudArrowUpIcon
-          },
-          {
-            id: "employee-manage",
-            name: "Manage Employees",
-            href: "/hr/employees/manage",
-            icon: Cog6ToothIcon
-          },
-          {
             id: "employee-archive",
             name: "Archived Staff",
             href: "/hr/employees/archived",

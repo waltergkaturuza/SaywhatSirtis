@@ -331,9 +331,6 @@ export default function EmployeesPage() {
           >
             Add New Employee
           </button>
-          <Link href="/hr/employees/bulk-import" className="block w-full text-left p-3 text-sm font-medium text-saywhat-orange hover:text-saywhat-white bg-saywhat-white hover:bg-gradient-to-r hover:from-saywhat-orange hover:to-saywhat-red rounded-lg border-l-2 border-saywhat-orange hover:border-saywhat-green shadow-sm hover:shadow-md transition-all duration-200">
-            Bulk Import
-          </Link>
           <Link href="/hr/employees/reports" className="block w-full text-left p-3 text-sm font-medium text-saywhat-orange hover:text-saywhat-white bg-saywhat-white hover:bg-gradient-to-r hover:from-saywhat-orange hover:to-saywhat-red rounded-lg border-l-2 border-saywhat-orange hover:border-saywhat-green shadow-sm hover:shadow-md transition-all duration-200">
             Generate Report
           </Link>
@@ -835,32 +832,7 @@ export default function EmployeesPage() {
     console.log('Exporting employee:', employee.name)
   }
 
-  // Calculate access level statistics from employees data
-  const getAccessLevelStats = () => {
-    if (!Array.isArray(employees)) return {}
-    
-    const roleMapping = {
-      'SUPER_ADMIN': 'System Administrator',
-      'ADMIN': 'HR Administrator', 
-      'HR_MANAGER': 'HR Administrator',
-      'DEPARTMENT_ADMIN': 'Department Admin',
-      'SENIOR_USER': 'Senior User',
-      'USER': 'Standard User',
-      'STANDARD': 'Standard User',
-      'EMPLOYEE': 'Standard User'
-    }
-    
-    const accessLevels = employees.reduce((acc: any, emp: any) => {
-      const role = emp.role || emp.accessLevel || 'USER'
-      const mappedRole = roleMapping[role as keyof typeof roleMapping] || 'Standard User'
-      acc[mappedRole] = (acc[mappedRole] || 0) + 1
-      return acc
-    }, {})
-    
-    return accessLevels
-  }
 
-  const accessLevelStats = getAccessLevelStats()
 
   return (
     <ModulePage
@@ -964,111 +936,6 @@ export default function EmployeesPage() {
               <button className="inline-flex items-center px-4 py-3 border-2 border-saywhat-orange/30 rounded-lg text-sm font-medium text-saywhat-grey bg-saywhat-white hover:bg-saywhat-orange hover:text-saywhat-white hover:border-saywhat-orange shadow-sm hover:shadow-md transition-all duration-200">
                 <FunnelIcon className="h-4 w-4 mr-2" />
                 More Filters
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Access Levels Overview */}
-        <div className="bg-gradient-to-r from-saywhat-white to-saywhat-light-grey shadow-xl rounded-xl border-2 border-saywhat-orange/20 p-6">
-          <h3 className="text-xl font-bold text-saywhat-black mb-6 flex items-center">
-            <UserGroupIcon className="h-6 w-6 text-saywhat-orange mr-3" />
-            Access Levels Overview
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-            {/* System Administrator */}
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <svg className="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span className="text-2xl font-bold text-purple-600">
-                  {accessLevelStats['System Administrator'] || 0}
-                </span>
-              </div>
-              <h4 className="font-semibold text-gray-900 mb-2">System Administrator</h4>
-              <p className="text-sm text-gray-600 mb-4">Full system access including user management and system configuration</p>
-              <button className="text-sm text-purple-600 hover:text-purple-700 font-medium">
-                Manage Permissions
-              </button>
-            </div>
-
-            {/* HR Administrator */}
-            <div className="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
-                  </svg>
-                </div>
-                <span className="text-2xl font-bold text-red-600">
-                  {accessLevelStats['HR Administrator'] || 0}
-                </span>
-              </div>
-              <h4 className="font-semibold text-gray-900 mb-2">HR Administrator</h4>
-              <p className="text-sm text-gray-600 mb-4">Full HR module access with employee management capabilities</p>
-              <button className="text-sm text-red-600 hover:text-red-700 font-medium">
-                Manage Permissions
-              </button>
-            </div>
-
-            {/* Department Admin */}
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <svg className="w-6 h-6 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM12 15a1 1 0 100-2 1 1 0 000 2zM8 15a1 1 0 100-2 1 1 0 000 2z" />
-                  </svg>
-                </div>
-                <span className="text-2xl font-bold text-orange-600">
-                  {accessLevelStats['Department Admin'] || 0}
-                </span>
-              </div>
-              <h4 className="font-semibold text-gray-900 mb-2">Department Admin</h4>
-              <p className="text-sm text-gray-600 mb-4">Department-level administrative access with limited HR functions</p>
-              <button className="text-sm text-orange-600 hover:text-orange-700 font-medium">
-                Manage Permissions
-              </button>
-            </div>
-
-            {/* Senior User */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span className="text-2xl font-bold text-green-600">
-                  {accessLevelStats['Senior User'] || 0}
-                </span>
-              </div>
-              <h4 className="font-semibold text-gray-900 mb-2">Senior User</h4>
-              <p className="text-sm text-gray-600 mb-4">Enhanced access to multiple modules with supervisory functions</p>
-              <button className="text-sm text-green-600 hover:text-green-700 font-medium">
-                Manage Permissions
-              </button>
-            </div>
-
-            {/* Standard User */}
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gray-100 rounded-lg">
-                  <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span className="text-2xl font-bold text-gray-600">
-                  {accessLevelStats['Standard User'] || 0}
-                </span>
-              </div>
-              <h4 className="font-semibold text-gray-900 mb-2">Standard User</h4>
-              <p className="text-sm text-gray-600 mb-4">Basic access to assigned modules and personal information</p>
-              <button className="text-sm text-gray-600 hover:text-gray-700 font-medium">
-                Manage Permissions
               </button>
             </div>
           </div>

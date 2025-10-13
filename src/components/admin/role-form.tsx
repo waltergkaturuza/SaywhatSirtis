@@ -48,7 +48,6 @@ const availablePermissions = [
     category: 'Human Resources',
     permissions: [
       { id: 'hr.access', name: 'HR Access', description: 'Access to HR module' },
-      { id: 'hr.employees.manage', name: 'Manage Employees', description: 'Create, edit, and delete employee records' },
       { id: 'hr.performance.manage', name: 'Manage Performance', description: 'Manage performance reviews and appraisals' },
       { id: 'hr.reports.view', name: 'View HR Reports', description: 'Generate and view HR reports' },
     ]
