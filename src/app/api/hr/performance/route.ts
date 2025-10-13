@@ -51,7 +51,7 @@ export async function GET() {
       // Total reviews count
       safeQuery(async (prisma) => {
         return await prisma.performance_reviews.count(
-          canViewAll ? {} : {
+          canViewAll ? undefined : {
             where: {
               employees: { email: session.user.email }
             }
@@ -113,7 +113,7 @@ export async function GET() {
       // Recent reviews with employee details
       safeQuery(async (prisma) => {
         return await prisma.performance_reviews.findMany({
-          where: canViewAll ? {} : {
+          where: canViewAll ? undefined : {
             employees: { email: session.user.email }
           },
           include: {
@@ -141,7 +141,7 @@ export async function GET() {
       // Performance goals/plans
       safeQuery(async (prisma) => {
         return await prisma.performance_plans.findMany({
-          where: canViewAll ? {} : {
+          where: canViewAll ? undefined : {
             employees: { email: session.user.email }
           },
           include: {
@@ -268,19 +268,21 @@ export async function POST(request: Request) {
     const { employeeId, reviewPeriod, reviewType, overallRating, goals, feedback } = body
 
     // Create new performance review
-    const performanceReview = await prisma.performance_reviews.create({
-      data: {
-        id: crypto.randomUUID(),
-        employeeId,
-        reviewPeriod: reviewPeriod || `Annual ${new Date().getFullYear()}`,
-        reviewType: reviewType || 'annual',
-        overallRating: overallRating || 0,
-        goals: goals || {},
-        feedback: feedback || '',
-        reviewDate: new Date(),
-        nextReviewDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-        updatedAt: new Date()
-      }
+    const performanceReview = await safeQuery(async (prisma) => {
+      return await prisma.performance_reviews.create({
+        data: {
+          id: crypto.randomUUID(),
+          employeeId,
+          reviewPeriod: reviewPeriod || `Annual ${new Date().getFullYear()}`,
+          reviewType: reviewType || 'annual',
+          overallRating: overallRating || 0,
+          goals: goals || {},
+          feedback: feedback || '',
+          reviewDate: new Date(),
+          nextReviewDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+          updatedAt: new Date()
+        }
+      })
     })
 
     return NextResponse.json({
