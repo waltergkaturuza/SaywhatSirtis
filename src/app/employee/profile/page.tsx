@@ -894,7 +894,7 @@ export default function EmployeeProfilePage() {
                   </Link>
                   
                   <Link
-                    href="/hr/performance/plans/create"
+                    href="/hr/performance/plans/create?self=true"
                     className="group flex items-center p-3 bg-gradient-to-br from-green-100 via-green-50 to-transparent rounded-lg border-2 border-green-200 hover:border-green-400 hover:shadow-lg transition-all duration-300 hover:scale-105"
                   >
                     <DocumentTextIcon className="h-5 w-5 text-green-600 mr-2 group-hover:scale-110 transition-transform duration-200" />

@@ -2,7 +2,8 @@
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { CheckCircleIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline"
 
 import { 
@@ -15,8 +16,14 @@ import {
 
 export default function CreatePerformancePlanPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { data: session } = useSession()
   const [currentStep, setCurrentStep] = useState(1)
+  const [activeTab, setActiveTab] = useState('my-plan') // 'my-plan', 'supervisor', 'reviewer'
   const [formData, setFormData] = useState<PerformancePlanFormData>(defaultPlanFormData)
+  
+  // Check if this is for the current user (accessed from profile)
+  const isForCurrentUser = searchParams.get('self') === 'true' || !searchParams.get('employee')
   
   // New state for dynamic data
   const [employees, setEmployees] = useState<any[]>([])
@@ -29,6 +36,35 @@ export default function CreatePerformancePlanPage() {
     supervisors: false
   })
   const [error, setError] = useState<string | null>(null)
+
+  // Workflow state
+  const [workflowStatus, setWorkflowStatus] = useState('draft') // 'draft', 'supervisor_review', 'reviewer_assessment', 'completed'
+  const [supervisorComments, setSupervisorComments] = useState('')
+  const [supervisorApproval, setSupervisorApproval] = useState('pending') // 'pending', 'approved', 'rejected'
+  const [reviewerComments, setReviewerComments] = useState('')
+  const [reviewerApproval, setReviewerApproval] = useState('pending') // 'pending', 'approved', 'rejected'
+
+  // Tab navigation
+  const tabs = [
+    {
+      id: 'my-plan',
+      name: 'My Performance Plan', 
+      description: 'Create and manage your performance objectives',
+      enabled: true
+    },
+    {
+      id: 'supervisor',
+      name: 'Supervisor Review',
+      description: 'Supervisor comments and approval',
+      enabled: workflowStatus !== 'draft'
+    },
+    {
+      id: 'reviewer',
+      name: 'Final Review',
+      description: 'Final reviewer assessment',
+      enabled: workflowStatus === 'reviewer_assessment' || workflowStatus === 'completed'
+    }
+  ]
 
   const metadata = {
     title: "Create Performance Plan",
@@ -148,6 +184,49 @@ export default function CreatePerformancePlanPage() {
     fetchDepartments()
     fetchSupervisors()
   }, [])
+
+  // Auto-populate current user's information when accessed from profile
+  useEffect(() => {
+    const autoFillCurrentUser = async () => {
+      if (isForCurrentUser && session?.user?.email) {
+        try {
+          // Fetch current user's employee details
+          const response = await fetch(`/api/hr/employees/by-email/${encodeURIComponent(session.user.email)}`)
+          if (response.ok) {
+            const employeeData = await response.json()
+            
+            // Auto-populate the form with current user's details
+            setFormData(prev => ({
+              ...prev,
+              employee: {
+                id: employeeData.id || '',
+                name: `${employeeData.firstName || ''} ${employeeData.lastName || ''}`.trim() || employeeData.email || '',
+                email: employeeData.email || session.user.email || '',
+                department: employeeData.department || '',
+                position: employeeData.position || '',
+                manager: employeeData.supervisor || 'Not Assigned',
+                planPeriod: {
+                  startDate: new Date().toISOString().split('T')[0],
+                  endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+                }
+              }
+            }))
+
+            // Set selected employee
+            setSelectedEmployee(employeeData)
+
+            // Disable employee selection dropdown since it's for current user
+            setLoading(prev => ({ ...prev, autoFilled: true }))
+          }
+        } catch (error) {
+          console.error('Error auto-filling current user data:', error)
+          setError('Failed to load your employee information')
+        }
+      }
+    }
+
+    autoFillCurrentUser()
+  }, [isForCurrentUser, session?.user?.email])
 
   const handleDeepNestedInputChange = (parentField: keyof PerformancePlanFormData, nestedField: string, childField: string, value: any) => {
     setFormData(prev => ({
@@ -292,21 +371,30 @@ export default function CreatePerformancePlanPage() {
                     <div className="w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500 rounded-full mr-2"></div>
                     Select Employee *
                   </label>
-                  <select
-                    value={selectedEmployee?.id || ''}
-                    onChange={(e) => handleEmployeeSelect(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
-                    disabled={loading.employees}
-                  >
-                    <option value="">
-                      {loading.employees ? 'Loading employees...' : 'Choose an employee'}
-                    </option>
-                    {employees.map((employee) => (
-                      <option key={employee.id} value={employee.id}>
-                        {employee.name} - {employee.position} ({employee.department})
+                  {isForCurrentUser ? (
+                    <input
+                      type="text"
+                      value={formData.employee.name || 'Loading your information...'}
+                      readOnly
+                      className="w-full px-4 py-3 border-2 border-green-200 rounded-xl bg-green-50 text-gray-700 shadow-sm cursor-not-allowed"
+                    />
+                  ) : (
+                    <select
+                      value={selectedEmployee?.id || ''}
+                      onChange={(e) => handleEmployeeSelect(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                      disabled={loading.employees}
+                    >
+                      <option value="">
+                        {loading.employees ? 'Loading employees...' : 'Choose an employee'}
                       </option>
-                    ))}
-                  </select>
+                      {employees.map((employee) => (
+                        <option key={employee.id} value={employee.id}>
+                          {employee.name} - {employee.position} ({employee.department})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 
                 <div>
@@ -356,21 +444,13 @@ export default function CreatePerformancePlanPage() {
                     <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full mr-2"></div>
                     Department
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={formData.employee.department}
-                    onChange={(e) => handleNestedInputChange("employee", "department", e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
-                    disabled={loading.departments}
-                  >
-                    <option value="">
-                      {loading.departments ? 'Loading departments...' : 'Select Department'}
-                    </option>
-                    {departments.map((dept) => (
-                      <option key={dept.id} value={dept.name}>
-                        {dept.name} ({dept.employeeCount} employees)
-                      </option>
-                    ))}
-                  </select>
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                    placeholder="Auto-filled when employee is selected"
+                  />
                 </div>
 
                 <div>
@@ -378,28 +458,19 @@ export default function CreatePerformancePlanPage() {
                     <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full mr-2"></div>
                     Direct Supervisor
                   </label>
-                  <select
-                    value={formData.supervisor}
-                    onChange={(e) => handleInputChange("supervisor", e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
-                    disabled={loading.supervisors}
-                  >
-                    <option value="">
-                      {loading.supervisors ? 'Loading supervisors...' : 'Select Supervisor'}
-                    </option>
-                    {supervisors.map((supervisor) => (
-                      <option key={supervisor.id} value={supervisor.id}>
-                        {supervisor.name} - {supervisor.position} ({supervisor.department})
-                        {supervisor.subordinateCount > 0 && ` - ${supervisor.subordinateCount} reports`}
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    value={selectedEmployee?.supervisor?.name || formData.employee.manager || 'No supervisor assigned'}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                    placeholder="Auto-filled when employee is selected"
+                  />
                   {selectedEmployee?.supervisor && (
                     <div className="mt-3 p-4 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl shadow-sm">
                       <div className="text-sm text-orange-800">
-                        <strong>Current Supervisor:</strong> {selectedEmployee.supervisor.name}
+                        <strong>Supervisor:</strong> {selectedEmployee.supervisor.name}
                         <br />
-                        <span className="text-orange-600">{selectedEmployee.supervisor.position}</span>
+                        <span className="text-orange-600">{selectedEmployee.supervisor.position || 'Position not specified'}</span>
                       </div>
                     </div>
                   )}
@@ -1487,6 +1558,39 @@ export default function CreatePerformancePlanPage() {
             </div>
           </div>
 
+          {/* Workflow Tabs */}
+          <div className="mb-8">
+            <div className="border-b border-gray-200 bg-white rounded-t-lg shadow-sm">
+              <nav className="flex space-x-8 px-6">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => tab.enabled && setActiveTab(tab.id)}
+                    disabled={!tab.enabled}
+                    className={`py-4 px-2 border-b-2 font-medium text-sm transition-all duration-200 ${
+                      activeTab === tab.id
+                        ? 'border-saywhat-orange text-saywhat-orange'
+                        : tab.enabled
+                        ? 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        : 'border-transparent text-gray-300 cursor-not-allowed'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span>{tab.name}</span>
+                      {tab.id === 'supervisor' && supervisorApproval === 'approved' && (
+                        <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                      )}
+                      {tab.id === 'reviewer' && reviewerApproval === 'approved' && (
+                        <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{tab.description}</p>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+
           {/* Clean Progress Steps */}
           <div className="mb-10">
             <div className="flex items-center justify-between max-w-4xl mx-auto">
@@ -1525,8 +1629,301 @@ export default function CreatePerformancePlanPage() {
             </div>
           </div>
 
-          {/* Clean Form Container */}
+          {/* Tab Content */}
           <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+            
+            {/* My Performance Plan Tab */}
+            {activeTab === 'my-plan' && (
+              <div>
+                {/* Form Header */}
+                <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-b border-gray-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-md">
+                      <span className="text-white font-bold text-lg">{currentStep}</span>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">{performancePlanSteps[currentStep - 1].title}</h2>
+                      <p className="text-gray-600 text-sm mt-1">{performancePlanSteps[currentStep - 1].description}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Content */}
+                <div className="px-8 py-8">
+                  {renderStepContent()}
+                </div>
+
+                {/* Navigation Footer */}
+                <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-t border-gray-200">
+                  <div className="flex justify-between items-center">
+                    {currentStep > 1 ? (
+                      <button
+                        onClick={handlePrevious}
+                        className="flex items-center space-x-2 px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      >
+                        <span>← Previous</span>
+                      </button>
+                    ) : (
+                      <div></div>
+                    )}
+                    
+                    {currentStep < performancePlanSteps.length ? (
+                      <button
+                        onClick={handleNext}
+                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      >
+                        <span>Next →</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSubmit}
+                        className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      >
+                        <span>Submit Plan</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Supervisor Review Tab */}
+            {activeTab === 'supervisor' && (
+              <div>
+                {/* Supervisor Header */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-b border-gray-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                      <span className="text-white font-bold text-lg">S</span>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Supervisor Review</h2>
+                      <p className="text-gray-600 text-sm mt-1">Review employee's performance plan and provide feedback</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Supervisor Content */}
+                <div className="px-8 py-8 space-y-6">
+                  {/* Employee Plan Summary */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee's Performance Plan Summary</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Employee:</span>
+                        <span className="ml-2 text-gray-900">{formData.employee.name || 'Not Selected'}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Plan Year:</span>
+                        <span className="ml-2 text-gray-900">{formData.planYear || '2025'}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Department:</span>
+                        <span className="ml-2 text-gray-900">{formData.employee.department || 'Not Assigned'}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Status:</span>
+                        <span className="ml-2 text-gray-900">{workflowStatus.replace('_', ' ').toUpperCase()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Supervisor Comments */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Supervisor Comments & Feedback
+                    </label>
+                    <textarea
+                      value={supervisorComments}
+                      onChange={(e) => setSupervisorComments(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="Provide feedback on the employee's performance plan objectives, development activities, and overall approach..."
+                    />
+                  </div>
+
+                  {/* Supervisor Approval */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Supervisor Authorization
+                    </label>
+                    <div className="space-y-2">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="supervisorApproval"
+                          value="approved"
+                          checked={supervisorApproval === 'approved'}
+                          onChange={(e) => setSupervisorApproval(e.target.value)}
+                          className="form-radio h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">Approve Plan</span>
+                      </label>
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="supervisorApproval"
+                          value="rejected"
+                          checked={supervisorApproval === 'rejected'}
+                          onChange={(e) => setSupervisorApproval(e.target.value)}
+                          className="form-radio h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">Reject Plan (Requires Revision)</span>
+                      </label>
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="supervisorApproval"
+                          value="pending"
+                          checked={supervisorApproval === 'pending'}
+                          onChange={(e) => setSupervisorApproval(e.target.value)}
+                          className="form-radio h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">Pending Review</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Supervisor Footer */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-t border-gray-200">
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => {
+                        if (supervisorApproval === 'approved') {
+                          setWorkflowStatus('reviewer_assessment')
+                          setActiveTab('reviewer')
+                        }
+                      }}
+                      disabled={supervisorApproval === 'pending'}
+                      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span>Submit Supervisor Review</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Final Reviewer Tab */}
+            {activeTab === 'reviewer' && (
+              <div>
+                {/* Reviewer Header */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-8 py-6 border-b border-gray-200">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
+                      <span className="text-white font-bold text-lg">R</span>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Final Review</h2>
+                      <p className="text-gray-600 text-sm mt-1">Final assessment and approval of the performance plan</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reviewer Content */}
+                <div className="px-8 py-8 space-y-6">
+                  {/* Workflow Summary */}
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Plan Workflow Summary</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center">
+                        <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3" />
+                        <span className="text-sm text-gray-900">Employee completed plan creation</span>
+                      </div>
+                      <div className="flex items-center">
+                        <CheckCircleIcon className={`h-5 w-5 mr-3 ${supervisorApproval === 'approved' ? 'text-green-500' : 'text-gray-400'}`} />
+                        <span className="text-sm text-gray-900">Supervisor approval: {supervisorApproval.toUpperCase()}</span>
+                      </div>
+                      {supervisorComments && (
+                        <div className="ml-8 p-3 bg-blue-50 rounded-lg">
+                          <p className="text-xs text-gray-600 font-medium">Supervisor Comments:</p>
+                          <p className="text-sm text-gray-800 mt-1">{supervisorComments}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Reviewer Comments */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Final Review Comments
+                    </label>
+                    <textarea
+                      value={reviewerComments}
+                      onChange={(e) => setReviewerComments(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="Provide final assessment and overall feedback on the performance plan..."
+                    />
+                  </div>
+
+                  {/* Reviewer Approval */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Final Authorization
+                    </label>
+                    <div className="space-y-2">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="reviewerApproval"
+                          value="approved"
+                          checked={reviewerApproval === 'approved'}
+                          onChange={(e) => setReviewerApproval(e.target.value)}
+                          className="form-radio h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">Final Approval - Implement Plan</span>
+                      </label>
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="reviewerApproval"
+                          value="rejected"
+                          checked={reviewerApproval === 'rejected'}
+                          onChange={(e) => setReviewerApproval(e.target.value)}
+                          className="form-radio h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">Reject - Return for Revision</span>
+                      </label>
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="reviewerApproval"
+                          value="pending"
+                          checked={reviewerApproval === 'pending'}
+                          onChange={(e) => setReviewerApproval(e.target.value)}
+                          className="form-radio h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-900">Under Review</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reviewer Footer */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-8 py-6 border-t border-gray-200">
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => {
+                        if (reviewerApproval === 'approved') {
+                          setWorkflowStatus('completed')
+                          // Handle final submission
+                        }
+                      }}
+                      disabled={reviewerApproval === 'pending'}
+                      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span>Finalize Performance Plan</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Original Form Container (now inside tabs) */}
+          <div className="hidden bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
             {/* Form Header */}
             <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-b border-gray-200">
               <div className="flex items-center space-x-4">
