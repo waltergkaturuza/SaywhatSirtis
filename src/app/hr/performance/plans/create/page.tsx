@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { CheckCircleIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline"
@@ -14,7 +14,7 @@ import {
   getStatusColor
 } from "@/components/hr/performance/performance-plan-types"
 
-export default function CreatePerformancePlanPage() {
+function CreatePerformancePlanPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: session } = useSession()
@@ -2004,5 +2004,13 @@ export default function CreatePerformancePlanPage() {
         </div>
       </div>
     </ModulePage>
+  )
+}
+
+export default function CreatePerformancePlanPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <CreatePerformancePlanPageContent />
+    </Suspense>
   )
 }
