@@ -1110,6 +1110,7 @@ export default function EmployeesPage() {
                     { id: 'personal', label: 'Personal Info', icon: '👤' },
                     { id: 'employment', label: 'Employment', icon: '💼' },
                     { id: 'compensation', label: 'Compensation', icon: '💰' },
+                    { id: 'job-description', label: 'Job Description', icon: '📋' },
                     { id: 'skills', label: 'Skills & Education', icon: '🎓' },
                     { id: 'access', label: 'Access & Security', icon: '🔐' },
                     { id: 'documents', label: 'Documents', icon: '📄' }
@@ -1254,6 +1255,14 @@ export default function EmployeesPage() {
                           {selectedEmployee.isReviewer ? 'Yes' : 'No'}
                         </p>
                       </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Performance Reviewer</Label>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {selectedEmployee.reviewer 
+                            ? `${selectedEmployee.reviewer.firstName} ${selectedEmployee.reviewer.lastName}` 
+                            : 'Not assigned'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1305,6 +1314,98 @@ export default function EmployeesPage() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {activeViewTab === 'job-description' && (
+                  <div className="space-y-6">
+                    {selectedEmployee.jobDescription ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-6">
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Job Title</Label>
+                            <p className="mt-1 text-sm text-gray-900">{selectedEmployee.jobDescription.jobTitle || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Job Location</Label>
+                            <p className="mt-1 text-sm text-gray-900">{selectedEmployee.jobDescription.location || 'Not provided'}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Job Summary</Label>
+                          <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{selectedEmployee.jobDescription.jobSummary || 'Not provided'}</p>
+                        </div>
+
+                        {selectedEmployee.jobDescription.keyResponsibilities && selectedEmployee.jobDescription.keyResponsibilities.length > 0 && (
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700 mb-3 block">Key Responsibilities</Label>
+                            <div className="space-y-3">
+                              {selectedEmployee.jobDescription.keyResponsibilities.map((resp: any, index: number) => (
+                                <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-sm font-semibold text-gray-900">Responsibility {index + 1}</h4>
+                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                                      Weight: {resp.weight}%
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-800 mb-2">
+                                    <span className="font-medium">Description:</span> {resp.description}
+                                  </p>
+                                  <p className="text-sm text-gray-600">
+                                    <span className="font-medium">Tasks:</span> {resp.tasks}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 text-sm">
+                              <span className="font-medium text-gray-700">Total Weight: </span>
+                              <span className={`font-semibold ${
+                                selectedEmployee.jobDescription.keyResponsibilities.reduce((sum: number, r: any) => sum + (r.weight || 0), 0) === 100 
+                                  ? 'text-green-600' 
+                                  : 'text-red-600'
+                              }`}>
+                                {selectedEmployee.jobDescription.keyResponsibilities.reduce((sum: number, r: any) => sum + (r.weight || 0), 0)}%
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-6">
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Essential Experience</Label>
+                            <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{selectedEmployee.jobDescription.essentialExperience || 'Not provided'}</p>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Essential Skills</Label>
+                            <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{selectedEmployee.jobDescription.essentialSkills || 'Not provided'}</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6">
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Acknowledgment Status</Label>
+                            <p className="mt-1 text-sm">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                selectedEmployee.jobDescription.acknowledgment 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {selectedEmployee.jobDescription.acknowledgment ? '✓ Acknowledged' : 'Pending'}
+                              </span>
+                            </p>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Version</Label>
+                            <p className="mt-1 text-sm text-gray-900">v{selectedEmployee.jobDescription.version || 1}</p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">No job description available for this employee</p>
+                      </div>
+                    )}
                   </div>
                 )}
 

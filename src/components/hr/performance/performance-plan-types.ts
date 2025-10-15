@@ -17,6 +17,7 @@ export interface PerformancePlanFormData {
   planDescription: string
   status: string
   supervisor: string
+  reviewerId: string
   planYear: string
   startDate: string
   endDate: string
@@ -135,6 +136,7 @@ export const defaultPlanFormData: PerformancePlanFormData = {
   planDescription: '',
   status: 'draft',
   supervisor: '',
+  reviewerId: '',
   planYear: new Date().getFullYear().toString(),
   startDate: '',
   endDate: '',

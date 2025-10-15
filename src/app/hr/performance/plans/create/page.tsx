@@ -29,11 +29,13 @@ function CreatePerformancePlanPageContent() {
   const [employees, setEmployees] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [supervisors, setSupervisors] = useState<any[]>([])
+  const [reviewers, setReviewers] = useState<any[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
   const [loading, setLoading] = useState({
     employees: false,
     departments: false,
-    supervisors: false
+    supervisors: false,
+    reviewers: false
   })
   const [error, setError] = useState<string | null>(null)
 
@@ -178,11 +180,31 @@ function CreatePerformancePlanPageContent() {
     }
   }
 
+  // Fetch reviewers from API
+  const fetchReviewers = async () => {
+    try {
+      setLoading(prev => ({ ...prev, reviewers: true }))
+      const response = await fetch('/api/hr/reviewers')
+      if (response.ok) {
+        const data = await response.json()
+        setReviewers(data.data || data.reviewers || [])
+      } else {
+        setError('Failed to load reviewers')
+      }
+    } catch (error) {
+      console.error('Error fetching reviewers:', error)
+      setError('Failed to load reviewers')
+    } finally {
+      setLoading(prev => ({ ...prev, reviewers: false }))
+    }
+  }
+
   // Load data on component mount
   useEffect(() => {
     fetchEmployees()
     fetchDepartments()
     fetchSupervisors()
+    fetchReviewers()
   }, [])
 
   // Auto-populate current user's information when accessed from profile
@@ -473,6 +495,33 @@ function CreatePerformancePlanPageContent() {
                         <span className="text-orange-600">{selectedEmployee.supervisor.position || 'Position not specified'}</span>
                       </div>
                     </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-pink-400 to-rose-500 rounded-full mr-2"></div>
+                    Performance Reviewer *
+                  </label>
+                  <select
+                    value={formData.reviewerId}
+                    onChange={(e) => handleInputChange("reviewerId", e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                    disabled={loading.reviewers}
+                  >
+                    <option value="">
+                      {loading.reviewers ? 'Loading reviewers...' : 'Select a performance reviewer'}
+                    </option>
+                    {reviewers.map((reviewer) => (
+                      <option key={reviewer.id} value={reviewer.id}>
+                        {reviewer.name} - {reviewer.position || 'Reviewer'} ({reviewer.department})
+                      </option>
+                    ))}
+                  </select>
+                  {formData.reviewerId && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      The selected reviewer will conduct the final performance assessment
+                    </p>
                   )}
                 </div>
 
