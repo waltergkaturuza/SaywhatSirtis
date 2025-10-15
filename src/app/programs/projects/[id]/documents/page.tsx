@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -34,93 +34,52 @@ export default function ProjectDocumentsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('date')
   const [isUploading, setIsUploading] = useState(false)
+  const [project, setProject] = useState<any>(null)
+  const [documents, setDocuments] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Sample project data
-  const project = {
-    id: projectId,
-    name: "Community Health Improvement Project",
-    documents: [
-      {
-        id: 1,
-        name: "Project Proposal Document",
-        type: "pdf",
-        category: "planning",
-        size: "2.4 MB",
-        uploadDate: "2024-01-15",
-        uploader: "Dr. Sarah Johnson - M&E Officer",
-        description: "Initial project proposal with objectives, methodology, and budget breakdown"
-      },
-      {
-        id: 2,
-        name: "Baseline Survey Report",
-        type: "pdf",
-        category: "research",
-        size: "1.8 MB",
-        uploadDate: "2024-01-20",
-        uploader: "John Smith - Research Officer",
-        description: "Comprehensive baseline assessment of target communities"
-      },
-      {
-        id: 3,
-        name: "Monthly Progress Report - December 2024",
-        type: "pdf",
-        category: "progress",
-        size: "950 KB",
-        uploadDate: "2024-01-05",
-        uploader: "Mary Johnson - Programs Officer",
-        description: "Monthly progress update with achievements and challenges"
-      },
-      {
-        id: 4,
-        name: "Budget Breakdown Spreadsheet",
-        type: "xlsx",
-        category: "financial",
-        size: "450 KB",
-        uploadDate: "2024-01-10",
-        uploader: "David Chen - CAM Officer",
-        description: "Detailed budget allocation and expenditure tracking"
-      },
-      {
-        id: 5,
-        name: "Community Engagement Photos",
-        type: "zip",
-        category: "media",
-        size: "15.2 MB",
-        uploadDate: "2024-01-08",
-        uploader: "Lisa Wong - Programs Officer",
-        description: "Photo documentation of community engagement activities"
-      },
-      {
-        id: 6,
-        name: "Training Materials for CHWs",
-        type: "pdf",
-        category: "training",
-        size: "3.1 MB",
-        uploadDate: "2024-01-12",
-        uploader: "Ahmed Hassan - Programs Officer",
-        description: "Training modules and materials for community health workers"
-      },
-      {
-        id: 7,
-        name: "Stakeholder Meeting Minutes",
-        type: "docx",
-        category: "meetings",
-        size: "280 KB",
-        uploadDate: "2024-01-06",
-        uploader: "Dr. Sarah Johnson - M&E Officer",
-        description: "Minutes from quarterly stakeholder review meeting"
-      },
-      {
-        id: 8,
-        name: "Risk Assessment Matrix",
-        type: "xlsx",
-        category: "planning",
-        size: "320 KB",
-        uploadDate: "2024-01-18",
-        uploader: "John Smith - Research Officer",
-        description: "Project risk analysis and mitigation strategies"
+  // Fetch project and documents from backend
+  useEffect(() => {
+    const fetchProjectAndDocuments = async () => {
+      try {
+        setLoading(true)
+        const [projectRes, docsRes] = await Promise.all([
+          fetch(`/api/programs/projects/${projectId}`),
+          fetch(`/api/documents?projectId=${projectId}`)
+        ])
+        
+        const projectData = await projectRes.json()
+        const docsData = await docsRes.json()
+        
+        if (projectData.success) {
+          setProject({ ...projectData.data, documents: [] })
+        }
+        
+        if (docsData.success || docsData.documents) {
+          const fetchedDocs = docsData.documents || docsData.data || []
+          setDocuments(fetchedDocs)
+          if (project) {
+            setProject({ ...project, documents: fetchedDocs })
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching project documents:', error)
+      } finally {
+        setLoading(false)
       }
-    ]
+    }
+    
+    if (projectId) {
+      fetchProjectAndDocuments()
+    }
+  }, [projectId])
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading project documents...</div>
+  }
+
+  if (!project) {
+    return <div className="p-8 text-center text-red-600">Project not found</div>
   }
 
   const categories = [
@@ -142,7 +101,7 @@ export default function ProjectDocumentsPage() {
   ]
 
   // Filter and sort documents
-  const filteredDocuments = project.documents
+  const filteredDocuments = documents
     .filter(doc => {
       const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            doc.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -264,18 +223,18 @@ export default function ProjectDocumentsPage() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Document Stats</h3>
         <div className="space-y-3">
           <div className="bg-blue-50 p-3 rounded">
-            <div className="text-2xl font-bold text-blue-600">{project.documents.length}</div>
+            <div className="text-2xl font-bold text-blue-600">{documents.length}</div>
             <div className="text-sm text-blue-800">Total Documents</div>
           </div>
           <div className="bg-green-50 p-3 rounded">
             <div className="text-2xl font-bold text-green-600">
-              {project.documents.filter(d => d.category === 'progress').length}
+              {documents.filter(d => d.category === 'progress').length}
             </div>
             <div className="text-sm text-green-800">Progress Reports</div>
           </div>
           <div className="bg-purple-50 p-3 rounded">
             <div className="text-2xl font-bold text-purple-600">
-              {Math.round(project.documents.reduce((sum, doc) => sum + parseFloat(doc.size), 0))} MB
+              {documents.length > 0 ? Math.round(documents.reduce((sum, doc) => sum + (parseFloat(doc.size) || 0), 0)) : 0} MB
             </div>
             <div className="text-sm text-purple-800">Total Size</div>
           </div>
@@ -287,8 +246,8 @@ export default function ProjectDocumentsPage() {
         <div className="space-y-1">
           {categories.map((category) => {
             const count = category.value === 'all' 
-              ? project.documents.length 
-              : project.documents.filter(d => d.category === category.value).length
+              ? documents.length 
+              : documents.filter(d => d.category === category.value).length
             
             return (
               <button

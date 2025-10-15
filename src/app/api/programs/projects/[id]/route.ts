@@ -62,6 +62,21 @@ export async function PUT(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
+    // Prepare objectives data with projectLead and projectTeam
+    const objectives = body.objectives || {}
+    if (body.projectLead !== undefined) {
+      objectives.projectLead = body.projectLead
+    }
+    if (body.projectTeam !== undefined) {
+      objectives.projectTeam = body.projectTeam
+    }
+    if (body.categories !== undefined) {
+      objectives.categories = body.categories
+    }
+    if (body.implementingOrganizations !== undefined) {
+      objectives.implementingOrganizations = body.implementingOrganizations
+    }
+
     // Update the project
     const updatedProject = await prisma.projects.update({
       where: { id: projectId },
@@ -72,13 +87,14 @@ export async function PUT(
         startDate: body.startDate ? new Date(body.startDate) : undefined,
         endDate: body.endDate ? new Date(body.endDate) : undefined,
         country: body.country,
-        objectives: body.objectives ? JSON.stringify(body.objectives) : undefined,
+        budget: body.budget ? parseFloat(body.budget) : undefined,
+        objectives: Object.keys(objectives).length > 0 ? JSON.stringify(objectives) : undefined,
         updatedAt: new Date()
       },
-        include: {
-          activities: true
-        }
-      })
+      include: {
+        activities: true
+      }
+    })
 
     return NextResponse.json({
       success: true,

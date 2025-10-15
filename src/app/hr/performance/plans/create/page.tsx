@@ -166,7 +166,7 @@ function CreatePerformancePlanPageContent() {
           name: employee.name,
           email: employee.email || '',
           position: employee.position || '',
-          department: employee.department || '',
+          department: employee.department?.name || employee.department || '',
           manager: employee.supervisor?.name || employee.manager || '',
           planPeriod: {
             startDate: new Date().toISOString().split('T')[0],
@@ -202,7 +202,7 @@ function CreatePerformancePlanPageContent() {
                 id: employeeData.id || '',
                 name: `${employeeData.firstName || ''} ${employeeData.lastName || ''}`.trim() || employeeData.email || '',
                 email: employeeData.email || session.user.email || '',
-                department: employeeData.department || '',
+                department: employeeData.department?.name || employeeData.department || '',
                 position: employeeData.position || '',
                 manager: employeeData.supervisor || 'Not Assigned',
                 planPeriod: {
@@ -390,7 +390,7 @@ function CreatePerformancePlanPageContent() {
                       </option>
                       {employees.map((employee) => (
                         <option key={employee.id} value={employee.id}>
-                          {employee.name} - {employee.position} ({employee.department})
+                          {employee.name} - {employee.position} ({employee.department?.name || employee.department || 'No Department'})
                         </option>
                       ))}
                     </select>

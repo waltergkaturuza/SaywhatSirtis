@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
         objectives: JSON.stringify({
           categories: body.categories || [],
           projectLead: body.projectLead || null,
+          projectTeam: body.projectTeam || [],
           implementingOrganizations: body.implementingOrganizations || [],
           evaluationFrequency: body.evaluationFrequency || [],
           frequencyDates: body.frequencyDates || {},

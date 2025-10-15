@@ -51,6 +51,13 @@ export async function GET() {
                 role: true,
                 isActive: true
               }
+            },
+            // Load normalized department relation so we can return the canonical department name
+            departments: {
+              select: {
+                id: true,
+                name: true
+              }
             }
           }
         }),
@@ -93,6 +100,8 @@ export async function GET() {
     }
 
     // Format response
+    const canonicalDepartmentName = employee?.departments?.name || employee?.department || 'Unassigned';
+
     const profileData = {
       id: employee.id,
       employeeId: employee.employeeId,
@@ -116,7 +125,10 @@ export async function GET() {
       emergencyContactRelationship: employee.emergencyContactRelationship,
       profilePicture: employee.profilePicture,
       position: employee.position,
-      department: employee.department || 'Unassigned',
+      // Keep legacy field but ensure it reflects the canonical department name
+      department: canonicalDepartmentName,
+      // Also expose explicit departmentName used by some UIs
+      departmentName: canonicalDepartmentName,
       employmentType: employee.employmentType,
       startDate: employee.startDate?.toISOString()?.split('T')[0] || null,
       endDate: employee.endDate?.toISOString()?.split('T')[0] || null,

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// Removed unused Select imports
 import { ResultsFramework, ResultsFrameworkData } from "./results-framework"
 import { 
   DocumentTextIcon,
@@ -105,11 +105,21 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
+  // Employee selection state
+  const [employees, setEmployees] = useState<Array<{id: string, name: string, department: string, position: string}>>([])
+  const [loadingEmployees, setLoadingEmployees] = useState(false)
+  
+  // Fetch employees when component mounts
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
+  
   // Project Information State
   const [projectCode, setProjectCode] = useState("")
   const [projectTitle, setProjectTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [projectLead, setProjectLead] = useState("")
+  const [projectLead, setProjectLead] = useState<string>("")
+  const [projectTeam, setProjectTeam] = useState<string[]>([])
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
@@ -120,10 +130,6 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   const [selectedFrequencies, setSelectedFrequencies] = useState<string[]>([])
   const [frequencyDates, setFrequencyDates] = useState<Record<string, string>>({})
   const [selectedMethodologies, setSelectedMethodologies] = useState<string[]>([])
-  
-  // Employee selection state
-  const [employees, setEmployees] = useState<Array<{id: string, name: string, department: string, position: string}>>([])
-  const [loadingEmployees, setLoadingEmployees] = useState(false)
   
   // Financial Details State
   const [totalBudget, setTotalBudget] = useState("")
@@ -186,7 +192,7 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
 
   // Helper function to fetch employees for project lead selection
   const fetchEmployees = async () => {
-    if (loadingEmployees || employees.length > 0) return // Don't fetch if already loading or loaded
+    if (loadingEmployees) return // Don't fetch if already loading
     
     setLoadingEmployees(true)
     try {
@@ -194,14 +200,17 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
       if (!response.ok) throw new Error('Failed to fetch employees')
       
       const data = await response.json()
-      if (data.success && data.data) {
+      if (data.data) {
         const employeeList = data.data.map((emp: any) => ({
-          value: emp.id.toString(),
-          label: `${emp.firstName} ${emp.lastName} - ${emp.position || 'Unknown'} (${emp.department || 'Unknown'})`
+          id: emp.id.toString(),
+          name: `${emp.firstName} ${emp.lastName} ${emp.position ? `- ${emp.position}` : ''} ${emp.department?.name ? `(${emp.department.name})` : ''}`
         }))
         setEmployees(employeeList)
+      } else {
+        setError('No employee data received')
       }
     } catch (error) {
+      setError('Failed to fetch employees')
       console.error('Error fetching employees:', error)
     } finally {
       setLoadingEmployees(false)
@@ -320,6 +329,25 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
     
     setIsSubmitting(true)
     setError(null)
+
+    // Validate required fields
+    if (!projectCode.trim()) {
+      setError('Project code is required')
+      setIsSubmitting(false)
+      return
+    }
+    
+    if (!projectTitle.trim()) {
+      setError('Project title is required')
+      setIsSubmitting(false)
+      return
+    }
+
+    if (!projectLead) {
+      setError('Project Lead must be selected')
+      setIsSubmitting(false)
+      return
+    }
     
     try {
       const projectData = {
@@ -334,7 +362,8 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
         budget: totalBudget ? parseFloat(totalBudget) : 0,
         fundingSource,
         categories: selectedCategories,
-        projectLead,
+        projectLead: projectLead,
+        projectTeam: projectTeam,
         implementingOrganizations: implementingOrganizations.filter(org => org.trim() !== ''),
         evaluationFrequency: selectedFrequencies,
         frequencyDates,
@@ -391,29 +420,26 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
           />
         </div>
         <div>
-          <Label htmlFor="projectLead">Project Lead</Label>
-          <Select
+          <Label>Project Lead *</Label>
+          <select
             value={projectLead}
-            onValueChange={setProjectLead}
+            onChange={(e) => setProjectLead(e.target.value)}
             disabled={!canEdit}
+            className="mt-2 w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:bg-gray-100"
           >
-            <SelectTrigger className="focus:ring-green-500 focus:border-green-500">
-              <SelectValue placeholder="Select project lead" />
-            </SelectTrigger>
-            <SelectContent>
-              {loadingEmployees ? (
-                <SelectItem value="loading" disabled>Loading employees...</SelectItem>
-              ) : employees.length === 0 ? (
-                <SelectItem value="no-employees" disabled>No employees found</SelectItem>
-              ) : (
-                employees.map((employee) => (
-                  <SelectItem key={employee.id} value={employee.id}>        
-                    {employee.name}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+            <option value="">Select Project Lead</option>
+            {loadingEmployees ? (
+              <option disabled>Loading employees...</option>
+            ) : employees.length === 0 ? (
+              <option disabled>No employees available</option>
+            ) : (
+              employees.map(employee => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.name}
+                </option>
+              ))
+            )}
+          </select>
         </div>
       </div>
 
@@ -453,29 +479,59 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
       </div>
 
       <div>
-        <Label htmlFor="projectLead">Project Lead *</Label>
-        <Select
-          value={projectLead}
-          onValueChange={setProjectLead}
-          disabled={!canEdit}
-        >
-          <SelectTrigger className="focus:ring-green-500 focus:border-green-500">
-            <SelectValue placeholder="Select project lead" />
-          </SelectTrigger>
-          <SelectContent>
-            {loadingEmployees ? (
-              <SelectItem value="loading" disabled>Loading employees...</SelectItem>
-            ) : employees.length === 0 ? (
-              <SelectItem value="no-employees" disabled>No employees found</SelectItem>
-            ) : (
-              employees.map((employee) => (
-                <SelectItem key={employee.id} value={employee.id}>
-                  {employee.name}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+        <Label>Project Team</Label>
+        <div className="mt-2 space-y-2">
+          <div className="border-2 border-gray-200 rounded-lg p-4">
+            <div className="max-h-60 overflow-y-auto space-y-2">
+              {loadingEmployees ? (
+                <div className="text-center py-2 text-gray-500">Loading employees...</div>
+              ) : employees.length === 0 ? (
+                <div className="text-center py-2 text-gray-500">No employees found</div>
+              ) : (
+                employees.map((employee) => (
+                  <label key={employee.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md">
+                    <input
+                      type="checkbox"
+                      checked={projectTeam.includes(employee.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setProjectTeam([...projectTeam, employee.id]);
+                        } else {
+                          setProjectTeam(projectTeam.filter(id => id !== employee.id));
+                        }
+                      }}
+                      disabled={!canEdit}
+                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm font-medium text-gray-700">{employee.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            Selected team members: {projectTeam.length}
+          </div>
+          {projectTeam.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {projectTeam.map(id => {
+                const employee = employees.find(e => e.id === id);
+                return employee ? (
+                  <span key={id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                    {employee.name}
+                    <button
+                      type="button"
+                      onClick={() => setProjectTeam(projectTeam.filter(pid => pid !== id))}
+                      className="ml-1 inline-flex items-center p-0.5 hover:bg-orange-200 rounded-full"
+                    >
+                      <XMarkIcon className="h-3 w-3" />
+                    </button>
+                  </span>
+                ) : null;
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <div>

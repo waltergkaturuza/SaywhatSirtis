@@ -280,6 +280,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
   // Load employee data in edit mode
   useEffect(() => {
     if (mode === 'edit' && employeeData) {
+      // Resolve canonical department id/name from relation if available
+      const resolvedDepartmentId = employeeData.departmentId || employeeData.departments?.id || ""
+      const resolvedDepartmentName = employeeData.department || employeeData.departments?.name || ""
       setFormData({
         firstName: employeeData.firstName || "",
         lastName: employeeData.lastName || "",
@@ -295,8 +298,8 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         emergencyContactPhone: employeeData.emergencyContactPhone || employeeData.emergencyPhone || "",
         emergencyContactRelationship: employeeData.emergencyContactRelationship || employeeData.emergencyRelationship || "",
         employeeId: employeeData.employeeId || "",
-        department: employeeData.department || "",
-        departmentId: employeeData.departmentId || "",
+        department: resolvedDepartmentName,
+        departmentId: resolvedDepartmentId,
         position: employeeData.position || "",
         supervisorId: employeeData.supervisorId || "",
         reviewerId: employeeData.reviewerId || "",

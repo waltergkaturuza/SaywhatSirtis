@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -50,17 +50,34 @@ export default function UploadProgressPage() {
     return null
   }
 
-  // Sample project data
-  const project = {
-    id: projectId,
-    name: "Community Health Improvement Project",
-    indicators: [
-      { id: 1, name: "Number of women receiving prenatal care", target: 5000, current: 3250 },
-      { id: 2, name: "Children fully vaccinated", target: 8000, current: 6400 },
-      { id: 3, name: "Community health workers trained", target: 100, current: 75 },
-      { id: 4, name: "Health facilities upgraded", target: 20, current: 8 }
-    ]
+  // Fetch project data from backend
+  const [project, setProject] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchProject = async () => {
+      try {
+        const response = await fetch(`/api/programs/projects/${projectId}`)
+        const result = await response.json()
+        if (result.success && result.data) {
+          setProject(result.data)
+        }
+      } catch (error) {
+        console.error('Error fetching project:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    if (projectId) {
+      fetchProject()
+    }
+  }, [projectId])
+
+  if (loading || !project) {
+    return <div className="p-8 text-center">Loading project...</div>
   }
+
+  const indicators = []  // TODO: Add indicators to project schema or fetch separately
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
