@@ -41,6 +41,15 @@ export async function GET(
             position: true
           }
         },
+        reviewer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            position: true
+          }
+        },
         other_employees: {
           select: {
             id: true,
@@ -179,11 +188,13 @@ export async function GET(
       
       // Role Information
       supervisorId: employee.supervisor_id,
+      reviewerId: employee.reviewer_id,
       isSupervisor: employee.is_supervisor,
       isReviewer: employee.is_reviewer,
       
       // Relationships
       supervisor: employee.employees, // This is the supervisor relationship
+      reviewer: employee.reviewer, // This is the reviewer relationship
       subordinates: employee.other_employees, // These are the subordinates
       departments: employee.departments, // Department details
       
@@ -397,6 +408,26 @@ export async function PUT(
       }
     }
 
+    // Handle reviewer relationship - use correct database field name
+    if (formData.reviewerId !== undefined) {
+      if (formData.reviewerId === 'no-reviewer' || !formData.reviewerId) {
+        updateData.reviewer_id = null // Use snake_case field name
+      } else {
+        // Validate that the reviewer exists in the employees table
+        const reviewerExists = await prisma.employees.findUnique({
+          where: { id: formData.reviewerId },
+          select: { id: true }
+        })
+        
+        if (!reviewerExists) {
+          console.error(`Reviewer with ID ${formData.reviewerId} not found`)
+          updateData.reviewer_id = null // Set to null if reviewer doesn't exist
+        } else {
+          updateData.reviewer_id = formData.reviewerId // Use snake_case field name
+        }
+      }
+    }
+
     console.log(`Updating employee ${requestId} with data:`, updateData)
 
     // Update the employee using correct relationships
@@ -489,6 +520,7 @@ export async function PUT(
       
       // Role information - use correct field names
       supervisorId: updatedEmployee.supervisor_id,
+      reviewerId: updatedEmployee.reviewer_id,
       isSupervisor: updatedEmployee.is_supervisor,
       isReviewer: updatedEmployee.is_reviewer,
       
@@ -652,6 +684,24 @@ export async function PATCH(
           }
         })
         updateData.supervisor_id = supervisor?.id || null
+      }
+    }
+
+    // Reviewer Information
+    if (formData.reviewerId !== undefined) {
+      if (formData.reviewerId === null || formData.reviewerId === 'no-reviewer') {
+        updateData.reviewer_id = null
+      } else {
+        // Validate reviewer exists and get their employee ID
+        const reviewer = await prisma.employees.findFirst({
+          where: {
+            OR: [
+              { id: formData.reviewerId },
+              { userId: formData.reviewerId }
+            ]
+          }
+        })
+        updateData.reviewer_id = reviewer?.id || null
       }
     }
 

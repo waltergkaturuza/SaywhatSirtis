@@ -170,6 +170,13 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     department: string
   }>>([])
   
+  const [reviewers, setReviewers] = useState<Array<{
+    id: string
+    name: string
+    position: string
+    department: string
+  }>>([])
+  
   const [roles, setRoles] = useState<SystemRole[]>([])
   const [loadingRoles, setLoadingRoles] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -396,6 +403,19 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     }
   }
 
+  const fetchReviewers = async () => {
+    try {
+      const response = await fetch('/api/hr/reviewers')
+      const result = await response.json()
+      if (result.success) {
+        setReviewers(result.data || result.reviewers || [])
+      }
+    } catch (error) {
+      console.error('Error fetching reviewers:', error)
+      setReviewers([])
+    }
+  }
+
   // Fetch roles
   const fetchRoles = async () => {
     try {
@@ -419,6 +439,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
   useEffect(() => {
     fetchDepartments()
     fetchSupervisors()
+    fetchReviewers()
     fetchRoles()
   }, [])
 
@@ -941,6 +962,8 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               <SelectItem value="CONTRACT">Contract</SelectItem>
               <SelectItem value="INTERN">Intern</SelectItem>
               <SelectItem value="CONSULTANT">Consultant</SelectItem>
+              <SelectItem value="TEMPORARY">Temporary</SelectItem>
+              <SelectItem value="VOLUNTEER">Volunteer</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1003,7 +1026,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
           <Label htmlFor="supervisor">Supervisor</Label>
           <Select 
             value={formData.supervisorId || 'no-supervisor'} 
-            onValueChange={(value) => handleInputChange('supervisorId', value === 'no-supervisor' ? null : value)}
+            onValueChange={(value) => handleInputChange('supervisorId', value === 'no-supervisor' ? '' : value)}
           >
             <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select supervisor" />
@@ -1019,14 +1042,40 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
           </Select>
         </div>
         <div>
+          <Label htmlFor="reviewer">Performance Reviewer</Label>
+          <Select 
+            value={formData.reviewerId || 'no-reviewer'} 
+            onValueChange={(value) => handleInputChange('reviewerId', value === 'no-reviewer' ? '' : value)}
+          >
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+              <SelectValue placeholder="Select performance reviewer" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-gray-300 shadow-lg">
+              <SelectItem value="no-reviewer">No Reviewer</SelectItem>
+              {reviewers.map((reviewer) => (
+                <SelectItem key={reviewer.id} value={reviewer.id}>
+                  {reviewer.name} - {reviewer.position || 'Reviewer'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
           <Label htmlFor="workLocation">Work Location</Label>
-          <Input
-            id="workLocation"
-            value={formData.workLocation}
-            onChange={(e) => handleInputChange('workLocation', e.target.value)}
-            className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200"
-            placeholder="Enter work location"
-          />
+          <Select 
+            value={formData.workLocation} 
+            onValueChange={(value) => handleInputChange('workLocation', value)}
+          >
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+              <SelectValue placeholder="Select work location" />
+            </SelectTrigger>
+            <SelectContent className="bg-white border border-gray-300 shadow-lg">
+              <SelectItem value="office">Office</SelectItem>
+              <SelectItem value="remote">Remote</SelectItem>
+              <SelectItem value="hybrid">Hybrid</SelectItem>
+              <SelectItem value="field">Field</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

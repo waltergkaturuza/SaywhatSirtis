@@ -391,6 +391,7 @@ export async function POST(request: Request) {
       status: 'ACTIVE' as const,
       // Supervisor and role fields
       supervisorId: formData.supervisorId || null,
+      reviewerId: formData.reviewerId || null,
       isSupervisor: formData.isSupervisor || false,
       isReviewer: formData.isReviewer || false,
       // Benefits fields - map form fields to database fields
@@ -452,6 +453,16 @@ export async function POST(request: Request) {
       if (!departmentExists) {
         const { response, status } = createErrorResponse('Department does not exist', HttpStatus.BAD_REQUEST, { code: ErrorCodes.VALIDATION_ERROR, message: 'Referenced department was not found' })
         return NextResponse.json(response, { status })
+      }
+    }
+
+    // Prepare reviewer mapping
+    let reviewerEmployeeId: string | undefined = undefined
+    if (sanitizedData.reviewerId) {
+      const provided = sanitizedData.reviewerId
+      const reviewerAsEmployee = await executeQuery(async (prisma) => prisma.employees.findUnique({ where: { id: provided }, select: { id: true } }))
+      if (reviewerAsEmployee) {
+        reviewerEmployeeId = reviewerAsEmployee.id
       }
     }
 
@@ -532,6 +543,7 @@ export async function POST(request: Request) {
           currency: sanitizedData.currency,
           status: sanitizedData.status,
           supervisor_id: supervisorEmployeeId, // resolved supervisor employee id
+          reviewer_id: reviewerEmployeeId, // resolved reviewer employee id
           is_supervisor: sanitizedData.isSupervisor,
           is_reviewer: sanitizedData.isReviewer,
           

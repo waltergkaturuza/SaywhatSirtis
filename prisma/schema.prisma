@@ -625,6 +625,7 @@ model employees {
   currency                              String?                    @default("USD")
   status                                String                     @default("ACTIVE")
   supervisor_id                         String?
+  reviewer_id                           String?
   is_supervisor                         Boolean                    @default(false)
   is_reviewer                           Boolean                    @default(false)
   medical_aid                           Boolean                    @default(false)
@@ -670,7 +671,9 @@ model employees {
   additional_notes                      String?                    @db.Text
   departments                           departments?               @relation(fields: [departmentId], references: [id])
   employees                             employees?                 @relation("employeesToemployees", fields: [supervisor_id], references: [id])
+  reviewer                              employees?                 @relation("reviewerToemployees", fields: [reviewer_id], references: [id])
   other_employees                       employees[]                @relation("employeesToemployees")
+  reviewed_employees                    employees[]                @relation("reviewerToemployees")
   users                                 users                      @relation(fields: [userId], references: [id], onDelete: Cascade)
   job_descriptions                      job_descriptions?
   notifications                         notifications[]
@@ -690,6 +693,7 @@ model employees {
   @@index([is_supervisor])
   @@index([status])
   @@index([supervisor_id])
+  @@index([reviewer_id])
 }
 
 model event_registrations {
