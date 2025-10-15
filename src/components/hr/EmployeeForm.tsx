@@ -256,7 +256,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     securityClearance: "none"
   })
 
-  const totalSteps = 6 // Complete form with all sections
+  const totalSteps = 7 // Complete form with all sections
 
   // Helper function to get permission display color
   const getPermissionColor = (permission: string) => {
@@ -1399,10 +1399,289 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     )
   }
 
+  // Helper function to calculate total weight
+  const getTotalWeight = (responsibilities: Array<{weight: number}>) => {
+    return responsibilities.reduce((sum, resp) => sum + (resp.weight || 0), 0)
+  }
+
+  // Helper function to add key responsibility
+  const addKeyResponsibility = () => {
+    if (formData.jobDescription.keyResponsibilities.length < 10) {
+      handleInputChange('jobDescription', {
+        ...formData.jobDescription,
+        keyResponsibilities: [
+          ...formData.jobDescription.keyResponsibilities,
+          { description: '', weight: 0, tasks: '' }
+        ]
+      })
+    }
+  }
+
+  // Helper function to remove key responsibility
+  const removeKeyResponsibility = (index: number) => {
+    const updatedResponsibilities = formData.jobDescription.keyResponsibilities.filter((_, i) => i !== index)
+    handleInputChange('jobDescription', {
+      ...formData.jobDescription,
+      keyResponsibilities: updatedResponsibilities
+    })
+  }
+
+  // Helper function to update key responsibility
+  const updateKeyResponsibility = (index: number, field: string, value: any) => {
+    const updatedResponsibilities = [...formData.jobDescription.keyResponsibilities]
+    updatedResponsibilities[index] = {
+      ...updatedResponsibilities[index],
+      [field]: value
+    }
+    handleInputChange('jobDescription', {
+      ...formData.jobDescription,
+      keyResponsibilities: updatedResponsibilities
+    })
+  }
+
   const renderStep6 = () => {
     return (
       <div className="space-y-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-6">Skills</h3>
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Job Description</h2>
+
+        <div className="space-y-6">
+          {/* Job Title */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Job Title *
+            </label>
+            <input
+              type="text"
+              value={formData.jobDescription.jobTitle}
+              onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, jobTitle: e.target.value })}
+              placeholder="Enter the official job title"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Job Location *
+            </label>
+            <input
+              type="text"
+              value={formData.jobDescription.location}
+              onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, location: e.target.value })}
+              placeholder="Enter work location (e.g., Kampala Office, Remote, Field-based)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          {/* Job Summary */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Job Summary *
+            </label>
+            <textarea
+              value={formData.jobDescription.jobSummary}
+              onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, jobSummary: e.target.value })}
+              placeholder="Provide a comprehensive overview of the role's purpose, scope, and main objectives..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          {/* Key Responsibilities */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <label className="block text-sm font-medium text-gray-700">
+                Key Responsibilities & Tasks
+              </label>
+              <div className="text-sm text-gray-600">
+                Total Weight: {getTotalWeight(formData.jobDescription.keyResponsibilities)}%
+                <span className={getTotalWeight(formData.jobDescription.keyResponsibilities) === 100 ? 'text-green-600 ml-2' : 'text-red-600 ml-2'}>
+                  {getTotalWeight(formData.jobDescription.keyResponsibilities) === 100 ? '✓' : '⚠️'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {formData.jobDescription.keyResponsibilities.map((responsibility, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-900">Responsibility {index + 1}</h4>
+                    {formData.jobDescription.keyResponsibilities.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeKeyResponsibility(index)}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div className="lg:col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Responsibility Description *
+                      </label>
+                      <textarea
+                        value={responsibility.description}
+                        onChange={(e) => updateKeyResponsibility(index, 'description', e.target.value)}
+                        placeholder="Describe the responsibility and associated tasks..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Weight (%) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={responsibility.weight}
+                        onChange={(e) => updateKeyResponsibility(index, 'weight', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Percentage of time/effort for this responsibility
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Specific Tasks
+                    </label>
+                    <textarea
+                      value={responsibility.tasks}
+                      onChange={(e) => updateKeyResponsibility(index, 'tasks', e.target.value)}
+                      placeholder="List specific tasks and deliverables for this responsibility..."
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {formData.jobDescription.keyResponsibilities.length < 10 && (
+                <button
+                  type="button"
+                  onClick={addKeyResponsibility}
+                  className="w-full py-2 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-orange-500 hover:text-orange-600 transition-colors"
+                >
+                  + Add Another Responsibility (Max 10)
+                </button>
+              )}
+
+              {getTotalWeight(formData.jobDescription.keyResponsibilities) !== 100 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500 mr-2" />
+                    <p className="text-sm text-yellow-800">
+                      Total weight must equal 100%. Current total: {getTotalWeight(formData.jobDescription.keyResponsibilities)}%
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Person Specification - Essential Experience */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Essential Experience *
+            </label>
+            <textarea
+              value={formData.jobDescription.essentialExperience}
+              onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, essentialExperience: e.target.value })}
+              placeholder="List the essential work experience, qualifications, and background required for this role..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          {/* Person Specification - Essential Skills */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Essential Skills *
+            </label>
+            <textarea
+              value={formData.jobDescription.essentialSkills}
+              onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, essentialSkills: e.target.value })}
+              placeholder="List the essential technical skills, competencies, and abilities required for this role..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          {/* Declaration and Acknowledgment */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Declaration and Acknowledgment</h3>
+            
+            <div className="space-y-4">
+              <div className="flex items-start">
+                <input
+                  type="checkbox"
+                  id="jobDescriptionAcknowledgment"
+                  checked={formData.jobDescription.acknowledgment}
+                  onChange={(e) => handleInputChange("jobDescription", { ...formData.jobDescription, acknowledgment: e.target.checked })}
+                  className="mr-3 h-4 w-4 text-orange-600 focus:ring-orange-500 mt-1"
+                />
+                <label htmlFor="jobDescriptionAcknowledgment" className="text-sm text-gray-700">
+                  I acknowledge that this job description accurately reflects the role's responsibilities, requirements, and expectations. 
+                  I understand that this will be used for performance planning and evaluation purposes.
+                </label>
+              </div>
+
+              {/* Electronic Signature */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Electronic Signature Upload
+                </label>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      handleInputChange("jobDescription", { ...formData.jobDescription, signatureFile: file })
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Upload an image or PDF file containing your electronic signature (Max 5MB)
+                </p>
+                {formData.jobDescription.signatureFile && (
+                  <p className="text-sm text-green-600 mt-2">
+                    ✓ Signature file selected: {formData.jobDescription.signatureFile.name}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Planning Integration Notice */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center mb-2">
+              <DocumentTextIcon className="w-5 h-5 text-blue-600 mr-2" />
+              <h3 className="text-sm font-medium text-blue-900">Performance Planning Integration</h3>
+            </div>
+            <p className="text-sm text-blue-800">
+              This job description will be integrated with the HR Performance Planning system. The key responsibilities 
+              and their weights will be used to set performance targets and conduct evaluations.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderStep7 = () => {
+    return (
+      <div className="space-y-6">
+      <h3 className="text-lg font-medium text-gray-900 mb-6">Education & Documents</h3>
       <div className="space-y-6">
         {/* Education Level */}
         <div>
@@ -1847,6 +2126,8 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         return renderStep5()
       case 6:
         return renderStep6()
+      case 7:
+        return renderStep7()
       default:
         return renderStep1()
     }
@@ -1934,11 +2215,12 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         <div className="flex justify-between mt-4 text-sm font-medium">
           {[
             { label: 'Personal', color: 'text-saywhat-grey' },
-            { label: 'Contact', color: 'text-saywhat-grey' },
+            { label: 'Emergency', color: 'text-saywhat-grey' },
             { label: 'Employment', color: 'text-saywhat-grey' },
             { label: 'Compensation', color: 'text-saywhat-grey' },
             { label: 'Access', color: 'text-saywhat-grey' },
-            { label: 'Skills', color: 'text-saywhat-grey' }
+            { label: 'Job Desc', color: 'text-saywhat-grey' },
+            { label: 'Education', color: 'text-saywhat-grey' }
           ].map((item, index) => (
             <span 
               key={index}

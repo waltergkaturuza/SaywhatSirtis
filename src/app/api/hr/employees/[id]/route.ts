@@ -56,6 +56,24 @@ export async function GET(
             name: true,
             description: true
           }
+        },
+        job_descriptions: {
+          select: {
+            id: true,
+            jobTitle: true,
+            location: true,
+            jobSummary: true,
+            keyResponsibilities: true,
+            essentialExperience: true,
+            essentialSkills: true,
+            acknowledgment: true,
+            signatureFileName: true,
+            signatureFileUrl: true,
+            version: true,
+            isActive: true,
+            createdAt: true,
+            updatedAt: true
+          }
         }
       }
     })
@@ -168,6 +186,24 @@ export async function GET(
       supervisor: employee.employees, // This is the supervisor relationship
       subordinates: employee.other_employees, // These are the subordinates
       departments: employee.departments, // Department details
+      
+      // Job Description
+      jobDescription: employee.job_descriptions ? {
+        id: employee.job_descriptions.id,
+        jobTitle: employee.job_descriptions.jobTitle,
+        location: employee.job_descriptions.location,
+        jobSummary: employee.job_descriptions.jobSummary,
+        keyResponsibilities: employee.job_descriptions.keyResponsibilities,
+        essentialExperience: employee.job_descriptions.essentialExperience,
+        essentialSkills: employee.job_descriptions.essentialSkills,
+        acknowledgment: employee.job_descriptions.acknowledgment,
+        signatureFileName: employee.job_descriptions.signatureFileName,
+        signatureFileUrl: employee.job_descriptions.signatureFileUrl,
+        version: employee.job_descriptions.version,
+        isActive: employee.job_descriptions.isActive,
+        createdAt: employee.job_descriptions.createdAt,
+        updatedAt: employee.job_descriptions.updatedAt
+      } : null,
       
       // Status and timestamps
       status: employee.status,
