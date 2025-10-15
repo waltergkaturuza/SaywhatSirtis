@@ -77,7 +77,7 @@ export default function UploadProgressPage() {
     return <div className="p-8 text-center">Loading project...</div>
   }
 
-  const indicators = []  // TODO: Add indicators to project schema or fetch separately
+  const indicators: Array<{id: number, name: string, target: number, current: number}> = []  // TODO: Add indicators to project schema or fetch separately
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -193,15 +193,18 @@ export default function UploadProgressPage() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Indicators</h3>
         <div className="space-y-2">
-          {project.indicators.map((indicator) => (
-            <div key={indicator.id} className="p-2 bg-gray-50 rounded text-sm">
-              <div className="font-medium text-gray-900 truncate">{indicator.name}</div>
-              <div className="text-gray-600">
-                Current: {indicator.current.toLocaleString()} / {indicator.target.toLocaleString()}
+          {indicators.length > 0 ? (
+            indicators.map((indicator) => (
+              <div key={indicator.id} className="p-2 bg-gray-50 rounded text-sm">
+                <div className="font-medium text-gray-900 truncate">{indicator.name}</div>
+                <div className="text-gray-600">
+                  Current: {indicator.current.toLocaleString()} / {indicator.target.toLocaleString()}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))
+          ) : (
+            <p className="text-sm text-gray-500">No indicators defined for this project</p>
+          )}</div>
       </div>
     </div>
   )
@@ -345,7 +348,7 @@ export default function UploadProgressPage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-6">M&E Indicator Updates</h2>
           
           <div className="space-y-6">
-            {project.indicators.map((indicator, index) => (
+            {indicators.map((indicator, index) => (
               <div key={indicator.id} className="border border-gray-200 rounded-lg p-4">
                 <h3 className="font-medium text-gray-900 mb-3">{indicator.name}</h3>
                 <div className="text-sm text-gray-600 mb-4">

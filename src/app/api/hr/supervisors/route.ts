@@ -11,15 +11,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all users who are supervisors or have supervisor role
+    // Get all employees who are marked as supervisors
     const supervisors = await executeQuery(async (prisma) =>
-      prisma.users.findMany({
+      prisma.employees.findMany({
         where: {
-          OR: [
-            { roles: { has: 'supervisor' } },
-            { role: 'ADMIN' }
-          ],
-          isActive: true
+          is_supervisor: true,
+          status: 'ACTIVE'
         },
         select: {
           id: true,
@@ -28,7 +25,19 @@ export async function GET(request: NextRequest) {
           email: true,
           department: true,
           position: true,
-          roles: true
+          departments: {
+            select: {
+              name: true
+            }
+          },
+          other_employees: {
+            where: {
+              status: 'ACTIVE'
+            },
+            select: {
+              id: true
+            }
+          }
         },
         orderBy: [
           { firstName: 'asc' },
@@ -41,20 +50,22 @@ export async function GET(request: NextRequest) {
       id: supervisor.id,
       name: `${supervisor.firstName} ${supervisor.lastName}`,
       email: supervisor.email,
-      department: supervisor.department || 'Unassigned',
-      position: supervisor.position || 'Employee',
-      subordinateCount: 0, // TODO: Implement count query
-      isHR: supervisor.roles?.includes('hr') || supervisor.roles?.includes('ADMIN')
+      department: supervisor.departments?.name || supervisor.department || 'Unassigned',
+      position: supervisor.position || 'Supervisor',
+      subordinateCount: supervisor.other_employees?.length || 0
     }))
 
     return NextResponse.json({
+      success: true,
       supervisors: supervisorData,
+      data: supervisorData,
       message: 'Supervisors retrieved successfully'
     })
   } catch (error) {
     console.error('Error fetching supervisors:', error)
     return NextResponse.json(
       { 
+        success: false,
         error: 'Failed to fetch supervisors',
         message: error instanceof Error ? error.message : 'Database connection failed'
       },

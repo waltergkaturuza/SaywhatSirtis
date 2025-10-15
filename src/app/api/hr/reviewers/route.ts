@@ -11,17 +11,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all users who can conduct performance reviews
+    // Get all employees who are marked as reviewers
     const reviewers = await executeQuery(async (prisma) =>
-      prisma.users.findMany({
+      prisma.employees.findMany({
         where: {
-          OR: [
-            { roles: { has: 'reviewer' } },
-            { roles: { has: 'supervisor' } },
-            { roles: { has: 'hr_manager' } },
-            { role: 'ADMIN' }
-          ],
-          isActive: true
+          is_reviewer: true,
+          status: 'ACTIVE'
         },
         select: {
           id: true,
@@ -30,7 +25,12 @@ export async function GET(request: NextRequest) {
           email: true,
           department: true,
           position: true,
-          roles: true
+          is_supervisor: true,
+          departments: {
+            select: {
+              name: true
+            }
+          }
         },
         orderBy: [
           { firstName: 'asc' },
@@ -43,15 +43,15 @@ export async function GET(request: NextRequest) {
       id: reviewer.id,
       name: `${reviewer.firstName} ${reviewer.lastName}`,
       email: reviewer.email,
-      department: reviewer.department || 'Unassigned',
-      position: reviewer.position || 'Employee',
-      subordinateCount: 0, // TODO: Implement count query
-      reviewCount: 0, // Will be calculated based on actual review assignments
-      isHR: reviewer.roles?.includes('hr_manager') || reviewer.roles?.includes('ADMIN'),
-      isSupervisor: reviewer.roles?.includes('supervisor')
+      department: reviewer.departments?.name || reviewer.department || 'Unassigned',
+      position: reviewer.position || 'Reviewer',
+      reviewCount: 0, // TODO: Implement review count query
+      isHR: reviewer.department?.toLowerCase().includes('hr') || reviewer.department?.toLowerCase().includes('human resources'),
+      isSupervisor: reviewer.is_supervisor || false
     }))
 
     return NextResponse.json({
+      success: true,
       reviewers: reviewerData,
       data: reviewerData,
       message: 'Reviewers retrieved successfully'
@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching reviewers:', error)
     return NextResponse.json(
       { 
+        success: false,
         error: 'Failed to fetch reviewers',
         message: error instanceof Error ? error.message : 'Database connection failed'
       },

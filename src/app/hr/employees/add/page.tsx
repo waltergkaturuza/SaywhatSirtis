@@ -46,6 +46,7 @@ interface EmployeeFormData {
   middleName: string
   dateOfBirth: string
   gender: string
+  nationalId: string
   phoneNumber: string
   email: string
   personalEmail: string
@@ -194,6 +195,7 @@ export default function AddEmployeePage() {
     middleName: "",
     dateOfBirth: "",
     gender: "",
+    nationalId: "",
     phoneNumber: "",
     email: "",
     personalEmail: "",
@@ -862,6 +864,21 @@ export default function AddEmployeePage() {
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    National ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.nationalId}
+                    onChange={(e) => handleInputChange("nationalId", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Enter National ID"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Phone Number *
