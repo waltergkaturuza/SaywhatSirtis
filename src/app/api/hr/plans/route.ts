@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import crypto from "crypto";
 
 export async function GET(request: NextRequest) {
   try {
@@ -90,24 +91,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine status and workflow status
+    // Determine status
     const status = isDraft ? 'draft' : 'submitted';
-    const workflowStatus = isDraft ? 'draft' : 'supervisor_review';
 
-    // Prepare plan data
+    // Get supervisor user ID (performance_plans.supervisorId is a foreign key to users table)
+    const supervisorEmployee = await prisma.employees.findUnique({
+      where: { id: employee.supervisor_id || '' },
+      select: { userId: true }
+    });
+
+    // Prepare plan data matching the actual schema
+    const currentYear = new Date().getFullYear();
+    const planYear = formData.planYear ? parseInt(formData.planYear) : currentYear;
+    
     const planData = {
+      id: crypto.randomUUID(),
       employeeId: employee.id,
-      planYear: formData.planYear || new Date().getFullYear().toString(),
-      planTitle: formData.planTitle || `Performance Plan ${formData.planYear || new Date().getFullYear()}`,
-      startDate: formData.reviewPeriod?.startDate ? new Date(formData.reviewPeriod.startDate) : new Date(),
-      endDate: formData.reviewPeriod?.endDate ? new Date(formData.reviewPeriod.endDate) : new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+      supervisorId: supervisorEmployee?.userId || employee.supervisor_id,
+      planYear: planYear,
+      planPeriod: `January ${planYear} - December ${planYear}`,
       status,
-      workflowStatus,
-      supervisorId: formData.supervisorId || employee.supervisorId,
-      reviewerId: formData.reviewerId || null,
-      comments: formData.comments ? JSON.stringify([]) : null,
-      createdBy: session.user.email || 'system',
-      updatedBy: session.user.email || 'system'
+      updatedAt: new Date(),
+      reviewerId: null, // Set to null unless formData provides a valid user ID
+      comments: JSON.stringify([])
     };
 
     console.log('💾 Saving plan to database:', planData);
@@ -125,15 +131,12 @@ export async function POST(request: NextRequest) {
       
       for (const responsibility of formData.keyResponsibilities) {
         const respData = {
+          id: crypto.randomUUID(),
           planId: plan.id,
+          title: responsibility.description?.substring(0, 100) || 'Responsibility',
           description: responsibility.description || '',
           weight: responsibility.weight || 0,
-          targetDate: responsibility.targetDate ? new Date(responsibility.targetDate) : null,
-          status: responsibility.status || 'Not Started',
-          progress: responsibility.progress || 0,
-          comments: responsibility.comments || '',
-          tasks: responsibility.tasks || '',
-          successIndicators: responsibility.successIndicators ? JSON.stringify(responsibility.successIndicators) : null
+          updatedAt: new Date()
         };
 
         await prisma.performance_responsibilities.create({
@@ -150,8 +153,7 @@ export async function POST(request: NextRequest) {
       plan: {
         id: plan.id,
         planYear: plan.planYear,
-        status: plan.status,
-        workflowStatus: plan.workflowStatus
+        status: plan.status
       }
     });
 
