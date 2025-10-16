@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
         performance_responsibilities: {
           select: {
             id: true,
+            title: true,
             description: true,
-            status: true,
-            progress: true
+            weight: true
           }
         }
       },
