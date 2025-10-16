@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,7 +13,34 @@ interface EmployeeDetailsStepProps {
   updateFormData: (updates: Partial<AppraisalFormData>) => void
 }
 
+interface Department {
+  id: string
+  name: string
+}
+
 export function EmployeeDetailsStep({ formData, updateFormData }: EmployeeDetailsStepProps) {
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [loadingDepartments, setLoadingDepartments] = useState(true)
+
+  useEffect(() => {
+    fetchDepartments()
+  }, [])
+
+  const fetchDepartments = async () => {
+    try {
+      setLoadingDepartments(true)
+      const response = await fetch('/api/hr/departments')
+      if (response.ok) {
+        const data = await response.json()
+        setDepartments(data.departments || [])
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error)
+    } finally {
+      setLoadingDepartments(false)
+    }
+  }
+
   const handleEmployeeChange = (field: string, value: string) => {
     updateFormData({
       employee: {
@@ -54,6 +81,8 @@ export function EmployeeDetailsStep({ formData, updateFormData }: EmployeeDetail
                 onChange={(e) => handleEmployeeChange('name', e.target.value)}
                 placeholder="Enter employee name"
                 required
+                readOnly
+                className="bg-gray-50"
               />
             </div>
             
@@ -66,27 +95,20 @@ export function EmployeeDetailsStep({ formData, updateFormData }: EmployeeDetail
                 onChange={(e) => handleEmployeeChange('email', e.target.value)}
                 placeholder="employee@saywhat.co.zw"
                 required
+                readOnly
+                className="bg-gray-50"
               />
             </div>
 
             <div>
               <Label htmlFor="department">Department *</Label>
-              <Select
+              <Input
+                id="department"
                 value={formData.employee.department}
-                onValueChange={(value) => handleEmployeeChange('department', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="engineering">Engineering</SelectItem>
-                  <SelectItem value="hr">Human Resources</SelectItem>
-                  <SelectItem value="marketing">Marketing</SelectItem>
-                  <SelectItem value="sales">Sales</SelectItem>
-                  <SelectItem value="operations">Operations</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
-                </SelectContent>
-              </Select>
+                placeholder={loadingDepartments ? "Loading departments..." : "Department will be auto-filled"}
+                readOnly
+                className="bg-gray-50"
+              />
             </div>
 
             <div>
@@ -97,6 +119,8 @@ export function EmployeeDetailsStep({ formData, updateFormData }: EmployeeDetail
                 onChange={(e) => handleEmployeeChange('position', e.target.value)}
                 placeholder="Enter job title"
                 required
+                readOnly
+                className="bg-gray-50"
               />
             </div>
 

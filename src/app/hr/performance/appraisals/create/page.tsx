@@ -70,6 +70,7 @@ function CreateAppraisalContent() {
       areasForImprovement: []
     },
     achievements: {
+      keyResponsibilities: [],
       goals: [{ id: "1", description: "", status: "not-achieved" as const, comment: "" }],
       keyAccomplishments: [""],
       additionalContributions: [""]
@@ -117,20 +118,37 @@ function CreateAppraisalContent() {
     }
   ]
 
-  useEffect(() => {
-    setMounted(true)
-    
-    // Auto-fill current user data if in self-assessment mode
-    if (isSelfAssessment && session?.user?.email) {
-      loadCurrentUserData()
-    }
-  }, [isSelfAssessment, session])
-
   const loadCurrentUserData = async () => {
     try {
+      console.log('🔍 Loading employee profile data...')
       const response = await fetch('/api/employee/profile')
       if (response.ok) {
         const profileData = await response.json()
+        console.log('✅ Profile data received:', profileData)
+        console.log('📋 Job Description:', profileData.jobDescription)
+        
+        // Extract key responsibilities from job description (same as Performance Plan)
+        let keyResponsibilities: any[] = []
+        if (profileData.jobDescription?.keyResponsibilities && Array.isArray(profileData.jobDescription.keyResponsibilities)) {
+          keyResponsibilities = profileData.jobDescription.keyResponsibilities.map((resp: any, index: number) => ({
+            id: `${Date.now()}-${index}`,
+            description: resp.description || '',
+            tasks: resp.tasks || '',
+            weight: resp.weight || 0,
+            targetDate: '',
+            status: 'Not Started',
+            achievementStatus: 'not-achieved' as const,
+            comment: '',
+            successIndicators: (resp.successIndicators || []).map((indicator: any, indIndex: number) => ({
+              id: `ind-${index + 1}-${indIndex + 1}`,
+              indicator: indicator.indicator || '',
+              target: indicator.target || '',
+              actualValue: '',
+              measurement: indicator.measurement || '',
+              achieved: false
+            }))
+          }))
+        }
         
         updateFormData({
           employee: {
@@ -141,16 +159,24 @@ function CreateAppraisalContent() {
             position: profileData.position || '',
             manager: profileData.supervisor ? `${profileData.supervisor.firstName} ${profileData.supervisor.lastName}` : '',
             reviewer: profileData.reviewer ? `${profileData.reviewer.firstName} ${profileData.reviewer.lastName}` : '',
-            hireDate: profileData.dateOfJoining || '',
+            hireDate: profileData.hireDate || profileData.startDate || '',
             reviewPeriod: {
               startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
               endDate: new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
             }
+          },
+          achievements: {
+            ...formData.achievements,
+            keyResponsibilities
           }
         })
+        
+        console.log('💾 Form data updated with', keyResponsibilities.length, 'key responsibilities')
+      } else {
+        console.error('❌ Failed to fetch profile, status:', response.status)
       }
     } catch (error) {
-      console.error('Error loading user data:', error)
+      console.error('❌ Error loading user data:', error)
     }
   }
 
@@ -160,6 +186,19 @@ function CreateAppraisalContent() {
       ...updates
     }))
   }
+
+  // Load current user data on mount
+  useEffect(() => {
+    setMounted(true)
+    
+    // Auto-fill current user data (always load for the logged-in user)
+    if (session?.user?.email) {
+      console.log('🚀 useEffect triggered, calling loadCurrentUserData...')
+      loadCurrentUserData()
+    } else {
+      console.log('⚠️ No session or email found')
+    }
+  }, [session?.user?.email])
 
   const nextStep = () => {
     if (currentStep < appraisalSteps.length) {
@@ -304,21 +343,21 @@ function CreateAppraisalContent() {
         )
       case 2:
         return (
-          <PerformanceAssessmentStep
+          <AchievementsGoalsStep
             formData={formData}
             updateFormData={updateFormData}
           />
         )
       case 3:
         return (
-          <AchievementsGoalsStep
+          <DevelopmentPlanningStep
             formData={formData}
             updateFormData={updateFormData}
           />
         )
       case 4:
         return (
-          <DevelopmentPlanningStep
+          <PerformanceAssessmentStep
             formData={formData}
             updateFormData={updateFormData}
           />
@@ -419,81 +458,81 @@ function CreateAppraisalContent() {
           {/* My Appraisal Tab */}
           {activeTab === 'my-appraisal' && (
             <div>
-              {/* Progress */}
+        {/* Progress */}
               <div className="bg-gradient-to-r from-orange-50 to-orange-100 px-8 py-6 border-b border-gray-200">
-                <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Step {currentStep} of {appraisalSteps.length}</h3>
-                  <span className="text-sm text-orange-600 font-medium">
-                    {Math.round((currentStep / appraisalSteps.length) * 100)}% Complete
-                  </span>
-                </div>
-                <Progress value={(currentStep / appraisalSteps.length) * 100} className="mb-4 [&>div]:bg-orange-500" />
-                
-                <div className="grid grid-cols-6 gap-4">
+              <span className="text-sm text-orange-600 font-medium">
+                {Math.round((currentStep / appraisalSteps.length) * 100)}% Complete
+              </span>
+            </div>
+            <Progress value={(currentStep / appraisalSteps.length) * 100} className="mb-4 [&>div]:bg-orange-500" />
+            
+            <div className="grid grid-cols-6 gap-4">
                   {appraisalSteps.map((step) => (
-                    <div
-                      key={step.id}
-                      className={`text-center p-3 rounded-lg transition-colors ${
-                        currentStep === step.id
+                <div
+                  key={step.id}
+                  className={`text-center p-3 rounded-lg transition-colors ${
+                    currentStep === step.id
                           ? 'bg-orange-500 text-white shadow-lg'
-                          : currentStep > step.id
+                      : currentStep > step.id
                           ? 'bg-green-100 text-green-700'
                           : 'bg-white text-gray-600'
                       }`}
                     >
                       <div className="text-xs font-medium">{step.title}</div>
-                    </div>
+                  </div>
                   ))}
                 </div>
-              </div>
+            </div>
 
-              {/* Step Content */}
+        {/* Step Content */}
               <div className="px-8 py-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">{appraisalSteps[currentStep - 1]?.title}</h2>
-                {renderStepContent()}
+            {renderStepContent()}
               </div>
 
-              {/* Navigation */}
+        {/* Navigation */}
               <div className="bg-gray-50 px-8 py-6 border-t border-gray-200 flex justify-between items-center">
-                <Button
-                  variant="outline"
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
+          <Button
+            variant="outline"
+            onClick={prevStep}
+            disabled={currentStep === 1}
                   className="flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Previous
-                </Button>
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Previous
+          </Button>
 
-                <div className="flex gap-4">
-                  <Button
-                    variant="outline"
-                    onClick={handleSaveDraft}
-                    disabled={isSavingDraft}
+          <div className="flex gap-4">
+            <Button
+              variant="outline"
+              onClick={handleSaveDraft}
+              disabled={isSavingDraft}
                     className="flex items-center gap-2"
-                  >
-                    <Save className="w-4 h-4" />
-                    {isSavingDraft ? 'Saving...' : 'Save Draft'}
-                  </Button>
+            >
+              <Save className="w-4 h-4" />
+              {isSavingDraft ? 'Saving...' : 'Save Draft'}
+            </Button>
 
-                  {currentStep === appraisalSteps.length ? (
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
+            {currentStep === appraisalSteps.length ? (
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
                       className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                    >
-                      {isSubmitting ? 'Submitting...' : 'Submit Appraisal'}
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={nextStep}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Appraisal'}
+              </Button>
+            ) : (
+              <Button
+                onClick={nextStep}
                       className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700"
-                    >
-                      Next
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
+              >
+                Next
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
               </div>
             </div>
           )}

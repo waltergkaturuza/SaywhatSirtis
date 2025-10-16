@@ -37,14 +37,27 @@ export interface AppraisalFormData {
     areasForImprovement: string[]
   }
   achievements: {
-    goals: {
+    keyResponsibilities: {
       id: string
       description: string
-      status: 'achieved' | 'partially-achieved' | 'not-achieved'
+      tasks: string
+      weight: number
+      targetDate?: string
+      status?: 'Not Started' | 'In Progress' | 'Completed' | 'Blocked'
+      achievementStatus: 'achieved' | 'partially-achieved' | 'not-achieved'
       comment: string
+      successIndicators: {
+        id: string
+        indicator: string
+        target: string
+        actualValue: string
+        measurement: string
+        achieved: boolean
+      }[]
     }[]
-    keyAccomplishments: string[]
-    additionalContributions: string[]
+    goals: never[]
+    keyAccomplishments: never[]
+    additionalContributions: never[]
   }
   development: {
     trainingNeeds: string[]
@@ -97,6 +110,7 @@ export const defaultFormData: AppraisalFormData = {
     areasForImprovement: []
   },
   achievements: {
+    keyResponsibilities: [],
     goals: [],
     keyAccomplishments: [],
     additionalContributions: []
@@ -127,18 +141,18 @@ export const appraisalSteps = [
   },
   {
     id: 2,
-    title: 'Performance Assessment',
-    description: 'Rate performance in key areas'
+    title: 'Key Responsibility and Achievements',
+    description: 'Review key responsibilities and achievements'
   },
   {
     id: 3,
-    title: 'Achievements & Goals',
-    description: 'Review achievements and goal completion'
+    title: 'Development Planning',
+    description: 'Identify development needs and career plans'
   },
   {
     id: 4,
-    title: 'Development Planning',
-    description: 'Identify development needs and career plans'
+    title: 'Performance Assessment',
+    description: 'Rate performance in key areas'
   },
   {
     id: 5,

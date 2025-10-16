@@ -58,6 +58,17 @@ export async function GET() {
                 id: true,
                 name: true
               }
+            },
+            // Include supervisor and reviewer relations
+            employees: {
+              select: { id: true, firstName: true, lastName: true }
+            },
+            reviewer: {
+              select: { id: true, firstName: true, lastName: true }
+            },
+            // Include job description with key responsibilities
+            job_descriptions: {
+              where: { isActive: true }
             }
           }
         }),
@@ -102,6 +113,13 @@ export async function GET() {
     // Format response
     const canonicalDepartmentName = employee?.departments?.name || employee?.department || 'Unassigned';
 
+    // Get job description if available (sort by createdAt to get the latest)
+    const jobDescription = employee.job_descriptions && employee.job_descriptions.length > 0
+      ? employee.job_descriptions.sort((a: any, b: any) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0]
+      : null;
+
     const profileData = {
       id: employee.id,
       employeeId: employee.employeeId,
@@ -131,12 +149,28 @@ export async function GET() {
       departmentName: canonicalDepartmentName,
       employmentType: employee.employmentType,
       startDate: employee.startDate?.toISOString()?.split('T')[0] || null,
+      hireDate: employee.hireDate?.toISOString()?.split('T')[0] || null,
       endDate: employee.endDate?.toISOString()?.split('T')[0] || null,
       salary: employee.salary,
       currency: employee.currency,
       status: employee.status,
       isActive: employee.users?.isActive || false,
       role: employee.users?.role || 'USER',
+      supervisor: employee.employees
+        ? { id: employee.employees.id, firstName: employee.employees.firstName, lastName: employee.employees.lastName }
+        : null,
+      reviewer: employee.reviewer
+        ? { id: employee.reviewer.id, firstName: employee.reviewer.firstName, lastName: employee.reviewer.lastName }
+        : null,
+      jobDescription: jobDescription ? {
+        id: jobDescription.id,
+        jobTitle: jobDescription.jobTitle,
+        location: jobDescription.location,
+        jobSummary: jobDescription.jobSummary,
+        keyResponsibilities: jobDescription.keyResponsibilities,
+        essentialExperience: jobDescription.essentialExperience,
+        essentialSkills: jobDescription.essentialSkills
+      } : null,
       createdAt: employee.createdAt?.toISOString() || null,
       updatedAt: employee.updatedAt?.toISOString() || null
     };

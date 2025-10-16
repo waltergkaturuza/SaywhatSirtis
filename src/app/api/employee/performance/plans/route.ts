@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 }
 
 // GET: Fetch employee's performance plans
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -153,11 +153,23 @@ export async function GET() {
       );
     }
 
-    // Fetch performance plans
+    // Optional year filter
+    const { searchParams } = new URL(request.url);
+    const yearParam = searchParams.get('year');
+    const yearFilter = yearParam ? parseInt(yearParam) : undefined;
+
+    // Fetch performance plans (include responsibilities and activities)
     const performancePlans = await prisma.performance_plans.findMany({
-      where: { employeeId: employee.id },
+      where: {
+        employeeId: employee.id,
+        ...(yearFilter ? { planYear: yearFilter } : {})
+      },
       include: {
-        performance_responsibilities: true,
+        performance_responsibilities: {
+          include: {
+            performance_activities: true
+          }
+        },
         employees: true,
         users_performance_plans_supervisorIdTousers: true
       },
