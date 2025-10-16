@@ -107,6 +107,15 @@ export interface PerformancePlanFormData {
   hrApproval: boolean
   // Additional fields commonly used in forms
   behavioralExpectations: any[]
+  coreValuesAcknowledgment: Record<number, boolean>
+  allCoreValuesAcknowledged: boolean
+  careerAspirationsShortTerm: string
+  careerAspirationsLongTerm: string
+  trainingNeeds: string
+  trainingPriority: string
+  developmentActionPlan: string
+  developmentActionPlanTargetDate: string
+  developmentSupportNeeded: string
   resourcesNeeded: string
   trainingRequirements: string
   mentorshipNeeds: string
@@ -233,6 +242,15 @@ export const defaultPlanFormData: PerformancePlanFormData = {
   managerApproval: false,
   hrApproval: false,
   behavioralExpectations: [],
+  coreValuesAcknowledgment: {},
+  allCoreValuesAcknowledged: false,
+  careerAspirationsShortTerm: '',
+  careerAspirationsLongTerm: '',
+  trainingNeeds: '',
+  trainingPriority: 'medium',
+  developmentActionPlan: '',
+  developmentActionPlanTargetDate: '',
+  developmentSupportNeeded: '',
   resourcesNeeded: '',
   trainingRequirements: '',
   mentorshipNeeds: '',
@@ -267,8 +285,8 @@ export const performancePlanSteps = [
   },
   {
     id: 4,
-    title: 'Milestones',
-    description: 'Define key milestones and checkpoints'
+    title: 'Behavioral Expectations',
+    description: 'SAYWHAT Core Values acknowledgment'
   },
   {
     id: 5,

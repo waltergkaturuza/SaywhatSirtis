@@ -1061,6 +1061,103 @@ function CreatePerformancePlanPageContent() {
         )
 
       case 4:
+        const coreValues = [
+          {
+            name: "Teamwork",
+            description: "Working collaboratively with others to achieve common goals and support team success.",
+            icon: "👥"
+          },
+          {
+            name: "Responsiveness and Effectiveness",
+            description: "Acting promptly and efficiently to meet stakeholder needs and deliver quality results.",
+            icon: "⚡"
+          },
+          {
+            name: "Accountability",
+            description: "Taking ownership of responsibilities and being answerable for actions and outcomes.",
+            icon: "✓"
+          },
+          {
+            name: "Professionalism and Integrity",
+            description: "Maintaining high ethical standards, honesty, and professional conduct in all interactions.",
+            icon: "🎯"
+          },
+          {
+            name: "Innovation",
+            description: "Embracing creativity and new ideas to improve processes, services, and outcomes.",
+            icon: "💡"
+          }
+        ]
+
+        return (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 p-6 rounded-xl border-l-4 border-indigo-500">
+              <h3 className="text-2xl font-bold text-indigo-900 mb-2">SAYWHAT Core Values</h3>
+              <p className="text-indigo-700 text-lg">Review and acknowledge your understanding of our organizational core values.</p>
+            </div>
+
+            <div className="space-y-4">
+              {coreValues.map((value, index) => (
+                <div key={index} className="border-2 border-gray-200 rounded-xl p-6 hover:border-indigo-300 transition-all duration-200 bg-gradient-to-r from-white to-gray-50">
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <span className="text-2xl">{value.icon}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex-grow">
+                      <h4 className="text-xl font-bold text-gray-900 mb-2">{value.name}</h4>
+                      <p className="text-gray-700 mb-4 leading-relaxed">{value.description}</p>
+                      
+                      <label className="flex items-center space-x-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={formData.coreValuesAcknowledgment?.[index] || false}
+                          onChange={(e) => {
+                            const newAcknowledgments = {...(formData.coreValuesAcknowledgment || {})}
+                            newAcknowledgments[index] = e.target.checked
+                            handleInputChange('coreValuesAcknowledgment', newAcknowledgments)
+                          }}
+                          className="w-5 h-5 text-indigo-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 cursor-pointer"
+                        />
+                        <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-600 transition-colors">
+                          I understand and commit to upholding this core value
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Overall Acknowledgment */}
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl p-6 mt-6">
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-xl">✓</span>
+                  </div>
+                </div>
+                <div className="flex-grow">
+                  <label className="flex items-start space-x-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={formData.allCoreValuesAcknowledged || false}
+                      onChange={(e) => handleInputChange('allCoreValuesAcknowledged', e.target.checked)}
+                      className="mt-1 w-5 h-5 text-orange-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 cursor-pointer"
+                    />
+                    <span className="text-sm font-semibold text-gray-800 group-hover:text-orange-600 transition-colors">
+                      I acknowledge that I have read, understood, and commit to demonstrating all five SAYWHAT Core Values in my daily work and interactions. I understand that these values are fundamental to our organizational culture and success.
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 5:
         return (
           <div className="space-y-6">
             <div className="bg-purple-50 p-4 rounded-lg">
@@ -1203,116 +1300,113 @@ function CreatePerformancePlanPageContent() {
                 </div>
               </div>
             ))}
-          </div>
-        )
-
-      case 5:
-        return (
-          <div className="space-y-6">
-            <div className="bg-indigo-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-indigo-900 mb-2">Behavioral Expectations</h3>
-              <p className="text-indigo-700">Define expected behaviors and core values alignment for this role.</p>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">Core Behaviors</h3>
-              <button
-                onClick={() => addArrayItem("behavioralExpectations", {
-                  behavior: "",
-                  description: "",
-                  examples: "",
-                  importance: "medium"
-                })}
-                className="inline-flex items-center px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-              >
-                <PlusIcon className="h-4 w-4 mr-1" />
-                Add Behavior
-              </button>
-            </div>
-
-            {formData.behavioralExpectations.map((behavior, index) => (
-              <div key={index} className="border rounded-lg p-6 space-y-4">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-lg font-semibold text-gray-900">Behavioral Expectation {index + 1}</h4>
-                  {formData.behavioralExpectations.length > 1 && (
-                    <button
-                      onClick={() => removeArrayItem("behavioralExpectations", index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  )}
+            {/* Career Aspirations */}
+            <div className="border rounded-lg p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Career Aspirations</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Short-term Career Goals (1-2 years)
+                  </label>
+                  <textarea
+                    value={formData.careerAspirationsShortTerm || ''}
+                    onChange={(e) => handleInputChange('careerAspirationsShortTerm', e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="What are your short-term career goals and aspirations?"
+                  />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Long-term Career Goals (3-5 years)
+                  </label>
+                  <textarea
+                    value={formData.careerAspirationsLongTerm || ''}
+                    onChange={(e) => handleInputChange('careerAspirationsLongTerm', e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Where do you see yourself in 3-5 years?"
+                  />
+                </div>
+              </div>
+            </div>
 
+            {/* Training Needs */}
+            <div className="border rounded-lg p-6 bg-gradient-to-r from-green-50 to-emerald-50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Training Needs</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Specific Training Programs or Courses Needed
+                  </label>
+                  <textarea
+                    value={formData.trainingNeeds || ''}
+                    onChange={(e) => handleInputChange('trainingNeeds', e.target.value)}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="List specific training programs, courses, certifications, or workshops needed to achieve your development objectives..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Priority Level
+                  </label>
+                  <select
+                    value={formData.trainingPriority || 'medium'}
+                    onChange={(e) => handleInputChange('trainingPriority', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="high">High Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="low">Low Priority</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Development Action Plan */}
+            <div className="border rounded-lg p-6 bg-gradient-to-r from-orange-50 to-amber-50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Development Action Plan</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Specific Actions to Achieve Development Goals
+                  </label>
+                  <textarea
+                    value={formData.developmentActionPlan || ''}
+                    onChange={(e) => handleInputChange('developmentActionPlan', e.target.value)}
+                    rows={5}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Detail the specific actions, steps, and milestones for your development plan..."
+                  />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Behavior/Value
+                      Target Completion Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.developmentActionPlanTargetDate || ''}
+                      onChange={(e) => handleInputChange('developmentActionPlanTargetDate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Support Required From Manager
                     </label>
                     <input
                       type="text"
-                      value={behavior.behavior}
-                      onChange={(e) => handleArrayChange("behavioralExpectations", index, "behavior", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="e.g., Professional Communication"
+                      value={formData.developmentSupportNeeded || ''}
+                      onChange={(e) => handleInputChange('developmentSupportNeeded', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="e.g., Time off, budget approval, mentoring"
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Importance Level
-                    </label>
-                    <select
-                      value={behavior.importance}
-                      onChange={(e) => handleArrayChange("behavioralExpectations", index, "importance", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="critical">Critical</option>
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={behavior.description}
-                    onChange={(e) => handleArrayChange("behavioralExpectations", index, "description", e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Describe what this behavior looks like and why it's important..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Examples & Observable Actions
-                  </label>
-                  <textarea
-                    value={behavior.examples}
-                    onChange={(e) => handleArrayChange("behavioralExpectations", index, "examples", e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Provide specific examples of how this behavior should be demonstrated..."
-                  />
-                </div>
-
-                <div className="flex items-center">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    behavior.importance === 'critical' ? 'bg-red-100 text-red-800' :
-                    behavior.importance === 'high' ? 'bg-orange-100 text-orange-800' :
-                    behavior.importance === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
-                    {behavior.importance.charAt(0).toUpperCase() + behavior.importance.slice(1)} Importance
-                  </span>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         )
 
