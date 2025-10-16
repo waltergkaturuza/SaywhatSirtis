@@ -224,7 +224,7 @@ async function getDepartmentStats(baseWhereClause: any, canViewAllAppraisals: bo
       departments.map(async (dept) => {
         const deptWhereClause = {
           ...baseWhereClause,
-          employee: { departmentId: dept.id }
+          employees: { departmentId: dept.id }
         }
 
         const [total, completed, avgRating, onTime] = await Promise.all([

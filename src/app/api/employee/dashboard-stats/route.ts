@@ -28,17 +28,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Get qualifications count
-    const qualifications = await prisma.employee_qualifications.count({
+    const qualifications = await prisma.qualifications.count({
       where: { employeeId: employee.id }
     });
 
-    // Get training count (from training_participants)
-    const trainings = await prisma.training_participants.count({
+    // Get training count (from training_attendance)
+    const trainings = await prisma.training_attendance.count({
       where: { employeeId: employee.id }
     });
 
-    // Get certificates count (from employee_qualifications with certificates)
-    const certificates = await prisma.employee_qualifications.count({
+    // Get certificates count (from qualifications with certificates)
+    const certificates = await prisma.qualifications.count({
       where: {
         employeeId: employee.id,
         certificateUrl: { not: null }
