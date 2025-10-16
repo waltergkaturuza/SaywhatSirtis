@@ -910,6 +910,9 @@ model performance_appraisals {
   status                                           String                                   @default("draft")
   submittedAt                                      DateTime?
   approvedAt                                       DateTime?
+  supervisorApprovedAt                             DateTime?
+  reviewerApprovedAt                               DateTime?
+  comments                                         Json?
   createdAt                                        DateTime                                 @default(now())
   updatedAt                                        DateTime
   employees                                        employees                                @relation(fields: [employeeId], references: [id])

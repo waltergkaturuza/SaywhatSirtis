@@ -1,4 +1,15 @@
+// Workflow comment types
+export interface WorkflowComment {
+  id: string
+  name: string
+  userId: string
+  comment: string
+  action: 'comment' | 'request_changes' | 'approve' | 'final_approve'
+  timestamp: string
+}
+
 export interface AppraisalFormData {
+  id?: string
   employee: {
     id: string
     name: string
@@ -6,6 +17,7 @@ export interface AppraisalFormData {
     department: string
     position: string
     manager: string
+    reviewer?: string
     hireDate: string
     reviewPeriod: {
       startDate: string

@@ -101,13 +101,28 @@ export function EmployeeDetailsStep({ formData, updateFormData }: EmployeeDetail
             </div>
 
             <div>
-              <Label htmlFor="manager">Direct Manager *</Label>
+              <Label htmlFor="manager">Direct Supervisor *</Label>
               <Input
                 id="manager"
                 value={formData.employee.manager}
                 onChange={(e) => handleEmployeeChange('manager', e.target.value)}
-                placeholder="Enter manager name"
+                placeholder="Enter supervisor name"
                 required
+                readOnly
+                className="bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="reviewer">Final Reviewer *</Label>
+              <Input
+                id="reviewer"
+                value={formData.employee.reviewer || ''}
+                onChange={(e) => handleEmployeeChange('reviewer', e.target.value)}
+                placeholder="Enter reviewer name"
+                required
+                readOnly
+                className="bg-gray-50"
               />
             </div>
 
@@ -118,6 +133,8 @@ export function EmployeeDetailsStep({ formData, updateFormData }: EmployeeDetail
                 type="date"
                 value={formData.employee.hireDate}
                 onChange={(e) => handleEmployeeChange('hireDate', e.target.value)}
+                readOnly
+                className="bg-gray-50"
               />
             </div>
           </div>
