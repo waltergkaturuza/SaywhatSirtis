@@ -17,14 +17,20 @@ export async function GET(
 
     const { id: requestId } = await params
 
-    // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.view') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager') ||
-                         session.user?.roles?.includes('hr_staff')
+    // Check permissions - Allow HR role and users with HR permissions
+    const userRole = session.user?.role || session.user?.roles?.[0]
+    const hasPermission = 
+      userRole === 'HR' ||
+      userRole === 'SUPERUSER' ||
+      userRole === 'SYSTEM_ADMINISTRATOR' ||
+      session.user?.permissions?.includes('hr.view') ||
+      session.user?.permissions?.includes('hr.full_access') ||
+      session.user?.roles?.includes('admin') ||
+      session.user?.roles?.includes('hr_manager') ||
+      session.user?.roles?.includes('hr_staff')
 
     if (!hasPermission) {
+      console.log('Permission denied for user:', session.user?.email, 'Role:', userRole, 'Permissions:', session.user?.permissions)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -303,8 +309,8 @@ export async function PUT(
     if (formData.dateOfBirth !== undefined) updateData.dateOfBirth = formData.dateOfBirth ? new Date(formData.dateOfBirth) : null
     if (formData.gender !== undefined) updateData.gender = formData.gender
     if (formData.nationality !== undefined) updateData.nationality = formData.nationality
-    if (formData.nationalId !== undefined) updateData.nationalId = formData.nationalId
-    if (formData.alternativePhone !== undefined) updateData.alternativePhone = formData.alternativePhone || null
+    if (formData.nationalId !== undefined) updateData.nationalId = formData.nationalId?.trim() || null
+    if (formData.alternativePhone !== undefined) updateData.alternativePhone = formData.alternativePhone?.trim() || null
     if (formData.address !== undefined) updateData.address = formData.address
     if (formData.emergencyContact !== undefined) updateData.emergencyContact = formData.emergencyContact
     if (formData.emergencyPhone !== undefined) updateData.emergencyPhone = formData.emergencyPhone

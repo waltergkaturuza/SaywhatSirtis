@@ -383,8 +383,8 @@ export async function POST(request: Request) {
       dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth) : null,
       gender: formData.gender || null,
       nationality: formData.country || null,
-      nationalId: formData.nationalId || null,
-      passportNumber: formData.passportNumber || null,
+      nationalId: formData.nationalId?.trim() || null,
+      passportNumber: formData.passportNumber?.trim() || null,
       // Compensation fields
       salary: formData.baseSalary ? parseFloat(formData.baseSalary) : null,
       currency: formData.currency || 'USD',

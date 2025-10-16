@@ -11,14 +11,20 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.view') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager') ||
-                         session.user?.roles?.includes('hr_staff')
+    // Check permissions - Allow HR role and users with HR permissions
+    const userRole = session.user?.role || session.user?.roles?.[0]
+    const hasPermission = 
+      userRole === 'HR' ||
+      userRole === 'SUPERUSER' ||
+      userRole === 'SYSTEM_ADMINISTRATOR' ||
+      session.user?.permissions?.includes('hr.view') ||
+      session.user?.permissions?.includes('hr.full_access') ||
+      session.user?.roles?.includes('admin') ||
+      session.user?.roles?.includes('hr_manager') ||
+      session.user?.roles?.includes('hr_staff')
 
     if (!hasPermission) {
+      console.log('Permission denied for user:', session.user?.email, 'Role:', userRole, 'Permissions:', session.user?.permissions)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
