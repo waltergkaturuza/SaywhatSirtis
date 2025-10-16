@@ -1555,19 +1555,19 @@ function CreatePerformancePlanPageContent() {
               </div>
             </div>
 
-            {/* Goals Summary */}
+            {/* Key Responsibilities Summary */}
             <div className="bg-white border rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-3">Goals Summary ({formData.goals.length})</h4>
+              <h4 className="font-semibold text-gray-900 mb-3">Key Responsibilities Summary ({formData.keyResponsibilities.length})</h4>
               <div className="space-y-2">
-                {formData.goals.map((goal, index) => (
+                {formData.keyResponsibilities.map((responsibility, index) => (
                   <div key={index} className="flex justify-between items-center text-sm">
-                    <span>{goal.title}</span>
+                    <span>{responsibility.description || `Responsibility ${index + 1}`}</span>
                     <div className="flex space-x-2">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(goal.priority)}`}>
-                        {goal.priority}
+                      <span className="px-2 py-1 rounded bg-purple-100 text-purple-800 text-xs font-medium">
+                        {responsibility.weight}%
                       </span>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(goal.status)}`}>
-                        {goal.status.replace('-', ' ')}
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(responsibility.status)}`}>
+                        {responsibility.status.replace('-', ' ')}
                       </span>
                     </div>
                   </div>
