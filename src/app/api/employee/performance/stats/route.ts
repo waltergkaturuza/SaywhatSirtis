@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         status: 'approved'
       },
       orderBy: { createdAt: 'desc' },
-      select: { overallRating: true, completedAt: true }
+      select: { overallRating: true, approvedAt: true }
     });
 
     // Get performance responsibilities stats
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate next review date (assuming annual reviews)
-    const lastReviewDate = latestAppraisal?.completedAt;
+    const lastReviewDate = latestAppraisal?.approvedAt;
     let nextReviewDate = null;
     if (lastReviewDate) {
       const next = new Date(lastReviewDate);
