@@ -981,6 +981,7 @@ model performance_plans {
   submittedAt                                 DateTime?
   supervisorApprovedAt                        DateTime?
   supervisorComments                          String?
+  comments                                    Json?
   performance_appraisals                      performance_appraisals[]
   performance_plan_comments                   performance_plan_comments[]
   employees                                   employees                      @relation(fields: [employeeId], references: [id], onDelete: Cascade)

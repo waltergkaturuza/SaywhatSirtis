@@ -1,4 +1,15 @@
+// Workflow comment types
+export interface WorkflowComment {
+  id: string
+  name: string
+  userId: string
+  comment: string
+  action: 'comment' | 'request_changes' | 'approve' | 'final_approve'
+  timestamp: string
+}
+
 export interface PerformancePlanFormData {
+  id?: string
   employee: {
     id: string
     name: string
@@ -105,24 +116,6 @@ export interface PerformancePlanFormData {
   employeeAgreement: boolean
   managerApproval: boolean
   hrApproval: boolean
-  // Workflow status and comments
-  workflowStatus: 'draft' | 'submitted' | 'supervisor_review' | 'supervisor_approved' | 'reviewer_assessment' | 'approved' | 'rejected' | 'revision_requested'
-  supervisorComments: Array<{
-    id: string
-    supervisorName: string
-    supervisorId: string
-    comment: string
-    action: 'comment' | 'request_changes' | 'approve'
-    timestamp: string
-  }>
-  reviewerComments: Array<{
-    id: string
-    reviewerName: string
-    reviewerId: string
-    comment: string
-    action: 'comment' | 'request_changes' | 'final_approve'
-    timestamp: string
-  }>
   // Additional fields commonly used in forms
   behavioralExpectations: any[]
   coreValuesAcknowledgment: Record<number, boolean>
@@ -259,9 +252,6 @@ export const defaultPlanFormData: PerformancePlanFormData = {
   employeeAgreement: false,
   managerApproval: false,
   hrApproval: false,
-  workflowStatus: 'draft',
-  supervisorComments: [],
-  reviewerComments: [],
   behavioralExpectations: [],
   coreValuesAcknowledgment: {},
   allCoreValuesAcknowledged: false,

@@ -11,7 +11,8 @@ import {
   defaultPlanFormData, 
   performancePlanSteps,
   getPriorityColor,
-  getStatusColor
+  getStatusColor,
+  WorkflowComment
 } from "@/components/hr/performance/performance-plan-types"
 
 function CreatePerformancePlanPageContent() {
@@ -45,6 +46,15 @@ function CreatePerformancePlanPageContent() {
   const [supervisorApproval, setSupervisorApproval] = useState('pending') // 'pending', 'approved', 'rejected'
   const [reviewerComments, setReviewerComments] = useState('')
   const [reviewerApproval, setReviewerApproval] = useState('pending') // 'pending', 'approved', 'rejected'
+  
+  // Comments history
+  const [supervisorCommentsHistory, setSupervisorCommentsHistory] = useState<WorkflowComment[]>([])
+  const [reviewerCommentsHistory, setReviewerCommentsHistory] = useState<WorkflowComment[]>([])
+  
+  // Current comment being typed
+  const [currentSupervisorComment, setCurrentSupervisorComment] = useState('')
+  const [currentReviewerComment, setCurrentReviewerComment] = useState('')
+  const [submittingWorkflow, setSubmittingWorkflow] = useState(false)
 
   // Tab navigation
   const tabs = [
@@ -479,6 +489,106 @@ function CreatePerformancePlanPageContent() {
       alert('An error occurred while saving the draft. Please try again.')
     } finally {
       setIsSavingDraft(false)
+    }
+  }
+
+  // Workflow action handlers
+  const handleWorkflowAction = async (action: 'comment' | 'request_changes' | 'approve' | 'final_approve', role: 'supervisor' | 'reviewer') => {
+    if (!formData.id) {
+      alert('Please save the performance plan first before submitting for review.')
+      return
+    }
+
+    const comment = role === 'supervisor' ? currentSupervisorComment : currentReviewerComment
+    
+    if (!comment && action !== 'approve' && action !== 'final_approve') {
+      alert('Please enter a comment.')
+      return
+    }
+
+    if (action === 'request_changes' && !comment) {
+      alert('Please provide feedback when requesting changes.')
+      return
+    }
+
+    setSubmittingWorkflow(true)
+    try {
+      const response = await fetch(`/api/hr/performance/plans/${formData.id}/workflow`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          comment,
+          role
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to process workflow action')
+      }
+
+      const result = await response.json()
+      
+      // Update local state
+      if (result.plan.comments) {
+        if (role === 'supervisor' && result.plan.comments.supervisor) {
+          setSupervisorCommentsHistory(result.plan.comments.supervisor)
+        } else if (role === 'reviewer' && result.plan.comments.reviewer) {
+          setReviewerCommentsHistory(result.plan.comments.reviewer)
+        }
+      }
+      
+      setWorkflowStatus(result.plan.status)
+      
+      // Clear current comment
+      if (role === 'supervisor') {
+        setCurrentSupervisorComment('')
+      } else {
+        setCurrentReviewerComment('')
+      }
+
+      // Show success message
+      let message = ''
+      switch (action) {
+        case 'request_changes':
+          message = 'Changes requested. Employee will be notified to revise the plan.'
+          break
+        case 'approve':
+          message = 'Plan approved and forwarded to final reviewer.'
+          break
+        case 'final_approve':
+          message = 'Plan has been given final approval!'
+          break
+        case 'comment':
+          message = 'Comment added successfully.'
+          break
+      }
+      alert(message)
+
+    } catch (error) {
+      console.error('Error processing workflow action:', error)
+      alert('An error occurred. Please try again.')
+    } finally {
+      setSubmittingWorkflow(false)
+    }
+  }
+
+  // Fetch workflow history
+  const fetchWorkflowHistory = async (planId: string) => {
+    try {
+      const response = await fetch(`/api/hr/performance/plans/${planId}/workflow`)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.workflow) {
+          setSupervisorCommentsHistory(result.workflow.supervisorComments || [])
+          setReviewerCommentsHistory(result.workflow.reviewerComments || [])
+          setWorkflowStatus(result.workflow.status || 'draft')
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching workflow history:', error)
     }
   }
 
@@ -1973,13 +2083,23 @@ function CreatePerformancePlanPageContent() {
               <div>
                 {/* Supervisor Header */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-b border-gray-200">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-                      <span className="text-white font-bold text-lg">S</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                        <span className="text-white font-bold text-lg">S</span>
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Supervisor Review</h2>
+                        <p className="text-gray-600 text-sm mt-1">Review employee's performance plan and provide feedback</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">Supervisor Review</h2>
-                      <p className="text-gray-600 text-sm mt-1">Review employee's performance plan and provide feedback</p>
+                    <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                      workflowStatus === 'supervisor_approved' ? 'bg-green-100 text-green-800' :
+                      workflowStatus === 'revision_requested' ? 'bg-yellow-100 text-yellow-800' :
+                      workflowStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {workflowStatus.replace(/_/g, ' ').toUpperCase()}
                     </div>
                   </div>
                 </div>
@@ -2027,99 +2147,124 @@ function CreatePerformancePlanPageContent() {
                     </div>
                   </div>
 
-                  {/* Supervisor Comments */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Supervisor Comments & Feedback
-                    </label>
-                    <textarea
-                      value={supervisorComments}
-                      onChange={(e) => setSupervisorComments(e.target.value)}
-                      rows={4}
-                      readOnly={isForCurrentUser}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 ${isForCurrentUser ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                      placeholder={isForCurrentUser ? "Supervisor comments will appear here..." : "Provide feedback on the employee's performance plan objectives, development activities, and overall approach..."}
-                    />
+                  {/* Comments History Timeline */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                      Comments & Feedback History
+                    </h3>
+                    
+                    {supervisorCommentsHistory.length === 0 ? (
+                      <p className="text-gray-500 text-sm italic">No comments yet. Supervisor feedback will appear here.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {supervisorCommentsHistory.map((comment, index) => (
+                          <div key={comment.id} className="border-l-4 border-blue-500 pl-4 py-2">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <span className="text-blue-600 font-semibold text-sm">
+                                    {comment.name.split(' ').map(n => n[0]).join('')}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">{comment.name}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(comment.timestamp).toLocaleDateString()} at {new Date(comment.timestamp).toLocaleTimeString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                comment.action === 'approve' ? 'bg-green-100 text-green-800' :
+                                comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {comment.action.replace('_', ' ').toUpperCase()}
+                              </span>
+                            </div>
+                            {comment.comment && (
+                              <p className="text-sm text-gray-700 mt-2 bg-gray-50 p-3 rounded">{comment.comment}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Supervisor Approval */}
-                  {!isForCurrentUser && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Supervisor Authorization
-                    </label>
-                    <div className="space-y-2">
-                      <label className="inline-flex items-center">
-                        <input
-                          type="radio"
-                          name="supervisorApproval"
-                          value="approved"
-                          checked={supervisorApproval === 'approved'}
-                          onChange={(e) => setSupervisorApproval(e.target.value)}
-                          className="form-radio h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
-                        />
-                        <span className="ml-2 text-sm text-gray-900">Approve Plan</span>
-                      </label>
-                      <label className="inline-flex items-center">
-                        <input
-                          type="radio"
-                          name="supervisorApproval"
-                          value="rejected"
-                          checked={supervisorApproval === 'rejected'}
-                          onChange={(e) => setSupervisorApproval(e.target.value)}
-                          className="form-radio h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
-                        />
-                        <span className="ml-2 text-sm text-gray-900">Reject Plan (Requires Revision)</span>
-                      </label>
-                      <label className="inline-flex items-center">
-                        <input
-                          type="radio"
-                          name="supervisorApproval"
-                          value="pending"
-                          checked={supervisorApproval === 'pending'}
-                          onChange={(e) => setSupervisorApproval(e.target.value)}
-                          className="form-radio h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
-                        />
-                        <span className="ml-2 text-sm text-gray-900">Pending Review</span>
-                      </label>
-                    </div>
-                  </div>
-                  )}
+                  {/* Supervisor Action Panel */}
+                  {!isForCurrentUser && selectedEmployee?.supervisor?.id === session?.user?.id && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Supervisor Actions</h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Add Comment or Feedback
+                          </label>
+                          <textarea
+                            value={currentSupervisorComment}
+                            onChange={(e) => setCurrentSupervisorComment(e.target.value)}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Provide detailed feedback on the employee's performance plan objectives, development activities, and overall approach..."
+                          />
+                        </div>
 
-                  {/* Approval Status Display for Employee */}
-                  {isForCurrentUser && supervisorApproval !== 'pending' && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Supervisor Decision
-                      </label>
-                      <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
-                        supervisorApproval === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {supervisorApproval === 'approved' ? '✓ Plan Approved' : '✗ Plan Rejected - Requires Revision'}
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            onClick={() => handleWorkflowAction('comment', 'supervisor')}
+                            disabled={submittingWorkflow || !currentSupervisorComment}
+                            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            <span>Add Comment</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
+                            disabled={submittingWorkflow || !currentSupervisorComment}
+                            className="flex items-center space-x-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>Request Changes</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm('Are you sure you want to approve this performance plan and forward it to the final reviewer?')) {
+                                handleWorkflowAction('approve', 'supervisor')
+                              }
+                            }}
+                            disabled={submittingWorkflow}
+                            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Approve & Forward to Reviewer</span>
+                          </button>
+                        </div>
+
+                        {submittingWorkflow && (
+                          <div className="text-sm text-blue-600 flex items-center">
+                            <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Processing...
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Supervisor Footer */}
-                {!isForCurrentUser && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-t border-gray-200">
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => {
-                        if (supervisorApproval === 'approved') {
-                          setWorkflowStatus('reviewer_assessment')
-                          setActiveTab('reviewer')
-                        }
-                      }}
-                      disabled={supervisorApproval === 'pending'}
-                      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <span>Submit Supervisor Review</span>
-                    </button>
-                  </div>
-                </div>
-                )}
               </div>
             )}
 
@@ -2128,13 +2273,23 @@ function CreatePerformancePlanPageContent() {
               <div>
                 {/* Reviewer Header */}
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-8 py-6 border-b border-gray-200">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
-                      <span className="text-white font-bold text-lg">R</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-md">
+                        <span className="text-white font-bold text-lg">R</span>
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Final Review</h2>
+                        <p className="text-gray-600 text-sm mt-1">Final assessment and approval of the performance plan</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">Final Review</h2>
-                      <p className="text-gray-600 text-sm mt-1">Final assessment and approval of the performance plan</p>
+                    <div className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                      workflowStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                      workflowStatus === 'supervisor_approved' ? 'bg-blue-100 text-blue-800' :
+                      workflowStatus === 'revision_requested' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {workflowStatus.replace(/_/g, ' ').toUpperCase()}
                     </div>
                   </div>
                 </div>
@@ -2165,114 +2320,161 @@ function CreatePerformancePlanPageContent() {
                     <div className="space-y-3">
                       <div className="flex items-center">
                         <CheckCircleIcon className="h-5 w-5 text-green-500 mr-3" />
-                        <span className="text-sm text-gray-900">Employee completed plan creation</span>
+                        <span className="text-sm text-gray-900">Employee: {formData.employee.name || 'Not Selected'}</span>
                       </div>
                       <div className="flex items-center">
-                        <CheckCircleIcon className={`h-5 w-5 mr-3 ${supervisorApproval === 'approved' ? 'text-green-500' : 'text-gray-400'}`} />
-                        <span className="text-sm text-gray-900">Supervisor approval: {supervisorApproval.toUpperCase()}</span>
+                        <CheckCircleIcon className={`h-5 w-5 mr-3 ${workflowStatus === 'supervisor_approved' || workflowStatus === 'approved' ? 'text-green-500' : 'text-gray-400'}`} />
+                        <span className="text-sm text-gray-900">Supervisor: {workflowStatus === 'supervisor_approved' || workflowStatus === 'approved' ? 'Approved' : 'Pending'}</span>
                       </div>
-                      {supervisorComments && (
-                        <div className="ml-8 p-3 bg-blue-50 rounded-lg">
-                          <p className="text-xs text-gray-600 font-medium">Supervisor Comments:</p>
-                          <p className="text-sm text-gray-800 mt-1">{supervisorComments}</p>
-                        </div>
-                      )}
+                      <div className="flex items-center">
+                        <CheckCircleIcon className={`h-5 w-5 mr-3 ${workflowStatus === 'approved' ? 'text-green-500' : 'text-gray-400'}`} />
+                        <span className="text-sm text-gray-900">Final Reviewer: {workflowStatus === 'approved' ? 'Approved' : 'Pending'}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Reviewer Comments */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Final Review Comments
-                    </label>
-                    <textarea
-                      value={reviewerComments}
-                      onChange={(e) => setReviewerComments(e.target.value)}
-                      rows={4}
-                      readOnly={isForCurrentUser}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 ${isForCurrentUser ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                      placeholder={isForCurrentUser ? "Final reviewer comments will appear here..." : "Provide final assessment and overall feedback on the performance plan..."}
-                    />
-                  </div>
-
-                  {/* Reviewer Approval */}
-                  {!isForCurrentUser && (
-                    <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Final Authorization
-                    </label>
-                    <div className="space-y-2">
-                      <label className="inline-flex items-center">
-                        <input
-                          type="radio"
-                          name="reviewerApproval"
-                          value="approved"
-                          checked={reviewerApproval === 'approved'}
-                          onChange={(e) => setReviewerApproval(e.target.value)}
-                          className="form-radio h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
-                        />
-                        <span className="ml-2 text-sm text-gray-900">Final Approval - Implement Plan</span>
-                      </label>
-                      <label className="inline-flex items-center">
-                        <input
-                          type="radio"
-                          name="reviewerApproval"
-                          value="rejected"
-                          checked={reviewerApproval === 'rejected'}
-                          onChange={(e) => setReviewerApproval(e.target.value)}
-                          className="form-radio h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
-                        />
-                        <span className="ml-2 text-sm text-gray-900">Reject - Return for Revision</span>
-                      </label>
-                      <label className="inline-flex items-center">
-                        <input
-                          type="radio"
-                          name="reviewerApproval"
-                          value="pending"
-                          checked={reviewerApproval === 'pending'}
-                          onChange={(e) => setReviewerApproval(e.target.value)}
-                          className="form-radio h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
-                        />
-                        <span className="ml-2 text-sm text-gray-900">Under Review</span>
-                      </label>
-                    </div>
+                  {/* Supervisor Comments Summary */}
+                  {supervisorCommentsHistory.length > 0 && (
+                    <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Supervisor Feedback Summary</h3>
+                      <div className="space-y-2">
+                        {supervisorCommentsHistory.slice(-2).map((comment) => (
+                          <div key={comment.id} className="bg-white p-3 rounded border border-blue-100">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-sm font-semibold text-gray-900">{comment.name}</p>
+                              <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                comment.action === 'approve' ? 'bg-green-100 text-green-800' :
+                                comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {comment.action.replace('_', ' ').toUpperCase()}
+                              </span>
+                            </div>
+                            {comment.comment && <p className="text-sm text-gray-700">{comment.comment}</p>}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                  {/* Approval Status Display for Employee */}
-                  {isForCurrentUser && reviewerApproval !== 'pending' && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Final Decision
-                      </label>
-                      <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
-                        reviewerApproval === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {reviewerApproval === 'approved' ? '✓ Performance Plan Approved - Ready to Implement' : '✗ Plan Requires Further Revision'}
+                  {/* Reviewer Comments History Timeline */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Final Reviewer Comments & Feedback
+                    </h3>
+                    
+                    {reviewerCommentsHistory.length === 0 ? (
+                      <p className="text-gray-500 text-sm italic">No final reviewer comments yet. Feedback will appear here once the reviewer provides input.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {reviewerCommentsHistory.map((comment, index) => (
+                          <div key={comment.id} className="border-l-4 border-green-500 pl-4 py-2">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <span className="text-green-600 font-semibold text-sm">
+                                    {comment.name.split(' ').map(n => n[0]).join('')}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">{comment.name}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(comment.timestamp).toLocaleDateString()} at {new Date(comment.timestamp).toLocaleTimeString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                comment.action === 'final_approve' ? 'bg-green-100 text-green-800' :
+                                comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {comment.action.replace('_', ' ').toUpperCase()}
+                              </span>
+                            </div>
+                            {comment.comment && (
+                              <p className="text-sm text-gray-700 mt-2 bg-gray-50 p-3 rounded">{comment.comment}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Reviewer Action Panel */}
+                  {!isForCurrentUser && formData.reviewerId === session?.user?.id && (
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Final Reviewer Actions</h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Final Review Comment
+                          </label>
+                          <textarea
+                            value={currentReviewerComment}
+                            onChange={(e) => setCurrentReviewerComment(e.target.value)}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                            placeholder="Provide final assessment and overall feedback on the performance plan..."
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            onClick={() => handleWorkflowAction('comment', 'reviewer')}
+                            disabled={submittingWorkflow || !currentReviewerComment}
+                            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            <span>Add Comment</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleWorkflowAction('request_changes', 'reviewer')}
+                            disabled={submittingWorkflow || !currentReviewerComment}
+                            className="flex items-center space-x-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>Request Changes</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm('Are you sure you want to give final approval to this performance plan? This will make it active and ready for implementation.')) {
+                                handleWorkflowAction('final_approve', 'reviewer')
+                              }
+                            }}
+                            disabled={submittingWorkflow}
+                            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0121 12c0 3.044-1.143 5.822-3.018 7.938M15 11l2 2-4 4-2-2m7 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Final Approval</span>
+                          </button>
+                        </div>
+
+                        {submittingWorkflow && (
+                          <div className="text-sm text-green-600 flex items-center">
+                            <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Processing...
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Reviewer Footer */}
-                {!isForCurrentUser && (
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-8 py-6 border-t border-gray-200">
-                    <div className="flex justify-end">
-                      <button
-                      onClick={() => {
-                        if (reviewerApproval === 'approved') {
-                          setWorkflowStatus('completed')
-                          // Handle final submission
-                        }
-                      }}
-                      disabled={reviewerApproval === 'pending'}
-                      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <span>Finalize Performance Plan</span>
-                    </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
