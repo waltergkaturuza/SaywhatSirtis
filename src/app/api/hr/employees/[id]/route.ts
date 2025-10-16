@@ -104,6 +104,7 @@ export async function GET(
       firstName: employee.firstName,
       lastName: employee.lastName,
       middleName: employee.middleName,
+      name: `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email,
       fullName: `${employee.firstName || ''} ${employee.middleName ? ' ' + employee.middleName : ''} ${employee.lastName || ''}`.trim(),
       dateOfBirth: employee.dateOfBirth,
       gender: employee.gender,

@@ -26,6 +26,37 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             name: true,
             code: true
           }
+        },
+        employees: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            position: true
+          }
+        },
+        reviewer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            position: true
+          }
+        },
+        job_descriptions: {
+          select: {
+            id: true,
+            jobTitle: true,
+            location: true,
+            jobSummary: true,
+            keyResponsibilities: true,
+            essentialExperience: true,
+            essentialSkills: true,
+            acknowledgment: true,
+            version: true
+          }
         }
       }
     });
@@ -39,11 +70,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json({
       id: employee.id,
+      employeeId: employee.employeeId,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
       name: `${employee.firstName} ${employee.lastName}`,
       email: employee.email,
       department: employee.departments || { name: 'General', code: 'GEN' },
+      departments: employee.departments,
       position: employee.position,
-      employeeId: employee.employeeId
+      supervisorId: employee.supervisor_id,
+      reviewerId: employee.reviewer_id,
+      supervisor: employee.employees,
+      reviewer: employee.reviewer,
+      jobDescription: employee.job_descriptions ? {
+        id: employee.job_descriptions.id,
+        jobTitle: employee.job_descriptions.jobTitle,
+        location: employee.job_descriptions.location,
+        jobSummary: employee.job_descriptions.jobSummary,
+        keyResponsibilities: employee.job_descriptions.keyResponsibilities,
+        essentialExperience: employee.job_descriptions.essentialExperience,
+        essentialSkills: employee.job_descriptions.essentialSkills,
+        acknowledgment: employee.job_descriptions.acknowledgment,
+        version: employee.job_descriptions.version
+      } : null
     });
 
   } catch (error) {

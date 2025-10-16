@@ -194,18 +194,18 @@ function CreatePerformancePlanPageContent() {
           setFormData(prev => ({
             ...prev,
             employee: {
-              id: employee.employeeId || employee.id,
-              name: employee.name,
-              email: employee.email || '',
-              position: employee.position || '',
-              department: employee.department?.name || employee.department || '',
-              manager: employee.supervisor?.name || employee.manager || '',
+              id: fullEmployeeData.employeeId || fullEmployeeData.id,
+              name: fullEmployeeData.name || `${fullEmployeeData.firstName || ''} ${fullEmployeeData.lastName || ''}`.trim() || fullEmployeeData.email,
+              email: fullEmployeeData.email || '',
+              position: fullEmployeeData.position || '',
+              department: fullEmployeeData.departments?.name || fullEmployeeData.department || '',
+              manager: fullEmployeeData.supervisor ? `${fullEmployeeData.supervisor.firstName || ''} ${fullEmployeeData.supervisor.lastName || ''}`.trim() : 'Not Assigned',
               planPeriod: {
                 startDate: new Date().toISOString().split('T')[0],
                 endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
               }
             },
-            supervisor: employee.supervisor?.id || '',
+            supervisor: fullEmployeeData.supervisorId || '',
             reviewerId: fullEmployeeData.reviewerId || '',
             keyResponsibilities: keyResponsibilities.length > 0 ? keyResponsibilities : [{
               id: '1',
@@ -234,17 +234,17 @@ function CreatePerformancePlanPageContent() {
         ...prev,
         employee: {
           id: employee.employeeId || employee.id,
-          name: employee.name,
+          name: employee.name || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.email,
           email: employee.email || '',
           position: employee.position || '',
-          department: employee.department?.name || employee.department || '',
-          manager: employee.supervisor?.name || employee.manager || '',
+          department: employee.departments?.name || employee.department || '',
+          manager: employee.supervisor ? `${employee.supervisor.firstName || ''} ${employee.supervisor.lastName || ''}`.trim() : 'Not Assigned',
           planPeriod: {
             startDate: new Date().toISOString().split('T')[0],
             endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
           }
         },
-        supervisor: employee.supervisor?.id || ''
+        supervisor: employee.supervisorId || ''
       }))
       }
     }
@@ -594,20 +594,15 @@ function CreatePerformancePlanPageContent() {
                   </label>
                   <input
                     type="text"
-                    value={selectedEmployee?.supervisor?.name || formData.employee.manager || 'No supervisor assigned'}
+                    value={
+                      selectedEmployee?.supervisor 
+                        ? `${selectedEmployee.supervisor.firstName || ''} ${selectedEmployee.supervisor.lastName || ''}`.trim() 
+                        : formData.employee.manager || 'No supervisor assigned'
+                    }
                     readOnly
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
                     placeholder="Auto-filled when employee is selected"
                   />
-                  {selectedEmployee?.supervisor && (
-                    <div className="mt-3 p-4 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl shadow-sm">
-                      <div className="text-sm text-orange-800">
-                        <strong>Supervisor:</strong> {selectedEmployee.supervisor.name}
-                        <br />
-                        <span className="text-orange-600">{selectedEmployee.supervisor.position || 'Position not specified'}</span>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div>
@@ -626,7 +621,7 @@ function CreatePerformancePlanPageContent() {
                     </option>
                     {reviewers.map((reviewer) => (
                       <option key={reviewer.id} value={reviewer.id}>
-                        {reviewer.name} - {reviewer.position || 'Reviewer'} ({reviewer.department})
+                        {reviewer.name} - {reviewer.position || 'Reviewer'}
                       </option>
                     ))}
                   </select>
