@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,9 +13,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const plan = await prisma.performance_plans.findUnique({
       where: {
-        id: params.id
+        id: id
       },
       include: {
         employees: {
@@ -72,7 +73,7 @@ export async function GET(
       supervisor: plan.supervisorId || '',
       reviewerId: plan.reviewerId || '',
       planYear: plan.planYear,
-      planTitle: plan.planTitle || '',
+      planTitle: plan.planTitle || 'Annual Plan',
       workflowStatus: plan.workflowStatus || 'draft',
       status: plan.status || 'draft',
       keyResponsibilities: plan.performance_responsibilities?.map(resp => ({
@@ -122,7 +123,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -130,11 +131,12 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const body = await request.json();
 
     const updatedPlan = await prisma.performance_plans.update({
       where: {
-        id: params.id
+        id: id
       },
       data: {
         planTitle: body.planTitle,

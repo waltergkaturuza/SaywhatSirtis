@@ -975,7 +975,11 @@ model performance_plans {
   supervisorId                                String
   planYear                                    Int
   planPeriod                                  String
+  planTitle                                   String?                        @default("Annual Plan")
+  startDate                                   DateTime?
+  endDate                                     DateTime?
   status                                      String                         @default("draft")
+  workflowStatus                              String                         @default("draft")
   createdAt                                   DateTime                       @default(now())
   updatedAt                                   DateTime
   reviewerApprovedAt                          DateTime?

@@ -81,8 +81,7 @@ export async function GET(request: NextRequest) {
       where: {
         performance_plans: {
           employeeId: employee.id
-        },
-        status: 'completed'
+        }
       }
     });
 
