@@ -52,68 +52,52 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
     updateFormData({
       achievements: {
         ...formData.achievements,
-        goals: [...formData.achievements.goals, {
+        keyResponsibilities: [...formData.achievements.keyResponsibilities, {
           id: Date.now().toString(),
           description: '',
-          status: 'not-achieved',
-          comment: ''
+          tasks: '',
+          weight: 0,
+          targetDate: '',
+          status: 'Not Started',
+          achievementStatus: 'not-achieved',
+          comment: '',
+          successIndicators: [{
+            id: '1',
+            indicator: '',
+            target: '',
+            actualValue: '',
+            measurement: '',
+            achieved: false
+          }]
         }]
       }
     })
   }
 
   const updateGoal = (goalId: string, field: string, value: string) => {
-    const updatedGoals = formData.achievements.goals.map(goal =>
+    const updatedGoals = formData.achievements.keyResponsibilities.map(goal =>
       goal.id === goalId ? { ...goal, [field]: value } : goal
     )
     
     updateFormData({
       achievements: {
         ...formData.achievements,
-        goals: updatedGoals
+        keyResponsibilities: updatedGoals
       }
     })
   }
 
   const removeGoal = (goalId: string) => {
-    const updatedGoals = formData.achievements.goals.filter(goal => goal.id !== goalId)
+    const updatedGoals = formData.achievements.keyResponsibilities.filter(goal => goal.id !== goalId)
     updateFormData({
       achievements: {
         ...formData.achievements,
-        goals: updatedGoals
+        keyResponsibilities: updatedGoals
       }
     })
   }
 
-  const addAccomplishment = () => {
-    updateFormData({
-      achievements: {
-        ...formData.achievements,
-        keyAccomplishments: [...formData.achievements.keyAccomplishments, '']
-      }
-    })
-  }
-
-  const updateAccomplishment = (index: number, value: string) => {
-    const newAccomplishments = [...formData.achievements.keyAccomplishments]
-    newAccomplishments[index] = value
-    updateFormData({
-      achievements: {
-        ...formData.achievements,
-        keyAccomplishments: newAccomplishments
-      }
-    })
-  }
-
-  const removeAccomplishment = (index: number) => {
-    const newAccomplishments = formData.achievements.keyAccomplishments.filter((_, i) => i !== index)
-    updateFormData({
-      achievements: {
-        ...formData.achievements,
-        keyAccomplishments: newAccomplishments
-      }
-    })
-  }
+  // Removed deprecated keyAccomplishments functions - now using keyResponsibilities only
 
   // New: responsibilities helpers to match performance plan UI
   const addResponsibility = () => {

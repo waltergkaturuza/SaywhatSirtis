@@ -158,7 +158,7 @@ export function FinalReviewStep({ formData, updateFormData }: FinalReviewStepPro
               <div className="space-y-2 text-sm">
                 <div><strong>Start:</strong> {formData.employee.reviewPeriod.startDate}</div>
                 <div><strong>End:</strong> {formData.employee.reviewPeriod.endDate}</div>
-                <div><strong>Goals Reviewed:</strong> {formData.achievements.goals.length}</div>
+                <div><strong>Key Responsibilities Reviewed:</strong> {formData.achievements.keyResponsibilities.length}</div>
                 <div><strong>Training Needs:</strong> {formData.development.trainingNeeds.length}</div>
               </div>
             </div>

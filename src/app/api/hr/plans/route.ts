@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         employeeId: true,
-        supervisorId: true
+        supervisor_id: true
       }
     });
 
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     const planData = {
       id: crypto.randomUUID(),
       employeeId: employee.id,
-      supervisorId: supervisorEmployee?.userId || employee.supervisor_id,
+      supervisorId: supervisorEmployee?.userId || employee.supervisor_id || '',
       planYear: planYear,
       planPeriod: `January ${planYear} - December ${planYear}`,
       status,
