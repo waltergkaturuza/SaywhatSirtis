@@ -12,19 +12,19 @@ export async function GET() {
     }
 
     // Check permissions - Allow HR role and users with HR permissions
-    const userRole = session.user?.role || session.user?.roles?.[0]
+    const userRoles = session.user?.roles || []
     const hasPermission = 
-      userRole === 'HR' ||
-      userRole === 'SUPERUSER' ||
-      userRole === 'SYSTEM_ADMINISTRATOR' ||
+      userRoles.includes('HR') ||
+      userRoles.includes('SUPERUSER') ||
+      userRoles.includes('SYSTEM_ADMINISTRATOR') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('hr_manager') ||
+      userRoles.includes('hr_staff') ||
       session.user?.permissions?.includes('hr.view') ||
-      session.user?.permissions?.includes('hr.full_access') ||
-      session.user?.roles?.includes('admin') ||
-      session.user?.roles?.includes('hr_manager') ||
-      session.user?.roles?.includes('hr_staff')
+      session.user?.permissions?.includes('hr.full_access')
 
     if (!hasPermission) {
-      console.log('Permission denied for user:', session.user?.email, 'Role:', userRole, 'Permissions:', session.user?.permissions)
+      console.log('Permission denied for user:', session.user?.email, 'Roles:', userRoles, 'Permissions:', session.user?.permissions)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
