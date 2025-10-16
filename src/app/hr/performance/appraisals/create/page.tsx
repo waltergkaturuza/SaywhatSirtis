@@ -70,10 +70,7 @@ function CreateAppraisalContent() {
       areasForImprovement: []
     },
     achievements: {
-      keyResponsibilities: [],
-      goals: [{ id: "1", description: "", status: "not-achieved" as const, comment: "" }],
-      keyAccomplishments: [""],
-      additionalContributions: [""]
+      keyResponsibilities: []
     },
     development: {
       trainingNeeds: [""],

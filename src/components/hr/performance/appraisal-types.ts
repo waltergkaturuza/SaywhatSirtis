@@ -55,9 +55,6 @@ export interface AppraisalFormData {
         achieved: boolean
       }[]
     }[]
-    goals: never[]
-    keyAccomplishments: never[]
-    additionalContributions: never[]
   }
   development: {
     trainingNeeds: string[]
@@ -110,10 +107,7 @@ export const defaultFormData: AppraisalFormData = {
     areasForImprovement: []
   },
   achievements: {
-    keyResponsibilities: [],
-    goals: [],
-    keyAccomplishments: [],
-    additionalContributions: []
+    keyResponsibilities: []
   },
   development: {
     trainingNeeds: [],
