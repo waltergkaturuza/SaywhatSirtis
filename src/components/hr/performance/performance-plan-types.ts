@@ -25,18 +25,21 @@ export interface PerformancePlanFormData {
     startDate: string
     endDate: string
   }
-  // Goals and objectives
-  goals: {
+  // Key Responsibilities (from job description)
+  keyResponsibilities: {
     id: string
-    title: string
     description: string
-    category: 'professional' | 'personal' | 'technical' | 'leadership'
-    priority: 'high' | 'medium' | 'low'
-    status: 'not-started' | 'in-progress' | 'completed' | 'on-hold'
+    tasks: string
+    weight: number
     targetDate: string
+    status: 'not-started' | 'in-progress' | 'completed' | 'on-hold'
     progress: number
-    metrics: string[]
-    resources: string[]
+    successIndicators: {
+      id: string
+      indicator: string
+      target: string
+      measurement: string
+    }[]
     comments: string
   }[]
   // Development areas
@@ -144,18 +147,23 @@ export const defaultPlanFormData: PerformancePlanFormData = {
     startDate: '',
     endDate: ''
   },
-  goals: [
+  keyResponsibilities: [
     {
       id: '1',
-      title: '',
       description: '',
-      category: 'professional',
-      priority: 'medium',
-      status: 'not-started',
+      tasks: '',
+      weight: 0,
       targetDate: '',
+      status: 'not-started',
       progress: 0,
-      metrics: [''],
-      resources: [''],
+      successIndicators: [
+        {
+          id: '1',
+          indicator: '',
+          target: '',
+          measurement: ''
+        }
+      ],
       comments: ''
     }
   ],
@@ -249,13 +257,13 @@ export const performancePlanSteps = [
   },
   {
     id: 2,
-    title: 'Goals & Objectives',
-    description: 'Set performance goals and objectives'
+    title: 'Key Responsibilities',
+    description: 'Define key responsibilities and performance areas'
   },
   {
     id: 3,
-    title: 'Development Areas',
-    description: 'Identify strengths and improvement areas'
+    title: 'Success Indicators',
+    description: 'Define measurable indicators for each responsibility'
   },
   {
     id: 4,

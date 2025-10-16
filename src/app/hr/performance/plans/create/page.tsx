@@ -155,28 +155,98 @@ function CreatePerformancePlanPageContent() {
   }
 
   // Handle employee selection
-  const handleEmployeeSelect = (employeeId: string) => {
+  const handleEmployeeSelect = async (employeeId: string) => {
     const employee = employees.find(emp => emp.id === employeeId)
     if (employee) {
       setSelectedEmployee(employee)
       
-      // Auto-populate employee details
-      setFormData(prev => ({
-        ...prev,
-        employee: {
-          id: employee.employeeId || employee.id,
-          name: employee.name,
-          email: employee.email || '',
-          position: employee.position || '',
-          department: employee.department?.name || employee.department || '',
-          manager: employee.supervisor?.name || employee.manager || '',
-          planPeriod: {
-            startDate: new Date().toISOString().split('T')[0],
-            endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      // Fetch full employee details including job description
+      try {
+        const response = await fetch(`/api/hr/employees/${employeeId}`)
+        if (response.ok) {
+          const result = await response.json()
+          const fullEmployeeData = result.data || result
+          
+          // Extract key responsibilities from job description
+          let keyResponsibilities: any[] = []
+          if (fullEmployeeData.jobDescription?.keyResponsibilities && Array.isArray(fullEmployeeData.jobDescription.keyResponsibilities)) {
+            keyResponsibilities = fullEmployeeData.jobDescription.keyResponsibilities.map((resp: any, index: number) => ({
+              id: `${Date.now()}-${index}`,
+              description: resp.description || '',
+              tasks: resp.tasks || '',
+              weight: resp.weight || 0,
+              targetDate: '',
+              status: 'not-started' as const,
+              progress: 0,
+              successIndicators: [
+                {
+                  id: '1',
+                  indicator: '',
+                  target: '',
+                  measurement: ''
+                }
+              ],
+              comments: ''
+            }))
           }
-        },
-        supervisor: employee.supervisor?.id || ''
-      }))
+          
+          // Auto-populate employee details and key responsibilities
+          setFormData(prev => ({
+            ...prev,
+            employee: {
+              id: employee.employeeId || employee.id,
+              name: employee.name,
+              email: employee.email || '',
+              position: employee.position || '',
+              department: employee.department?.name || employee.department || '',
+              manager: employee.supervisor?.name || employee.manager || '',
+              planPeriod: {
+                startDate: new Date().toISOString().split('T')[0],
+                endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+              }
+            },
+            supervisor: employee.supervisor?.id || '',
+            reviewerId: fullEmployeeData.reviewerId || '',
+            keyResponsibilities: keyResponsibilities.length > 0 ? keyResponsibilities : [{
+              id: '1',
+              description: '',
+              tasks: '',
+              weight: 0,
+              targetDate: '',
+              status: 'not-started' as const,
+              progress: 0,
+              successIndicators: [
+                {
+                  id: '1',
+                  indicator: '',
+                  target: '',
+                  measurement: ''
+                }
+              ],
+              comments: ''
+            }]
+          }))
+        }
+      } catch (error) {
+        console.error('Error fetching employee details:', error)
+        // Fallback to basic employee data
+        setFormData(prev => ({
+          ...prev,
+          employee: {
+            id: employee.employeeId || employee.id,
+            name: employee.name,
+            email: employee.email || '',
+            position: employee.position || '',
+            department: employee.department?.name || employee.department || '',
+            manager: employee.supervisor?.name || employee.manager || '',
+            planPeriod: {
+              startDate: new Date().toISOString().split('T')[0],
+              endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            }
+          },
+          supervisor: employee.supervisor?.id || ''
+        }))
+      }
     }
   }
 
@@ -217,6 +287,29 @@ function CreatePerformancePlanPageContent() {
           if (response.ok) {
             const employeeData = await response.json()
             
+            // Extract key responsibilities from job description
+            let keyResponsibilities: any[] = []
+            if (employeeData.jobDescription?.keyResponsibilities && Array.isArray(employeeData.jobDescription.keyResponsibilities)) {
+              keyResponsibilities = employeeData.jobDescription.keyResponsibilities.map((resp: any, index: number) => ({
+                id: `${Date.now()}-${index}`,
+                description: resp.description || '',
+                tasks: resp.tasks || '',
+                weight: resp.weight || 0,
+                targetDate: '',
+                status: 'not-started' as const,
+                progress: 0,
+                successIndicators: [
+                  {
+                    id: '1',
+                    indicator: '',
+                    target: '',
+                    measurement: ''
+                  }
+                ],
+                comments: ''
+              }))
+            }
+            
             // Auto-populate the form with current user's details
             setFormData(prev => ({
               ...prev,
@@ -231,7 +324,26 @@ function CreatePerformancePlanPageContent() {
                   startDate: new Date().toISOString().split('T')[0],
                   endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
                 }
-              }
+              },
+              reviewerId: employeeData.reviewerId || '',
+              keyResponsibilities: keyResponsibilities.length > 0 ? keyResponsibilities : [{
+                id: '1',
+                description: '',
+                tasks: '',
+                weight: 0,
+                targetDate: '',
+                status: 'not-started' as const,
+                progress: 0,
+                successIndicators: [
+                  {
+                    id: '1',
+                    indicator: '',
+                    target: '',
+                    measurement: ''
+                  }
+                ],
+                comments: ''
+              }]
             }))
 
             // Set selected employee
@@ -614,55 +726,60 @@ function CreatePerformancePlanPageContent() {
             <div className="bg-gradient-to-r from-orange-50 via-orange-100 to-red-50 p-8 rounded-2xl shadow-lg border border-orange-200">
               <div className="flex items-center mb-4">
                 <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center mr-4">
-                  <span className="text-white text-lg font-bold">🎯</span>
+                  <span className="text-white text-lg font-bold">📋</span>
                 </div>
-                <h3 className="text-2xl font-bold text-orange-900">Strategic Goals</h3>
+                <h3 className="text-2xl font-bold text-orange-900">Key Responsibilities</h3>
               </div>
-              <p className="text-orange-800 text-lg leading-relaxed">Define key strategic objectives that align with organizational goals and priorities.</p>
+              <p className="text-orange-800 text-lg leading-relaxed">Define key responsibilities and performance areas from your job description.</p>
             </div>
 
             <div className="bg-gradient-to-br from-white via-gray-25 to-white p-8 rounded-2xl shadow-lg border border-gray-100">
               <div className="flex justify-between items-center mb-8">
                 <div className="flex items-center">
                   <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-3">
-                    <span className="text-white text-sm font-bold">⭐</span>
+                    <span className="text-white text-sm font-bold">📌</span>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900">Goals</h3>
+                  <h3 className="text-xl font-bold text-gray-900">Responsibilities</h3>
                 </div>
                 <button
-                  onClick={() => addArrayItem("goals", {
+                  onClick={() => addArrayItem("keyResponsibilities", {
                     id: Date.now().toString(),
-                    title: "",
                     description: "",
-                    category: "professional",
-                    priority: "medium",
-                    status: "not-started",
+                    tasks: "",
+                    weight: 0,
                     targetDate: "",
-                  progress: 0,
-                  metrics: [],
-                  resources: [],
-                  comments: ""
+                    status: "not-started",
+                    progress: 0,
+                    successIndicators: [
+                      {
+                        id: '1',
+                        indicator: '',
+                        target: '',
+                        measurement: ''
+                      }
+                    ],
+                    comments: ""
                   })}
                   className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:from-orange-600 hover:to-red-600 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
                 >
                   <PlusIcon className="h-5 w-5 mr-2" />
-                  Add Goal
+                  Add Responsibility
                 </button>
               </div>
             </div>
 
-              {formData.goals.map((goal, index) => (
+              {formData.keyResponsibilities.map((responsibility, index) => (
                 <div key={index} className="bg-gradient-to-br from-white via-blue-25 to-purple-25 border-2 border-gray-200 rounded-2xl p-8 space-y-6 shadow-lg hover:shadow-xl transition-all duration-300">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center">
                       <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
                         <span className="text-white text-sm font-bold">{index + 1}</span>
                       </div>
-                      <h4 className="text-xl font-bold text-gray-900">Goal {index + 1}</h4>
+                      <h4 className="text-xl font-bold text-gray-900">Responsibility {index + 1}</h4>
                     </div>
-                    {formData.goals.length > 1 && (
+                    {formData.keyResponsibilities.length > 1 && (
                       <button
-                        onClick={() => removeArrayItem("goals", index)}
+                        onClick={() => removeArrayItem("keyResponsibilities", index)}
                         className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all duration-300"
                       >
                         <TrashIcon className="h-5 w-5" />
@@ -673,28 +790,28 @@ function CreatePerformancePlanPageContent() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                       <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mr-2"></div>
-                      Goal Title
+                      Responsibility Description
                     </label>
-                    <input
-                      type="text"
-                      value={goal.title}
-                      onChange={(e) => handleArrayChange("goals", index, "title", e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
-                      placeholder="Enter clear, specific goal title..."
+                    <textarea
+                      value={responsibility.description}
+                      onChange={(e) => handleArrayChange("keyResponsibilities", index, "description", e.target.value)}
+                      rows={2}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm resize-none"
+                      placeholder="Enter responsibility description..."
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                       <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-2"></div>
-                      Detailed Description
+                      Tasks / Activities
                     </label>
                     <textarea
-                      value={goal.description}
-                      onChange={(e) => handleArrayChange("goals", index, "description", e.target.value)}
+                      value={responsibility.tasks}
+                      onChange={(e) => handleArrayChange("keyResponsibilities", index, "tasks", e.target.value)}
                       rows={3}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm resize-none"
-                      placeholder="Provide detailed description of the goal and its importance..."
+                      placeholder="List specific tasks and activities for this responsibility..."
                     />
                   </div>
 
@@ -702,17 +819,17 @@ function CreatePerformancePlanPageContent() {
                     <div>
                       <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                         <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mr-2"></div>
-                        Priority Level
+                        Weight (%)
                       </label>
-                      <select
-                        value={goal.priority}
-                        onChange={(e) => handleArrayChange("goals", index, "priority", e.target.value)}
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={responsibility.weight}
+                        onChange={(e) => handleArrayChange("keyResponsibilities", index, "weight", parseInt(e.target.value) || 0)}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
-                      >
-                        <option value="high">High Priority</option>
-                        <option value="medium">Medium Priority</option>
-                        <option value="low">Low Priority</option>
-                      </select>
+                        placeholder="0-100"
+                      />
                     </div>
 
                     <div>
@@ -722,8 +839,8 @@ function CreatePerformancePlanPageContent() {
                       </label>
                       <input
                         type="date"
-                        value={goal.targetDate}
-                        onChange={(e) => handleArrayChange("goals", index, "targetDate", e.target.value)}
+                        value={responsibility.targetDate}
+                        onChange={(e) => handleArrayChange("keyResponsibilities", index, "targetDate", e.target.value)}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
                       />
                     </div>
@@ -734,8 +851,8 @@ function CreatePerformancePlanPageContent() {
                         Status
                       </label>
                       <select
-                        value={goal.status}
-                        onChange={(e) => handleArrayChange("goals", index, "status", e.target.value)}
+                        value={responsibility.status}
+                        onChange={(e) => handleArrayChange("keyResponsibilities", index, "status", e.target.value)}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
                       >
                         <option value="not-started">Not Started</option>
@@ -746,26 +863,116 @@ function CreatePerformancePlanPageContent() {
                     </div>
                   </div>
 
+                  {/* Success Indicators */}
+                  <div className="border-t-2 border-gray-200 pt-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <label className="block text-sm font-semibold text-gray-800 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-teal-500 rounded-full mr-2"></div>
+                        Success Indicators for this Responsibility
+                      </label>
+                      <button
+                        onClick={() => {
+                          const updatedResponsibilities = [...formData.keyResponsibilities]
+                          updatedResponsibilities[index].successIndicators.push({
+                            id: Date.now().toString(),
+                            indicator: '',
+                            target: '',
+                            measurement: ''
+                          })
+                          setFormData(prev => ({ ...prev, keyResponsibilities: updatedResponsibilities }))
+                        }}
+                        className="inline-flex items-center px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm font-semibold"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-1" />
+                        Add Indicator
+                      </button>
+                    </div>
+                    
+                    {responsibility.successIndicators.map((indicator: any, indicatorIndex: number) => (
+                      <div key={indicatorIndex} className="bg-green-50 border border-green-200 rounded-lg p-4 mb-3">
+                        <div className="flex justify-between items-start mb-3">
+                          <span className="text-sm font-semibold text-green-800">Indicator {indicatorIndex + 1}</span>
+                          {responsibility.successIndicators.length > 1 && (
+                            <button
+                              onClick={() => {
+                                const updatedResponsibilities = [...formData.keyResponsibilities]
+                                updatedResponsibilities[index].successIndicators.splice(indicatorIndex, 1)
+                                setFormData(prev => ({ ...prev, keyResponsibilities: updatedResponsibilities }))
+                              }}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Indicator Name</label>
+                            <input
+                              type="text"
+                              value={indicator.indicator}
+                              onChange={(e) => {
+                                const updatedResponsibilities = [...formData.keyResponsibilities]
+                                updatedResponsibilities[index].successIndicators[indicatorIndex].indicator = e.target.value
+                                setFormData(prev => ({ ...prev, keyResponsibilities: updatedResponsibilities }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                              placeholder="e.g., Customer Satisfaction"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Target Value</label>
+                            <input
+                              type="text"
+                              value={indicator.target}
+                              onChange={(e) => {
+                                const updatedResponsibilities = [...formData.keyResponsibilities]
+                                updatedResponsibilities[index].successIndicators[indicatorIndex].target = e.target.value
+                                setFormData(prev => ({ ...prev, keyResponsibilities: updatedResponsibilities }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                              placeholder="e.g., 95% or 50 units"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Measurement Method</label>
+                            <input
+                              type="text"
+                              value={indicator.measurement}
+                              onChange={(e) => {
+                                const updatedResponsibilities = [...formData.keyResponsibilities]
+                                updatedResponsibilities[index].successIndicators[indicatorIndex].measurement = e.target.value
+                                setFormData(prev => ({ ...prev, keyResponsibilities: updatedResponsibilities }))
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                              placeholder="e.g., Monthly survey"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                       <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full mr-2"></div>
-                      Success Metrics & Comments
+                      Additional Comments
                     </label>
                     <textarea
-                      value={goal.comments}
-                      onChange={(e) => handleArrayChange("goals", index, "comments", e.target.value)}
-                      rows={3}
+                      value={responsibility.comments}
+                      onChange={(e) => handleArrayChange("keyResponsibilities", index, "comments", e.target.value)}
+                      rows={2}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm resize-none"
-                      placeholder="Define how success will be measured and any additional comments..."
+                      placeholder="Any additional comments or notes..."
                     />
                   </div>
 
                   <div className="flex items-center space-x-4 pt-4 border-t border-gray-200">
-                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-sm ${getPriorityColor(goal.priority)}`}>
-                      {goal.priority.charAt(0).toUpperCase() + goal.priority.slice(1)} Priority
+                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-sm bg-purple-100 text-purple-800 border-purple-300`}>
+                      Weight: {responsibility.weight}%
                     </span>
-                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-sm ${getStatusColor(goal.status)}`}>
-                      {goal.status.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    <span className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-sm ${getStatusColor(responsibility.status)}`}>
+                      {responsibility.status.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                     </span>
                   </div>
                 </div>
@@ -776,156 +983,84 @@ function CreatePerformancePlanPageContent() {
       case 3:
         return (
           <div className="space-y-6">
-            <div className="bg-green-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-green-900 mb-2">KPIs & Metrics</h3>
-              <p className="text-green-700">Define measurable key performance indicators to track progress and success.</p>
+            <div className="bg-gradient-to-r from-green-50 via-teal-50 to-green-50 p-8 rounded-2xl shadow-lg border border-green-200">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-teal-600 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-white text-lg font-bold">✓</span>
+                </div>
+                <h3 className="text-2xl font-bold text-green-900">Success Indicators Summary</h3>
+              </div>
+              <p className="text-green-800 text-lg leading-relaxed">Review all success indicators defined for your key responsibilities.</p>
             </div>
 
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">Performance Indicators</h3>
-              <button
-                onClick={() => addArrayItem("kpis", {
-                  indicator: "",
-                  description: "",
-                  target: "",
-                  measurement: "",
-                  frequency: "monthly",
-                  weight: 20,
-                  currentValue: ""
-                })}
-                className="inline-flex items-center px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                <PlusIcon className="h-4 w-4 mr-1" />
-                Add KPI
-              </button>
-            </div>
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">All Success Indicators by Responsibility</h3>
+              <p className="text-sm text-gray-600 mb-6">These indicators were defined in Step 2 for each key responsibility.</p>
 
-            {formData.kpis.map((kpi, index) => (
-              <div key={index} className="border rounded-lg p-6 space-y-4">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-lg font-semibold text-gray-900">KPI {index + 1}</h4>
-                  {formData.kpis.length > 1 && (
-                    <button
-                      onClick={() => removeArrayItem("kpis", index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
+              {formData.keyResponsibilities.map((responsibility, respIndex) => (
+                <div key={respIndex} className="mb-6 border-2 border-gray-200 rounded-xl p-6 bg-gradient-to-r from-white to-gray-50">
+                  <div className="mb-4">
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">
+                      Responsibility {respIndex + 1}: {responsibility.description || 'Untitled'}
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-2">
+                      <span className="font-semibold">Weight:</span> {responsibility.weight}% | 
+                      <span className="font-semibold ml-2">Status:</span> {responsibility.status.replace('-', ' ')}
+                    </p>
+                    {responsibility.tasks && (
+                      <p className="text-sm text-gray-700 italic">
+                        <span className="font-semibold">Tasks:</span> {responsibility.tasks}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {responsibility.successIndicators && responsibility.successIndicators.length > 0 ? (
+                    <div className="space-y-3">
+                      <h5 className="text-sm font-semibold text-green-800 mb-3">Success Indicators:</h5>
+                      {responsibility.successIndicators.map((indicator: any, indIndex: number) => (
+                        <div key={indIndex} className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-1">Indicator</p>
+                              <p className="text-sm text-gray-900">{indicator.indicator || 'Not specified'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-1">Target</p>
+                              <p className="text-sm text-gray-900">{indicator.target || 'Not specified'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-1">Measurement Method</p>
+                              <p className="text-sm text-gray-900">{indicator.measurement || 'Not specified'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No success indicators defined for this responsibility.</p>
                   )}
                 </div>
+              ))}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Indicator Name
-                    </label>
-                    <input
-                      type="text"
-                      value={kpi.indicator}
-                      onChange={(e) => handleArrayChange("kpis", index, "indicator", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="e.g., Customer Satisfaction Score"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Target Value
-                    </label>
-                    <input
-                      type="text"
-                      value={kpi.target}
-                      onChange={(e) => handleArrayChange("kpis", index, "target", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="e.g., 85% or 50 units"
-                    />
-                  </div>
+              {formData.keyResponsibilities.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No key responsibilities defined yet. Please go back to Step 2 to add responsibilities.</p>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={kpi.description}
-                    onChange={(e) => handleArrayChange("kpis", index, "description", e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Describe what this KPI measures and why it's important..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="mt-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-900 mb-2">Summary</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      How to Measure
-                    </label>
-                    <input
-                      type="text"
-                      value={kpi.measurement}
-                      onChange={(e) => handleArrayChange("kpis", index, "measurement", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="e.g., Survey scores"
-                    />
+                    <p className="text-blue-700">Total Responsibilities: <span className="font-bold">{formData.keyResponsibilities.length}</span></p>
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Frequency
-                    </label>
-                    <select
-                      value={kpi.frequency}
-                      onChange={(e) => handleArrayChange("kpis", index, "frequency", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="quarterly">Quarterly</option>
-                      <option value="annually">Annually</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Weight (%)
-                    </label>
-                    <input
-                      type="number"
-                      value={kpi.weight}
-                      onChange={(e) => handleArrayChange("kpis", index, "weight", parseInt(e.target.value))}
-                      min="0"
-                      max="100"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Current Value
-                    </label>
-                    <input
-                      type="text"
-                      value={kpi.currentValue}
-                      onChange={(e) => handleArrayChange("kpis", index, "currentValue", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="Current baseline"
-                    />
+                    <p className="text-blue-700">Total Indicators: <span className="font-bold">
+                      {formData.keyResponsibilities.reduce((sum, resp) => sum + (resp.successIndicators?.length || 0), 0)}
+                    </span></p>
                   </div>
                 </div>
               </div>
-            ))}
-
-            <div className="bg-orange-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-orange-900 mb-2">Total Weight</h4>
-              <p className="text-orange-700">
-                Current total: {formData.kpis.reduce((sum, kpi) => sum + kpi.weight, 0)}% 
-                {formData.kpis.reduce((sum, kpi) => sum + kpi.weight, 0) !== 100 && (
-                  <span className="text-orange-600 ml-2">
-                    (Should total 100%)
-                  </span>
-                )}
-              </p>
             </div>
           </div>
         )
@@ -1440,26 +1575,34 @@ function CreatePerformancePlanPageContent() {
               </div>
             </div>
 
-            {/* KPIs Summary */}
+            {/* Success Indicators Summary */}
             <div className="bg-white border rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-3">KPIs & Metrics Summary ({formData.kpis.length})</h4>
-              <div className="space-y-2">
-                {formData.kpis.map((kpi, index) => (
-                  <div key={index} className="flex justify-between items-center text-sm">
-                    <span>{kpi.indicator}</span>
-                    <div className="flex space-x-2">
-                      <span className="px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-medium">
-                        Target: {kpi.target}
-                      </span>
-                      <span className="px-2 py-1 rounded bg-orange-100 text-orange-800 text-xs font-medium">
-                        {kpi.weight}%
-                      </span>
-                    </div>
+              <h4 className="font-semibold text-gray-900 mb-3">
+                Success Indicators Summary 
+                ({formData.keyResponsibilities.reduce((sum, resp) => sum + (resp.successIndicators?.length || 0), 0)} indicators)
+              </h4>
+              <div className="space-y-3">
+                {formData.keyResponsibilities.map((responsibility, respIndex) => (
+                  <div key={respIndex}>
+                    <p className="text-xs font-semibold text-gray-700 mb-2">
+                      {responsibility.description || `Responsibility ${respIndex + 1}`} ({responsibility.weight}%)
+                    </p>
+                    {responsibility.successIndicators && responsibility.successIndicators.length > 0 ? (
+                      <div className="pl-3 space-y-1">
+                        {responsibility.successIndicators.map((indicator: any, indIndex: number) => (
+                          <div key={indIndex} className="flex justify-between items-center text-xs bg-green-50 p-2 rounded">
+                            <span className="text-gray-900">{indicator.indicator || 'Unnamed indicator'}</span>
+                            <span className="px-2 py-1 rounded bg-green-100 text-green-800 font-medium">
+                              Target: {indicator.target || 'N/A'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500 italic pl-3">No indicators defined</p>
+                    )}
                   </div>
                 ))}
-              </div>
-              <div className="mt-2 text-xs text-gray-600">
-                Total Weight: {formData.kpis.reduce((sum, kpi) => sum + kpi.weight, 0)}%
               </div>
             </div>
 
