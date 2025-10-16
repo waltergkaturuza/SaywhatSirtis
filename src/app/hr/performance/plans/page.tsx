@@ -174,7 +174,7 @@ function PerformancePlansContent() {
       
       if (response.ok) {
         const data = await response.json()
-        setPerformancePlans(data.data || [])
+        setPerformancePlans(data.plans || data.data || [])
         setStatistics({
           total: 0,
           totalPlans: 0,
@@ -824,12 +824,12 @@ function PerformancePlansContent() {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Employee</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Department</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Plan Type</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Plan Period</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Next Action</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Supervisor</th>
-                        {userRole.isHR && (
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Reviewer</th>
-                        )}
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Reviewer</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Last Updated</th>
                         <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                       </tr>
@@ -852,6 +852,26 @@ function PerformancePlansContent() {
                             <div className="flex items-center">
                               <BuildingOfficeIcon className="h-4 w-4 text-gray-400 mr-2" />
                               <span className="text-sm text-gray-900">{plan.department}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <DocumentTextIcon className="h-4 w-4 text-gray-400 mr-2" />
+                              <span className="text-sm text-gray-900">{plan.planTitle || 'Annual Plan'}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
+                              <div className="text-sm text-gray-900">
+                                {plan.startDate && plan.endDate ? (
+                                  <>
+                                    {new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(plan.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </>
+                                ) : (
+                                  `Year ${plan.planYear}`
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -880,26 +900,24 @@ function PerformancePlansContent() {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {plan.supervisor}
+                            {plan.supervisor?.name || plan.supervisor || 'Not assigned'}
                           </td>
-                          {userRole.isHR && (
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {plan.reviewer || 'Not assigned'}
-                            </td>
-                          )}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {plan.reviewer || 'Not assigned'}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(plan.lastUpdated).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center space-x-2">
-                              <Link href={`/hr/performance/plans/${plan.id}`}>
-                                <button className="text-orange-600 hover:text-orange-900 transition-colors">
+                              <Link href={`/hr/performance/plans/create?planId=${plan.id}`}>
+                                <button className="text-orange-600 hover:text-orange-900 transition-colors" title="View Performance Plan">
                                   <EyeIcon className="h-4 w-4" />
                                 </button>
                               </Link>
                               {(plan.employeeId === session?.user?.id || userRole.canSeeAllPlans) && (
-                                <Link href={`/hr/performance/plans/${plan.id}/edit`}>
-                                  <button className="text-gray-600 hover:text-black transition-colors">
+                                <Link href={`/hr/performance/plans/create?planId=${plan.id}&edit=true`}>
+                                  <button className="text-gray-600 hover:text-black transition-colors" title="Edit Performance Plan">
                                     <PencilIcon className="h-4 w-4" />
                                   </button>
                                 </Link>
@@ -908,6 +926,7 @@ function PerformancePlansContent() {
                                 <button
                                   onClick={() => handleWorkflowAction(plan, getActionFromNextAction(plan.nextAction))}
                                   className="text-green-600 hover:text-green-900 transition-colors"
+                                  title="Take Action"
                                 >
                                   <CheckCircleIcon className="h-4 w-4" />
                                 </button>

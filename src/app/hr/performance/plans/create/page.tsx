@@ -25,6 +25,9 @@ function CreatePerformancePlanPageContent() {
   
   // Check if this is for the current user (accessed from profile)
   const isForCurrentUser = searchParams.get('self') === 'true' || !searchParams.get('employee')
+  const planId = searchParams.get('planId')
+  const isEditMode = searchParams.get('edit') === 'true'
+  const isViewMode = planId && !isEditMode
   
   // New state for dynamic data
   const [employees, setEmployees] = useState<any[]>([])
@@ -36,7 +39,8 @@ function CreatePerformancePlanPageContent() {
     employees: false,
     departments: false,
     supervisors: false,
-    reviewers: false
+    reviewers: false,
+    plan: false
   })
   const [error, setError] = useState<string | null>(null)
 
@@ -286,6 +290,42 @@ function CreatePerformancePlanPageContent() {
     fetchSupervisors()
     fetchReviewers()
   }, [])
+
+  // Load existing plan if planId is provided
+  useEffect(() => {
+    const loadExistingPlan = async () => {
+      if (!planId) return
+      
+      setLoading(prev => ({ ...prev, plan: true }))
+      try {
+        const response = await fetch(`/api/hr/performance/plans/${planId}`)
+        if (response.ok) {
+          const planData = await response.json()
+          
+          // Populate form with existing plan data
+          setFormData({
+            ...planData,
+            id: planData.id
+          })
+          setWorkflowStatus(planData.workflowStatus || 'draft')
+          
+          // Load workflow history if it exists
+          if (planData.id) {
+            fetchWorkflowHistory(planData.id)
+          }
+        } else {
+          setError('Failed to load performance plan')
+        }
+      } catch (err) {
+        console.error('Error loading plan:', err)
+        setError('Error loading performance plan')
+      } finally {
+        setLoading(prev => ({ ...prev, plan: false }))
+      }
+    }
+    
+    loadExistingPlan()
+  }, [planId])
 
   // Auto-populate current user's information when accessed from profile
   useEffect(() => {

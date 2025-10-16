@@ -10,8 +10,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
+    // Get query parameters
+    const { searchParams } = new URL(request.url)
+    const year = searchParams.get('year')
+    const status = searchParams.get('status')
+
+    // Build where clause
+    const whereClause: any = {}
+    
+    if (year && year !== 'all') {
+      whereClause.planYear = parseInt(year)
+    }
+    
+    if (status && status !== 'all') {
+      whereClause.status = status
+    }
+
     // Get all performance plans with employee and department details
     const plans = await prisma.performance_plans.findMany({
+      where: whereClause,
       include: {
         employees: {
           select: {
@@ -27,6 +44,12 @@ export async function GET(request: NextRequest) {
               }
             },
             employees: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            },
+            reviewer: {
               select: {
                 firstName: true,
                 lastName: true
@@ -61,27 +84,48 @@ export async function GET(request: NextRequest) {
       approved: plans.filter(p => p.workflowStatus === 'approved').length
     };
 
+    // Helper function to determine next action based on workflow status
+    const getNextAction = (workflowStatus: string | null) => {
+      switch (workflowStatus) {
+        case 'draft':
+          return 'Submit for Review';
+        case 'submitted':
+        case 'supervisor_review':
+          return 'Supervisor Review Pending';
+        case 'supervisor_approved':
+        case 'reviewer_assessment':
+          return 'Final Review Pending';
+        case 'approved':
+          return 'Approved';
+        case 'revision_requested':
+          return 'Revisions Required';
+        default:
+          return 'Pending';
+      }
+    };
+
     // Transform plans for frontend
     const transformedPlans = plans.map(plan => ({
       id: plan.id,
-      employee: {
-        id: plan.employees?.employeeId || '',
-        name: `${plan.employees?.firstName || ''} ${plan.employees?.lastName || ''}`.trim(),
-        email: plan.employees?.email || '',
-        position: plan.employees?.position || '',
-        department: plan.employees?.departments?.name || ''
-      },
-      supervisor: plan.employees?.employees ? {
-        name: `${plan.employees.employees.firstName} ${plan.employees.employees.lastName}`.trim()
-      } : null,
+      employeeId: plan.employees?.id || '',
+      employeeName: `${plan.employees?.firstName || ''} ${plan.employees?.lastName || ''}`.trim(),
+      email: plan.employees?.email || '',
+      position: plan.employees?.position || '',
+      department: plan.employees?.departments?.name || '',
+      supervisor: plan.employees?.employees ? `${plan.employees.employees.firstName} ${plan.employees.employees.lastName}`.trim() : 'Not assigned',
+      reviewer: plan.employees?.reviewer ? `${plan.employees.reviewer.firstName} ${plan.employees.reviewer.lastName}`.trim() : 'Not assigned',
       planYear: plan.planYear,
       planTitle: plan.planTitle,
+      planPeriod: plan.planPeriod,
       status: plan.status,
       workflowStatus: plan.workflowStatus,
+      nextAction: getNextAction(plan.workflowStatus),
+      canUserAct: false, // To be determined by frontend based on user role
       startDate: plan.startDate?.toISOString(),
       endDate: plan.endDate?.toISOString(),
       createdAt: plan.createdAt?.toISOString(),
       updatedAt: plan.updatedAt?.toISOString(),
+      lastUpdated: plan.updatedAt?.toISOString(),
       responsibilities: plan.performance_responsibilities || []
     }));
 
