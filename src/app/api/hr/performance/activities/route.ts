@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
     if (performancePlanId) {
       // Find activities for a specific performance plan via responsibilities
-      whereClause.responsibility = {
+      whereClause.performance_responsibilities = {
         planId: performancePlanId
       };
       
@@ -63,8 +63,8 @@ export async function GET(request: Request) {
     } else {
       // If no specific plan, show activities for plans they have access to
       if (!canViewAllPlans) {
-        whereClause.responsibility = {
-          performancePlan: {
+        whereClause.performance_responsibilities = {
+          performance_plans: {
             OR: [
               { employeeId: employee.id },
               { supervisorId: employee.id }
