@@ -58,13 +58,13 @@ function CreatePerformancePlanPageContent() {
       id: 'supervisor',
       name: 'Supervisor Review',
       description: 'Supervisor comments and approval',
-      enabled: workflowStatus !== 'draft'
+      enabled: true // Always enabled so employees can view
     },
     {
       id: 'reviewer',
       name: 'Final Review',
       description: 'Final reviewer assessment',
-      enabled: workflowStatus === 'reviewer_assessment' || workflowStatus === 'completed'
+      enabled: true // Always enabled so employees can view
     }
   ]
 
@@ -230,22 +230,22 @@ function CreatePerformancePlanPageContent() {
       } catch (error) {
         console.error('Error fetching employee details:', error)
         // Fallback to basic employee data
-        setFormData(prev => ({
-          ...prev,
-          employee: {
-            id: employee.employeeId || employee.id,
-            name: employee.name,
-            email: employee.email || '',
-            position: employee.position || '',
-            department: employee.department?.name || employee.department || '',
-            manager: employee.supervisor?.name || employee.manager || '',
-            planPeriod: {
-              startDate: new Date().toISOString().split('T')[0],
-              endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-            }
-          },
-          supervisor: employee.supervisor?.id || ''
-        }))
+      setFormData(prev => ({
+        ...prev,
+        employee: {
+          id: employee.employeeId || employee.id,
+          name: employee.name,
+          email: employee.email || '',
+          position: employee.position || '',
+          department: employee.department?.name || employee.department || '',
+          manager: employee.supervisor?.name || employee.manager || '',
+          planPeriod: {
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          }
+        },
+        supervisor: employee.supervisor?.id || ''
+      }))
       }
     }
   }
@@ -749,7 +749,7 @@ function CreatePerformancePlanPageContent() {
                     weight: 0,
                     targetDate: "",
                     status: "not-started",
-                    progress: 0,
+                  progress: 0,
                     successIndicators: [
                       {
                         id: '1',
@@ -758,7 +758,7 @@ function CreatePerformancePlanPageContent() {
                         measurement: ''
                       }
                     ],
-                    comments: ""
+                  comments: ""
                   })}
                   className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:from-orange-600 hover:to-red-600 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
                 >
@@ -869,8 +869,8 @@ function CreatePerformancePlanPageContent() {
                       <label className="block text-sm font-semibold text-gray-800 flex items-center">
                         <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-teal-500 rounded-full mr-2"></div>
                         Success Indicators for this Responsibility
-                      </label>
-                      <button
+                    </label>
+              <button
                         onClick={() => {
                           const updatedResponsibilities = [...formData.keyResponsibilities]
                           updatedResponsibilities[index].successIndicators.push({
@@ -882,34 +882,34 @@ function CreatePerformancePlanPageContent() {
                           setFormData(prev => ({ ...prev, keyResponsibilities: updatedResponsibilities }))
                         }}
                         className="inline-flex items-center px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm font-semibold"
-                      >
-                        <PlusIcon className="h-4 w-4 mr-1" />
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
                         Add Indicator
-                      </button>
-                    </div>
-                    
+              </button>
+            </div>
+
                     {responsibility.successIndicators.map((indicator: any, indicatorIndex: number) => (
                       <div key={indicatorIndex} className="bg-green-50 border border-green-200 rounded-lg p-4 mb-3">
                         <div className="flex justify-between items-start mb-3">
                           <span className="text-sm font-semibold text-green-800">Indicator {indicatorIndex + 1}</span>
                           {responsibility.successIndicators.length > 1 && (
-                            <button
+                    <button
                               onClick={() => {
                                 const updatedResponsibilities = [...formData.keyResponsibilities]
                                 updatedResponsibilities[index].successIndicators.splice(indicatorIndex, 1)
                                 setFormData(prev => ({ ...prev, keyResponsibilities: updatedResponsibilities }))
                               }}
                               className="text-red-500 hover:text-red-700"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
+                  <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">Indicator Name</label>
-                            <input
-                              type="text"
+                    <input
+                      type="text"
                               value={indicator.indicator}
                               onChange={(e) => {
                                 const updatedResponsibilities = [...formData.keyResponsibilities]
@@ -918,12 +918,12 @@ function CreatePerformancePlanPageContent() {
                               }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                               placeholder="e.g., Customer Satisfaction"
-                            />
-                          </div>
-                          <div>
+                    />
+                  </div>
+                  <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">Target Value</label>
-                            <input
-                              type="text"
+                    <input
+                      type="text"
                               value={indicator.target}
                               onChange={(e) => {
                                 const updatedResponsibilities = [...formData.keyResponsibilities]
@@ -932,8 +932,8 @@ function CreatePerformancePlanPageContent() {
                               }}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                               placeholder="e.g., 95% or 50 units"
-                            />
-                          </div>
+                    />
+                  </div>
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">Measurement Method</label>
                             <input
@@ -951,21 +951,21 @@ function CreatePerformancePlanPageContent() {
                         </div>
                       </div>
                     ))}
-                  </div>
+                </div>
 
-                  <div>
+                <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                       <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full mr-2"></div>
                       Additional Comments
-                    </label>
-                    <textarea
+                  </label>
+                  <textarea
                       value={responsibility.comments}
                       onChange={(e) => handleArrayChange("keyResponsibilities", index, "comments", e.target.value)}
-                      rows={2}
+                    rows={2}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm resize-none"
                       placeholder="Any additional comments or notes..."
-                    />
-                  </div>
+                  />
+                </div>
 
                   <div className="flex items-center space-x-4 pt-4 border-t border-gray-200">
                     <span className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-sm bg-purple-100 text-purple-800 border-purple-300`}>
@@ -991,7 +991,7 @@ function CreatePerformancePlanPageContent() {
                 <h3 className="text-2xl font-bold text-green-900">Success Indicators Summary</h3>
               </div>
               <p className="text-green-800 text-lg leading-relaxed">Review all success indicators defined for your key responsibilities.</p>
-            </div>
+                  </div>
 
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">All Success Indicators by Responsibility</h3>
@@ -1013,21 +1013,21 @@ function CreatePerformancePlanPageContent() {
                       </p>
                     )}
                   </div>
-                  
+
                   {responsibility.successIndicators && responsibility.successIndicators.length > 0 ? (
                     <div className="space-y-3">
                       <h5 className="text-sm font-semibold text-green-800 mb-3">Success Indicators:</h5>
                       {responsibility.successIndicators.map((indicator: any, indIndex: number) => (
                         <div key={indIndex} className="bg-green-50 border border-green-200 rounded-lg p-4">
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
+                  <div>
                               <p className="text-xs font-semibold text-gray-600 mb-1">Indicator</p>
                               <p className="text-sm text-gray-900">{indicator.indicator || 'Not specified'}</p>
-                            </div>
+                  </div>
                             <div>
                               <p className="text-xs font-semibold text-gray-600 mb-1">Target</p>
                               <p className="text-sm text-gray-900">{indicator.target || 'Not specified'}</p>
-                            </div>
+                </div>
                             <div>
                               <p className="text-xs font-semibold text-gray-600 mb-1">Measurement Method</p>
                               <p className="text-sm text-gray-900">{indicator.measurement || 'Not specified'}</p>
@@ -1039,8 +1039,8 @@ function CreatePerformancePlanPageContent() {
                   ) : (
                     <p className="text-sm text-gray-500 italic">No success indicators defined for this responsibility.</p>
                   )}
-                </div>
-              ))}
+              </div>
+            ))}
 
               {formData.keyResponsibilities.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
@@ -1594,10 +1594,10 @@ function CreatePerformancePlanPageContent() {
                             <span className="text-gray-900">{indicator.indicator || 'Unnamed indicator'}</span>
                             <span className="px-2 py-1 rounded bg-green-100 text-green-800 font-medium">
                               Target: {indicator.target || 'N/A'}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                      </span>
+                  </div>
+                ))}
+              </div>
                     ) : (
                       <p className="text-xs text-gray-500 italic pl-3">No indicators defined</p>
                     )}
@@ -1733,7 +1733,7 @@ function CreatePerformancePlanPageContent() {
   return (
     <ModulePage metadata={metadata}>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-orange-50">
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="max-w-7xl mx-auto px-6 py-8">
           
           {/* Header Section with SAYWHAT Branding */}
           <div className="text-center mb-12">
@@ -1897,6 +1897,24 @@ function CreatePerformancePlanPageContent() {
 
                 {/* Supervisor Content */}
                 <div className="px-8 py-8 space-y-6">
+                  {/* Employee View Notice */}
+                  {isForCurrentUser && (
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-blue-700 font-medium">
+                            You are viewing the supervisor review section. Supervisor comments will appear here once submitted.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Employee Plan Summary */}
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee's Performance Plan Summary</h3>
@@ -1929,12 +1947,14 @@ function CreatePerformancePlanPageContent() {
                       value={supervisorComments}
                       onChange={(e) => setSupervisorComments(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-                      placeholder="Provide feedback on the employee's performance plan objectives, development activities, and overall approach..."
+                      readOnly={isForCurrentUser}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 ${isForCurrentUser ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      placeholder={isForCurrentUser ? "Supervisor comments will appear here..." : "Provide feedback on the employee's performance plan objectives, development activities, and overall approach..."}
                     />
                   </div>
 
                   {/* Supervisor Approval */}
+                  {!isForCurrentUser && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Supervisor Authorization
@@ -1975,9 +1995,25 @@ function CreatePerformancePlanPageContent() {
                       </label>
                     </div>
                   </div>
+                  )}
+
+                  {/* Approval Status Display for Employee */}
+                  {isForCurrentUser && supervisorApproval !== 'pending' && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Supervisor Decision
+                      </label>
+                      <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+                        supervisorApproval === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {supervisorApproval === 'approved' ? '✓ Plan Approved' : '✗ Plan Rejected - Requires Revision'}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Supervisor Footer */}
+                {!isForCurrentUser && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-t border-gray-200">
                   <div className="flex justify-end">
                     <button
@@ -1994,6 +2030,7 @@ function CreatePerformancePlanPageContent() {
                     </button>
                   </div>
                 </div>
+                )}
               </div>
             )}
 
@@ -2015,6 +2052,24 @@ function CreatePerformancePlanPageContent() {
 
                 {/* Reviewer Content */}
                 <div className="px-8 py-8 space-y-6">
+                  {/* Employee View Notice */}
+                  {isForCurrentUser && (
+                    <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-green-700 font-medium">
+                            You are viewing the final review section. Reviewer comments and final approval will appear here once submitted.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Workflow Summary */}
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Plan Workflow Summary</h3>
@@ -2045,13 +2100,15 @@ function CreatePerformancePlanPageContent() {
                       value={reviewerComments}
                       onChange={(e) => setReviewerComments(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-                      placeholder="Provide final assessment and overall feedback on the performance plan..."
+                      readOnly={isForCurrentUser}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 ${isForCurrentUser ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                      placeholder={isForCurrentUser ? "Final reviewer comments will appear here..." : "Provide final assessment and overall feedback on the performance plan..."}
                     />
                   </div>
 
                   {/* Reviewer Approval */}
-                  <div>
+                  {!isForCurrentUser && (
+                    <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Final Authorization
                     </label>
@@ -2090,13 +2147,29 @@ function CreatePerformancePlanPageContent() {
                         <span className="ml-2 text-sm text-gray-900">Under Review</span>
                       </label>
                     </div>
-                  </div>
+                    </div>
+                  )}
+
+                  {/* Approval Status Display for Employee */}
+                  {isForCurrentUser && reviewerApproval !== 'pending' && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Final Decision
+                      </label>
+                      <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+                        reviewerApproval === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {reviewerApproval === 'approved' ? '✓ Performance Plan Approved - Ready to Implement' : '✗ Plan Requires Further Revision'}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Reviewer Footer */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-8 py-6 border-t border-gray-200">
-                  <div className="flex justify-end">
-                    <button
+                {!isForCurrentUser && (
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-8 py-6 border-t border-gray-200">
+                    <div className="flex justify-end">
+                      <button
                       onClick={() => {
                         if (reviewerApproval === 'approved') {
                           setWorkflowStatus('completed')
@@ -2108,8 +2181,9 @@ function CreatePerformancePlanPageContent() {
                     >
                       <span>Finalize Performance Plan</span>
                     </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
