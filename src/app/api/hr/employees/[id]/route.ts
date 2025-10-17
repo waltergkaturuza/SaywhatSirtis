@@ -266,13 +266,22 @@ export async function PUT(
     console.log('Form data keys:', Object.keys(formData))
     console.log('Sample form data:', JSON.stringify(formData, null, 2))
 
-    // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager')
+    // Check permissions - Allow HR role and users with HR permissions
+    const userRoles = session.user?.roles || []
+    const hasPermission = 
+      userRoles.includes('HR') ||
+      userRoles.includes('SUPERUSER') ||
+      userRoles.includes('SYSTEM_ADMINISTRATOR') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('hr_manager') ||
+      userRoles.includes('hr_staff') ||
+      session.user?.permissions?.includes('hr.edit') ||
+      session.user?.permissions?.includes('hr.full_access')
 
     if (!hasPermission) {
+      console.log('❌ UPDATE Permission denied for user:', session.user?.email)
+      console.log('   Roles:', userRoles)
+      console.log('   Permissions:', session.user?.permissions)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -631,13 +640,22 @@ export async function PATCH(
     const { id: employeeId } = await params
     const formData = await request.json()
 
-    // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager')
+    // Check permissions - Allow HR role and users with HR permissions
+    const userRoles = session.user?.roles || []
+    const hasPermission = 
+      userRoles.includes('HR') ||
+      userRoles.includes('SUPERUSER') ||
+      userRoles.includes('SYSTEM_ADMINISTRATOR') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('hr_manager') ||
+      userRoles.includes('hr_staff') ||
+      session.user?.permissions?.includes('hr.edit') ||
+      session.user?.permissions?.includes('hr.full_access')
 
     if (!hasPermission) {
+      console.log('❌ PATCH Permission denied for user:', session.user?.email)
+      console.log('   Roles:', userRoles)
+      console.log('   Permissions:', session.user?.permissions)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

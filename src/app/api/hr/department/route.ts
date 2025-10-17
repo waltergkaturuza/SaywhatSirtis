@@ -4,6 +4,25 @@ import { authOptions } from '@/lib/auth'
 import { executeQuery } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 
+// Helper function to check HR permissions
+function hasHRPermission(session: any, requiredPermission?: string): boolean {
+  const userRoles = session.user?.roles || []
+  const baseRoles = [
+    'HR',
+    'SUPERUSER',
+    'SYSTEM_ADMINISTRATOR',
+    'admin',
+    'hr_manager',
+    'hr_staff'
+  ]
+  
+  const hasRole = baseRoles.some(role => userRoles.includes(role))
+  const hasFullAccess = session.user?.permissions?.includes('hr.full_access')
+  const hasSpecificPermission = requiredPermission ? session.user?.permissions?.includes(requiredPermission) : false
+  
+  return hasRole || hasFullAccess || hasSpecificPermission
+}
+
 // GET /api/hr/department - Get all departments
 export async function GET(request: NextRequest) {
   try {
@@ -14,12 +33,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.read') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager');
-
-    if (!hasPermission) {
+    if (!hasHRPermission(session, 'hr.read')) {
+      console.log('❌ GET /api/hr/department - Permission denied for:', session.user?.email)
+      console.log('   Roles:', session.user?.roles)
+      console.log('   Permissions:', session.user?.permissions)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -99,12 +116,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.create') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager');
-
-    if (!hasPermission) {
+    if (!hasHRPermission(session, 'hr.create')) {
+      console.log('❌ POST /api/hr/department - Permission denied for:', session.user?.email)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -271,12 +284,8 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager');
-
-    if (!hasPermission) {
+    if (!hasHRPermission(session, 'hr.edit')) {
+      console.log('❌ PUT /api/hr/department - Permission denied for:', session.user?.email)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -412,11 +421,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check permissions
-    const hasPermission = session.user?.permissions?.includes('hr.delete') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin');
-
-    if (!hasPermission) {
+    if (!hasHRPermission(session, 'hr.delete')) {
+      console.log('❌ DELETE /api/hr/department - Permission denied for:', session.user?.email)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 

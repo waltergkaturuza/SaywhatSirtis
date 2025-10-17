@@ -11,13 +11,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permissions using session data instead of database lookup
-    const hasPermission = session.user?.permissions?.includes('hr.view') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager')
+    // Check permissions - Allow HR role and users with HR permissions
+    const userRoles = session.user?.roles || []
+    const hasPermission = 
+      userRoles.includes('HR') ||
+      userRoles.includes('SUPERUSER') ||
+      userRoles.includes('SYSTEM_ADMINISTRATOR') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('hr_manager') ||
+      userRoles.includes('hr_staff') ||
+      session.user?.permissions?.includes('hr.view') ||
+      session.user?.permissions?.includes('hr.full_access')
 
     if (!hasPermission) {
+      console.log('❌ Dashboard Activities - Permission denied for user:', session.user?.email)
+      console.log('   Roles:', userRoles)
+      console.log('   Permissions:', session.user?.permissions)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
