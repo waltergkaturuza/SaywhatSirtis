@@ -29,8 +29,13 @@ function CreateAppraisalContent() {
   // Check if this is self-assessment mode
   const isSelfAssessment = searchParams?.get('mode') === 'self'
   
+  // Check if we're loading an existing appraisal
+  const appraisalId = searchParams?.get('appraisalId')
+  const isEditMode = !!appraisalId
+  
   const [currentStep, setCurrentStep] = useState(1)
   const [activeTab, setActiveTab] = useState('my-appraisal')
+  const [isLoadingAppraisal, setIsLoadingAppraisal] = useState(false)
   const [mounted, setMounted] = useState(false)
   
   // Workflow state
@@ -219,6 +224,38 @@ function CreateAppraisalContent() {
       ...updates
     }))
   }
+
+  // Load existing appraisal if appraisalId is provided
+  useEffect(() => {
+    const loadExistingAppraisal = async () => {
+      if (!appraisalId) return
+      
+      setIsLoadingAppraisal(true)
+      try {
+        console.log('🔍 Loading appraisal:', appraisalId)
+        const response = await fetch(`/api/hr/performance/appraisals/${appraisalId}`)
+        
+        if (response.ok) {
+          const appraisalData = await response.json()
+          console.log('✅ Appraisal loaded:', appraisalData)
+          
+          // TODO: Transform and populate form data from appraisalData
+          // For now, just log it
+          alert('Appraisal loading functionality is being implemented. Your appraisal data is available in the console.')
+        } else {
+          console.error('❌ Failed to load appraisal')
+          alert('Failed to load appraisal. It may have been deleted.')
+        }
+      } catch (error) {
+        console.error('❌ Error loading appraisal:', error)
+        alert('Error loading appraisal. Please try again.')
+      } finally {
+        setIsLoadingAppraisal(false)
+      }
+    }
+    
+    loadExistingAppraisal()
+  }, [appraisalId])
 
   // Load current user data on mount
   useEffect(() => {
