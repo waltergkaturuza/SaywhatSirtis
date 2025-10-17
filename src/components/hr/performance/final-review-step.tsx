@@ -44,14 +44,51 @@ export function FinalReviewStep({ formData, updateFormData }: FinalReviewStepPro
     </div>
   )
 
-  const calculateOverallRating = () => {
-    if (formData.performance.categories.length === 0) return 0
+  // Calculate actual points based on key responsibilities ratings
+  const calculateActualPoints = () => {
+    if (!formData.achievements.keyResponsibilities || formData.achievements.keyResponsibilities.length === 0) return 0
     
-    const totalWeightedScore = formData.performance.categories.reduce((sum, cat) => {
-      return sum + (cat.rating * cat.weight / 100)
+    return formData.achievements.keyResponsibilities.reduce((sum, resp) => {
+      // Get the rating points based on achievement status
+      const ratingPoints = resp.achievementStatus === 'achieved' ? 50 : 
+                          resp.achievementStatus === 'partially-achieved' ? 30 : 10
+      return sum + ratingPoints
     }, 0)
+  }
+
+  // Calculate maximum possible points
+  const calculateMaxPoints = () => {
+    if (!formData.achievements.keyResponsibilities || formData.achievements.keyResponsibilities.length === 0) return 0
     
-    return Math.round(totalWeightedScore * 10) / 10
+    // Maximum points = number of responsibilities × 50 (A1 rating)
+    return formData.achievements.keyResponsibilities.length * 50
+  }
+
+  // Calculate percentage using SAYWHAT formula
+  const calculatePerformancePercentage = () => {
+    const actualPoints = calculateActualPoints()
+    const maxPoints = calculateMaxPoints()
+    
+    if (maxPoints === 0) return 0
+    return Math.round((actualPoints / maxPoints) * 100)
+  }
+
+  // Get rating code based on percentage
+  const getRatingCode = () => {
+    const percentage = calculatePerformancePercentage()
+    if (percentage >= 90) return 'A1'
+    if (percentage >= 75) return 'A2'
+    if (percentage >= 60) return 'B1'
+    if (percentage >= 50) return 'B2'
+    if (percentage >= 40) return 'C1'
+    return 'C2'
+  }
+
+  // Get rating label from code
+  const getRatingLabel = () => {
+    const code = getRatingCode()
+    const rating = ratingScale.find(r => r.code === code)
+    return rating ? rating.label : 'Not rated'
   }
 
   return (
@@ -67,29 +104,59 @@ export function FinalReviewStep({ formData, updateFormData }: FinalReviewStepPro
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
+          {/* Calculation Formula Display */}
+          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-xl border-2 border-orange-200 shadow-md">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              SAYWHAT Rating Calculation Formula
+            </h3>
+            <div className="bg-white p-4 rounded-lg border border-orange-200 font-mono text-center text-lg">
+              <div className="text-gray-700 mb-2">
+                (Sum of Actual Points) ÷ (Sum of Best Possible Points) × 100 = <span className="font-bold text-orange-600">Percentage</span>
+              </div>
+              <div className="text-gray-600 text-sm mt-3">
+                ({calculateActualPoints()} ÷ {calculateMaxPoints()}) × 100 = <span className="font-bold text-orange-600">{calculatePerformancePercentage()}%</span>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border-2 border-blue-200 shadow-md">
-              <Label className="text-sm font-bold text-gray-700 mb-3 block">Calculated Overall Rating</Label>
-              <div className="flex items-center space-x-4 mt-3">
-                <div className="text-5xl font-bold text-blue-600">
-                  {calculateOverallRating()}/5
+              <Label className="text-sm font-bold text-gray-700 mb-3 block">Calculated Performance Rating</Label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-600">Percentage:</span>
+                  <span className="text-3xl font-bold text-blue-600">{calculatePerformancePercentage()}%</span>
                 </div>
-                <Badge className="bg-blue-500 text-white font-bold px-4 py-2 text-base shadow-md">
-                  {ratingScale.find(scale => scale.value === Math.round(calculateOverallRating()))?.label || 'Not rated'}
-                </Badge>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-600">Rating Code:</span>
+                  <Badge className="bg-blue-500 text-white font-bold px-4 py-2 text-lg shadow-md">
+                    {getRatingCode()}
+                  </Badge>
+                </div>
+                <div className="text-sm text-gray-700 mt-2 p-3 bg-white rounded-lg border border-blue-200">
+                  {getRatingLabel()}
+                </div>
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border-2 border-yellow-200 shadow-md">
-              <Label className="text-sm font-bold text-gray-700 mb-3 block">Final Rating Override</Label>
-              <div className="mt-3">
-                <StarRating 
-                  rating={formData.ratings.finalRating}
-                  onRatingChange={(rating) => handleRatingChange('finalRating', rating)}
-                />
-                <div className="text-sm font-semibold text-gray-700 mt-3">
-                  {ratingScale.find(scale => scale.value === formData.ratings.finalRating)?.label || 'Not rated'}
-                </div>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border-2 border-green-200 shadow-md">
+              <Label className="text-sm font-bold text-gray-700 mb-3 block">Rating Scale Reference</Label>
+              <div className="space-y-2 text-sm">
+                {ratingScale.map((scale) => (
+                  <div key={scale.code} className="flex justify-between items-center p-2 bg-white rounded border border-gray-200">
+                    <div>
+                      <span className="font-bold text-gray-900">{scale.code}</span>
+                      <span className="text-gray-600 ml-2">{scale.label}</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Badge className="bg-gray-100 text-gray-700 font-semibold">{scale.points} pts</Badge>
+                      <span className="text-xs text-gray-500">{scale.range}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -98,7 +165,7 @@ export function FinalReviewStep({ formData, updateFormData }: FinalReviewStepPro
             <svg className="w-5 h-5 inline mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            The calculated rating is based on weighted category scores. You can override this with the final rating if needed.
+            <strong>Note:</strong> The rating is automatically calculated based on Key Responsibilities achievement status. Each responsibility rated as "Achieved" gets 50 points (A1), "Partially Achieved" gets 30 points (B1), and "Not Achieved" gets 10 points (C2). The final percentage determines your performance rating code.
           </div>
         </CardContent>
       </Card>
@@ -181,9 +248,13 @@ export function FinalReviewStep({ formData, updateFormData }: FinalReviewStepPro
                   <strong className="text-gray-700">Department:</strong> 
                   <span className="text-gray-900 font-medium">{formData.employee.department}</span>
                 </div>
-                <div className="flex justify-between">
-                  <strong className="text-gray-700">Manager:</strong> 
+                <div className="flex justify-between border-b border-gray-200 pb-2">
+                  <strong className="text-gray-700">Supervisor:</strong> 
                   <span className="text-gray-900 font-medium">{formData.employee.manager}</span>
+                </div>
+                <div className="flex justify-between">
+                  <strong className="text-gray-700">Reviewer:</strong> 
+                  <span className="text-gray-900 font-medium">{formData.employee.reviewer || 'Not assigned'}</span>
                 </div>
               </div>
             </div>

@@ -74,8 +74,22 @@ export interface AppraisalFormData {
   }
   ratings: {
     finalRating: number
+    actualPoints: number
+    maxPoints: number
+    percentage: number
+    ratingCode: string
     recommendation: 'promotion' | 'lateral-move' | 'improvement-plan' | 'maintain-current'
     salaryRecommendation: string
+  }
+  signatures: {
+    supervisorSignature: string
+    supervisorSignedAt?: string
+    supervisorMeetingDate?: string
+    supervisorMeetingConfirmed: boolean
+    reviewerSignature: string
+    reviewerSignedAt?: string
+    reviewerMeetingDate?: string
+    reviewerMeetingConfirmed: boolean
   }
 }
 
@@ -122,8 +136,22 @@ export const defaultFormData: AppraisalFormData = {
   },
   ratings: {
     finalRating: 0,
+    actualPoints: 0,
+    maxPoints: 0,
+    percentage: 0,
+    ratingCode: '',
     recommendation: 'maintain-current',
     salaryRecommendation: ''
+  },
+  signatures: {
+    supervisorSignature: '',
+    supervisorSignedAt: undefined,
+    supervisorMeetingDate: undefined,
+    supervisorMeetingConfirmed: false,
+    reviewerSignature: '',
+    reviewerSignedAt: undefined,
+    reviewerMeetingDate: undefined,
+    reviewerMeetingConfirmed: false
   }
 }
 
@@ -169,13 +197,36 @@ export const performanceCategories = [
   { id: 'initiative', name: 'Initiative', weight: 15 }
 ]
 
+// SAYWHAT Performance Appraisal Rating Scale
 export const ratingScale = [
-  { value: 1, label: 'Below Expectations', description: 'Performance consistently below required standards' },
-  { value: 2, label: 'Partially Meets Expectations', description: 'Performance sometimes meets required standards' },
-  { value: 3, label: 'Meets Expectations', description: 'Performance consistently meets required standards' },
-  { value: 4, label: 'Exceeds Expectations', description: 'Performance consistently exceeds required standards' },
-  { value: 5, label: 'Outstanding', description: 'Performance significantly exceeds all expectations' }
+  { value: 50, code: 'A1', label: 'Outstanding performance, High expertise', description: 'Outstanding performance. High levels of expertise', points: 50, range: '90 - 100%' },
+  { value: 40, code: 'A2', label: 'Consistently exceeds requirements', description: 'Consistently exceeds requirements', points: 40, range: '75 - 89%' },
+  { value: 30, code: 'B1', label: 'Meets and occasionally exceeds requirements', description: 'Meets requirements. Occasionally exceeds them', points: 30, range: '60 - 74%' },
+  { value: 25, code: 'B2', label: 'Meets requirements', description: 'Meets requirements', points: 25, range: '50 - 59%' },
+  { value: 15, code: 'C1', label: 'Partially meets requirements; needs improvement', description: 'Partially meets requirements. Improvement required', points: 15, range: '40 - 49%' },
+  { value: 10, code: 'C2', label: 'Unacceptable; below standard', description: 'Unacceptable. Well below standard required', points: 10, range: '39% and below' }
 ]
+
+// Helper function to get rating label from points
+export const getRatingFromPoints = (points: number) => {
+  return ratingScale.find(scale => scale.value === points) || ratingScale[ratingScale.length - 1]
+}
+
+// Helper function to calculate percentage
+export const calculatePerformancePercentage = (actualPoints: number, maxPoints: number): number => {
+  if (maxPoints === 0) return 0
+  return Math.round((actualPoints / maxPoints) * 100)
+}
+
+// Helper function to get rating code from percentage
+export const getRatingCodeFromPercentage = (percentage: number): string => {
+  if (percentage >= 90) return 'A1'
+  if (percentage >= 75) return 'A2'
+  if (percentage >= 60) return 'B1'
+  if (percentage >= 50) return 'B2'
+  if (percentage >= 40) return 'C1'
+  return 'C2'
+}
 
 export const recommendationTypes = [
   { value: 'promotion', label: 'Promotion', description: 'Ready for advancement' },
