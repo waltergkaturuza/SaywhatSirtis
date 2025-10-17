@@ -55,10 +55,26 @@ export async function POST(
     // Verify permissions
     const isSupervisor = appraisal.supervisorId === employee.id
     const isReviewer = appraisal.reviewerId === employee.id
-    const canAct = (role === 'supervisor' && isSupervisor) || (role === 'reviewer' && isReviewer)
+    const isHR = session.user.roles?.some(r => ['HR', 'admin'].includes(r))
+    const canAct = (role === 'supervisor' && isSupervisor) || (role === 'reviewer' && isReviewer) || isHR
+
+    console.log('Workflow permission check:', {
+      employeeId: employee.id,
+      appraisalSupervisorId: appraisal.supervisorId,
+      appraisalReviewerId: appraisal.reviewerId,
+      isSupervisor,
+      isReviewer,
+      isHR,
+      requestedRole: role,
+      canAct,
+      userRoles: session.user.roles
+    })
 
     if (!canAct) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+      return NextResponse.json({ 
+        error: 'Insufficient permissions',
+        details: `You are not authorized to act as ${role} for this appraisal`
+      }, { status: 403 })
     }
 
     // Get current comments
