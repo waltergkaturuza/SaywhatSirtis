@@ -505,6 +505,59 @@ export async function PUT(
         // Don't fail the entire operation if user sync fails
       }
     }
+
+    // Handle job description update/create
+    if (formData.jobDescription) {
+      const { jobTitle, location, jobSummary, keyResponsibilities, essentialExperience, essentialSkills, acknowledgment } = formData.jobDescription
+      
+      try {
+        // Check if employee already has a job description
+        const existingJobDesc = await prisma.job_descriptions.findFirst({
+          where: { employeeId: requestId }
+        })
+
+        if (existingJobDesc) {
+          // Update existing job description
+          await prisma.job_descriptions.update({
+            where: { id: existingJobDesc.id },
+            data: {
+              jobTitle,
+              location,
+              jobSummary,
+              keyResponsibilities: keyResponsibilities || [],
+              essentialExperience,
+              essentialSkills,
+              acknowledgment: acknowledgment || false,
+              version: existingJobDesc.version + 1,
+              updatedAt: new Date()
+            }
+          })
+          console.log(`✅ Updated job description for employee ${requestId}`)
+        } else {
+          // Create new job description
+          await prisma.job_descriptions.create({
+            data: {
+              id: require('crypto').randomUUID(),
+              employeeId: requestId,
+              jobTitle,
+              location,
+              jobSummary,
+              keyResponsibilities: keyResponsibilities || [],
+              essentialExperience,
+              essentialSkills,
+              acknowledgment: acknowledgment || false,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+          })
+          console.log(`✅ Created job description for employee ${requestId}`)
+        }
+      } catch (jobDescError) {
+        console.error(`⚠️ Failed to update job description for employee ${requestId}:`, jobDescError)
+        // Don't fail the entire operation
+      }
+    }
+
     // Transform updated employee data for frontend
     const transformedEmployee = {
       id: updatedEmployee.id,
