@@ -14,6 +14,10 @@ export async function GET(
     }
 
     const { id } = await params;
+    console.log('🔍 GET /api/hr/performance/appraisals/[id]');
+    console.log('   Appraisal ID:', id);
+    console.log('   User:', session.user.email);
+    console.log('   Roles:', session.user.roles);
 
     // Fetch the appraisal with all related data
     const appraisal = await prisma.performance_appraisals.findUnique({
@@ -56,8 +60,13 @@ export async function GET(
     });
 
     if (!appraisal) {
+      console.log('❌ Appraisal not found in database');
       return NextResponse.json({ error: 'Appraisal not found' }, { status: 404 });
     }
+
+    console.log('✅ Appraisal found');
+    console.log('   Employee:', appraisal.employees?.firstName, appraisal.employees?.lastName);
+    console.log('   Employee Email:', appraisal.employees?.email);
 
     // Check if user has permission to view this appraisal
     const userEmail = session.user.email;
@@ -67,9 +76,15 @@ export async function GET(
       ['HR', 'SUPERUSER', 'SYSTEM_ADMINISTRATOR'].includes(role)
     );
 
+    console.log('   Is Employee?', isEmployee);
+    console.log('   Is HR?', isHR);
+
     if (!isEmployee && !isHR) {
+      console.log('❌ Permission denied');
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
+
+    console.log('✅ Permission granted, returning appraisal data');
 
     // Transform the data for the frontend
     const transformedAppraisal = {
