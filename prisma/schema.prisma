@@ -989,6 +989,14 @@ model performance_plans {
   supervisorApprovedAt                        DateTime?
   supervisorComments                          String?
   comments                                    Json?
+  deliverables                                Json?
+  valueGoals                                  Json?
+  competencies                                Json?
+  developmentNeeds                            Json?
+  supervisorApproval                          String?                        @default("pending")
+  reviewerApproval                            String?                        @default("pending")
+  reviewStartDate                             DateTime?
+  reviewEndDate                               DateTime?
   performance_appraisals                      performance_appraisals[]
   performance_plan_comments                   performance_plan_comments[]
   employees                                   employees                      @relation(fields: [employeeId], references: [id], onDelete: Cascade)

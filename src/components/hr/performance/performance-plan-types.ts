@@ -116,6 +116,15 @@ export interface PerformancePlanFormData {
   employeeAgreement: boolean
   managerApproval: boolean
   hrApproval: boolean
+  // Additional JSON fields for storing plan data
+  deliverables: any[]
+  valueGoals: any[]
+  developmentNeeds: any[]
+  comments: {
+    employeeComments: string
+    supervisorComments: string
+    reviewerComments: string
+  }
   // Additional fields commonly used in forms
   behavioralExpectations: any[]
   coreValuesAcknowledgment: Record<number, boolean>
@@ -252,6 +261,14 @@ export const defaultPlanFormData: PerformancePlanFormData = {
   employeeAgreement: false,
   managerApproval: false,
   hrApproval: false,
+  deliverables: [],
+  valueGoals: [],
+  developmentNeeds: [],
+  comments: {
+    employeeComments: '',
+    supervisorComments: '',
+    reviewerComments: ''
+  },
   behavioralExpectations: [],
   coreValuesAcknowledgment: {},
   allCoreValuesAcknowledged: false,

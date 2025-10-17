@@ -193,12 +193,14 @@ export default function PerformancePage() {
           <Link href="/hr/performance/plans/create" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
             Create New Plan
           </Link>
+          {/* TODO: Implement these features
           <Link href="/hr/performance/plans/templates" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
             Plan Templates
           </Link>
           <Link href="/hr/performance/plans/bulk-approve" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
             Bulk Approve
           </Link>
+          */}
           <Link href="/hr/performance/appraisals" className="block w-full text-left p-2 text-sm text-orange-600 hover:bg-orange-50 rounded">
             View Appraisals
           </Link>

@@ -439,8 +439,9 @@ function PerformancePlansContent() {
           <Link href="/hr/performance/plans/create" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
             Create New Plan
           </Link>
-          {canViewAllPlans && (
+          {canViewAllPlans && false && (
             <>
+              {/* TODO: Implement these features */}
               <Link href="/hr/performance/plans/templates" className="block w-full text-left p-2 text-sm text-blue-600 hover:bg-blue-50 rounded">
                 Plan Templates
               </Link>

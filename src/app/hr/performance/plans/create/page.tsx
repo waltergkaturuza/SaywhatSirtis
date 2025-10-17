@@ -317,29 +317,68 @@ function CreatePerformancePlanPageContent() {
     const loadExistingPlan = async () => {
       if (!planId) return
       
+      console.log('Loading existing plan:', planId)
       setLoading(prev => ({ ...prev, plan: true }))
       try {
         const response = await fetch(`/api/hr/performance/plans/${planId}`)
-        if (response.ok) {
-          const planData = await response.json()
-          
-          // Populate form with existing plan data
-          setFormData({
-            ...planData,
-            id: planData.id
-          })
-          setWorkflowStatus(planData.workflowStatus || 'draft')
-          
-          // Load workflow history if it exists
-          if (planData.id) {
-            fetchWorkflowHistory(planData.id)
-          }
-        } else {
-          setError('Failed to load performance plan')
+        if (!response.ok) {
+          throw new Error(`Failed to load plan: ${response.status}`)
         }
+        
+        const planData = await response.json()
+        console.log('Loaded plan data:', planData)
+        
+        // Map API response to form data structure
+        setFormData(prev => ({
+          ...prev,
+          id: planData.id,
+          employee: {
+            ...prev.employee,
+            id: planData.employeeId || '',
+            name: planData.employeeName || '',
+            email: planData.employeeEmail || '',
+            position: planData.position || '',
+            department: planData.department || '',
+            planPeriod: {
+              startDate: planData.reviewPeriod?.startDate || '',
+              endDate: planData.reviewPeriod?.endDate || ''
+            }
+          },
+          planTitle: `Performance Plan - ${planData.employeeName}`,
+          status: planData.status || 'draft',
+          supervisor: planData.supervisorId || '',
+          reviewerId: planData.reviewerId || '',
+          planYear: new Date(planData.reviewPeriod?.startDate || Date.now()).getFullYear().toString(),
+          startDate: planData.reviewPeriod?.startDate || '',
+          endDate: planData.reviewPeriod?.endDate || '',
+          planPeriod: {
+            startDate: planData.reviewPeriod?.startDate || '',
+            endDate: planData.reviewPeriod?.endDate || ''
+          },
+          keyResponsibilities: planData.deliverables || prev.keyResponsibilities,
+          deliverables: planData.deliverables || [],
+          valueGoals: planData.valueGoals || [],
+          competencies: planData.competencies || prev.competencies,
+          developmentNeeds: planData.developmentNeeds || []
+        }))
+        
+        // Set workflow status
+        setWorkflowStatus(planData.status || 'draft')
+        
+        // Load comments history
+        if (planData.comments) {
+          setSupervisorCommentsHistory(planData.comments.supervisor || [])
+          setReviewerCommentsHistory(planData.comments.reviewer || [])
+        }
+        
+        // Set approval status
+        setSupervisorApproval(planData.supervisorApproval || 'pending')
+        setReviewerApproval(planData.reviewerApproval || 'pending')
+        
+        console.log('Form data populated successfully')
       } catch (err) {
         console.error('Error loading plan:', err)
-        setError('Error loading performance plan')
+        setError(err instanceof Error ? err.message : 'Error loading performance plan')
       } finally {
         setLoading(prev => ({ ...prev, plan: false }))
       }
@@ -351,6 +390,9 @@ function CreatePerformancePlanPageContent() {
   // Auto-populate current user's information when accessed from profile
   useEffect(() => {
     const autoFillCurrentUser = async () => {
+      // Don't auto-fill if we're loading an existing plan
+      if (planId) return
+      
       if (isForCurrentUser && session?.user?.email) {
         try {
           // Fetch current user's employee details
