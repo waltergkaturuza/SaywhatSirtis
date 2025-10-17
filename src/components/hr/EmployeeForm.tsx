@@ -816,6 +816,22 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             </Select>
           </div>
           <div>
+            <Label htmlFor="maritalStatus" className="text-saywhat-dark font-medium">Marital Status</Label>
+            <Select value={formData.maritalStatus} onValueChange={(value) => handleInputChange('maritalStatus', value)}>
+              <SelectTrigger className="border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-saywhat-orange">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Single">Single</SelectItem>
+                <SelectItem value="Married">Married</SelectItem>
+                <SelectItem value="Divorced">Divorced</SelectItem>
+                <SelectItem value="Widowed">Widowed</SelectItem>
+                <SelectItem value="Separated">Separated</SelectItem>
+                <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label htmlFor="nationality" className="text-saywhat-dark font-medium">Nationality</Label>
             <Input
               id="nationality"
@@ -1076,6 +1092,44 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               <SelectItem value="field">Field</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      </div>
+      
+      {/* Roles Section */}
+      <div className="mt-8 p-6 bg-gradient-to-r from-saywhat-orange/5 to-saywhat-green/5 rounded-xl border-2 border-saywhat-grey/20">
+        <h4 className="text-lg font-semibold text-saywhat-black mb-4 flex items-center">
+          <svg className="w-5 h-5 mr-2 text-saywhat-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          Performance Management Roles
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center space-x-3 p-4 bg-saywhat-white rounded-lg border border-saywhat-grey/20 hover:border-saywhat-orange/50 transition-all">
+            <input
+              type="checkbox"
+              id="isSupervisor"
+              checked={formData.isSupervisor}
+              onChange={(e) => handleInputChange('isSupervisor', e.target.checked)}
+              className="w-5 h-5 text-saywhat-orange border-saywhat-grey/30 rounded focus:ring-saywhat-orange"
+            />
+            <Label htmlFor="isSupervisor" className="text-saywhat-black font-medium cursor-pointer">
+              Is Supervisor
+              <span className="block text-sm text-saywhat-grey font-normal">Can supervise other employees</span>
+            </Label>
+          </div>
+          <div className="flex items-center space-x-3 p-4 bg-saywhat-white rounded-lg border border-saywhat-grey/20 hover:border-saywhat-green/50 transition-all">
+            <input
+              type="checkbox"
+              id="isReviewer"
+              checked={formData.isReviewer}
+              onChange={(e) => handleInputChange('isReviewer', e.target.checked)}
+              className="w-5 h-5 text-saywhat-green border-saywhat-grey/30 rounded focus:ring-saywhat-green"
+            />
+            <Label htmlFor="isReviewer" className="text-saywhat-black font-medium cursor-pointer">
+              Is Reviewer
+              <span className="block text-sm text-saywhat-grey font-normal">Can review performance appraisals</span>
+            </Label>
+          </div>
         </div>
       </div>
     </div>
