@@ -99,3 +99,99 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { employee, achievements, development, ratings, comments, recommendations, status, workflowStatus } = body;
+
+    // Get employee database ID from email
+    const employeeRecord = await prisma.employees.findUnique({
+      where: { email: employee.email }
+    });
+
+    if (!employeeRecord) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+
+    // Find or create performance plan for this employee
+    let performancePlan = await prisma.performance_plans.findFirst({
+      where: {
+        employeeId: employeeRecord.id,
+        planYear: new Date().getFullYear()
+      }
+    });
+
+    if (!performancePlan) {
+      // Create a default performance plan if none exists
+      const crypto = require('crypto');
+      performancePlan = await prisma.performance_plans.create({
+        data: {
+          id: crypto.randomUUID(),
+          employeeId: employeeRecord.id,
+          supervisorId: employeeRecord.supervisor_id || '',
+          reviewerId: employeeRecord.reviewer_id,
+          planYear: new Date().getFullYear(),
+          planPeriod: `${new Date().getFullYear()} Annual`,
+          planTitle: `Annual Plan ${new Date().getFullYear()}`,
+          status: 'active',
+          workflowStatus: 'draft',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+    }
+
+    // Get supervisor and reviewer IDs
+    const supervisorUser = employeeRecord.supervisor_id 
+      ? await prisma.users.findFirst({ where: { employeeId: employeeRecord.supervisor_id } })
+      : null;
+    
+    const reviewerUser = employeeRecord.reviewer_id
+      ? await prisma.users.findFirst({ where: { employeeId: employeeRecord.reviewer_id } })
+      : null;
+
+    // Create the appraisal
+    const crypto = require('crypto');
+    const appraisal = await prisma.performance_appraisals.create({
+      data: {
+        id: crypto.randomUUID(),
+        planId: performancePlan.id,
+        employeeId: employeeRecord.id,
+        supervisorId: supervisorUser?.id || '',
+        reviewerId: reviewerUser?.id,
+        appraisalType: body.appraisalType || 'annual',
+        status: status || 'draft',
+        overallRating: ratings?.overall || 0,
+        selfAssessments: achievements || {},
+        supervisorAssessments: {},
+        valueGoalsAssessments: development || {},
+        comments: { ...comments, ratings: ratings || {}, recommendations: recommendations || {} },
+        submittedAt: status === 'submitted' ? new Date() : null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      appraisal: {
+        id: appraisal.id,
+        employeeId: employeeRecord.employeeId,
+        status: appraisal.status
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating performance appraisal:', error);
+    return NextResponse.json(
+      { error: 'Failed to create performance appraisal', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+

@@ -135,33 +135,87 @@ export function PerformanceAssessmentStep({ formData, updateFormData }: Performa
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
-          {formData.performance.categories.map((category) => (
-            <div key={category.id} className="border-2 border-gray-200 rounded-xl p-5 bg-gradient-to-br from-gray-50 to-white shadow-sm hover:shadow-md transition-shadow duration-200 last:mb-0">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h4 className="font-bold text-lg text-gray-900">{category.name}</h4>
-                  <Badge className="bg-orange-500 text-white font-bold px-3 py-1 mt-1 shadow-sm">Weight: {category.weight}%</Badge>
-                </div>
-                <div className="text-right">
-                  <StarRating 
-                    rating={category.rating}
-                    onRatingChange={(rating) => handleCategoryRating(category.id, rating)}
-                  />
-                  <div className="text-sm font-semibold text-gray-700 mt-2">
-                    {ratingScale.find(scale => scale.value === category.rating)?.label || 'Not rated'}
+          {formData.performance.categories.map((category) => {
+            // Calculate the score for this category: (rating / 5) * weight
+            const categoryScore = (category.rating / 5) * category.weight
+            
+            return (
+              <div key={category.id} className="border-2 border-gray-200 rounded-xl p-5 bg-gradient-to-br from-gray-50 to-white shadow-sm hover:shadow-md transition-shadow duration-200 last:mb-0">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h4 className="font-bold text-lg text-gray-900">{category.name}</h4>
+                      <Badge className="bg-orange-500 text-white font-bold px-3 py-1 shadow-sm">Weight: {category.weight}%</Badge>
+                    </div>
+                    {category.description && (
+                      <p className="text-sm text-gray-600 italic mb-2">{category.description}</p>
+                    )}
+                  </div>
+                  <div className="text-right ml-4">
+                    <StarRating 
+                      rating={category.rating}
+                      onRatingChange={(rating) => handleCategoryRating(category.id, rating)}
+                    />
+                    <div className="text-xs font-semibold text-gray-500 mt-1">
+                      {category.rating} / 5 stars
+                    </div>
                   </div>
                 </div>
+                
+                {/* Live Calculation Display */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200 mb-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700 font-semibold">Calculation:</span>
+                    <span className="text-gray-900 font-mono">
+                      ({category.rating} ÷ 5) × {category.weight}% = <span className="text-blue-600 font-bold">{categoryScore.toFixed(2)}%</span>
+                    </span>
+                  </div>
+                </div>
+                
+                <Textarea
+                  placeholder={`Add comments about ${category.name.toLowerCase()}...`}
+                  value={category.comment}
+                  onChange={(e) => handleCategoryComment(category.id, e.target.value)}
+                  className="border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-lg"
+                  rows={3}
+                />
               </div>
-              
-              <Textarea
-                placeholder={`Add comments about ${category.name.toLowerCase()}...`}
-                value={category.comment}
-                onChange={(e) => handleCategoryComment(category.id, e.target.value)}
-                className="mt-3 border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-lg"
-                rows={3}
-              />
+            )
+          })}
+          
+          {/* Core Values Score Summary */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border-2 border-green-300 shadow-md mt-6">
+            <h4 className="font-bold text-lg text-gray-900 mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Core Values Performance Summary
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
+                <div className="text-sm text-gray-600 mb-1">Total Core Values</div>
+                <div className="text-2xl font-bold text-gray-900">{formData.performance.categories.length}</div>
+              </div>
+              <div className="bg-white p-4 rounded-lg border border-gray-200 text-center">
+                <div className="text-sm text-gray-600 mb-1">Maximum Possible</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {formData.performance.categories.reduce((sum, cat) => sum + cat.weight, 0)}%
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg border-2 border-green-400 text-center">
+                <div className="text-sm text-gray-600 mb-1">Your Core Values Score</div>
+                <div className="text-3xl font-bold text-green-600">
+                  {formData.performance.categories.reduce((sum, cat) => sum + ((cat.rating / 5) * cat.weight), 0).toFixed(2)}%
+                </div>
+              </div>
             </div>
-          ))}
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="text-sm text-blue-800">
+                <strong>Note:</strong> Each core value is weighted equally at 20%. Your rating (1-5 stars) is converted to a percentage: 
+                (Rating ÷ 5) × 20%. All five core values combine to a maximum of 100%.
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

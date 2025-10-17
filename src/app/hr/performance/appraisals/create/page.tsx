@@ -59,12 +59,11 @@ function CreateAppraisalContent() {
     performance: {
       overallRating: 0,
       categories: [
-        { id: '1', name: 'Job Knowledge', rating: 0, comment: '', weight: 20 },
-        { id: '2', name: 'Quality of Work', rating: 0, comment: '', weight: 20 },
-        { id: '3', name: 'Productivity', rating: 0, comment: '', weight: 15 },
-        { id: '4', name: 'Communication', rating: 0, comment: '', weight: 15 },
-        { id: '5', name: 'Teamwork', rating: 0, comment: '', weight: 15 },
-        { id: '6', name: 'Initiative', rating: 0, comment: '', weight: 15 }
+        { id: '1', name: 'Teamwork', rating: 0, comment: '', weight: 20, description: 'Working collaboratively with others to achieve common goals and support team success.' },
+        { id: '2', name: 'Responsiveness and Effectiveness', rating: 0, comment: '', weight: 20, description: 'Acting promptly and efficiently to meet stakeholder needs and deliver quality results.' },
+        { id: '3', name: 'Accountability', rating: 0, comment: '', weight: 20, description: 'Taking ownership of responsibilities and being answerable for actions and outcomes.' },
+        { id: '4', name: 'Professionalism and Integrity', rating: 0, comment: '', weight: 20, description: 'Maintaining high ethical standards, honesty, and professional conduct in all interactions.' },
+        { id: '5', name: 'Innovation', rating: 0, comment: '', weight: 20, description: 'Embracing creativity and new ideas to improve processes, services, and outcomes.' }
       ],
       strengths: [],
       areasForImprovement: []
@@ -85,8 +84,22 @@ function CreateAppraisalContent() {
     },
     ratings: {
       finalRating: 0,
+      actualPoints: 0,
+      maxPoints: 0,
+      percentage: 0,
+      ratingCode: "",
       recommendation: "maintain-current" as const,
       salaryRecommendation: ""
+    },
+    signatures: {
+      supervisorSignature: "",
+      supervisorSignedAt: undefined,
+      supervisorMeetingDate: undefined,
+      supervisorMeetingConfirmed: false,
+      reviewerSignature: "",
+      reviewerSignedAt: undefined,
+      reviewerMeetingDate: undefined,
+      reviewerMeetingConfirmed: false
     }
   })
 
@@ -160,10 +173,11 @@ function CreateAppraisalContent() {
               successIndicators: (resp.successIndicators || []).map((indicator: any, indIndex: number) => ({
                 id: `ind-${index + 1}-${indIndex + 1}`,
                 indicator: indicator.indicator || '',
-                target: indicator.target || '',
-                actualValue: '',
+                target: Number(indicator.target) || 0,
+                actualValue: 0,
+                weight: Number(indicator.weight) || 0,
                 measurement: indicator.measurement || '',
-                achieved: false
+                achievementPercentage: 0
               }))
             }))
           }
@@ -313,6 +327,24 @@ function CreateAppraisalContent() {
     setIsSubmitting(true)
     
     try {
+      const response = await fetch('/api/hr/performance/appraisals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...formData,
+          status: 'submitted',
+          submittedAt: new Date().toISOString()
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit appraisal')
+      }
+
+      const result = await response.json()
+
       showSuccess(
         isSelfAssessment ? 'Self-Assessment Submitted' : 'Appraisal Created',
         isSelfAssessment 
@@ -324,6 +356,7 @@ function CreateAppraisalContent() {
         router.push(isSelfAssessment ? '/employee/performance' : '/hr/performance/appraisals')
       }, 2000)
     } catch (error) {
+      console.error('Error submitting appraisal:', error)
       showError(
         'Creation Failed',
         'An error occurred while creating the appraisal.'
@@ -337,11 +370,29 @@ function CreateAppraisalContent() {
     setIsSavingDraft(true)
     
     try {
+      const response = await fetch('/api/hr/performance/appraisals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...formData,
+          status: 'draft'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save draft')
+      }
+
+      const result = await response.json()
+
       showInfo(
         'Draft Saved',
         'Your appraisal draft has been saved successfully.'
       )
     } catch (error) {
+      console.error('Error saving draft:', error)
       showError(
         'Save Failed',
         'An error occurred while saving the draft.'

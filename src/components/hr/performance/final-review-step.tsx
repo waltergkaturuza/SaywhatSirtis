@@ -44,24 +44,44 @@ export function FinalReviewStep({ formData, updateFormData }: FinalReviewStepPro
     </div>
   )
 
-  // Calculate actual points based on key responsibilities ratings
+  // Calculate actual weighted score across all responsibilities
   const calculateActualPoints = () => {
     if (!formData.achievements.keyResponsibilities || formData.achievements.keyResponsibilities.length === 0) return 0
     
-    return formData.achievements.keyResponsibilities.reduce((sum, resp) => {
-      // Get the rating points based on achievement status
-      const ratingPoints = resp.achievementStatus === 'achieved' ? 50 : 
-                          resp.achievementStatus === 'partially-achieved' ? 30 : 10
-      return sum + ratingPoints
+    return formData.achievements.keyResponsibilities.reduce((totalScore, resp) => {
+      // For each responsibility, calculate its weighted score based on indicators
+      if (!resp.successIndicators || resp.successIndicators.length === 0) return totalScore
+      
+      const respWeight = Number(resp.weight) || 0
+      
+      // Calculate the responsibility's achievement percentage from its indicators
+      const indicatorsTotalWeight = resp.successIndicators.reduce((sum, ind) => sum + (Number(ind.weight) || 0), 0)
+      
+      if (indicatorsTotalWeight === 0) return totalScore
+      
+      const respAchievedScore = resp.successIndicators.reduce((sum, ind) => {
+        const target = Number(ind.target) || 0
+        const actual = Number(ind.actualValue) || 0
+        const weight = Number(ind.weight) || 0
+        const achievementPct = target > 0 ? (actual / target) : 0
+        return sum + (weight * achievementPct)
+      }, 0)
+      
+      // Calculate this responsibility's contribution to overall score
+      const respAchievementRate = respAchievedScore / indicatorsTotalWeight
+      const respContribution = respWeight * respAchievementRate
+      
+      return totalScore + respContribution
     }, 0)
   }
 
-  // Calculate maximum possible points
+  // Calculate maximum possible points (sum of all responsibility weights)
   const calculateMaxPoints = () => {
     if (!formData.achievements.keyResponsibilities || formData.achievements.keyResponsibilities.length === 0) return 0
     
-    // Maximum points = number of responsibilities × 50 (A1 rating)
-    return formData.achievements.keyResponsibilities.length * 50
+    return formData.achievements.keyResponsibilities.reduce((sum, resp) => {
+      return sum + (Number(resp.weight) || 0)
+    }, 0)
   }
 
   // Calculate percentage using SAYWHAT formula
@@ -104,6 +124,168 @@ export function FinalReviewStep({ formData, updateFormData }: FinalReviewStepPro
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
+          {/* Detailed Score Breakdown by Responsibility */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border-2 border-blue-200 shadow-md mb-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              Detailed Score Breakdown by Key Responsibility
+            </h3>
+            
+            <div className="space-y-4">
+              {formData.achievements.keyResponsibilities && formData.achievements.keyResponsibilities.length > 0 ? (
+                formData.achievements.keyResponsibilities.map((resp, idx) => {
+                  const respWeight = Number(resp.weight) || 0
+                  const indicatorsTotalWeight = resp.successIndicators?.reduce((sum, ind) => sum + (Number(ind.weight) || 0), 0) || 0
+                  
+                  const respAchievedScore = resp.successIndicators?.reduce((sum, ind) => {
+                    const target = Number(ind.target) || 0
+                    const actual = Number(ind.actualValue) || 0
+                    const weight = Number(ind.weight) || 0
+                    const achievementPct = target > 0 ? (actual / target) : 0
+                    return sum + (weight * achievementPct)
+                  }, 0) || 0
+                  
+                  const respAchievementRate = indicatorsTotalWeight > 0 ? (respAchievedScore / indicatorsTotalWeight) * 100 : 0
+                  const respContribution = respWeight * (respAchievementRate / 100)
+                  
+                  return (
+                    <div key={resp.id} className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <Badge className="bg-orange-500 text-white font-bold">KR #{idx + 1}</Badge>
+                            <span className="font-bold text-gray-900">{resp.description || 'Untitled Responsibility'}</span>
+                          </div>
+                          <div className="text-sm text-gray-600 mb-3">Weight: <span className="font-bold text-gray-900">{respWeight}%</span></div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-500 mb-1">Achievement Rate</div>
+                          <Badge className={`${respAchievementRate >= 90 ? 'bg-green-500' : respAchievementRate >= 75 ? 'bg-blue-500' : respAchievementRate >= 50 ? 'bg-yellow-500' : 'bg-red-500'} text-white font-bold text-lg px-3 py-1`}>
+                            {respAchievementRate.toFixed(1)}%
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Success Indicators Breakdown */}
+                      {resp.successIndicators && resp.successIndicators.length > 0 && (
+                        <div className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200 mb-3">
+                          <div className="text-sm font-bold text-gray-700 mb-3">Success Indicators:</div>
+                          <div className="space-y-2">
+                            {resp.successIndicators.map((ind, indIdx) => {
+                              const target = Number(ind.target) || 0
+                              const actual = Number(ind.actualValue) || 0
+                              const weight = Number(ind.weight) || 0
+                              const achievementPct = target > 0 ? ((actual / target) * 100) : 0
+                              const indicatorScore = weight * (achievementPct / 100)
+                              
+                              return (
+                                <div key={ind.id} className="flex items-center justify-between text-xs bg-white p-3 rounded border border-gray-200">
+                                  <div className="flex-1">
+                                    <span className="font-semibold text-gray-700">{ind.indicator || `Indicator ${indIdx + 1}`}</span>
+                                    <div className="text-gray-500 mt-1">
+                                      Target: {target} | Actual: {actual} | Weight: {weight}%
+                                    </div>
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <div className="font-bold text-gray-900">{achievementPct.toFixed(1)}%</div>
+                                    <div className="text-gray-600">Score: {indicatorScore.toFixed(2)}/{weight}</div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Responsibility Score Summary */}
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-300">
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                          <div>
+                            <div className="text-xs text-gray-600 mb-1">Max Score</div>
+                            <div className="text-lg font-bold text-gray-900">{respWeight}%</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-600 mb-1">Achieved Score</div>
+                            <div className="text-lg font-bold text-green-600">{respContribution.toFixed(2)}%</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-600 mb-1">Achievement</div>
+                            <div className="text-lg font-bold text-blue-600">{respAchievementRate.toFixed(1)}%</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  No key responsibilities to display
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Core Values Assessment Breakdown */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border-2 border-purple-200 shadow-md mb-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              </svg>
+              SAYWHAT Core Values Assessment
+            </h3>
+            
+            <div className="space-y-3">
+              {formData.performance.categories.map((category, idx) => {
+                const categoryScore = (category.rating / 5) * category.weight
+                
+                return (
+                  <div key={category.id} className="bg-white p-4 rounded-lg border-2 border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <Badge className="bg-purple-500 text-white font-bold">CV #{idx + 1}</Badge>
+                        <span className="font-bold text-gray-900">{category.name}</span>
+                        <span className="text-sm text-gray-500">Weight: {category.weight}%</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-500 mb-1">Rating</div>
+                        <div className="flex items-center space-x-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <StarIcon key={star} className={`h-4 w-4 ${star <= category.rating ? 'text-yellow-400' : 'text-gray-300'}`} />
+                          ))}
+                          <span className="ml-2 font-bold text-gray-900">{category.rating}/5</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-r from-purple-50 to-white p-3 rounded border border-purple-200">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700">Calculation: ({category.rating} ÷ 5) × {category.weight}%</span>
+                        <Badge className="bg-purple-600 text-white font-bold text-base px-3 py-1">
+                          {categoryScore.toFixed(2)}%
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            
+            {/* Core Values Total */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-300 mt-4">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-lg text-gray-900">Total Core Values Score:</span>
+                <Badge className="bg-green-600 text-white font-bold text-2xl px-5 py-2 shadow-lg">
+                  {formData.performance.categories.reduce((sum, cat) => sum + ((cat.rating / 5) * cat.weight), 0).toFixed(2)}%
+                </Badge>
+              </div>
+              <div className="text-sm text-gray-600 mt-2">
+                Maximum possible: {formData.performance.categories.reduce((sum, cat) => sum + cat.weight, 0)}% (All 5 core values at 5 stars)
+              </div>
+            </div>
+          </div>
+
           {/* Calculation Formula Display */}
           <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-xl border-2 border-orange-200 shadow-md">
             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
@@ -117,7 +299,7 @@ export function FinalReviewStep({ formData, updateFormData }: FinalReviewStepPro
                 (Sum of Actual Points) ÷ (Sum of Best Possible Points) × 100 = <span className="font-bold text-orange-600">Percentage</span>
               </div>
               <div className="text-gray-600 text-sm mt-3">
-                ({calculateActualPoints()} ÷ {calculateMaxPoints()}) × 100 = <span className="font-bold text-orange-600">{calculatePerformancePercentage()}%</span>
+                ({calculateActualPoints().toFixed(2)} ÷ {calculateMaxPoints()}) × 100 = <span className="font-bold text-orange-600">{calculatePerformancePercentage()}%</span>
               </div>
             </div>
           </div>

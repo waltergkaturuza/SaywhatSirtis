@@ -64,10 +64,11 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
           successIndicators: [{
             id: '1',
             indicator: '',
-            target: '',
-            actualValue: '',
+            target: 0,
+            actualValue: 0,
+            weight: 0,
             measurement: '',
-            achieved: false
+            achievementPercentage: 0
           }]
         }]
       }
@@ -116,7 +117,7 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
             achievementStatus: 'not-achieved',
             comment: '',
             successIndicators: [
-              { id: `ind-${Date.now()}`, indicator: '', target: '', actualValue: '', measurement: '', achieved: false }
+              { id: `ind-${Date.now()}`, indicator: '', target: 0, actualValue: 0, weight: 0, measurement: '', achievementPercentage: 0 }
             ]
           }
         ]
@@ -136,7 +137,15 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
   const addIndicator = (respId: string) => {
     const updated = formData.achievements.keyResponsibilities.map(r => {
       if (r.id !== respId) return r
-      const newInd = { id: `ind-${Date.now()}`, indicator: '', target: '', actualValue: '', measurement: '', achieved: false }
+      const newInd = { 
+        id: `ind-${Date.now()}`, 
+        indicator: '', 
+        target: 0, 
+        actualValue: 0, 
+        weight: 0,
+        measurement: '', 
+        achievementPercentage: 0 
+      }
       return { ...r, successIndicators: [...r.successIndicators, newInd] }
     })
     updateFormData({ achievements: { ...formData.achievements, keyResponsibilities: updated } })
@@ -299,54 +308,141 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
                   </Button>
                 </div>
                 {responsibility.successIndicators && responsibility.successIndicators.length > 0 ? (
-                  responsibility.successIndicators.map((indicator, indIndex) => (
-                    <div key={indicator.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">Indicator Name</label>
-                        <Input 
-                          value={indicator.indicator} 
-                          onChange={(e) => updateSuccessIndicator(responsibility.id, indicator.id, 'indicator', e.target.value)}
-                          className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">Target Value</label>
-                        <Input 
-                          value={indicator.target} 
-                          onChange={(e) => updateSuccessIndicator(responsibility.id, indicator.id, 'target', e.target.value)}
-                          className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-2">Actual / Achieved Value</label>
-                        <Input 
-                          value={indicator.actualValue} 
-                          onChange={(e) => updateSuccessIndicator(responsibility.id, indicator.id, 'actualValue', e.target.value)}
-                          className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
-                        />
-                      </div>
-                      <div className="grid grid-cols-5 gap-2">
-                        <div className="col-span-4">
-                          <label className="block text-xs font-bold text-gray-700 mb-2">Measurement Method</label>
-                          <Input 
-                            value={indicator.measurement} 
-                            onChange={(e) => updateSuccessIndicator(responsibility.id, indicator.id, 'measurement', e.target.value)}
-                            className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
-                          />
+                  <div className="space-y-3">
+                    {responsibility.successIndicators.map((indicator, indIndex) => {
+                      // Calculate achievement percentage for this indicator
+                      const target = Number(indicator.target) || 0
+                      const actual = Number(indicator.actualValue) || 0
+                      const achievementPct = target > 0 ? Math.round((actual / target) * 100) : 0
+                      const indicatorScore = (Number(indicator.weight) || 0) * (achievementPct / 100)
+                      
+                      return (
+                        <div key={indicator.id} className="bg-white p-4 rounded-lg border-2 border-gray-200 shadow-sm">
+                          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-2">
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-bold text-gray-700 mb-2">Indicator Name</label>
+                              <Input 
+                                value={indicator.indicator} 
+                                onChange={(e) => updateSuccessIndicator(responsibility.id, indicator.id, 'indicator', e.target.value)}
+                                className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
+                                placeholder="e.g., Customer Satisfaction"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-700 mb-2">Weight (%)</label>
+                              <Input 
+                                type="number"
+                                value={indicator.weight || 0} 
+                                onChange={(e) => updateSuccessIndicator(responsibility.id, indicator.id, 'weight', Number(e.target.value))}
+                                className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
+                                placeholder="e.g., 30"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-700 mb-2">Target Value</label>
+                              <Input 
+                                type="number"
+                                value={indicator.target || 0} 
+                                onChange={(e) => updateSuccessIndicator(responsibility.id, indicator.id, 'target', Number(e.target.value))}
+                                className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
+                                placeholder="e.g., 30"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-700 mb-2">Actual Value</label>
+                              <Input 
+                                type="number"
+                                value={indicator.actualValue || 0}
+                                onChange={(e) => updateSuccessIndicator(responsibility.id, indicator.id, 'actualValue', Number(e.target.value))}
+                                className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
+                                placeholder="e.g., 25"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-gray-700 mb-2">Measurement</label>
+                              <Input 
+                                value={indicator.measurement} 
+                                onChange={(e) => updateSuccessIndicator(responsibility.id, indicator.id, 'measurement', e.target.value)}
+                                className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
+                                placeholder="e.g., Count"
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Calculation Display */}
+                          <div className="flex items-center justify-between bg-gradient-to-r from-green-50 to-blue-50 p-3 rounded-lg border border-green-200 mt-2">
+                            <div className="flex items-center space-x-4 text-sm">
+                              <span className="font-semibold text-gray-700">Achievement:</span>
+                              <Badge className={`${achievementPct >= 100 ? 'bg-green-500' : achievementPct >= 75 ? 'bg-blue-500' : achievementPct >= 50 ? 'bg-yellow-500' : 'bg-red-500'} text-white font-bold`}>
+                                {achievementPct}%
+                              </Badge>
+                              <span className="text-gray-600">({actual} / {target})</span>
+                              <span className="font-semibold text-gray-700">Score:</span>
+                              <Badge className="bg-purple-500 text-white font-bold">
+                                {indicatorScore.toFixed(2)} / {indicator.weight || 0}
+                              </Badge>
+                            </div>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => removeIndicator(responsibility.id, indicator.id)}
+                              className="border-2 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-500 font-semibold rounded-lg transition-all duration-200"
+                            >
+                              Remove
+                            </Button>
+                          </div>
                         </div>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          onClick={() => removeIndicator(responsibility.id, indicator.id)}
-                          className="border-2 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-500 font-semibold rounded-lg transition-all duration-200"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  ))
+                      )
+                    })}
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500 italic bg-white p-3 rounded-lg border border-dashed border-gray-300">No success indicators yet. Click "Add Indicator" to create one.</p>
+                )}
+                
+                {/* Responsibility Score Summary */}
+                {responsibility.successIndicators && responsibility.successIndicators.length > 0 && (
+                  <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg border-2 border-orange-200 mt-3">
+                    <h5 className="font-bold text-gray-900 mb-2">Responsibility Score Summary</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Total Indicators:</span>
+                        <span className="ml-2 font-bold text-gray-900">{responsibility.successIndicators.length}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Total Weight:</span>
+                        <span className="ml-2 font-bold text-gray-900">
+                          {responsibility.successIndicators.reduce((sum, ind) => sum + (Number(ind.weight) || 0), 0)}%
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Achieved Score:</span>
+                        <span className="ml-2 font-bold text-green-600">
+                          {responsibility.successIndicators.reduce((sum, ind) => {
+                            const target = Number(ind.target) || 0
+                            const actual = Number(ind.actualValue) || 0
+                            const achievementPct = target > 0 ? (actual / target) : 0
+                            return sum + ((Number(ind.weight) || 0) * achievementPct)
+                          }, 0).toFixed(2)}%
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Achievement Rate:</span>
+                        <span className="ml-2 font-bold text-blue-600">
+                          {(() => {
+                            const totalWeight = responsibility.successIndicators.reduce((sum, ind) => sum + (Number(ind.weight) || 0), 0)
+                            const achievedScore = responsibility.successIndicators.reduce((sum, ind) => {
+                              const target = Number(ind.target) || 0
+                              const actual = Number(ind.actualValue) || 0
+                              const achievementPct = target > 0 ? (actual / target) : 0
+                              return sum + ((Number(ind.weight) || 0) * achievementPct)
+                            }, 0)
+                            return totalWeight > 0 ? ((achievedScore / totalWeight) * 100).toFixed(1) : 0
+                          })()}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 

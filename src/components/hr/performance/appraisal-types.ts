@@ -32,6 +32,7 @@ export interface AppraisalFormData {
       rating: number
       comment: string
       weight: number
+      description?: string
     }[]
     strengths: string[]
     areasForImprovement: string[]
@@ -49,11 +50,15 @@ export interface AppraisalFormData {
       successIndicators: {
         id: string
         indicator: string
-        target: string
-        actualValue: string
+        target: number
+        actualValue: number
+        weight: number
         measurement: string
-        achieved: boolean
+        achievementPercentage?: number
       }[]
+      totalScore?: number
+      achievedScore?: number
+      achievementPercentage?: number
     }[]
   }
   development: {
@@ -110,12 +115,11 @@ export const defaultFormData: AppraisalFormData = {
   performance: {
     overallRating: 0,
     categories: [
-      { id: '1', name: 'Job Knowledge', rating: 0, comment: '', weight: 20 },
-      { id: '2', name: 'Quality of Work', rating: 0, comment: '', weight: 20 },
-      { id: '3', name: 'Productivity', rating: 0, comment: '', weight: 15 },
-      { id: '4', name: 'Communication', rating: 0, comment: '', weight: 15 },
-      { id: '5', name: 'Teamwork', rating: 0, comment: '', weight: 15 },
-      { id: '6', name: 'Initiative', rating: 0, comment: '', weight: 15 }
+      { id: '1', name: 'Teamwork', rating: 0, comment: '', weight: 20, description: 'Working collaboratively with others to achieve common goals and support team success.' },
+      { id: '2', name: 'Responsiveness and Effectiveness', rating: 0, comment: '', weight: 20, description: 'Acting promptly and efficiently to meet stakeholder needs and deliver quality results.' },
+      { id: '3', name: 'Accountability', rating: 0, comment: '', weight: 20, description: 'Taking ownership of responsibilities and being answerable for actions and outcomes.' },
+      { id: '4', name: 'Professionalism and Integrity', rating: 0, comment: '', weight: 20, description: 'Maintaining high ethical standards, honesty, and professional conduct in all interactions.' },
+      { id: '5', name: 'Innovation', rating: 0, comment: '', weight: 20, description: 'Embracing creativity and new ideas to improve processes, services, and outcomes.' }
     ],
     strengths: [],
     areasForImprovement: []
