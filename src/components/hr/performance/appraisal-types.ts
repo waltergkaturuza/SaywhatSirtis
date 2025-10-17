@@ -96,6 +96,11 @@ export interface AppraisalFormData {
     reviewerMeetingDate?: string
     reviewerMeetingConfirmed: boolean
   }
+  status?: string
+  workflowStatus?: string
+  submittedAt?: string
+  approvedAt?: string
+  createdAt?: string
 }
 
 export const defaultFormData: AppraisalFormData = {
