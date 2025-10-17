@@ -49,21 +49,21 @@ export async function GET(request: NextRequest) {
     // Transform appraisals for frontend
     const transformedAppraisals = appraisals.map(appraisal => ({
       id: appraisal.id,
-      employee: {
-        id: appraisal.employees?.employeeId || '',
-        name: `${appraisal.employees?.firstName || ''} ${appraisal.employees?.lastName || ''}`.trim(),
-        email: appraisal.employees?.email || '',
-        position: appraisal.employees?.position || '',
-        department: appraisal.employees?.departments?.name || ''
-      },
-      supervisor: appraisal.employees?.employees ? {
-        name: `${appraisal.employees.employees.firstName} ${appraisal.employees.employees.lastName}`.trim()
-      } : null,
+      employeeId: appraisal.employeeId,
+      employeeName: `${appraisal.employees?.firstName || ''} ${appraisal.employees?.lastName || ''}`.trim(),
+      position: appraisal.employees?.position || '',
+      department: appraisal.employees?.departments?.name || '',
+      supervisor: appraisal.employees?.employees 
+        ? `${appraisal.employees.employees.firstName} ${appraisal.employees.employees.lastName}`.trim()
+        : 'Not assigned',
+      period: appraisal.performance_plans?.planPeriod || `${appraisal.performance_plans?.planYear || new Date().getFullYear()}`,
+      status: appraisal.status,
+      overallRating: appraisal.overallRating || 0,
+      planProgress: 0, // TODO: Calculate from performance plan
+      lastUpdated: appraisal.updatedAt?.toISOString() || appraisal.createdAt?.toISOString(),
       planYear: appraisal.performance_plans?.planYear,
       planPeriod: appraisal.performance_plans?.planPeriod,
       appraisalType: appraisal.appraisalType,
-      status: appraisal.status,
-      overallRating: appraisal.overallRating,
       submittedAt: appraisal.submittedAt?.toISOString(),
       approvedAt: appraisal.approvedAt?.toISOString(),
       supervisorApprovedAt: appraisal.supervisorApprovedAt?.toISOString(),

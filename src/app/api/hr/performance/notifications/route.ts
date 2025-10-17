@@ -44,37 +44,36 @@ export async function GET() {
     if (canViewAllAppraisals) {
       // Admin/HR can see all notifications
       const [dueThisWeek, progressUpdates, completedThisWeek] = await Promise.all([
-        // Appraisals due this week (not yet completed)
-        prisma.performance_reviews.count({
+        // Appraisals submitted this week (pending review)
+        prisma.performance_appraisals.count({
           where: {
-            reviewDate: {
+            submittedAt: {
               gte: startOfWeek,
               lte: endOfWeek
             },
-            reviewStatus: { not: 'completed' }
+            status: 'submitted'
           }
         }),
         
-        // Progress updates submitted this week (assuming we have a progress_updates table)
-        // For now, we'll use a placeholder calculation based on updated performance reviews
-        prisma.performance_reviews.count({
+        // Progress updates (appraisals in draft state updated this week)
+        prisma.performance_appraisals.count({
           where: {
             updatedAt: {
               gte: startOfWeek,
               lte: endOfWeek
             },
-            reviewStatus: 'in_progress'
+            status: 'draft'
           }
         }),
         
         // Appraisals completed this week
-        prisma.performance_reviews.count({
+        prisma.performance_appraisals.count({
           where: {
-            updatedAt: {
+            approvedAt: {
               gte: startOfWeek,
               lte: endOfWeek
             },
-            reviewStatus: 'completed'
+            status: 'approved'
           }
         })
       ]);
@@ -86,9 +85,13 @@ export async function GET() {
       };
     } else {
       // Regular employees can only see their own notifications
-      const employeeId = user.id;
+      // Find employee record by user email
+      const employee = await prisma.employees.findFirst({
+        where: { email: user.email },
+        select: { id: true }
+      });
       
-      if (!employeeId) {
+      if (!employee) {
         notifications = {
           dueThisWeek: 0,
           progressUpdates: 0,
@@ -96,39 +99,39 @@ export async function GET() {
         };
       } else {
         const [dueThisWeek, progressUpdates, completedThisWeek] = await Promise.all([
-          // Employee's appraisals due this week
-          prisma.performance_reviews.count({
+          // Employee's appraisals submitted this week
+          prisma.performance_appraisals.count({
             where: {
-              employeeId,
-              reviewDate: {
+              employeeId: employee.id,
+              submittedAt: {
                 gte: startOfWeek,
                 lte: endOfWeek
               },
-              reviewStatus: { not: 'completed' }
+              status: 'submitted'
             }
           }),
           
-          // Employee's progress updates this week
-          prisma.performance_reviews.count({
+          // Employee's draft appraisals updated this week
+          prisma.performance_appraisals.count({
             where: {
-              employeeId,
+              employeeId: employee.id,
               updatedAt: {
                 gte: startOfWeek,
                 lte: endOfWeek
               },
-              reviewStatus: 'in_progress'
+              status: 'draft'
             }
           }),
           
           // Employee's completed appraisals this week
-          prisma.performance_reviews.count({
+          prisma.performance_appraisals.count({
             where: {
-              employeeId,
-              updatedAt: {
+              employeeId: employee.id,
+              approvedAt: {
                 gte: startOfWeek,
                 lte: endOfWeek
               },
-              reviewStatus: 'completed'
+              status: 'approved'
             }
           })
         ]);
