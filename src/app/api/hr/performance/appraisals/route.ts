@@ -109,14 +109,35 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { employee, achievements, development, ratings, comments, recommendations, status, workflowStatus } = body;
 
-    // Get employee database ID from email
+    // Get employee database ID from email with supervisor and reviewer relations
     const employeeRecord = await prisma.employees.findUnique({
-      where: { email: employee.email }
+      where: { email: employee.email },
+      include: {
+        employees: true, // supervisor relation
+        reviewer: true   // reviewer relation
+      }
     });
 
     if (!employeeRecord) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
+
+    // Get supervisor user account - required for appraisals
+    const supervisorUser = employeeRecord.supervisor_id 
+      ? await prisma.users.findFirst({ where: { employeeId: employeeRecord.supervisor_id } })
+      : null;
+
+    if (!supervisorUser) {
+      return NextResponse.json(
+        { error: 'Employee must have a supervisor with a user account to create an appraisal' },
+        { status: 400 }
+      );
+    }
+
+    // Get reviewer user account if assigned
+    const reviewerUser = employeeRecord.reviewer_id
+      ? await prisma.users.findFirst({ where: { employeeId: employeeRecord.reviewer_id } })
+      : null;
 
     // Find or create performance plan for this employee
     let performancePlan = await prisma.performance_plans.findFirst({
@@ -129,12 +150,21 @@ export async function POST(request: NextRequest) {
     if (!performancePlan) {
       // Create a default performance plan if none exists
       const crypto = require('crypto');
+      
+      // For performance plan, supervisor is required as String (not nullable)
+      if (!supervisorUser) {
+        return NextResponse.json(
+          { error: 'Cannot create performance plan without a supervisor' },
+          { status: 400 }
+        );
+      }
+
       performancePlan = await prisma.performance_plans.create({
         data: {
           id: crypto.randomUUID(),
           employeeId: employeeRecord.id,
-          supervisorId: employeeRecord.supervisor_id || '',
-          reviewerId: employeeRecord.reviewer_id,
+          supervisorId: supervisorUser.id,
+          reviewerId: reviewerUser?.id || null,
           planYear: new Date().getFullYear(),
           planPeriod: `${new Date().getFullYear()} Annual`,
           planTitle: `Annual Plan ${new Date().getFullYear()}`,
@@ -146,24 +176,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Get supervisor and reviewer IDs
-    const supervisorUser = employeeRecord.supervisor_id 
-      ? await prisma.users.findFirst({ where: { employeeId: employeeRecord.supervisor_id } })
-      : null;
-    
-    const reviewerUser = employeeRecord.reviewer_id
-      ? await prisma.users.findFirst({ where: { employeeId: employeeRecord.reviewer_id } })
-      : null;
-
     // Create the appraisal
     const crypto = require('crypto');
+    
+    console.log('Creating appraisal with data:', {
+      employeeId: employeeRecord.id,
+      supervisorId: supervisorUser.id,
+      reviewerId: reviewerUser?.id,
+      planId: performancePlan.id
+    });
+
     const appraisal = await prisma.performance_appraisals.create({
       data: {
         id: crypto.randomUUID(),
         planId: performancePlan.id,
         employeeId: employeeRecord.id,
-        supervisorId: supervisorUser?.id || '',
-        reviewerId: reviewerUser?.id,
+        supervisorId: supervisorUser.id,
+        reviewerId: reviewerUser?.id || null,
         appraisalType: body.appraisalType || 'annual',
         status: status || 'draft',
         overallRating: ratings?.overall || 0,
@@ -172,10 +201,11 @@ export async function POST(request: NextRequest) {
         valueGoalsAssessments: development || {},
         comments: { ...comments, ratings: ratings || {}, recommendations: recommendations || {} },
         submittedAt: status === 'submitted' ? new Date() : null,
-        createdAt: new Date(),
         updatedAt: new Date()
       }
     });
+
+    console.log('Appraisal created successfully:', appraisal.id);
 
     return NextResponse.json({
       success: true,
@@ -188,8 +218,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error creating performance appraisal:', error);
+    console.error('Error details:', error instanceof Error ? error.message : error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
-      { error: 'Failed to create performance appraisal', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to create performance appraisal', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   }

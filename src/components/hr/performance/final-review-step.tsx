@@ -369,15 +369,25 @@ export function FinalReviewStep({ formData, updateFormData }: FinalReviewStepPro
               value={formData.ratings.recommendation}
               onValueChange={(value) => handleRatingChange('recommendation', value)}
             >
-              <SelectTrigger className="mt-2 border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg">
-                <SelectValue placeholder="Select recommendation" />
+              <SelectTrigger className="mt-2 border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg bg-white">
+                <SelectValue placeholder="Select recommendation">
+                  {formData.ratings.recommendation && (
+                    <div className="font-semibold text-gray-900">
+                      {recommendationTypes.find(r => r.value === formData.ratings.recommendation)?.label || 'Select recommendation'}
+                    </div>
+                  )}
+                </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 {recommendationTypes.map((rec) => (
-                  <SelectItem key={rec.value} value={rec.value}>
-                    <div>
-                      <div className="font-bold">{rec.label}</div>
-                      <div className="text-sm text-gray-600">{rec.description}</div>
+                  <SelectItem 
+                    key={rec.value} 
+                    value={rec.value}
+                    className="bg-white hover:bg-gray-100 focus:bg-gray-100 cursor-pointer py-3"
+                  >
+                    <div className="flex flex-col space-y-1">
+                      <div className="font-bold text-gray-900">{rec.label}</div>
+                      <div className="text-xs text-gray-600">{rec.description}</div>
                     </div>
                   </SelectItem>
                 ))}

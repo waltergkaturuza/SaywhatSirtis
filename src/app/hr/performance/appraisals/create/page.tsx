@@ -327,6 +327,8 @@ function CreateAppraisalContent() {
     setIsSubmitting(true)
     
     try {
+      console.log('Submitting appraisal data:', formData)
+      
       const response = await fetch('/api/hr/performance/appraisals', {
         method: 'POST',
         headers: {
@@ -339,11 +341,12 @@ function CreateAppraisalContent() {
         })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to submit appraisal')
-      }
-
       const result = await response.json()
+      console.log('API Response:', result)
+
+      if (!response.ok) {
+        throw new Error(result.error || result.details || 'Failed to submit appraisal')
+      }
 
       showSuccess(
         isSelfAssessment ? 'Self-Assessment Submitted' : 'Appraisal Created',
@@ -370,6 +373,8 @@ function CreateAppraisalContent() {
     setIsSavingDraft(true)
     
     try {
+      console.log('Saving draft data:', formData)
+      
       const response = await fetch('/api/hr/performance/appraisals', {
         method: 'POST',
         headers: {
@@ -381,11 +386,12 @@ function CreateAppraisalContent() {
         })
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to save draft')
-      }
-
       const result = await response.json()
+      console.log('Save draft response:', result)
+
+      if (!response.ok) {
+        throw new Error(result.error || result.details || 'Failed to save draft')
+      }
 
       showInfo(
         'Draft Saved',
