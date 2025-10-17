@@ -67,9 +67,7 @@ export async function GET() {
               select: { id: true, firstName: true, lastName: true }
             },
             // Include job description with key responsibilities
-            job_descriptions: {
-              where: { isActive: true }
-            }
+            job_descriptions: true
           }
         }),
         new Promise((_, reject) => 
@@ -113,11 +111,9 @@ export async function GET() {
     // Format response
     const canonicalDepartmentName = employee?.departments?.name || employee?.department || 'Unassigned';
 
-    // Get job description if available (sort by createdAt to get the latest)
-    const jobDescription = employee.job_descriptions && employee.job_descriptions.length > 0
-      ? employee.job_descriptions.sort((a: any, b: any) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )[0]
+    // Get job description if available (now a singular relation)
+    const jobDescription = employee.job_descriptions && employee.job_descriptions.isActive
+      ? employee.job_descriptions
       : null;
 
     const profileData = {

@@ -183,25 +183,46 @@ function CreatePerformancePlanPageContent() {
           
           // Extract key responsibilities from job description
           let keyResponsibilities: any[] = []
-          if (fullEmployeeData.jobDescription?.keyResponsibilities && Array.isArray(fullEmployeeData.jobDescription.keyResponsibilities)) {
-            keyResponsibilities = fullEmployeeData.jobDescription.keyResponsibilities.map((resp: any, index: number) => ({
-              id: `${Date.now()}-${index}`,
-              description: resp.description || '',
-              tasks: resp.tasks || '',
-              weight: resp.weight || 0,
-              targetDate: '',
-              status: 'not-started' as const,
-              progress: 0,
-              successIndicators: [
-                {
-                  id: '1',
-                  indicator: '',
-                  target: '',
-                  measurement: ''
-                }
-              ],
-              comments: ''
-            }))
+          if (fullEmployeeData.jobDescription?.keyResponsibilities) {
+            // Handle both array and object formats from Prisma JSON field
+            let responsibilitiesData = fullEmployeeData.jobDescription.keyResponsibilities
+            
+            // If it's a string, parse it
+            if (typeof responsibilitiesData === 'string') {
+              try {
+                responsibilitiesData = JSON.parse(responsibilitiesData)
+              } catch (e) {
+                console.error('Failed to parse keyResponsibilities string:', e)
+                responsibilitiesData = []
+              }
+            }
+            
+            // Convert object to array if needed (sometimes Prisma returns {0: {...}, 1: {...}})
+            if (responsibilitiesData && typeof responsibilitiesData === 'object' && !Array.isArray(responsibilitiesData)) {
+              responsibilitiesData = Object.values(responsibilitiesData)
+            }
+            
+            // Now map the array
+            if (Array.isArray(responsibilitiesData) && responsibilitiesData.length > 0) {
+              keyResponsibilities = responsibilitiesData.map((resp: any, index: number) => ({
+                id: `${Date.now()}-${index}`,
+                description: resp.description || '',
+                tasks: resp.tasks || '',
+                weight: resp.weight || 0,
+                targetDate: '',
+                status: 'not-started' as const,
+                progress: 0,
+                successIndicators: [
+                  {
+                    id: '1',
+                    indicator: '',
+                    target: '',
+                    measurement: ''
+                  }
+                ],
+                comments: ''
+              }))
+            }
           }
           
           // Auto-populate employee details and key responsibilities
@@ -339,25 +360,46 @@ function CreatePerformancePlanPageContent() {
             
             // Extract key responsibilities from job description
             let keyResponsibilities: any[] = []
-            if (employeeData.jobDescription?.keyResponsibilities && Array.isArray(employeeData.jobDescription.keyResponsibilities)) {
-              keyResponsibilities = employeeData.jobDescription.keyResponsibilities.map((resp: any, index: number) => ({
-                id: `${Date.now()}-${index}`,
-                description: resp.description || '',
-                tasks: resp.tasks || '',
-                weight: resp.weight || 0,
-                targetDate: '',
-                status: 'not-started' as const,
-                progress: 0,
-                successIndicators: [
-                  {
-                    id: '1',
-                    indicator: '',
-                    target: '',
-                    measurement: ''
-                  }
-                ],
-                comments: ''
-              }))
+            if (employeeData.jobDescription?.keyResponsibilities) {
+              // Handle both array and object formats from Prisma JSON field
+              let responsibilitiesData = employeeData.jobDescription.keyResponsibilities
+              
+              // If it's a string, parse it
+              if (typeof responsibilitiesData === 'string') {
+                try {
+                  responsibilitiesData = JSON.parse(responsibilitiesData)
+                } catch (e) {
+                  console.error('Failed to parse keyResponsibilities string:', e)
+                  responsibilitiesData = []
+                }
+              }
+              
+              // Convert object to array if needed (sometimes Prisma returns {0: {...}, 1: {...}})
+              if (responsibilitiesData && typeof responsibilitiesData === 'object' && !Array.isArray(responsibilitiesData)) {
+                responsibilitiesData = Object.values(responsibilitiesData)
+              }
+              
+              // Now map the array
+              if (Array.isArray(responsibilitiesData) && responsibilitiesData.length > 0) {
+                keyResponsibilities = responsibilitiesData.map((resp: any, index: number) => ({
+                  id: `${Date.now()}-${index}`,
+                  description: resp.description || '',
+                  tasks: resp.tasks || '',
+                  weight: resp.weight || 0,
+                  targetDate: '',
+                  status: 'not-started' as const,
+                  progress: 0,
+                  successIndicators: [
+                    {
+                      id: '1',
+                      indicator: '',
+                      target: '',
+                      measurement: ''
+                    }
+                  ],
+                  comments: ''
+                }))
+              }
             }
             
             // Auto-populate the form with current user's details

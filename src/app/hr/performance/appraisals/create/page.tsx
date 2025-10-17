@@ -126,25 +126,47 @@ function CreateAppraisalContent() {
         
         // Extract key responsibilities from job description (same as Performance Plan)
         let keyResponsibilities: any[] = []
-        if (profileData.jobDescription?.keyResponsibilities && Array.isArray(profileData.jobDescription.keyResponsibilities)) {
-          keyResponsibilities = profileData.jobDescription.keyResponsibilities.map((resp: any, index: number) => ({
-            id: `${Date.now()}-${index}`,
-            description: resp.description || '',
-            tasks: resp.tasks || '',
-            weight: resp.weight || 0,
-            targetDate: '',
-            status: 'Not Started',
-            achievementStatus: 'not-achieved' as const,
-            comment: '',
-            successIndicators: (resp.successIndicators || []).map((indicator: any, indIndex: number) => ({
-              id: `ind-${index + 1}-${indIndex + 1}`,
-              indicator: indicator.indicator || '',
-              target: indicator.target || '',
-              actualValue: '',
-              measurement: indicator.measurement || '',
-              achieved: false
+        if (profileData.jobDescription?.keyResponsibilities) {
+          // Handle both array and object formats from Prisma JSON field
+          let responsibilitiesData = profileData.jobDescription.keyResponsibilities
+          
+          // If it's a string, parse it
+          if (typeof responsibilitiesData === 'string') {
+            try {
+              responsibilitiesData = JSON.parse(responsibilitiesData)
+            } catch (e) {
+              console.error('Failed to parse keyResponsibilities string:', e)
+              responsibilitiesData = []
+            }
+          }
+          
+          // Convert object to array if needed (sometimes Prisma returns {0: {...}, 1: {...}})
+          if (responsibilitiesData && typeof responsibilitiesData === 'object' && !Array.isArray(responsibilitiesData)) {
+            responsibilitiesData = Object.values(responsibilitiesData)
+          }
+          
+          // Now map the array
+          if (Array.isArray(responsibilitiesData) && responsibilitiesData.length > 0) {
+            console.log(`📋 Found ${responsibilitiesData.length} key responsibilities`)
+            keyResponsibilities = responsibilitiesData.map((resp: any, index: number) => ({
+              id: `${Date.now()}-${index}`,
+              description: resp.description || '',
+              tasks: resp.tasks || '',
+              weight: resp.weight || 0,
+              targetDate: '',
+              status: 'Not Started',
+              achievementStatus: 'not-achieved' as const,
+              comment: '',
+              successIndicators: (resp.successIndicators || []).map((indicator: any, indIndex: number) => ({
+                id: `ind-${index + 1}-${indIndex + 1}`,
+                indicator: indicator.indicator || '',
+                target: indicator.target || '',
+                actualValue: '',
+                measurement: indicator.measurement || '',
+                achieved: false
+              }))
             }))
-          }))
+          }
         }
         
         updateFormData({

@@ -164,9 +164,24 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
         </CardHeader>
         <CardContent className="space-y-6">
           {formData.achievements.keyResponsibilities.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              <p>Loading key responsibilities from your job description...</p>
-              <p className="text-sm mt-2">If none appear, click "Add Responsibility" to create manually.</p>
+            <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="text-gray-600 mb-4">
+                <svg className="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-lg font-medium text-gray-900 mb-2">No Key Responsibilities Found</p>
+                <p className="text-sm text-gray-600 mb-1">Key responsibilities from your job description will appear here automatically.</p>
+                <p className="text-xs text-gray-500">If you don't have a job description or want to add custom responsibilities, click the button below.</p>
+              </div>
+              <button
+                onClick={addResponsibility}
+                className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Responsibility Manually
+              </button>
             </div>
           )}
           {formData.achievements.keyResponsibilities.map((responsibility, respIndex) => (
