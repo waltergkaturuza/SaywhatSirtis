@@ -579,13 +579,13 @@ export default function PerformanceAppraisalsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center space-x-2">
-                              <Link href={`/hr/performance/appraisals/${appraisal.id}`}>
+                              <Link href={`/hr/performance/appraisals/create?appraisalId=${appraisal.id}`}>
                                 <button className="text-orange-600 hover:text-orange-900 transition-colors">
                                   <EyeIcon className="h-4 w-4" />
                                 </button>
                               </Link>
                               {(appraisal.employeeId === session?.user?.id || canViewAllAppraisals) && (
-                                <Link href={`/hr/performance/appraisals/${appraisal.id}/edit`}>
+                                <Link href={`/hr/performance/appraisals/create?appraisalId=${appraisal.id}&edit=true`}>
                                   <button className="text-gray-600 hover:text-black transition-colors">
                                     <PencilIcon className="h-4 w-4" />
                                   </button>

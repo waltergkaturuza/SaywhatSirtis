@@ -236,15 +236,58 @@ function CreateAppraisalContent() {
         const response = await fetch(`/api/hr/performance/appraisals/${appraisalId}`)
         
         if (response.ok) {
-          const appraisalData = await response.json()
+          const result = await response.json()
+          const appraisalData = result.appraisal
           console.log('✅ Appraisal loaded:', appraisalData)
           
-          // TODO: Transform and populate form data from appraisalData
-          // For now, just log it
-          alert('Appraisal loading functionality is being implemented. Your appraisal data is available in the console.')
+          // Populate form with existing appraisal data
+          setFormData({
+            ...formData,
+            id: appraisalData.id,
+            employee: appraisalData.employee,
+            achievements: appraisalData.achievements || { keyResponsibilities: [] },
+            development: appraisalData.development || { trainingNeeds: [], careerAspirations: '', skillsToImprove: [], developmentPlan: [] },
+            performance: appraisalData.performance || {
+              overallRating: 0,
+              categories: [
+                { id: '1', name: 'Teamwork', rating: 0, comment: '', weight: 20, description: 'Working collaboratively with others to achieve common goals and support team success.' },
+                { id: '2', name: 'Responsiveness and Effectiveness', rating: 0, comment: '', weight: 20, description: 'Acting promptly and efficiently to meet stakeholder needs and deliver quality results.' },
+                { id: '3', name: 'Accountability', rating: 0, comment: '', weight: 20, description: 'Taking ownership of responsibilities and being answerable for actions and outcomes.' },
+                { id: '4', name: 'Professionalism and Integrity', rating: 0, comment: '', weight: 20, description: 'Maintaining high ethical standards, honesty, and professional conduct in all interactions.' },
+                { id: '5', name: 'Innovation', rating: 0, comment: '', weight: 20, description: 'Embracing creativity and new ideas to improve processes, services, and outcomes.' }
+              ],
+              strengths: [],
+              areasForImprovement: []
+            },
+            comments: appraisalData.comments || { employeeComments: '', managerComments: '', hrComments: '' },
+            ratings: appraisalData.ratings || {
+              finalRating: 0,
+              actualPoints: 0,
+              maxPoints: 0,
+              percentage: 0,
+              ratingCode: '',
+              recommendation: 'maintain-current',
+              salaryRecommendation: ''
+            },
+            signatures: appraisalData.signatures || {
+              supervisorSignature: '',
+              supervisorSignedAt: undefined,
+              supervisorMeetingDate: undefined,
+              supervisorMeetingConfirmed: false,
+              reviewerSignature: '',
+              reviewerSignedAt: undefined,
+              reviewerMeetingDate: undefined,
+              reviewerMeetingConfirmed: false
+            },
+            status: appraisalData.status || 'draft',
+            workflowStatus: appraisalData.status || 'draft'
+          })
+          
+          setWorkflowStatus(appraisalData.status || 'draft')
+          console.log('✅ Form populated with existing data')
         } else {
           console.error('❌ Failed to load appraisal')
-          alert('Failed to load appraisal. It may have been deleted.')
+          showError('Load Failed', 'Failed to load appraisal. It may have been deleted.')
         }
       } catch (error) {
         console.error('❌ Error loading appraisal:', error)
@@ -257,18 +300,20 @@ function CreateAppraisalContent() {
     loadExistingAppraisal()
   }, [appraisalId])
 
-  // Load current user data on mount
+  // Load current user data on mount (only if not loading an existing appraisal)
   useEffect(() => {
     setMounted(true)
     
-    // Auto-fill current user data (always load for the logged-in user)
-    if (session?.user?.email) {
+    // Auto-fill current user data ONLY if creating a new appraisal (no appraisalId)
+    if (session?.user?.email && !appraisalId) {
       console.log('🚀 useEffect triggered, calling loadCurrentUserData...')
       loadCurrentUserData()
+    } else if (appraisalId) {
+      console.log('📄 Skipping auto-load, viewing existing appraisal:', appraisalId)
     } else {
       console.log('⚠️ No session or email found')
     }
-  }, [session?.user?.email])
+  }, [session?.user?.email, appraisalId])
 
   const nextStep = () => {
     if (currentStep < appraisalSteps.length) {

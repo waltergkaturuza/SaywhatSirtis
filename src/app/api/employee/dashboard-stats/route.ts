@@ -60,8 +60,8 @@ export async function GET(request: NextRequest) {
         const result = await prisma.$queryRaw`
           SELECT COUNT(*) as count 
           FROM notifications 
-          WHERE "userId" = ${employee.id} 
-          AND read = false
+          WHERE "employeeId" = ${employee.id} 
+          AND "isRead" = false
         ` as any[];
         notifications = Number(result[0]?.count || 0);
       }
