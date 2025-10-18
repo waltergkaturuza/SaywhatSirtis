@@ -355,26 +355,40 @@ function CreatePerformancePlanPageContent() {
             department: planData.department || '',
             manager: supervisorName,
             planPeriod: {
-              startDate: planData.reviewPeriod?.startDate || '',
-              endDate: planData.reviewPeriod?.endDate || ''
+              startDate: planData.reviewPeriod?.startDate || planData.startDate || '',
+              endDate: planData.reviewPeriod?.endDate || planData.endDate || ''
             }
           },
-          planTitle: `Performance Plan - ${planData.employeeName}`,
+          planType: planData.planType || 'annual',
+          planTitle: planData.planTitle || `Performance Plan - ${planData.employeeName}`,
           status: planData.status || 'draft',
           supervisor: planData.supervisorId || '',
           reviewerId: planData.reviewerId || '',
-          planYear: new Date(planData.reviewPeriod?.startDate || Date.now()).getFullYear().toString(),
-          startDate: planData.reviewPeriod?.startDate || '',
-          endDate: planData.reviewPeriod?.endDate || '',
+          planYear: planData.planYear || new Date(planData.reviewPeriod?.startDate || Date.now()).getFullYear().toString(),
+          startDate: planData.startDate || planData.reviewPeriod?.startDate || '',
+          endDate: planData.endDate || planData.reviewPeriod?.endDate || '',
           planPeriod: {
-            startDate: planData.reviewPeriod?.startDate || '',
-            endDate: planData.reviewPeriod?.endDate || ''
+            startDate: planData.startDate || planData.reviewPeriod?.startDate || '',
+            endDate: planData.endDate || planData.reviewPeriod?.endDate || ''
           },
-          keyResponsibilities: planData.deliverables || prev.keyResponsibilities,
+          // Map deliverables to keyResponsibilities if they exist
+          keyResponsibilities: planData.deliverables && Array.isArray(planData.deliverables) 
+            ? planData.deliverables.map((item: any, index: number) => ({
+                id: item.id || `deliverable-${index}`,
+                description: item.description || item.title || '',
+                tasks: item.tasks || '',
+                weight: item.weight || 0,
+                targetDate: item.targetDate || item.dueDate || '',
+                status: item.status || 'not-started',
+                progress: item.progress || 0,
+                successIndicators: item.successIndicators || []
+              }))
+            : prev.keyResponsibilities,
           deliverables: planData.deliverables || [],
           valueGoals: planData.valueGoals || [],
           competencies: planData.competencies || prev.competencies,
-          developmentNeeds: planData.developmentNeeds || []
+          developmentNeeds: planData.developmentNeeds || [],
+          comments: planData.comments || prev.comments
         }))
         
         // Set workflow status
