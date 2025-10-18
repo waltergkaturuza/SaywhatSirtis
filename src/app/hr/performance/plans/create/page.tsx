@@ -328,6 +328,20 @@ function CreatePerformancePlanPageContent() {
         const planData = await response.json()
         console.log('Loaded plan data:', planData)
         
+        // Fetch supervisor information if supervisorId exists
+        let supervisorName = 'Not Assigned'
+        if (planData.supervisorId) {
+          try {
+            const supervisorResponse = await fetch(`/api/hr/employees/${planData.supervisorId}`)
+            if (supervisorResponse.ok) {
+              const supervisorData = await supervisorResponse.json()
+              supervisorName = `${supervisorData.firstName || ''} ${supervisorData.lastName || ''}`.trim() || 'Not Assigned'
+            }
+          } catch (error) {
+            console.error('Error fetching supervisor:', error)
+          }
+        }
+        
         // Map API response to form data structure
         setFormData(prev => ({
           ...prev,
@@ -339,6 +353,7 @@ function CreatePerformancePlanPageContent() {
             email: planData.employeeEmail || '',
             position: planData.position || '',
             department: planData.department || '',
+            manager: supervisorName,
             planPeriod: {
               startDate: planData.reviewPeriod?.startDate || '',
               endDate: planData.reviewPeriod?.endDate || ''
@@ -453,12 +468,13 @@ function CreatePerformancePlanPageContent() {
                 email: employeeData.email || session.user.email || '',
                 department: employeeData.department?.name || employeeData.department || '',
                 position: employeeData.position || '',
-                manager: employeeData.supervisor || 'Not Assigned',
+                manager: employeeData.supervisor ? `${employeeData.supervisor.firstName || ''} ${employeeData.supervisor.lastName || ''}`.trim() : 'Not Assigned',
                 planPeriod: {
                   startDate: new Date().toISOString().split('T')[0],
                   endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
                 }
               },
+              supervisor: employeeData.supervisorId || '',
               reviewerId: employeeData.reviewerId || '',
               keyResponsibilities: keyResponsibilities.length > 0 ? keyResponsibilities : [{
                 id: '1',

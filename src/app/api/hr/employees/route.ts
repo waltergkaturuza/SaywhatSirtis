@@ -382,7 +382,10 @@ export async function POST(request: Request) {
       // Add missing personal information fields
       dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth) : null,
       gender: formData.gender || null,
+      maritalStatus: formData.maritalStatus || null,
       nationality: formData.country || null,
+      country: formData.country || null,
+      province: formData.province || null,
       nationalId: formData.nationalId?.trim() || null,
       passportNumber: formData.passportNumber?.trim() || null,
       // Compensation fields
@@ -395,6 +398,12 @@ export async function POST(request: Request) {
       isSupervisor: formData.isSupervisor || false,
       isReviewer: formData.isReviewer || false,
       // Benefits fields - map form fields to database fields
+      healthInsurance: formData.healthInsurance || false,
+      dentalCoverage: formData.dentalCoverage || false,
+      visionCoverage: formData.visionCoverage || false,
+      lifeInsurance: formData.lifeInsurance || false,
+      retirementPlan: formData.retirementPlan || false,
+      flexiblePTO: formData.flexiblePTO || false,
       medicalAid: formData.medicalAid || false,
       funeralCover: formData.funeralCover || false,
       vehicleBenefit: formData.vehicleBenefit || false,
@@ -523,7 +532,10 @@ export async function POST(request: Request) {
           middleName: sanitizedData.middleName,
           dateOfBirth: sanitizedData.dateOfBirth,
           gender: sanitizedData.gender,
+          marital_status: sanitizedData.maritalStatus,
           nationality: sanitizedData.nationality,
+          country: sanitizedData.country,
+          province: sanitizedData.province,
           nationalId: sanitizedData.nationalId,
           passportNumber: sanitizedData.passportNumber,
           email: sanitizedData.email,
@@ -554,6 +566,12 @@ export async function POST(request: Request) {
           system_access: formData.systemAccess || [],
           
           // Benefits
+          health_insurance: sanitizedData.healthInsurance,
+          dental_coverage: sanitizedData.dentalCoverage,
+          vision_coverage: sanitizedData.visionCoverage,
+          life_insurance: sanitizedData.lifeInsurance,
+          retirement_plan: sanitizedData.retirementPlan,
+          flexible_pto: sanitizedData.flexiblePTO,
           medical_aid: sanitizedData.medicalAid,
           funeral_cover: sanitizedData.funeralCover,
           vehicle_benefit: sanitizedData.vehicleBenefit,

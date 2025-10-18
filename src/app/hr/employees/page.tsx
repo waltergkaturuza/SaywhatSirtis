@@ -594,10 +594,13 @@ export default function EmployeesPage() {
       departmentId: formData.departmentId,
       position: formData.position,
       supervisorId: formData.supervisorId,
+      reviewerId: formData.reviewerId,
       startDate: formData.startDate,
       hireDate: formData.hireDate,
       employmentType: formData.employmentType,
       workLocation: formData.workLocation,
+      country: formData.country,
+      province: formData.province,
       isSupervisor: formData.isSupervisor || false,
       isReviewer: formData.isReviewer || false,
       
@@ -609,6 +612,12 @@ export default function EmployeesPage() {
       benefits: formData.benefits,
       
       // Additional Benefits
+      healthInsurance: formData.healthInsurance || false,
+      dentalCoverage: formData.dentalCoverage || false,
+      visionCoverage: formData.visionCoverage || false,
+      lifeInsurance: formData.lifeInsurance || false,
+      retirementPlan: formData.retirementPlan || false,
+      flexiblePTO: formData.flexiblePTO || false,
       medicalAid: formData.medicalAid || false,
       funeralCover: formData.funeralCover || false,
       vehicleBenefit: formData.vehicleBenefit || false,
@@ -622,20 +631,28 @@ export default function EmployeesPage() {
       education: formData.education,
       skills: formData.skills,
       certifications: formData.certifications,
+      orientationTrainingRequired: formData.orientationTrainingRequired || false,
+      securityTrainingRequired: formData.securityTrainingRequired || false,
+      departmentSpecificTrainingRequired: formData.departmentSpecificTrainingRequired || false,
       trainingRequired: formData.trainingRequired,
       
       // Access & Security
       accessLevel: formData.accessLevel,
-      securityClearance: formData.securityClearance,
+      userRole: formData.userRole,
       systemAccess: formData.systemAccess,
+      documentSecurityClearance: formData.documentSecurityClearance,
       contractSigned: formData.contractSigned,
       backgroundCheckCompleted: formData.backgroundCheckCompleted,
       medicalCheckCompleted: formData.medicalCheckCompleted,
       trainingCompleted: formData.trainingCompleted,
+      initialTrainingCompleted: formData.initialTrainingCompleted,
       additionalNotes: formData.additionalNotes,
       
       // Documents
       uploadedDocuments: formData.uploadedDocuments,
+      
+      // Job Description
+      jobDescription: formData.jobDescription,
       
       // System fields
       status: formData.status,
