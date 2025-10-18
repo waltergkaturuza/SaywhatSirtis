@@ -75,13 +75,14 @@ export default function PerformancePage() {
   const router = useRouter();
   const [reviews, setReviews] = useState<PerformanceReview[]>([]);
   const [plans, setPlans] = useState<PerformancePlan[]>([]);
+  const [keyResponsibilities, setKeyResponsibilities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'reviews' | 'plans' | 'goals'>('reviews');
+  const [activeTab, setActiveTab] = useState<'reviews' | 'plans' | 'responsibilities'>('plans');
   const [stats, setStats] = useState({
     totalReviews: 0,
     completedReviews: 0,
-    activeGoals: 0,
+    activePlans: 0,
     overallRating: 0,
     pendingActions: 0
   });
@@ -103,6 +104,20 @@ export default function PerformancePage() {
       if (plansResponse.ok) {
         const plansData = await plansResponse.json();
         setPlans(plansData);
+      }
+
+      // Load key responsibilities from job description
+      const profileResponse = await fetch('/api/employee/profile');
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        if (profileData.jobDescription?.keyResponsibilities) {
+          // Handle both array and object formats
+          let responsibilities = profileData.jobDescription.keyResponsibilities;
+          if (typeof responsibilities === 'object' && !Array.isArray(responsibilities)) {
+            responsibilities = Object.values(responsibilities);
+          }
+          setKeyResponsibilities(Array.isArray(responsibilities) ? responsibilities : []);
+        }
       }
 
       // Load stats
@@ -259,8 +274,8 @@ export default function PerformancePage() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Active Goals</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats.activeGoals}</dd>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Active Plans</dt>
+                    <dd className="text-lg font-medium text-gray-900">{stats.activePlans}</dd>
                   </dl>
                 </div>
               </div>
@@ -319,9 +334,9 @@ export default function PerformancePage() {
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
             {[
-              { key: 'reviews', label: 'Performance Reviews', count: reviews.length },
-              { key: 'plans', label: 'Development Plans', count: plans.length },
-              { key: 'goals', label: 'Current Goals', count: stats.activeGoals }
+              { key: 'plans', label: 'Performance Plans', count: plans.length },
+              { key: 'reviews', label: 'Performance Appraisals', count: reviews.length },
+              { key: 'responsibilities', label: 'Key Responsibilities', count: keyResponsibilities.length }
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -348,15 +363,15 @@ export default function PerformancePage() {
           </div>
         ) : (
           <>
-            {/* Performance Reviews */}
+            {/* Performance Appraisals */}
             {activeTab === 'reviews' && (
               <div className="space-y-4">
                 {reviews.length === 0 ? (
                   <div className="text-center py-12">
                     <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No performance reviews</h3>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No performance appraisals</h3>
                     <p className="mt-1 text-sm text-gray-500">
-                      Your performance reviews will appear here when they are initiated by your manager.
+                      Your performance appraisals will appear here when they are initiated by your supervisor.
                     </p>
                   </div>
                 ) : (
@@ -445,15 +460,15 @@ export default function PerformancePage() {
               </div>
             )}
 
-            {/* Development Plans */}
+            {/* Performance Plans */}
             {activeTab === 'plans' && (
               <div className="space-y-4">
                 {plans.length === 0 ? (
                   <div className="text-center py-12">
                     <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">No development plans</h3>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No performance plans</h3>
                     <p className="mt-1 text-sm text-gray-500">
-                      Your development plans and career progression goals will appear here.
+                      Your performance plans with goals and objectives will appear here.
                     </p>
                   </div>
                 ) : (
@@ -521,17 +536,42 @@ export default function PerformancePage() {
               </div>
             )}
 
-            {/* Current Goals */}
-            {activeTab === 'goals' && (
+            {/* Key Responsibilities */}
+            {activeTab === 'responsibilities' && (
               <div className="space-y-4">
-                {/* This will be populated with current goals from active plans and reviews */}
-                <div className="text-center py-12">
-                  <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">Goals view coming soon</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    A consolidated view of all your current performance goals will be available here.
-                  </p>
-                </div>
+                {keyResponsibilities.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No key responsibilities</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Your key responsibilities from your job description will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {keyResponsibilities.map((responsibility, index) => (
+                      <div key={index} className="bg-white shadow rounded-lg">
+                        <div className="p-6">
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <div className="flex items-center justify-center h-8 w-8 rounded-full bg-saywhat-orange text-white text-sm font-medium">
+                                {index + 1}
+                              </div>
+                            </div>
+                            <div className="ml-4 flex-1">
+                              <h3 className="text-lg font-medium text-gray-900">
+                                Key Responsibility {index + 1}
+                              </h3>
+                              <p className="mt-2 text-sm text-gray-600">
+                                {responsibility}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
