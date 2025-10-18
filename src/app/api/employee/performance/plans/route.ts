@@ -48,6 +48,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Find the supervisor's user ID
+    const supervisorEmployee = await prisma.employees.findUnique({
+      where: { id: employee.supervisor_id },
+      include: { users: true }
+    });
+
+    if (!supervisorEmployee || !supervisorEmployee.users) {
+      return NextResponse.json(
+        { error: 'Supervisor user account not found' }, 
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     
     // Validate required fields
@@ -66,7 +79,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: randomUUID(),
         employeeId: employee.id,
-        supervisorId: employee.supervisor_id!,
+        supervisorId: supervisorEmployee.users.id,
         planYear: parseInt(body.planYear),
         planPeriod: body.planPeriod || 'Annual',
         status: 'draft',
