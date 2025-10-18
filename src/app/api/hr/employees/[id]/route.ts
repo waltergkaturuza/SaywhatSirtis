@@ -902,6 +902,59 @@ export async function PATCH(
       }
     }
 
+    // Handle job description update/create
+    if (formData.jobDescription) {
+      const { jobTitle, location, jobSummary, keyResponsibilities, essentialExperience, essentialSkills, acknowledgment } = formData.jobDescription
+      
+      try {
+        // Check if employee already has a job description
+        const existingJobDesc = await prisma.job_descriptions.findFirst({
+          where: { employeeId: employeeId }
+        })
+
+        if (existingJobDesc) {
+          // Update existing job description
+          await prisma.job_descriptions.update({
+            where: { id: existingJobDesc.id },
+            data: {
+              jobTitle,
+              location,
+              jobSummary,
+              keyResponsibilities,
+              essentialExperience,
+              essentialSkills,
+              acknowledgment,
+              updatedAt: new Date()
+            }
+          })
+          console.log(`✅ Updated job description for employee ${employeeId}`)
+        } else {
+          // Create new job description
+          await prisma.job_descriptions.create({
+            data: {
+              id: require('crypto').randomUUID(),
+              employeeId: employeeId,
+              jobTitle,
+              location,
+              jobSummary,
+              keyResponsibilities,
+              essentialExperience,
+              essentialSkills,
+              acknowledgment,
+              version: 1,
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+          })
+          console.log(`✅ Created new job description for employee ${employeeId}`)
+        }
+      } catch (jobDescError) {
+        console.error('⚠️ Warning: Failed to update job description:', jobDescError)
+        // Don't fail the entire operation if job description update fails
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Employee updated successfully',
