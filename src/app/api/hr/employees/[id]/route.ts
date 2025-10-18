@@ -786,6 +786,80 @@ export async function PATCH(
     // Compensation
     if (formData.baseSalary !== undefined) updateData.salary = formData.baseSalary ? parseFloat(formData.baseSalary) : null
     if (formData.currency !== undefined) updateData.currency = formData.currency
+    if (formData.payGrade !== undefined) updateData.pay_grade = formData.payGrade ? sanitizeInput(formData.payGrade) : null
+    if (formData.payFrequency !== undefined) updateData.pay_frequency = formData.payFrequency
+
+    // Personal Information - Missing fields
+    if (formData.nationalId !== undefined) updateData.nationalId = formData.nationalId ? sanitizeInput(formData.nationalId) : null
+    if (formData.maritalStatus !== undefined) updateData.marital_status = formData.maritalStatus
+    if (formData.country !== undefined) updateData.country = formData.country ? sanitizeInput(formData.country) : null
+    if (formData.province !== undefined) updateData.province = formData.province ? sanitizeInput(formData.province) : null
+    if (formData.alternativePhone !== undefined) updateData.alternativePhone = formData.alternativePhone ? sanitizeInput(formData.alternativePhone) : null
+    if (formData.personalEmail !== undefined) updateData.personalEmail = formData.personalEmail ? formData.personalEmail.toLowerCase().trim() : null
+
+    // Role Information - Missing fields
+    if (formData.isSupervisor !== undefined) updateData.is_supervisor = formData.isSupervisor
+    if (formData.isReviewer !== undefined) updateData.is_reviewer = formData.isReviewer
+
+    // Benefits - Missing fields
+    if (formData.healthInsurance !== undefined) updateData.health_insurance = formData.healthInsurance
+    if (formData.dentalCoverage !== undefined) updateData.dental_coverage = formData.dentalCoverage
+    if (formData.visionCoverage !== undefined) updateData.vision_coverage = formData.visionCoverage
+    if (formData.lifeInsurance !== undefined) updateData.life_insurance = formData.lifeInsurance
+    if (formData.retirementPlan !== undefined) updateData.retirement_plan = formData.retirementPlan
+    if (formData.flexiblePTO !== undefined) updateData.flexible_pto = formData.flexiblePTO
+    if (formData.medicalAid !== undefined) updateData.medical_aid = formData.medicalAid
+    if (formData.funeralCover !== undefined) updateData.funeral_cover = formData.funeralCover
+    if (formData.vehicleBenefit !== undefined) updateData.vehicle_benefit = formData.vehicleBenefit
+    if (formData.fuelAllowance !== undefined) updateData.fuel_allowance = formData.fuelAllowance
+    if (formData.airtimeAllowance !== undefined) updateData.airtime_allowance = formData.airtimeAllowance
+    if (formData.otherBenefits !== undefined) updateData.other_benefits = Array.isArray(formData.otherBenefits) ? formData.otherBenefits : []
+
+    // Education & Skills - Missing fields
+    if (formData.education !== undefined) updateData.education = formData.education ? sanitizeInput(formData.education) : null
+    if (formData.skills !== undefined) updateData.skills = Array.isArray(formData.skills) ? formData.skills : []
+    if (formData.certifications !== undefined) updateData.certifications = Array.isArray(formData.certifications) ? formData.certifications : []
+
+    // Training Fields - Missing fields
+    if (formData.orientationTrainingRequired !== undefined) updateData.orientation_training_required = formData.orientationTrainingRequired
+    if (formData.securityTrainingRequired !== undefined) updateData.security_training_required = formData.securityTrainingRequired
+    if (formData.departmentSpecificTrainingRequired !== undefined) updateData.department_specific_training_required = formData.departmentSpecificTrainingRequired
+    if (formData.trainingCompleted !== undefined) updateData.training_completed = formData.trainingCompleted
+    if (formData.initialTrainingCompleted !== undefined) updateData.initial_training_completed = formData.initialTrainingCompleted
+
+    // Access & Security - Missing fields
+    if (formData.accessLevel !== undefined) updateData.access_level = formData.accessLevel
+    if (formData.userRole !== undefined) {
+      updateData.user_role = formData.userRole
+      
+      // Automatically calculate access level and document security clearance based on role
+      const getAccessLevelFromRole = (role: string) => {
+        const roleMap: Record<string, { accessLevel: string, documentLevel: string }> = {
+          'BASIC_USER_1': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
+          'BASIC_USER_2': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
+          'ADVANCE_USER_1': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
+          'ADVANCE_USER_2': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
+          'HR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
+          'SUPERUSER': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
+          'SYSTEM_ADMINISTRATOR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' }
+        }
+        return roleMap[role] || { accessLevel: 'BASIC', documentLevel: 'PUBLIC' }
+      }
+      
+      const roleConfig = getAccessLevelFromRole(formData.userRole)
+      updateData.access_level = roleConfig.accessLevel
+      updateData.document_security_clearance = roleConfig.documentLevel
+    }
+    if (formData.systemAccess !== undefined) updateData.system_access = Array.isArray(formData.systemAccess) ? formData.systemAccess : []
+    if (formData.documentSecurityClearance !== undefined) updateData.document_security_clearance = formData.documentSecurityClearance
+
+    // Onboarding Fields - Missing fields
+    if (formData.contractSigned !== undefined) updateData.contract_signed = formData.contractSigned
+    if (formData.backgroundCheckCompleted !== undefined) updateData.background_check_completed = formData.backgroundCheckCompleted
+    if (formData.medicalCheckCompleted !== undefined) updateData.medical_check_completed = formData.medicalCheckCompleted
+
+    // Additional Notes
+    if (formData.additionalNotes !== undefined) updateData.additional_notes = formData.additionalNotes ? sanitizeInput(formData.additionalNotes) : null
 
     // Emergency Contact
     if (formData.emergencyContactName !== undefined) updateData.emergencyContact = formData.emergencyContactName ? sanitizeInput(formData.emergencyContactName) : null
@@ -800,6 +874,33 @@ export async function PATCH(
       where: { id: employeeId },
       data: updateData
     })
+
+    // Sync key changes to the users table
+    const userUpdateData: any = {}
+    if (formData.firstName) userUpdateData.firstName = sanitizeInput(formData.firstName)
+    if (formData.lastName) userUpdateData.lastName = sanitizeInput(formData.lastName)
+    if (formData.email) userUpdateData.email = formData.email.toLowerCase().trim()
+    if (formData.userRole) userUpdateData.role = formData.userRole // Sync role to user account
+    if (formData.position) userUpdateData.position = sanitizeInput(formData.position)
+    if (formData.department) userUpdateData.department = formData.department ? sanitizeInput(formData.department) : null
+
+    // Only update users table if there are fields to sync
+    if (Object.keys(userUpdateData).length > 0) {
+      try {
+        console.log(`Syncing user data for employee ${employeeId}:`, userUpdateData)
+        await prisma.users.update({
+          where: { id: existingEmployee.userId },
+          data: {
+            ...userUpdateData,
+            updatedAt: new Date()
+          }
+        })
+        console.log('✅ User data synced successfully')
+      } catch (userError) {
+        console.error('⚠️ Warning: Failed to sync user data:', userError)
+        // Don't fail the entire operation if user sync fails
+      }
+    }
 
     return NextResponse.json({
       success: true,
