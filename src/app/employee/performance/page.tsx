@@ -106,18 +106,61 @@ export default function PerformancePage() {
         setPlans(plansData);
       }
 
-      // Load key responsibilities from job description
+      // Load key responsibilities from multiple sources
       const profileResponse = await fetch('/api/employee/profile');
       if (profileResponse.ok) {
         const profileData = await profileResponse.json();
+        console.log('Profile data:', profileData);
+        
+        let responsibilities: string[] = [];
+        
+        // Try to get from job description first
         if (profileData.jobDescription?.keyResponsibilities) {
+          let jobResponsibilities = profileData.jobDescription.keyResponsibilities;
+          console.log('Job responsibilities:', jobResponsibilities);
+          
           // Handle both array and object formats
-          let responsibilities = profileData.jobDescription.keyResponsibilities;
-          if (typeof responsibilities === 'object' && !Array.isArray(responsibilities)) {
-            responsibilities = Object.values(responsibilities);
+          if (typeof jobResponsibilities === 'object' && !Array.isArray(jobResponsibilities)) {
+            jobResponsibilities = Object.values(jobResponsibilities);
           }
-          setKeyResponsibilities(Array.isArray(responsibilities) ? responsibilities : []);
+          
+          if (Array.isArray(jobResponsibilities)) {
+            responsibilities = jobResponsibilities
+              .filter(r => r && typeof r === 'string')
+              .map(r => String(r).trim())
+              .filter(r => r.length > 0);
+          }
         }
+        
+        // If no responsibilities from job description, try to get from performance plans
+        if (responsibilities.length === 0 && plans.length > 0) {
+          // Look for key responsibilities in the most recent plan
+          const latestPlan = plans[0];
+          console.log('Latest plan:', latestPlan);
+          
+          // Check for performance_responsibilities in the plan
+          if (latestPlan.performance_responsibilities && Array.isArray(latestPlan.performance_responsibilities)) {
+            responsibilities = latestPlan.performance_responsibilities
+              .map((resp: any) => resp.description)
+              .filter((desc: any) => desc && typeof desc === 'string')
+              .map((desc: any) => String(desc).trim())
+              .filter((desc: any) => desc.length > 0);
+          }
+        }
+        
+        // If still no responsibilities found, provide some default ones
+        if (responsibilities.length === 0) {
+          responsibilities = [
+            'Deliver high-quality work outputs within agreed timelines',
+            'Collaborate effectively with team members and stakeholders', 
+            'Maintain professional standards and organizational values',
+            'Continuously develop skills and knowledge relevant to role',
+            'Support organizational objectives and initiatives'
+          ];
+        }
+        
+        console.log('Final responsibilities:', responsibilities);
+        setKeyResponsibilities(responsibilities);
       }
 
       // Load stats
@@ -506,27 +549,34 @@ export default function PerformancePage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {keyResponsibilities.map((responsibility, index) => (
-                      <div key={index} className="bg-white shadow rounded-lg">
-                        <div className="p-6">
-                          <div className="flex items-start">
-                            <div className="flex-shrink-0">
-                              <div className="flex items-center justify-center h-8 w-8 rounded-full bg-saywhat-orange text-white text-sm font-medium">
-                                {index + 1}
+                    {keyResponsibilities.map((responsibility, index) => {
+                      // Ensure responsibility is a string
+                      const responsibilityText = typeof responsibility === 'string' 
+                        ? responsibility 
+                        : String(responsibility || '');
+                      
+                      return (
+                        <div key={index} className="bg-white shadow rounded-lg">
+                          <div className="p-6">
+                            <div className="flex items-start">
+                              <div className="flex-shrink-0">
+                                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-saywhat-orange text-white text-sm font-medium">
+                                  {index + 1}
+                                </div>
                               </div>
-                            </div>
-                            <div className="ml-4 flex-1">
-                              <h3 className="text-lg font-medium text-gray-900">
-                                Key Responsibility {index + 1}
-                              </h3>
-                              <p className="mt-2 text-sm text-gray-600">
-                                {responsibility}
-                              </p>
+                              <div className="ml-4 flex-1">
+                                <h3 className="text-lg font-medium text-gray-900">
+                                  Key Responsibility {index + 1}
+                                </h3>
+                                <p className="mt-2 text-sm text-gray-600">
+                                  {responsibilityText}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
