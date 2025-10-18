@@ -423,24 +423,6 @@ export default function PerformancePage() {
                               )}
                             </div>
                             
-                            {review.goals && review.goals.length > 0 && (
-                              <div className="mt-4">
-                                <h4 className="text-sm font-medium text-gray-700 mb-2">Goals Summary</h4>
-                                <div className="space-y-2">
-                                  {review.goals.slice(0, 3).map((goal) => (
-                                    <div key={goal.id} className="flex items-center justify-between text-sm">
-                                      <span className="text-gray-600">{goal.title}</span>
-                                      <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(goal.status)}`}>
-                                        {goal.progress}%
-                                      </span>
-                                    </div>
-                                  ))}
-                                  {review.goals.length > 3 && (
-                                    <p className="text-xs text-gray-500">+{review.goals.length - 3} more goals</p>
-                                  )}
-                                </div>
-                              </div>
-                            )}
                           </div>
 
                           <div className="flex items-center space-x-2 ml-4">
@@ -490,33 +472,8 @@ export default function PerformancePage() {
                                 <CalendarIcon className="h-4 w-4 mr-1" />
                                 {new Date(plan.startDate).toLocaleDateString()} - {new Date(plan.endDate).toLocaleDateString()}
                               </span>
-                              <span>{plan.goals.length} goals</span>
+                              <span>Performance Plan</span>
                             </div>
-
-                            {plan.goals.length > 0 && (
-                              <div className="mt-4">
-                                <h4 className="text-sm font-medium text-gray-700 mb-2">Goals Progress</h4>
-                                <div className="space-y-2">
-                                  {plan.goals.slice(0, 3).map((goal) => (
-                                    <div key={goal.id} className="flex items-center justify-between text-sm">
-                                      <span className="text-gray-600">{goal.title}</span>
-                                      <div className="flex items-center space-x-2">
-                                        <div className="w-16 bg-gray-200 rounded-full h-2">
-                                          <div
-                                            className="bg-saywhat-orange h-2 rounded-full"
-                                            style={{ width: `${goal.progress}%` }}
-                                          ></div>
-                                        </div>
-                                        <span className="text-xs text-gray-500">{goal.progress}%</span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                  {plan.goals.length > 3 && (
-                                    <p className="text-xs text-gray-500">+{plan.goals.length - 3} more goals</p>
-                                  )}
-                                </div>
-                              </div>
-                            )}
                           </div>
 
                           <div className="flex items-center space-x-2 ml-4">
