@@ -76,6 +76,17 @@ export default function PerformancePage() {
   const [reviews, setReviews] = useState<PerformanceReview[]>([]);
   const [plans, setPlans] = useState<PerformancePlan[]>([]);
   const [keyResponsibilities, setKeyResponsibilities] = useState<string[]>([]);
+  
+  // Helper function to safely set key responsibilities
+  const setSafeKeyResponsibilities = (responsibilities: any[]) => {
+    const safeResponsibilities = responsibilities
+      .filter(item => item && typeof item === 'string')
+      .map(item => String(item).trim())
+      .filter(item => item.length > 0);
+    
+    console.log('Setting safe responsibilities:', safeResponsibilities);
+    setKeyResponsibilities(safeResponsibilities);
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'reviews' | 'plans' | 'responsibilities'>('plans');
@@ -139,8 +150,9 @@ export default function PerformancePage() {
           console.log('Latest plan:', latestPlan);
           
           // Check for performance_responsibilities in the plan
-          if (latestPlan.performance_responsibilities && Array.isArray(latestPlan.performance_responsibilities)) {
-            responsibilities = latestPlan.performance_responsibilities
+          const planWithResponsibilities = latestPlan as any;
+          if (planWithResponsibilities.performance_responsibilities && Array.isArray(planWithResponsibilities.performance_responsibilities)) {
+            responsibilities = planWithResponsibilities.performance_responsibilities
               .map((resp: any) => resp.description)
               .filter((desc: any) => desc && typeof desc === 'string')
               .map((desc: any) => String(desc).trim())
@@ -160,7 +172,16 @@ export default function PerformancePage() {
         }
         
         console.log('Final responsibilities:', responsibilities);
-        setKeyResponsibilities(responsibilities);
+        setSafeKeyResponsibilities(responsibilities);
+      } else {
+        // If profile fetch fails, use default responsibilities
+        setSafeKeyResponsibilities([
+          'Deliver high-quality work outputs within agreed timelines',
+          'Collaborate effectively with team members and stakeholders', 
+          'Maintain professional standards and organizational values',
+          'Continuously develop skills and knowledge relevant to role',
+          'Support organizational objectives and initiatives'
+        ]);
       }
 
       // Load stats
@@ -549,34 +570,44 @@ export default function PerformancePage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {keyResponsibilities.map((responsibility, index) => {
-                      // Ensure responsibility is a string
-                      const responsibilityText = typeof responsibility === 'string' 
-                        ? responsibility 
-                        : String(responsibility || '');
-                      
-                      return (
-                        <div key={index} className="bg-white shadow rounded-lg">
-                          <div className="p-6">
-                            <div className="flex items-start">
-                              <div className="flex-shrink-0">
-                                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-saywhat-orange text-white text-sm font-medium">
-                                  {index + 1}
+                    {keyResponsibilities
+                      .filter((responsibility) => {
+                        // Only allow strings, filter out any objects
+                        return typeof responsibility === 'string' && responsibility.trim().length > 0;
+                      })
+                      .map((responsibility, index) => {
+                        // Double-check that responsibility is a string
+                        const responsibilityText = String(responsibility || '').trim();
+                        
+                        // Skip if empty after processing
+                        if (!responsibilityText) {
+                          return null;
+                        }
+                        
+                        return (
+                          <div key={index} className="bg-white shadow rounded-lg">
+                            <div className="p-6">
+                              <div className="flex items-start">
+                                <div className="flex-shrink-0">
+                                  <div className="flex items-center justify-center h-8 w-8 rounded-full bg-saywhat-orange text-white text-sm font-medium">
+                                    {index + 1}
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="ml-4 flex-1">
-                                <h3 className="text-lg font-medium text-gray-900">
-                                  Key Responsibility {index + 1}
-                                </h3>
-                                <p className="mt-2 text-sm text-gray-600">
-                                  {responsibilityText}
-                                </p>
+                                <div className="ml-4 flex-1">
+                                  <h3 className="text-lg font-medium text-gray-900">
+                                    Key Responsibility {index + 1}
+                                  </h3>
+                                  <p className="mt-2 text-sm text-gray-600">
+                                    {responsibilityText}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                      .filter(Boolean) // Remove any null entries
+                    }
                   </div>
                 )}
               </div>
