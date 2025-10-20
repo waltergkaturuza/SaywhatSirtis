@@ -1142,6 +1142,8 @@ model meal_submissions {
   id           String   @id @default(cuid())
   formId       String
   projectId    String?
+  userId       String?
+  userEmail    String?
   submittedBy  String?
   submittedAt  DateTime @default(now())
   latitude     Float?
@@ -1149,6 +1151,7 @@ model meal_submissions {
   attachments  Json?
   data         Json     // answers keyed by question key
   metadata     Json?
+  deviceInfo   Json?    // device information for tracking
 
   meal_forms   meal_forms @relation(fields: [formId], references: [id])
 

@@ -387,10 +387,159 @@ function SubmissionsStub() {
   const [gpsError, setGpsError] = useState<string | null>(null)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  
+  // Admin submissions management
+  const [submissions, setSubmissions] = useState<any[]>([])
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false)
+  const [showAdminView, setShowAdminView] = useState(false)
+  const [filters, setFilters] = useState({
+    dateFrom: '',
+    dateTo: '',
+    ipAddress: '',
+    project: '',
+    location: '',
+    status: 'all'
+  })
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null)
 
   const loadForms = async () => {
     const r = await fetch('/api/meal/forms'); const j = await r.json(); if (j.success) setForms(j.data)
   }
+
+  const loadSubmissions = async () => {
+    setLoadingSubmissions(true)
+    try {
+      // Simulate loading submissions with tracking data
+      const mockSubmissions = [
+        {
+          id: 'sub_001',
+          formName: 'Beneficiary Survey',
+          projectName: 'Community Water Program',
+          submittedAt: '2024-01-15T10:30:00Z',
+          ipAddress: '192.168.1.100',
+          location: 'Harare, Zimbabwe',
+          coordinates: { lat: -17.8252, lng: 31.0335 },
+          deviceInfo: {
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            platform: 'Windows',
+            language: 'en-US'
+          },
+          status: 'completed',
+          dataSize: '2.3 KB',
+          attachments: 2,
+          submittedBy: 'Anonymous',
+          completionTime: '4m 32s'
+        },
+        {
+          id: 'sub_002',
+          formName: 'Impact Assessment',
+          projectName: 'Education Initiative',
+          submittedAt: '2024-01-15T09:15:00Z',
+          ipAddress: '203.45.67.89',
+          location: 'Bulawayo, Zimbabwe',
+          coordinates: { lat: -20.1569, lng: 28.5906 },
+          deviceInfo: {
+            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)',
+            platform: 'iOS',
+            language: 'en-ZW'
+          },
+          status: 'completed',
+          dataSize: '1.8 KB',
+          attachments: 1,
+          submittedBy: 'Anonymous',
+          completionTime: '6m 15s'
+        },
+        {
+          id: 'sub_003',
+          formName: 'Baseline Study',
+          projectName: 'Health Outreach',
+          submittedAt: '2024-01-14T16:45:00Z',
+          ipAddress: '41.223.45.123',
+          location: 'Mutare, Zimbabwe',
+          coordinates: { lat: -18.9707, lng: 32.6729 },
+          deviceInfo: {
+            userAgent: 'Mozilla/5.0 (Android 12; Mobile; rv:91.0) Gecko/91.0',
+            platform: 'Android',
+            language: 'en-ZW'
+          },
+          status: 'incomplete',
+          dataSize: '0.9 KB',
+          attachments: 0,
+          submittedBy: 'Anonymous',
+          completionTime: '2m 18s'
+        },
+        {
+          id: 'sub_004',
+          formName: 'Follow-up Survey',
+          projectName: 'Community Water Program',
+          submittedAt: '2024-01-14T14:20:00Z',
+          ipAddress: '192.168.1.105',
+          location: 'Harare, Zimbabwe',
+          coordinates: { lat: -17.8252, lng: 31.0335 },
+          deviceInfo: {
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            platform: 'Windows',
+            language: 'en-US'
+          },
+          status: 'completed',
+          dataSize: '3.1 KB',
+          attachments: 3,
+          submittedBy: 'Anonymous',
+          completionTime: '7m 45s'
+        },
+        {
+          id: 'sub_005',
+          formName: 'Exit Interview',
+          projectName: 'Education Initiative',
+          submittedAt: '2024-01-13T11:30:00Z',
+          ipAddress: '154.67.89.234',
+          location: 'Gweru, Zimbabwe',
+          coordinates: { lat: -19.4500, lng: 29.8167 },
+          deviceInfo: {
+            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X)',
+            platform: 'iOS',
+            language: 'en-ZW'
+          },
+          status: 'completed',
+          dataSize: '2.7 KB',
+          attachments: 1,
+          submittedBy: 'Anonymous',
+          completionTime: '5m 12s'
+        }
+      ]
+      setSubmissions(mockSubmissions)
+    } catch (e) { console.error('Failed to load submissions') }
+    finally { setLoadingSubmissions(false) }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800'
+      case 'incomplete': return 'bg-yellow-100 text-yellow-800'
+      case 'failed': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getDeviceIcon = (platform: string) => {
+    switch (platform.toLowerCase()) {
+      case 'windows': return '🖥️'
+      case 'ios': return '📱'
+      case 'android': return '🤖'
+      case 'macos': return '💻'
+      default: return '📱'
+    }
+  }
+
+  const filteredSubmissions = submissions.filter(sub => {
+    if (filters.dateFrom && new Date(sub.submittedAt) < new Date(filters.dateFrom)) return false
+    if (filters.dateTo && new Date(sub.submittedAt) > new Date(filters.dateTo)) return false
+    if (filters.ipAddress && !sub.ipAddress.includes(filters.ipAddress)) return false
+    if (filters.project && !sub.projectName.toLowerCase().includes(filters.project.toLowerCase())) return false
+    if (filters.location && !sub.location.toLowerCase().includes(filters.location.toLowerCase())) return false
+    if (filters.status !== 'all' && sub.status !== filters.status) return false
+    return true
+  })
 
   const loadSchema = async (id: string) => {
     if (!id) return
@@ -909,6 +1058,267 @@ function SubmissionsStub() {
           )}
         </div>
       )}
+
+      {/* Admin Submissions Management */}
+      <div className="mt-8 border-t pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">📊 Admin: Incoming Submissions</h3>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowAdminView(!showAdminView)}
+              className="px-3 py-2 bg-gray-600 text-white rounded-md text-sm hover:bg-gray-700"
+            >
+              {showAdminView ? 'Hide' : 'Show'} Admin View
+            </button>
+            <button 
+              onClick={loadSubmissions}
+              disabled={loadingSubmissions}
+              className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loadingSubmissions ? '🔄 Loading...' : '🔄 Load Submissions'}
+            </button>
+          </div>
+        </div>
+
+        {showAdminView && (
+          <div className="space-y-4">
+            {/* Filters */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-3">🔍 Filter Submissions</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Date From</label>
+                  <input 
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={e => setFilters({...filters, dateFrom: e.target.value})}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Date To</label>
+                  <input 
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={e => setFilters({...filters, dateTo: e.target.value})}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">IP Address</label>
+                  <input 
+                    type="text"
+                    placeholder="192.168.1.100"
+                    value={filters.ipAddress}
+                    onChange={e => setFilters({...filters, ipAddress: e.target.value})}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Project</label>
+                  <input 
+                    type="text"
+                    placeholder="Community Water"
+                    value={filters.project}
+                    onChange={e => setFilters({...filters, project: e.target.value})}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                  <input 
+                    type="text"
+                    placeholder="Harare"
+                    value={filters.location}
+                    onChange={e => setFilters({...filters, location: e.target.value})}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                  <select 
+                    value={filters.status}
+                    onChange={e => setFilters({...filters, status: e.target.value})}
+                    className="w-full px-2 py-1 border rounded text-sm"
+                  >
+                    <option value="all">All</option>
+                    <option value="completed">Completed</option>
+                    <option value="incomplete">Incomplete</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Submissions List */}
+            <div className="bg-white rounded-lg border">
+              <div className="p-4 border-b">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-gray-900">Submissions ({filteredSubmissions.length})</h4>
+                  <div className="text-sm text-gray-600">
+                    Last updated: {new Date().toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              
+              {loadingSubmissions ? (
+                <div className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-gray-600">Loading submissions...</p>
+                </div>
+              ) : filteredSubmissions.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  No submissions found matching your filters.
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {filteredSubmissions.map((submission, index) => (
+                    <div key={submission.id} className="p-4 hover:bg-gray-50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900">{submission.formName}</span>
+                              <span className={`px-2 py-1 rounded text-xs ${getStatusColor(submission.status)}`}>
+                                {submission.status}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {new Date(submission.submittedAt).toLocaleString()}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500">Project:</span>
+                              <span className="ml-1 font-medium">{submission.projectName}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">IP:</span>
+                              <span className="ml-1 font-mono text-xs">{submission.ipAddress}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Location:</span>
+                              <span className="ml-1">{submission.location}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Device:</span>
+                              <span className="ml-1">{getDeviceIcon(submission.deviceInfo.platform)} {submission.deviceInfo.platform}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                            <span>📊 {submission.dataSize}</span>
+                            <span>📎 {submission.attachments} attachments</span>
+                            <span>⏱️ {submission.completionTime}</span>
+                            <span>👤 {submission.submittedBy}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-1 ml-4">
+                          <button 
+                            onClick={() => setSelectedSubmission(submission)}
+                            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                          >
+                            👁️ View
+                          </button>
+                          <button className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700">
+                            📥 Export
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Submission Details Modal */}
+            {selectedSubmission && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Submission Details</h3>
+                    <button 
+                      onClick={() => setSelectedSubmission(null)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Form Name</label>
+                        <p className="text-sm text-gray-900">{selectedSubmission.formName}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Project</label>
+                        <p className="text-sm text-gray-900">{selectedSubmission.projectName}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Submitted At</label>
+                        <p className="text-sm text-gray-900">{new Date(selectedSubmission.submittedAt).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">IP Address</label>
+                        <p className="text-sm font-mono text-gray-900">{selectedSubmission.ipAddress}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Location</label>
+                        <p className="text-sm text-gray-900">{selectedSubmission.location}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Coordinates</label>
+                        <p className="text-sm text-gray-900">
+                          {selectedSubmission.coordinates.lat.toFixed(6)}, {selectedSubmission.coordinates.lng.toFixed(6)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Device Information</label>
+                      <div className="mt-1 p-3 bg-gray-50 rounded text-sm">
+                        <p><strong>Platform:</strong> {selectedSubmission.deviceInfo.platform}</p>
+                        <p><strong>Language:</strong> {selectedSubmission.deviceInfo.language}</p>
+                        <p><strong>User Agent:</strong> {selectedSubmission.deviceInfo.userAgent}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Data Size</label>
+                        <p className="text-gray-900">{selectedSubmission.dataSize}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Attachments</label>
+                        <p className="text-gray-900">{selectedSubmission.attachments}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Completion Time</label>
+                        <p className="text-gray-900">{selectedSubmission.completionTime}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 mt-6">
+                    <button 
+                      onClick={() => setSelectedSubmission(null)}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                    >
+                      Close
+                    </button>
+                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                      Export Data
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

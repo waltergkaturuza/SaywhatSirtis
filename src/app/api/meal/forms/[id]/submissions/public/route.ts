@@ -22,9 +22,13 @@ export async function POST(req: NextRequest, ctx: any) {
     // Create submission
     const submission = await prisma.$queryRaw<any[]>`
       insert into public.meal_submissions
-        (form_id, data, submitted_at, device_info)
+        (form_id, data, submitted_at, device_info, latitude, longitude, attachments, metadata)
       values
-        (${id}::uuid, ${JSON.stringify(body.data || {})}::jsonb, now(), ${JSON.stringify(body.device_info || {})}::jsonb)
+        (${id}::uuid, ${JSON.stringify(body.data || {})}::jsonb, now(), 
+         ${JSON.stringify(body.device_info || {})}::jsonb,
+         ${body.latitude ?? null}, ${body.longitude ?? null},
+         ${body.attachments ? JSON.stringify(body.attachments) : null}::jsonb,
+         ${body.metadata ? JSON.stringify(body.metadata) : null}::jsonb)
       returning *
     `
     
