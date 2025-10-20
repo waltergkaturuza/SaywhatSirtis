@@ -12,23 +12,6 @@ export async function GET(req: NextRequest) {
     const canView = roles.some(r => ["ADMIN","SUPER_ADMIN","SYSTEM_ADMINISTRATOR","ADVANCE_USER_2","HR","MEAL_ADMIN"].includes(r))
     if (!canView) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 })
 
-    // Get query parameters for filtering
-    const { searchParams } = new URL(req.url)
-    const period = searchParams.get('period') || 'all'
-    const projectId = searchParams.get('projectId') || 'all'
-
-    // Calculate date range based on period
-    let dateFilter = ''
-    if (period === 'monthly') {
-      dateFilter = `AND ms.submitted_at >= NOW() - INTERVAL '30 days'`
-    } else if (period === 'weekly') {
-      dateFilter = `AND ms.submitted_at >= NOW() - INTERVAL '7 days'`
-    } else if (period === 'daily') {
-      dateFilter = `AND ms.submitted_at >= NOW() - INTERVAL '1 day'`
-    }
-
-    const projectFilter = projectId !== 'all' ? `AND ms.project_id = '${projectId}'` : ''
-
     // Get key metrics
     const metrics = await prisma.$queryRaw<any[]>`
       SELECT 
@@ -36,11 +19,10 @@ export async function GET(req: NextRequest) {
         COUNT(DISTINCT ms.form_id) as active_forms,
         COUNT(DISTINCT mi.id) as total_indicators,
         ROUND(
-          COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / COUNT(*), 1
+          COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1
         ) as completion_rate
       FROM public.meal_submissions ms
       LEFT JOIN public.meal_indicators mi ON 1=1
-      WHERE 1=1 ${dateFilter} ${projectFilter}
     `
 
     // Get regional performance
@@ -49,10 +31,9 @@ export async function GET(req: NextRequest) {
         COALESCE(ms.metadata->>'location', 'Unknown') as region,
         COUNT(*) as submission_count,
         ROUND(
-          COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / COUNT(*), 1
+          COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1
         ) as completion_rate
       FROM public.meal_submissions ms
-      WHERE 1=1 ${dateFilter} ${projectFilter}
       GROUP BY ms.metadata->>'location'
       ORDER BY submission_count DESC
       LIMIT 10
@@ -63,9 +44,8 @@ export async function GET(req: NextRequest) {
       SELECT 
         COALESCE(ms.data->>'gender', ms.data->>'sex', 'Unknown') as gender,
         COUNT(*) as count,
-        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM public.meal_submissions WHERE 1=1 ${dateFilter} ${projectFilter}), 1) as percentage
+        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM public.meal_submissions), 1) as percentage
       FROM public.meal_submissions ms
-      WHERE 1=1 ${dateFilter} ${projectFilter}
       GROUP BY ms.data->>'gender', ms.data->>'sex'
       ORDER BY count DESC
     `
@@ -82,10 +62,9 @@ export async function GET(req: NextRequest) {
           ELSE '65+'
         END as age_group,
         COUNT(*) as count,
-        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM public.meal_submissions WHERE 1=1 ${dateFilter} ${projectFilter}), 1) as percentage
+        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM public.meal_submissions), 1) as percentage
       FROM public.meal_submissions ms
-      WHERE 1=1 ${dateFilter} ${projectFilter}
-        AND ms.data->>'age' IS NOT NULL
+      WHERE ms.data->>'age' IS NOT NULL
         AND ms.data->>'age' ~ '^[0-9]+$'
       GROUP BY age_group
       ORDER BY 
@@ -99,13 +78,12 @@ export async function GET(req: NextRequest) {
         END
     `
 
-    // Get trend analysis (submissions over time)
+    // Get trend analysis
     const trendAnalysis = await prisma.$queryRaw<any[]>`
       SELECT 
         DATE(ms.submitted_at) as date,
         COUNT(*) as submissions
       FROM public.meal_submissions ms
-      WHERE 1=1 ${dateFilter} ${projectFilter}
       GROUP BY DATE(ms.submitted_at)
       ORDER BY date DESC
       LIMIT 30
@@ -117,11 +95,10 @@ export async function GET(req: NextRequest) {
         mf.name as form_name,
         COUNT(*) as submission_count,
         ROUND(
-          COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / COUNT(*), 1
+          COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1
         ) as completion_rate
       FROM public.meal_submissions ms
       LEFT JOIN public.meal_forms mf ON ms.form_id = mf.id
-      WHERE 1=1 ${dateFilter} ${projectFilter}
       GROUP BY mf.name
       ORDER BY submission_count DESC
       LIMIT 10
@@ -145,7 +122,6 @@ export async function GET(req: NextRequest) {
         ) as progress_percentage
       FROM public.meal_indicators mi
       LEFT JOIN public.meal_submissions ms ON ms.form_id = mi.mapping->0->>'form_id'
-      WHERE 1=1 ${dateFilter} ${projectFilter}
       GROUP BY mi.name, mi.baseline, mi.target, mi.mapping
       ORDER BY progress_percentage DESC
       LIMIT 10

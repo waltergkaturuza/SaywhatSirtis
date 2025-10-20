@@ -12,59 +12,7 @@ export async function GET(req: NextRequest) {
     const canView = roles.some(r => ["ADMIN","SUPER_ADMIN","SYSTEM_ADMINISTRATOR","ADVANCE_USER_2","HR","MEAL_ADMIN"].includes(r))
     if (!canView) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 })
 
-    // Get query parameters for filtering
-    const { searchParams } = new URL(req.url)
-    const dateFrom = searchParams.get('dateFrom')
-    const dateTo = searchParams.get('dateTo')
-    const ipAddress = searchParams.get('ipAddress')
-    const project = searchParams.get('project')
-    const location = searchParams.get('location')
-    const status = searchParams.get('status')
-
-    // Build the query with filters
-    let whereConditions = []
-    let queryParams: any[] = []
-    let paramIndex = 1
-
-    if (dateFrom) {
-      whereConditions.push(`submitted_at >= $${paramIndex}::date`)
-      queryParams.push(dateFrom)
-      paramIndex++
-    }
-
-    if (dateTo) {
-      whereConditions.push(`submitted_at <= $${paramIndex}::date`)
-      queryParams.push(dateTo)
-      paramIndex++
-    }
-
-    if (ipAddress) {
-      whereConditions.push(`metadata->>'ip_address' ILIKE $${paramIndex}`)
-      queryParams.push(`%${ipAddress}%`)
-      paramIndex++
-    }
-
-    if (project) {
-      whereConditions.push(`p.name ILIKE $${paramIndex}`)
-      queryParams.push(`%${project}%`)
-      paramIndex++
-    }
-
-    if (location) {
-      whereConditions.push(`metadata->>'location' ILIKE $${paramIndex}`)
-      queryParams.push(`%${location}%`)
-      paramIndex++
-    }
-
-    if (status && status !== 'all') {
-      whereConditions.push(`metadata->>'status' = $${paramIndex}`)
-      queryParams.push(status)
-      paramIndex++
-    }
-
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
-
-    // Fetch submissions with all related data
+    // Fetch submissions with all related data - simplified query
     const submissions = await prisma.$queryRaw<any[]>`
       SELECT 
         ms.id,
@@ -88,7 +36,6 @@ export async function GET(req: NextRequest) {
       LEFT JOIN public.meal_forms mf ON ms.form_id = mf.id
       LEFT JOIN public.projects p ON ms.project_id = p.id
       LEFT JOIN public.users u ON ms.user_id = u.id
-      ${whereClause}
       ORDER BY ms.submitted_at DESC
       LIMIT 100
     `
