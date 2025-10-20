@@ -43,7 +43,7 @@ interface ProjectStatus {
   status: 'on-track' | 'at-risk' | 'delayed' | 'completed'
   progress: number
   dueDate: string
-  manager: string
+  lead: string
   priority: 'low' | 'medium' | 'high' | 'critical'
   budget: number
   spent: number
@@ -393,7 +393,7 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
                     Due Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Manager
+                    Lead
                   </th>
                 </tr>
               </thead>
@@ -447,7 +447,7 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {project.manager}
+                      {project.lead}
                     </td>
                   </tr>
                 ))}
