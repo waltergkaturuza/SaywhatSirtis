@@ -243,10 +243,10 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
           endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
           budget: project.budget || 0,
           actualSpent: project.actualSpent || 0,
-          manager: project.manager ? {
-            id: project.manager.id,
-            name: project.manager.name,
-            email: project.manager.email
+          manager: project.users_projects_managerIdTousers ? {
+            id: project.users_projects_managerIdTousers.id,
+            name: `${project.users_projects_managerIdTousers.firstName || ''} ${project.users_projects_managerIdTousers.lastName || ''}`.trim(),
+            email: project.users_projects_managerIdTousers.email
           } : null,
           team: [], // Would need additional API endpoint for team data
           health: calculateProjectHealth(project),

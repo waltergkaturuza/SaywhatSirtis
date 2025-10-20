@@ -127,6 +127,19 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   const [selectedProvinces, setSelectedProvinces] = useState<Record<string, string[]>>({ "Zimbabwe": [] })
   const [uploadedDocuments, setUploadedDocuments] = useState<Array<{id: string, name: string, size: number, type: string, uploadedAt: Date}>>([])
   const [implementingOrganizations, setImplementingOrganizations] = useState<string[]>([""])
+  const partnerOptions = [
+    "Centre for Youth Empowerment and Civic Education ( CYECE)",
+    "National Action for Quality Education in Zambia  ( NAQEZ)",
+    "Associação Mwana Pwo                                                  ( Mwana Pwo)",
+    "Girls Activist Youth Organization                                 ( GAYO)",
+    "Associacao Mulher,Lei e Desenvolvimento    ( MULEIDE)",
+    "Plataforma Mulheres em Acção Angola            ( PLATAFORMA)",
+    "MWANASIKANA WANHASI",
+    "Centre for Reproductive Health and Education ( CRHE)",
+    "Farming Communities Educational Trust           ( FACET)",
+    "Other"
+  ]
+  const [otherOrganization, setOtherOrganization] = useState("")
   const [selectedFrequencies, setSelectedFrequencies] = useState<string[]>([])
   const [frequencyDates, setFrequencyDates] = useState<Record<string, string>>({})
   const [selectedMethodologies, setSelectedMethodologies] = useState<string[]>([])
@@ -697,6 +710,55 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
 
       <div>
         <Label>Implementing Organizations (up to 10)</Label>
+        {/* Quick add selector */}
+        <div className="mt-2 flex items-center gap-2">
+          <select
+            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+            onChange={(e) => {
+              const val = e.target.value
+              if (!val) return
+              if (val === 'Other') return
+              setImplementingOrganizations(prev => {
+                if (prev.some(o => o.trim() === val.trim())) return prev
+                const next = prev.filter(o => o.trim() !== "")
+                return [...next, val]
+              })
+            }}
+            disabled={!canEdit}
+            defaultValue=""
+          >
+            <option value="" disabled>Select organization</option>
+            {partnerOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          {/* Other input */}
+          <input
+            type="text"
+            placeholder="Other organization"
+            value={otherOrganization}
+            onChange={(e) => setOtherOrganization(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+            disabled={!canEdit}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!otherOrganization.trim()) return
+              setImplementingOrganizations(prev => {
+                if (prev.some(o => o.trim() === otherOrganization.trim())) return prev
+                const next = prev.filter(o => o.trim() !== "")
+                return [...next, otherOrganization.trim()]
+              })
+              setOtherOrganization("")
+            }}
+            disabled={!canEdit}
+          >
+            Add
+          </Button>
+        </div>
         {implementingOrganizations.map((org, index) => (
           <div key={index} className="flex mt-2 space-x-2">
             <Input

@@ -27,6 +27,14 @@ export async function GET(request: NextRequest) {
             email: true
           }
         },
+        users_projects_managerIdTousers: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        },
         _count: {
           select: {
             activities: true

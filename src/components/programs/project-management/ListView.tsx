@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import { 
   CheckIcon, 
   ChevronUpIcon, 
@@ -10,6 +10,8 @@ import {
   ArchiveBoxIcon
 } from "@heroicons/react/24/outline"
 import { Project, SortConfig } from "../project-management"
+import { ProjectViewPopup } from "../project-view-popup"
+import { ProjectEditPopup } from "../project-edit-popup"
 
 interface ListViewProps {
   projects: Project[]
@@ -32,6 +34,9 @@ const ListView: React.FC<ListViewProps> = ({
   permissions,
   isLoading
 }) => {
+  const [viewPopupOpen, setViewPopupOpen] = useState(false)
+  const [editPopupOpen, setEditPopupOpen] = useState(false)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const handleSelectAll = () => {
     if (selectedProjects.length === projects.length) {
       onBulkSelect([])
@@ -46,6 +51,28 @@ const ListView: React.FC<ListViewProps> = ({
     } else {
       onBulkSelect([...selectedProjects, projectId])
     }
+  }
+
+  const handleViewProject = (projectId: string) => {
+    setSelectedProjectId(projectId)
+    setViewPopupOpen(true)
+  }
+
+  const handleEditProject = (projectId: string) => {
+    setSelectedProjectId(projectId)
+    setEditPopupOpen(true)
+  }
+
+  const handleClosePopups = () => {
+    setViewPopupOpen(false)
+    setEditPopupOpen(false)
+    setSelectedProjectId(null)
+  }
+
+  const handleSaveProject = (projectId: string) => {
+    // Refresh the project list or handle the save
+    console.log('Project saved:', projectId)
+    // You might want to trigger a refresh here
   }
 
   const getStatusColor = (status: string) => {
@@ -316,9 +343,10 @@ const ListView: React.FC<ListViewProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          onProjectSelect(project.id)
+                          handleViewProject(project.id)
                         }}
-                        className="text-gray-400 hover:text-blue-600"
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        title="View Project"
                       >
                         <EyeIcon className="h-4 w-4" />
                       </button>
@@ -327,9 +355,10 @@ const ListView: React.FC<ListViewProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          // Handle edit
+                          handleEditProject(project.id)
                         }}
-                        className="text-gray-400 hover:text-green-600"
+                        className="text-gray-400 hover:text-green-600 transition-colors"
+                        title="Edit Project"
                       >
                         <PencilIcon className="h-4 w-4" />
                       </button>
@@ -365,6 +394,23 @@ const ListView: React.FC<ListViewProps> = ({
           </p>
         </div>
       )}
+
+      {/* Popup Components */}
+      <ProjectViewPopup
+        projectId={selectedProjectId}
+        isOpen={viewPopupOpen}
+        onClose={handleClosePopups}
+        onEdit={handleEditProject}
+        permissions={permissions}
+      />
+
+      <ProjectEditPopup
+        projectId={selectedProjectId}
+        isOpen={editPopupOpen}
+        onClose={handleClosePopups}
+        onSave={handleSaveProject}
+        permissions={permissions}
+      />
     </div>
   )
 }

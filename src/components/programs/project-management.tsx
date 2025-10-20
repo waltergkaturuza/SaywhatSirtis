@@ -126,15 +126,15 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
           name: project.name,
           description: project.description || '',
           status: mapStatus(project.status),
-          priority: 'medium', // Default priority, you may want to add this field to schema
+          priority: (project.priority || 'MEDIUM').toString().toLowerCase(),
           progress: calculateProgress(project),
           startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
           endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
           budget: project.budget || 0,
           spent: project.actualSpent || 0,
           manager: {
-            id: project.manager?.id || 'unassigned',
-            name: project.manager?.name || 'Unassigned',
+            id: project.users_projects_managerIdTousers?.id || 'unassigned',
+            name: project.users_projects_managerIdTousers ? `${project.users_projects_managerIdTousers.firstName || ''} ${project.users_projects_managerIdTousers.lastName || ''}`.trim() || 'Unassigned' : 'Unassigned',
             avatar: undefined
           },
           team: [], // You may want to add team members to the schema

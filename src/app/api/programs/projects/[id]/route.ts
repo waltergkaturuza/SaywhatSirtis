@@ -18,7 +18,16 @@ export async function GET(
     const project = await prisma.projects.findUnique({
       where: { id: projectId },
       include: {
-        activities: true
+        activities: true,
+        users_projects_managerIdTousers: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        }
       }
     })
 
@@ -62,19 +71,39 @@ export async function PUT(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    // Prepare objectives data with projectLead and projectTeam
-    const objectives = body.objectives || {}
-    if (body.projectLead !== undefined) {
-      objectives.projectLead = body.projectLead
+    // Prepare objectives data
+    let objectives = body.objectives
+    if (typeof objectives === 'string') {
+      try {
+        objectives = JSON.parse(objectives)
+      } catch {
+        // If it's not valid JSON, treat as plain text
+        objectives = { description: objectives }
+      }
     }
-    if (body.projectTeam !== undefined) {
-      objectives.projectTeam = body.projectTeam
-    }
-    if (body.categories !== undefined) {
-      objectives.categories = body.categories
-    }
-    if (body.implementingOrganizations !== undefined) {
-      objectives.implementingOrganizations = body.implementingOrganizations
+
+    // Resolve managerId: the UI may post an employeeId. Convert to users.id if needed.
+    let managerUserId: string | undefined = body.managerId || undefined
+    if (managerUserId) {
+      // 1) Direct users.id match
+      const user = await prisma.users.findUnique({ where: { id: managerUserId } })
+      if (!user) {
+        // 2) users by employeeId
+        const possibleUser = await prisma.users.findFirst({ where: { employeeId: managerUserId } })
+        if (possibleUser) {
+          managerUserId = possibleUser.id
+        } else {
+          // 3) resolve employee -> email -> users by email
+          const employee = await prisma.employees.findUnique({ where: { id: managerUserId } })
+          if (employee?.email) {
+            const userByEmail = await prisma.users.findUnique({ where: { email: employee.email } })
+            if (userByEmail) managerUserId = userByEmail.id
+            else managerUserId = undefined
+          } else {
+            managerUserId = undefined
+          }
+        }
+      }
     }
 
     // Update the project
@@ -84,15 +113,30 @@ export async function PUT(
         name: body.name,
         description: body.description,
         status: body.status,
+        priority: body.priority,
+        progress: body.progress,
         startDate: body.startDate ? new Date(body.startDate) : undefined,
         endDate: body.endDate ? new Date(body.endDate) : undefined,
         country: body.country,
+        province: body.province,
         budget: body.budget ? parseFloat(body.budget) : undefined,
-        objectives: Object.keys(objectives).length > 0 ? JSON.stringify(objectives) : undefined,
+        actualSpent: body.actualSpent ? parseFloat(body.actualSpent) : undefined,
+        managerId: managerUserId,
+        currency: body.currency,
+        timeframe: body.timeframe,
+        objectives: objectives ? JSON.stringify(objectives) : undefined,
         updatedAt: new Date()
       },
       include: {
-        activities: true
+        activities: true,
+        users_projects_managerIdTousers: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        }
       }
     })
 
