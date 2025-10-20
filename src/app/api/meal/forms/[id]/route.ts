@@ -31,6 +31,21 @@ export async function PUT(req: NextRequest, ctx: any) {
     if (!canEdit) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 })
     const body = await req.json()
     const { id } = ctx.params?.then ? await ctx.params : ctx.params
+    
+    // Get the correct user ID
+    let actualUserId = session.user.id
+    const userInfo = await prisma.$queryRaw<any[]>`
+      select id from public.users where id = ${session.user.id}::text
+    `
+    if (!userInfo[0]) {
+      const userByEmail = await prisma.$queryRaw<any[]>`
+        select id from public.users where email = ${session.user.email}::text
+      `
+      if (userByEmail[0]) {
+        actualUserId = userByEmail[0].id
+      }
+    }
+    
     const updated = await prisma.$queryRaw<any[]>`
       update public.meal_forms
       set name = ${body.name},
@@ -40,6 +55,7 @@ export async function PUT(req: NextRequest, ctx: any) {
           status = ${body.status},
           schema = ${JSON.stringify(body.schema)}::jsonb,
           updated_at = now(),
+          updated_by = ${actualUserId},
           published_at = case when ${body.status} = 'published' then now() else published_at end
       where id = ${id}::uuid
       returning *

@@ -1111,6 +1111,7 @@ model projects {
   creatorId                       String?
   activities                      activities[]
   documents                       documents[]
+  meal_form_projects             meal_form_projects[]
   users_projects_creatorIdTousers users?       @relation("projects_creatorIdTousers", fields: [creatorId], references: [id])
   users_projects_managerIdTousers users?       @relation("projects_managerIdTousers", fields: [managerId], references: [id])
 
@@ -1127,12 +1128,14 @@ model meal_forms {
   language     String?  // e.g., en,sna,nde
   status       String   @default("draft") // draft|published|archived
   createdBy    String?
+  updatedBy    String?
   publishedAt  DateTime?
   schema       Json     // JSON form schema (fields, logic, options)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   meal_submissions meal_submissions[]
+  meal_form_projects meal_form_projects[]
 }
 
 model meal_submissions {
@@ -1804,4 +1807,16 @@ enum UserRole {
   ADVANCE_USER_2
   HR
   SYSTEM_ADMINISTRATOR
+}
+
+model meal_form_projects {
+  id        String   @id @default(uuid())
+  formId    String   // UUID from meal_forms
+  projectId String   // TEXT from projects
+  createdAt DateTime @default(now())
+
+  meal_forms meal_forms @relation(fields: [formId], references: [id], onDelete: Cascade)
+  projects   projects  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([formId, projectId])
 }

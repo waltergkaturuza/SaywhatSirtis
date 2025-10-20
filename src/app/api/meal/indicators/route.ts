@@ -22,13 +22,21 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    const roles: string[] = (session.user as any)?.roles || []
+    const canEdit = roles.some(r => ["ADMIN","SUPER_ADMIN","SYSTEM_ADMINISTRATOR","ADVANCE_USER_2","HR","MEAL_ADMIN"].includes(r))
+    if (!canEdit) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 })
+    
     const body = await req.json()
+    
+    // Generate a unique code if not provided
+    const code = body.code || `IND-${Date.now().toString(36).toUpperCase()}`
+    
     const created = await prisma.meal_indicators.create({
       data: {
         projectId: body.projectId || null,
-        code: body.code,
+        code: code,
         name: body.name,
-        level: body.level,
+        level: body.category || body.level || 'output', // Map category to level
         baseline: body.baseline ?? null,
         target: body.target ?? null,
         unit: body.unit || null,
