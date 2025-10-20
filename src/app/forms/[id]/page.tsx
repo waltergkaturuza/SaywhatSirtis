@@ -471,7 +471,7 @@ export default function PublicFormPage() {
 
   const renderField = (f: any) => {
     const common = { 
-      className: `px-3 py-2 border rounded-md w-full ${validateField(f, data[f.key]) ? 'border-red-500' : 'border-gray-300'}`, 
+      className: `px-3 py-2 border rounded-md w-full text-gray-900 bg-white ${validateField(f, data[f.key]) ? 'border-red-500' : 'border-gray-300'}`, 
       value: data[f.key] || '', 
       onChange: (e: any) => setData(prev => ({ ...prev, [f.key]: e.target.value }))
     }
@@ -508,9 +508,9 @@ export default function PublicFormPage() {
       case 'select': 
         return (
           <div className="space-y-1">
-            <select {...common as any}>
+            <select {...common as any} className={`${common.className} text-gray-900 bg-white`}>
               <option value="">Select {f.label}</option>
-              {(f.options || []).map((o: string) => (<option key={o} value={o}>{o}</option>))}
+              {(f.options || []).map((o: string) => (<option key={o} value={o} className="text-gray-900">{o}</option>))}
             </select>
             {validateField(f, data[f.key]) && <div className="text-red-500 text-xs">{validateField(f, data[f.key])}</div>}
           </div>
@@ -612,7 +612,41 @@ export default function PublicFormPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#ffffff" />
+      </head>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <style jsx global>{`
+          input, select, textarea {
+            color: #1f2937 !important;
+            background-color: #ffffff !important;
+            -webkit-text-fill-color: #1f2937 !important;
+            -webkit-opacity: 1 !important;
+          }
+          input::placeholder, textarea::placeholder {
+            color: #6b7280 !important;
+            -webkit-text-fill-color: #6b7280 !important;
+          }
+          select option {
+            color: #1f2937 !important;
+            background-color: #ffffff !important;
+          }
+          /* Force dark text on mobile Safari */
+          input[type="text"], input[type="email"], input[type="number"], input[type="date"], input[type="tel"] {
+            color: #1f2937 !important;
+            background-color: #ffffff !important;
+            -webkit-text-fill-color: #1f2937 !important;
+          }
+          @media (prefers-color-scheme: dark) {
+            input, select, textarea {
+              color: #1f2937 !important;
+              background-color: #ffffff !important;
+              -webkit-text-fill-color: #1f2937 !important;
+            }
+          }
+        `}</style>
       <div className="max-w-2xl mx-auto px-4">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
@@ -785,5 +819,6 @@ export default function PublicFormPage() {
         )}
       </div>
     </div>
+    </>
   )
 }
