@@ -1117,6 +1117,56 @@ model projects {
   @@index([status])
 }
 
+/// MEAL Module
+model meal_forms {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  projectId    String?
+  version      Int      @default(1)
+  language     String?  // e.g., en,sna,nde
+  status       String   @default("draft") // draft|published|archived
+  createdBy    String?
+  publishedAt  DateTime?
+  schema       Json     // JSON form schema (fields, logic, options)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  meal_submissions meal_submissions[]
+}
+
+model meal_submissions {
+  id           String   @id @default(cuid())
+  formId       String
+  projectId    String?
+  submittedBy  String?
+  submittedAt  DateTime @default(now())
+  latitude     Float?
+  longitude    Float?
+  attachments  Json?
+  data         Json     // answers keyed by question key
+  metadata     Json?
+
+  meal_forms   meal_forms @relation(fields: [formId], references: [id])
+
+  @@index([formId])
+}
+
+model meal_indicators {
+  id            String   @id @default(cuid())
+  projectId     String?
+  code          String
+  name          String
+  level         String   // input|output|outcome|impact
+  baseline      Float?   
+  target        Float?
+  unit          String?
+  disaggregation Json?
+  mapping       Json?    // array of question keys and aggregation type
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 model qualifications {
   id                 String            @id
   employeeId         String

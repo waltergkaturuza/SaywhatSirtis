@@ -35,6 +35,7 @@ import { ProjectManagement } from "../../components/programs/project-management"
 import { SaywhatFlagshipEvents } from "../../components/programs/saywhat-flagship-events"
 import { ReportsAnalytics } from "../../components/programs/reports-analytics-enhanced"
 import { ProjectCalendar } from "../../components/programs/project-calendar"
+import MealModule from "../../components/programs/MealModule"
 
 interface ProgramPermissions {
   canView: boolean
@@ -222,6 +223,12 @@ function EnhancedProgramsContent() {
       description: "Traditional project list and management"
     },
     {
+      id: "meal",
+      name: "MEAL",
+      icon: ClipboardDocumentListIcon,
+      description: "Monitoring, Evaluation, Accountability and Learning"
+    },
+    {
       id: "saywhat-events",
       name: "SAYWHAT Flagship Events",
       icon: TrophyIcon,
@@ -321,6 +328,12 @@ function EnhancedProgramsContent() {
             onProjectSelect={setSelectedProject}
             selectedProject={selectedProject}
           />
+        )
+      case "meal":
+        return (
+          <div className="p-6">
+            <MealModule />
+          </div>
         )
       case "saywhat-events":
         return (
