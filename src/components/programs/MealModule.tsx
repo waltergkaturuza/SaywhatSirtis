@@ -409,107 +409,30 @@ function SubmissionsStub() {
   const loadSubmissions = async () => {
     setLoadingSubmissions(true)
     try {
-      // Simulate loading submissions with tracking data
-      const mockSubmissions = [
-        {
-          id: 'sub_001',
-          formName: 'Beneficiary Survey',
-          projectName: 'Community Water Program',
-          submittedAt: '2024-01-15T10:30:00Z',
-          ipAddress: '192.168.1.100',
-          location: 'Harare, Zimbabwe',
-          coordinates: { lat: -17.8252, lng: 31.0335 },
-          deviceInfo: {
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            platform: 'Windows',
-            language: 'en-US'
-          },
-          status: 'completed',
-          dataSize: '2.3 KB',
-          attachments: 2,
-          submittedBy: 'Anonymous',
-          completionTime: '4m 32s'
-        },
-        {
-          id: 'sub_002',
-          formName: 'Impact Assessment',
-          projectName: 'Education Initiative',
-          submittedAt: '2024-01-15T09:15:00Z',
-          ipAddress: '203.45.67.89',
-          location: 'Bulawayo, Zimbabwe',
-          coordinates: { lat: -20.1569, lng: 28.5906 },
-          deviceInfo: {
-            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)',
-            platform: 'iOS',
-            language: 'en-ZW'
-          },
-          status: 'completed',
-          dataSize: '1.8 KB',
-          attachments: 1,
-          submittedBy: 'Anonymous',
-          completionTime: '6m 15s'
-        },
-        {
-          id: 'sub_003',
-          formName: 'Baseline Study',
-          projectName: 'Health Outreach',
-          submittedAt: '2024-01-14T16:45:00Z',
-          ipAddress: '41.223.45.123',
-          location: 'Mutare, Zimbabwe',
-          coordinates: { lat: -18.9707, lng: 32.6729 },
-          deviceInfo: {
-            userAgent: 'Mozilla/5.0 (Android 12; Mobile; rv:91.0) Gecko/91.0',
-            platform: 'Android',
-            language: 'en-ZW'
-          },
-          status: 'incomplete',
-          dataSize: '0.9 KB',
-          attachments: 0,
-          submittedBy: 'Anonymous',
-          completionTime: '2m 18s'
-        },
-        {
-          id: 'sub_004',
-          formName: 'Follow-up Survey',
-          projectName: 'Community Water Program',
-          submittedAt: '2024-01-14T14:20:00Z',
-          ipAddress: '192.168.1.105',
-          location: 'Harare, Zimbabwe',
-          coordinates: { lat: -17.8252, lng: 31.0335 },
-          deviceInfo: {
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            platform: 'Windows',
-            language: 'en-US'
-          },
-          status: 'completed',
-          dataSize: '3.1 KB',
-          attachments: 3,
-          submittedBy: 'Anonymous',
-          completionTime: '7m 45s'
-        },
-        {
-          id: 'sub_005',
-          formName: 'Exit Interview',
-          projectName: 'Education Initiative',
-          submittedAt: '2024-01-13T11:30:00Z',
-          ipAddress: '154.67.89.234',
-          location: 'Gweru, Zimbabwe',
-          coordinates: { lat: -19.4500, lng: 29.8167 },
-          deviceInfo: {
-            userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X)',
-            platform: 'iOS',
-            language: 'en-ZW'
-          },
-          status: 'completed',
-          dataSize: '2.7 KB',
-          attachments: 1,
-          submittedBy: 'Anonymous',
-          completionTime: '5m 12s'
-        }
-      ]
-      setSubmissions(mockSubmissions)
-    } catch (e) { console.error('Failed to load submissions') }
-    finally { setLoadingSubmissions(false) }
+      // Build query parameters from filters
+      const params = new URLSearchParams()
+      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom)
+      if (filters.dateTo) params.append('dateTo', filters.dateTo)
+      if (filters.ipAddress) params.append('ipAddress', filters.ipAddress)
+      if (filters.project) params.append('project', filters.project)
+      if (filters.location) params.append('location', filters.location)
+      if (filters.status && filters.status !== 'all') params.append('status', filters.status)
+
+      const response = await fetch(`/api/meal/submissions?${params.toString()}`)
+      const result = await response.json()
+      
+      if (result.success) {
+        setSubmissions(result.data)
+      } else {
+        console.error('Failed to load submissions:', result.error)
+        setSubmissions([])
+      }
+    } catch (e) { 
+      console.error('Failed to load submissions:', e)
+      setSubmissions([])
+    } finally { 
+      setLoadingSubmissions(false) 
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -1065,7 +988,13 @@ function SubmissionsStub() {
           <h3 className="text-lg font-semibold text-gray-900">📊 Admin: Incoming Submissions</h3>
           <div className="flex gap-2">
             <button 
-              onClick={() => setShowAdminView(!showAdminView)}
+              onClick={() => {
+                const newShowAdminView = !showAdminView
+                setShowAdminView(newShowAdminView)
+                if (newShowAdminView) {
+                  loadSubmissions()
+                }
+              }}
               className="px-3 py-2 bg-gray-600 text-white rounded-md text-sm hover:bg-gray-700"
             >
               {showAdminView ? 'Hide' : 'Show'} Admin View
@@ -1723,62 +1652,65 @@ function DashboardsStub() {
   const loadDashboardData = async () => {
     setLoading(true)
     try {
-      // Simulate loading dashboard data
-      const mockData = {
-        totalSubmissions: 1247,
-        totalForms: 23,
-        totalIndicators: 156,
-        completionRate: 87.3,
-        regionalData: [
-          { region: 'Harare', submissions: 456, completion: 92.1 },
-          { region: 'Bulawayo', submissions: 234, completion: 85.4 },
-          { region: 'Mutare', submissions: 189, completion: 89.2 },
-          { region: 'Gweru', submissions: 156, completion: 78.9 },
-          { region: 'Masvingo', submissions: 212, completion: 91.3 }
-        ],
-        genderData: [
-          { gender: 'Male', count: 678, percentage: 54.4 },
-          { gender: 'Female', count: 569, percentage: 45.6 }
-        ],
-        ageGroups: [
-          { ageGroup: '18-25', count: 234, percentage: 18.8 },
-          { ageGroup: '26-35', count: 456, percentage: 36.6 },
-          { ageGroup: '36-45', count: 345, percentage: 27.7 },
-          { ageGroup: '46-55', count: 156, percentage: 12.5 },
-          { ageGroup: '55+', count: 56, percentage: 4.5 }
-        ],
-        trendData: [
-          { month: 'Jan', submissions: 89, indicators: 12 },
-          { month: 'Feb', submissions: 134, indicators: 15 },
-          { month: 'Mar', submissions: 156, indicators: 18 },
-          { month: 'Apr', submissions: 189, indicators: 22 },
-          { month: 'May', submissions: 234, indicators: 28 },
-          { month: 'Jun', submissions: 267, indicators: 32 },
-          { month: 'Jul', submissions: 298, indicators: 35 },
-          { month: 'Aug', submissions: 312, indicators: 38 },
-          { month: 'Sep', submissions: 289, indicators: 34 },
-          { month: 'Oct', submissions: 267, indicators: 31 },
-          { month: 'Nov', submissions: 234, indicators: 28 },
-          { month: 'Dec', submissions: 198, indicators: 24 }
-        ],
-        topForms: [
-          { name: 'Beneficiary Survey', submissions: 456, completion: 94.2 },
-          { name: 'Impact Assessment', submissions: 234, completion: 87.1 },
-          { name: 'Baseline Study', submissions: 189, completion: 91.3 },
-          { name: 'Follow-up Survey', submissions: 156, completion: 83.7 },
-          { name: 'Exit Interview', submissions: 123, completion: 89.5 }
-        ],
-        indicatorProgress: [
-          { name: 'Number of beneficiaries reached', current: 1247, target: 1500, progress: 83.1 },
-          { name: 'Training sessions conducted', current: 45, target: 60, progress: 75.0 },
-          { name: 'Community meetings held', current: 78, target: 100, progress: 78.0 },
-          { name: 'Reports submitted', current: 23, target: 24, progress: 95.8 },
-          { name: 'Stakeholder engagement', current: 156, target: 200, progress: 78.0 }
-        ]
+      // Build query parameters
+      const params = new URLSearchParams()
+      params.append('period', selectedPeriod)
+      if (selectedProject !== 'all') params.append('projectId', selectedProject)
+
+      const response = await fetch(`/api/meal/analytics?${params.toString()}`)
+      const result = await response.json()
+      
+      if (result.success) {
+        const data = result.data
+        // Transform API data to match frontend expectations
+        const transformedData = {
+          totalSubmissions: parseInt(data.metrics.total_submissions) || 0,
+          totalForms: parseInt(data.metrics.active_forms) || 0,
+          totalIndicators: parseInt(data.metrics.total_indicators) || 0,
+          completionRate: parseFloat(data.metrics.completion_rate) || 0,
+          regionalData: data.regionalPerformance.map((r: any) => ({
+            region: r.region,
+            submissions: parseInt(r.submission_count),
+            completion: parseFloat(r.completion_rate)
+          })),
+          genderData: data.genderDistribution.map((g: any) => ({
+            gender: g.gender,
+            count: parseInt(g.count),
+            percentage: parseFloat(g.percentage)
+          })),
+          ageGroups: data.ageGroups.map((a: any) => ({
+            ageGroup: a.age_group,
+            count: parseInt(a.count),
+            percentage: parseFloat(a.percentage)
+          })),
+          trendData: data.trendAnalysis.map((t: any) => ({
+            month: new Date(t.date).toLocaleDateString('en-US', { month: 'short' }),
+            submissions: parseInt(t.submissions),
+            indicators: 0 // Not available in current API
+          })),
+          topForms: data.topForms.map((f: any) => ({
+            name: f.form_name,
+            submissions: parseInt(f.submission_count),
+            completion: parseFloat(f.completion_rate)
+          })),
+          indicatorProgress: data.indicatorProgress.map((i: any) => ({
+            name: i.indicator_name,
+            current: parseFloat(i.current_value) || 0,
+            target: parseFloat(i.target) || 0,
+            progress: parseFloat(i.progress_percentage) || 0
+          }))
+        }
+        setDashboardData(transformedData)
+      } else {
+        console.error('Failed to load dashboard data:', result.error)
+        setDashboardData(null)
       }
-      setDashboardData(mockData)
-    } catch (e) { console.error('Failed to load dashboard data') }
-    finally { setLoading(false) }
+    } catch (e) { 
+      console.error('Failed to load dashboard data:', e)
+      setDashboardData(null)
+    } finally { 
+      setLoading(false) 
+    }
   }
 
   const getProgressColor = (progress: number) => {
