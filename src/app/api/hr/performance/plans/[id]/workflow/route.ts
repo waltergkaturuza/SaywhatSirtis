@@ -55,7 +55,15 @@ export async function POST(
     // Verify permissions
     const isSupervisor = plan.supervisorId === employee.id
     const isReviewer = plan.reviewerId === employee.id
-    const canAct = (role === 'supervisor' && isSupervisor) || (role === 'reviewer' && isReviewer)
+    const isHR = session.user.roles?.some(r => [
+      'HR',
+      'admin',
+      'SYSTEM_ADMINISTRATOR',
+      'SUPERUSER',
+      'ADVANCE_USER_1',
+      'ADVANCE_USER_2'
+    ].includes(r))
+    const canAct = (role === 'supervisor' && isSupervisor) || (role === 'reviewer' && isReviewer) || isHR
 
     if (!canAct) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })

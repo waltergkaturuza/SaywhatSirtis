@@ -55,7 +55,15 @@ export async function POST(
     // Verify permissions
     const isSupervisor = appraisal.supervisorId === employee.id
     const isReviewer = appraisal.reviewerId === employee.id
-    const isHR = session.user.roles?.some(r => ['HR', 'admin', 'SYSTEM_ADMINISTRATOR', 'SUPERUSER'].includes(r))
+    const isHR = session.user.roles?.some(r => [
+      'HR',
+      'admin',
+      'SYSTEM_ADMINISTRATOR',
+      'SUPERUSER',
+      // Grant elevated workflow permissions to advanced users, per org policy
+      'ADVANCE_USER_1',
+      'ADVANCE_USER_2'
+    ].includes(r))
     const canAct = (role === 'supervisor' && isSupervisor) || (role === 'reviewer' && isReviewer) || isHR
 
     console.log('Workflow permission check:', {
