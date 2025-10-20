@@ -53,7 +53,11 @@ export async function GET(
         performance_plans: {
           select: {
             planYear: true,
-            planPeriod: true
+            planPeriod: true,
+            reviewStartDate: true,
+            reviewEndDate: true,
+            startDate: true,
+            endDate: true
           }
         }
       }
@@ -102,8 +106,8 @@ export async function GET(
           ? `${appraisal.employees.reviewer.firstName} ${appraisal.employees.reviewer.lastName}`.trim()
           : '',
         reviewPeriod: {
-          startDate: '',
-          endDate: ''
+          startDate: (appraisal.performance_plans?.reviewStartDate || appraisal.performance_plans?.startDate || undefined)?.toISOString().split('T')[0] || '',
+          endDate: (appraisal.performance_plans?.reviewEndDate || appraisal.performance_plans?.endDate || undefined)?.toISOString().split('T')[0] || ''
         }
       },
       performance: {
