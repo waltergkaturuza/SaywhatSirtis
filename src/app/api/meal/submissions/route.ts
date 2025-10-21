@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { MealSubmissionParser } from "@/lib/meal-submission-parser"
 
 export async function GET(req: NextRequest) {
   try {
@@ -36,31 +37,9 @@ export async function GET(req: NextRequest) {
       LIMIT 100
     `
 
-    // Transform the data for frontend consumption
+    // Transform the data using the comprehensive parser
     const transformedSubmissions = submissions.map(sub => {
-      const metadata = sub.metadata || {}
-      const deviceInfo = sub.device_info || {}
-      
-      return {
-        id: sub.id,
-        formName: sub.form_name || 'Unknown Form',
-        projectName: sub.project_name || 'No Project',
-        submittedAt: sub.submitted_at,
-        ipAddress: metadata.ip_address || 'Unknown',
-        location: metadata.location || 'Unknown Location',
-        deviceInfo: {
-          platform: deviceInfo.platform || 'Unknown',
-          userAgent: deviceInfo.user_agent || 'Unknown',
-          language: deviceInfo.language || 'Unknown'
-        },
-        dataSize: `${Math.round(JSON.stringify(sub.data || {}).length / 1024 * 10) / 10} KB`,
-        attachments: sub.attachments ? (Array.isArray(sub.attachments) ? sub.attachments.length : Object.keys(sub.attachments).length) : 0,
-        attachmentsData: sub.attachments || null,
-        completionTime: metadata.completion_time || 'Unknown',
-        submittedBy: sub.user_email || 'Anonymous',
-        status: metadata.status || 'completed',
-        coordinates: sub.latitude && sub.longitude ? `${sub.latitude}, ${sub.longitude}` : null
-      }
+      return MealSubmissionParser.parseSubmission(sub)
     })
 
     return NextResponse.json({ 

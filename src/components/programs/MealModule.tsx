@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import MealSubmissionModal from "../modals/MealSubmissionModal"
 
 export default function MealModule() {
   const tabs: { id: TabId; label: string }[] = [
@@ -1201,7 +1202,10 @@ function SubmissionsStub() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Coordinates</label>
                         <p className="text-sm text-gray-900">
-                          {selectedSubmission.coordinates.lat.toFixed(6)}, {selectedSubmission.coordinates.lng.toFixed(6)}
+                          {selectedSubmission.coordinates ? 
+                            `${selectedSubmission.coordinates.lat?.toFixed(6) || 'N/A'}, ${selectedSubmission.coordinates.lng?.toFixed(6) || 'N/A'}` : 
+                            'No GPS coordinates available'
+                          }
                         </p>
                       </div>
                     </div>
@@ -1209,21 +1213,21 @@ function SubmissionsStub() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Device Information</label>
                       <div className="mt-1 p-3 bg-gray-50 rounded text-sm">
-                        <p><strong>Platform:</strong> {selectedSubmission.deviceInfo.platform}</p>
-                        <p><strong>Language:</strong> {selectedSubmission.deviceInfo.language}</p>
-                        <p><strong>User Agent:</strong> {selectedSubmission.deviceInfo.userAgent}</p>
+                        <p><strong>Platform:</strong> {selectedSubmission.deviceInfo?.platform || 'Unknown'}</p>
+                        <p><strong>Language:</strong> {selectedSubmission.deviceInfo?.language || 'Unknown'}</p>
+                        <p><strong>User Agent:</strong> {selectedSubmission.deviceInfo?.userAgent || 'Unknown'}</p>
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-3 gap-4 text-sm">
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Data Size</label>
-                        <p className="text-gray-900">{selectedSubmission.dataSize}</p>
+                        <p className="text-gray-900">{selectedSubmission.dataSize || 'Unknown'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Attachments</label>
                         <div className="text-gray-900">
-                          {selectedSubmission.attachments > 0 ? (
+                          {(selectedSubmission.attachments || 0) > 0 ? (
                             <div>
                               <p className="mb-2">{selectedSubmission.attachments} file(s) attached</p>
                               {selectedSubmission.attachmentsData && (
@@ -1253,7 +1257,7 @@ function SubmissionsStub() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Completion Time</label>
-                        <p className="text-gray-900">{selectedSubmission.completionTime}</p>
+                        <p className="text-gray-900">{selectedSubmission.completionTime || 'Unknown'}</p>
                       </div>
                     </div>
                   </div>
@@ -1275,6 +1279,13 @@ function SubmissionsStub() {
           </div>
         )}
       </div>
+      
+      {/* Enhanced Submission Details Modal */}
+      <MealSubmissionModal
+        isOpen={!!selectedSubmission}
+        onClose={() => setSelectedSubmission(null)}
+        submission={selectedSubmission}
+      />
     </div>
   )
 }
@@ -1685,42 +1696,47 @@ function DashboardsStub() {
       if (selectedProject !== 'all') params.append('projectId', selectedProject)
 
       const response = await fetch(`/api/meal/analytics?${params.toString()}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const result = await response.json()
       
-      if (result.success) {
+      if (result.success && result.data) {
         const data = result.data
         // Transform API data to match frontend expectations
         const transformedData = {
-          totalSubmissions: parseInt(data.metrics.total_submissions) || 0,
-          totalForms: parseInt(data.metrics.active_forms) || 0,
-          totalIndicators: parseInt(data.metrics.total_indicators) || 0,
-          completionRate: parseFloat(data.metrics.completion_rate) || 0,
-          regionalData: data.regionalPerformance.map((r: any) => ({
+          totalSubmissions: parseInt(data.metrics?.total_submissions) || 0,
+          totalForms: parseInt(data.metrics?.active_forms) || 0,
+          totalIndicators: parseInt(data.metrics?.total_indicators) || 0,
+          completionRate: parseFloat(data.metrics?.completion_rate) || 0,
+          regionalData: (data.regionalPerformance || []).map((r: any) => ({
             region: r.region,
             submissions: parseInt(r.submission_count),
             completion: parseFloat(r.completion_rate)
           })),
-          genderData: data.genderDistribution.map((g: any) => ({
+          genderData: (data.genderDistribution || []).map((g: any) => ({
             gender: g.gender,
             count: parseInt(g.count),
             percentage: parseFloat(g.percentage)
           })),
-          ageGroups: data.ageGroups.map((a: any) => ({
+          ageGroups: (data.ageGroups || []).map((a: any) => ({
             ageGroup: a.age_group,
             count: parseInt(a.count),
             percentage: parseFloat(a.percentage)
           })),
-          trendData: data.trendAnalysis.map((t: any) => ({
+          trendData: (data.trendAnalysis || []).map((t: any) => ({
             month: new Date(t.date).toLocaleDateString('en-US', { month: 'short' }),
             submissions: parseInt(t.submissions),
             indicators: 0 // Not available in current API
           })),
-          topForms: data.topForms.map((f: any) => ({
+          topForms: (data.topForms || []).map((f: any) => ({
             name: f.form_name,
             submissions: parseInt(f.submission_count),
             completion: parseFloat(f.completion_rate)
           })),
-          indicatorProgress: data.indicatorProgress.map((i: any) => ({
+          indicatorProgress: (data.indicatorProgress || []).map((i: any) => ({
             name: i.indicator_name,
             current: parseFloat(i.current_value) || 0,
             target: parseFloat(i.target) || 0,
@@ -1729,7 +1745,7 @@ function DashboardsStub() {
         }
         setDashboardData(transformedData)
       } else {
-        console.error('Failed to load dashboard data:', result.error)
+        console.error('Failed to load dashboard data:', result.error || 'Unknown error')
         setDashboardData(null)
       }
     } catch (e) { 
