@@ -456,8 +456,10 @@ function SubmissionsStub() {
   }
 
   const filteredSubmissions = submissions.filter(sub => {
-    if (filters.dateFrom && new Date(sub.submittedAt) < new Date(filters.dateFrom)) return false
-    if (filters.dateTo && new Date(sub.submittedAt) > new Date(filters.dateTo)) return false
+    // Parse the formatted date string back to Date for comparison
+    const submissionDate = new Date(sub.submittedAt.replace(/(\d{2})\/(\d{2})\/(\d{4}), (\d{2}):(\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:$6'))
+    if (filters.dateFrom && submissionDate < new Date(filters.dateFrom)) return false
+    if (filters.dateTo && submissionDate > new Date(filters.dateTo)) return false
     if (filters.ipAddress && !sub.ipAddress.includes(filters.ipAddress)) return false
     if (filters.project && !sub.projectName.toLowerCase().includes(filters.project.toLowerCase())) return false
     if (filters.location && !sub.location.toLowerCase().includes(filters.location.toLowerCase())) return false
@@ -1114,7 +1116,7 @@ function SubmissionsStub() {
                               </span>
                             </div>
                             <div className="text-sm text-gray-600">
-                              {new Date(submission.submittedAt).toLocaleString()}
+                              {submission.submittedAt}
                             </div>
                           </div>
                           
@@ -1189,7 +1191,7 @@ function SubmissionsStub() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Submitted At</label>
-                        <p className="text-sm text-gray-900">{new Date(selectedSubmission.submittedAt).toLocaleString()}</p>
+                        <p className="text-sm text-gray-900">{selectedSubmission.submittedAt}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">IP Address</label>
