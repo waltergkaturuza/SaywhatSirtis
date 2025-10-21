@@ -85,7 +85,7 @@ export class MealSubmissionParser {
       dataSize: this.calculateDataSize(rawSubmission.data),
       attachments: this.countAttachments(rawSubmission.attachments, formData),
       attachmentTypes: this.extractAttachmentTypes(rawSubmission.attachments, formData),
-      completionTime: metadata.completion_time || 'Unknown',
+      completionTime: this.calculateCompletionTime(formData, rawSubmission.submitted_at) || metadata.completion_time || 'Unknown',
       submittedBy: this.extractSubmitterInfo(rawSubmission, formData),
       submittedByName: this.extractSubmitterName(formData),
       status: metadata.status || 'completed',
@@ -322,6 +322,100 @@ export class MealSubmissionParser {
     })
 
     return categories
+  }
+
+  /**
+   * Calculate completion time from collection and submission timestamps
+   */
+  static calculateCompletionTime(formData: any, submittedAt: any): string {
+    try {
+      // Look for collection time in various possible field names
+      const collectionTimeFields = [
+        'date_time_of_collection',
+        'dateTimeOfCollection', 
+        'collection_time',
+        'collectionTime',
+        'data_collection_time',
+        'dataCollectionTime',
+        'form_completion_time',
+        'formCompletionTime',
+        'start_time',
+        'startTime',
+        'begin_time',
+        'beginTime',
+        'timestamp',
+        'created_at',
+        'createdAt',
+        'form_start',
+        'formStart',
+        'data_collection',
+        'dataCollection',
+        'collection_date',
+        'collectionDate',
+        'form_timestamp',
+        'formTimestamp'
+      ]
+      
+      let collectionTime: Date | null = null
+      let submissionTime: Date | null = null
+      
+      // Find collection time from form data
+      for (const field of collectionTimeFields) {
+        if (formData[field]) {
+          collectionTime = new Date(formData[field])
+          if (!isNaN(collectionTime.getTime())) {
+            console.log(`Found collection time in field: ${field} = ${formData[field]}`)
+            break
+          }
+        }
+      }
+      
+      // If not found in predefined fields, search all form data for date-like values
+      if (!collectionTime) {
+        for (const [key, value] of Object.entries(formData)) {
+          if (typeof value === 'string' && (
+            key.toLowerCase().includes('time') || 
+            key.toLowerCase().includes('date') ||
+            key.toLowerCase().includes('timestamp')
+          )) {
+            const testDate = new Date(value)
+            if (!isNaN(testDate.getTime())) {
+              collectionTime = testDate
+              console.log(`Found collection time in field: ${key} = ${value}`)
+              break
+            }
+          }
+        }
+      }
+      
+      // Get submission time
+      if (submittedAt) {
+        submissionTime = new Date(submittedAt)
+        console.log(`Submission time: ${submittedAt} -> ${submissionTime}`)
+      }
+      
+      // Calculate duration if both times are valid
+      if (collectionTime && submissionTime && !isNaN(collectionTime.getTime()) && !isNaN(submissionTime.getTime())) {
+        const durationMs = submissionTime.getTime() - collectionTime.getTime()
+        const durationMinutes = Math.round(durationMs / (1000 * 60))
+        const durationSeconds = Math.round(durationMs / 1000)
+        
+        console.log(`Completion time calculation: ${collectionTime} to ${submissionTime} = ${durationMinutes} minutes`)
+        
+        if (durationMinutes > 0) {
+          return `${durationMinutes} minutes (${durationSeconds} seconds)`
+        } else {
+          return `${durationSeconds} seconds`
+        }
+      }
+      
+      console.log(`Could not calculate completion time. Collection: ${collectionTime}, Submission: ${submissionTime}`)
+      
+      return 'Unknown'
+    } catch (error) {
+      console.error('Error calculating completion time:', error)
+      return 'Unknown'
+    }
   }
 
   /**
