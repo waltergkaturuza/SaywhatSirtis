@@ -1,0 +1,46 @@
+/* Leaflet CSS - Required for map display */
+@import 'leaflet/dist/leaflet.css';
+
+/* Custom map styles */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+}
+
+.leaflet-popup-tip {
+  background: white;
+  border: 1px solid #e5e7eb;
+}
+
+/* Custom marker styles */
+.custom-marker {
+  background: #3b82f6;
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.custom-marker.high-accuracy {
+  background: #10b981;
+}
+
+.custom-marker.medium-accuracy {
+  background: #f59e0b;
+}
+
+.custom-marker.low-accuracy {
+  background: #ef4444;
+}

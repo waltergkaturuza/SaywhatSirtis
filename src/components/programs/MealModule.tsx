@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react"
 import MealSubmissionModal from "../modals/MealSubmissionModal"
+import SubmissionMap from "../maps/SubmissionMap"
+import "../../styles/leaflet.css"
 
 export default function MealModule() {
   const tabs: { id: TabId; label: string }[] = [
@@ -1675,11 +1677,43 @@ function DashboardsStub() {
   const [selectedPeriod, setSelectedPeriod] = useState('monthly')
   const [selectedProject, setSelectedProject] = useState('all')
   const [projects, setProjects] = useState<any[]>([])
+  const [mapSubmissions, setMapSubmissions] = useState<any[]>([])
 
   useEffect(() => {
     loadProjects()
     loadDashboardData()
+    loadMapData()
   }, [selectedPeriod, selectedProject])
+
+  const loadMapData = async () => {
+    try {
+      const response = await fetch('/api/meal/submissions')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          // Filter submissions with GPS coordinates
+          const submissionsWithGPS = result.data
+            .filter((sub: any) => sub.coordinates && sub.coordinates !== 'No GPS data')
+            .map((sub: any) => {
+              // Parse coordinates from string format "lat, lng"
+              const coords = sub.coordinates.split(', ')
+              return {
+                id: sub.id,
+                latitude: parseFloat(coords[0]),
+                longitude: parseFloat(coords[1]),
+                submittedAt: sub.submittedAt,
+                formName: sub.formName,
+                submittedBy: sub.submittedByName || sub.submittedBy,
+                accuracy: sub.gpsAccuracy
+              }
+            })
+          setMapSubmissions(submissionsWithGPS)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load map data:', error)
+    }
+  }
 
   const loadProjects = async () => {
     try {
@@ -1914,21 +1948,18 @@ function DashboardsStub() {
                 </h4>
                 <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
               </div>
-              <div className="h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-4xl mb-4">🗺️</div>
-                  <h5 className="text-lg font-semibold text-gray-700 mb-2">Interactive Map</h5>
-                  <p className="text-sm text-gray-600 mb-4">GPS coordinates from {dashboardData.totalSubmissions} submissions</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <div className="font-medium text-gray-900">Harare Province</div>
-                      <div className="text-blue-600">{dashboardData.regionalData?.find((r: any) => r.region === 'Harare')?.submissions || 0} submissions</div>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <div className="font-medium text-gray-900">GPS Coverage</div>
-                      <div className="text-green-600">85% with coordinates</div>
-                    </div>
-                  </div>
+              <SubmissionMap 
+                submissions={mapSubmissions}
+                className="h-80"
+              />
+              <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <div className="font-medium text-gray-900">GPS Points</div>
+                  <div className="text-blue-600">{mapSubmissions.length} locations</div>
+                </div>
+                <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <div className="font-medium text-gray-900">Coverage</div>
+                  <div className="text-green-600">{Math.round((mapSubmissions.length / dashboardData.totalSubmissions) * 100)}% with GPS</div>
                 </div>
               </div>
             </div>
@@ -1949,7 +1980,9 @@ function DashboardsStub() {
                     <span className="font-medium text-gray-900">GPS Coverage</span>
                     <span className="text-2xl">📡</span>
                   </div>
-                  <div className="text-2xl font-bold text-blue-600">85%</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {Math.round((mapSubmissions.length / dashboardData.totalSubmissions) * 100)}%
+                  </div>
                   <div className="text-sm text-gray-600">Submissions with coordinates</div>
                 </div>
 
@@ -1971,8 +2004,14 @@ function DashboardsStub() {
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <div className="text-sm font-medium text-gray-900 mb-1">Coordinate Range</div>
                   <div className="text-xs text-gray-600">
-                    Lat: -17.78° to -17.78°<br/>
-                    Lng: 31.05° to 31.05°
+                    {mapSubmissions.length > 0 ? (
+                      <>
+                        Lat: {Math.min(...mapSubmissions.map(s => s.latitude)).toFixed(4)}° to {Math.max(...mapSubmissions.map(s => s.latitude)).toFixed(4)}°<br/>
+                        Lng: {Math.min(...mapSubmissions.map(s => s.longitude)).toFixed(4)}° to {Math.max(...mapSubmissions.map(s => s.longitude)).toFixed(4)}°
+                      </>
+                    ) : (
+                      'No GPS data available'
+                    )}
                   </div>
                 </div>
               </div>
@@ -2201,7 +2240,7 @@ function DashboardsStub() {
                   <span className="text-sm font-medium text-gray-600">Total GPS Points</span>
                   <span className="text-2xl">📍</span>
                 </div>
-                <div className="text-2xl font-bold text-blue-600">{Math.round(dashboardData.totalSubmissions * 0.85)}</div>
+                <div className="text-2xl font-bold text-blue-600">{mapSubmissions.length}</div>
                 <div className="text-xs text-gray-500">With coordinates</div>
               </div>
               
@@ -2228,7 +2267,9 @@ function DashboardsStub() {
                   <span className="text-sm font-medium text-gray-600">Data Quality</span>
                   <span className="text-2xl">⭐</span>
                 </div>
-                <div className="text-2xl font-bold text-orange-600">85%</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {Math.round((mapSubmissions.length / dashboardData.totalSubmissions) * 100)}%
+                </div>
                 <div className="text-xs text-gray-500">High quality GPS</div>
               </div>
             </div>
