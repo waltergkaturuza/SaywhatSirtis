@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import MealSubmissionModal from "../modals/MealSubmissionModal"
 import SubmissionMap from "../maps/SubmissionMap"
+import DataRepository from "./DataRepository"
 import "../../styles/leaflet.css"
 
 export default function MealModule() {
@@ -44,7 +45,7 @@ export default function MealModule() {
         {active === "submissions" && <SubmissionsStub />}
         {active === "indicators" && <IndicatorsStub />}
         {active === "dashboards" && <DashboardsStub />}
-        {active === "repository" && <RepositoryStub />}
+        {active === "repository" && <DataRepository />}
         {active === "feedback" && <FeedbackStub />}
         {active === "settings" && <SettingsStub />}
       </div>
