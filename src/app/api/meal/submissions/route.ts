@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const canView = roles.some(r => ["ADMIN","SUPER_ADMIN","SYSTEM_ADMINISTRATOR","ADVANCE_USER_2","HR","MEAL_ADMIN"].includes(r))
     if (!canView) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 })
 
-    // Fetch submissions with all related data - simplified query
+    // Fetch submissions with all related data - with proper type casting
     const submissions = await prisma.$queryRaw<any[]>`
       SELECT 
         ms.id,
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
         u.email as user_email_from_users
       FROM public.meal_submissions ms
       LEFT JOIN public.meal_forms mf ON ms.form_id = mf.id
-      LEFT JOIN public.projects p ON ms.project_id = p.id
+      LEFT JOIN public.projects p ON ms.project_id::text = p.id::text
       LEFT JOIN public.users u ON ms.user_id = u.id
       ORDER BY ms.submitted_at DESC
       LIMIT 100
