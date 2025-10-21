@@ -44,3 +44,17 @@
 .custom-marker.low-accuracy {
   background: #ef4444;
 }
+
+/* Custom red pin icon styles */
+.custom-red-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
+.custom-red-pin div {
+  transition: transform 0.2s ease;
+}
+
+.custom-red-pin:hover div {
+  transform: rotate(-45deg) scale(1.1);
+}

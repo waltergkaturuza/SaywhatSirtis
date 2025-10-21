@@ -2,12 +2,46 @@
 
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
+import L from 'leaflet'
 
 // Dynamically import Leaflet components to avoid SSR issues
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false })
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false })
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false })
+
+// Create custom red pin icon
+const createRedPinIcon = () => {
+  return L.divIcon({
+    className: 'custom-red-pin',
+    html: `
+      <div style="
+        width: 24px;
+        height: 24px;
+        background: #ef4444;
+        border: 2px solid white;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        position: relative;
+      ">
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(45deg);
+          width: 8px;
+          height: 8px;
+          background: white;
+          border-radius: 50%;
+        "></div>
+      </div>
+    `,
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24]
+  })
+}
 
 interface SubmissionLocation {
   id: string
@@ -51,7 +85,7 @@ export default function SubmissionMap({ submissions, className = '' }: Submissio
     : [defaultCenter]
 
   return (
-    <div className={`h-80 rounded-lg overflow-hidden border border-gray-200 ${className}`}>
+    <div className={`h-96 rounded-lg overflow-hidden border border-gray-200 ${className}`}>
       <MapContainer
         center={defaultCenter}
         zoom={13}
@@ -68,6 +102,7 @@ export default function SubmissionMap({ submissions, className = '' }: Submissio
           <Marker
             key={submission.id}
             position={[submission.latitude, submission.longitude]}
+            icon={createRedPinIcon()}
           >
             <Popup>
               <div className="p-2">

@@ -1950,7 +1950,7 @@ function DashboardsStub() {
               </div>
               <SubmissionMap 
                 submissions={mapSubmissions}
-                className="h-80"
+                className="h-96"
               />
               <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                 <div className="bg-white p-3 rounded-lg shadow-sm">
