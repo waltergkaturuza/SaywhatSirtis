@@ -28,13 +28,38 @@ export async function GET(req: NextRequest) {
     // Get regional performance
     const regionalPerformance = await prisma.$queryRaw<any[]>`
       SELECT 
-        COALESCE(ms.metadata->>'location', 'Unknown') as region,
+        CASE 
+          WHEN ms.metadata->>'country' IS NOT NULL AND ms.metadata->>'country' != 'Unknown' THEN ms.metadata->>'country'
+          WHEN ms.metadata->>'region' IS NOT NULL AND ms.metadata->>'region' != 'Unknown' THEN ms.metadata->>'region'
+          WHEN ms.metadata->>'city' IS NOT NULL AND ms.metadata->>'city' != 'Unknown' THEN ms.metadata->>'city'
+          WHEN ms.latitude IS NOT NULL AND ms.longitude IS NOT NULL THEN 
+            CASE 
+              WHEN ms.latitude BETWEEN -18 AND -15 AND ms.longitude BETWEEN 30 AND 33 THEN 'Harare Province'
+              WHEN ms.latitude BETWEEN -40 AND -35 AND ms.longitude BETWEEN 140 AND 150 THEN 'Victoria, Australia'
+              ELSE 'GPS Location'
+            END
+          ELSE 'Unknown'
+        END as region,
         COUNT(*) as submission_count,
-        ROUND(
-          COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1
+        COALESCE(
+          ROUND(
+            COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1
+          ), 0
         ) as completion_rate
       FROM public.meal_submissions ms
-      GROUP BY ms.metadata->>'location'
+      GROUP BY 
+        CASE 
+          WHEN ms.metadata->>'country' IS NOT NULL AND ms.metadata->>'country' != 'Unknown' THEN ms.metadata->>'country'
+          WHEN ms.metadata->>'region' IS NOT NULL AND ms.metadata->>'region' != 'Unknown' THEN ms.metadata->>'region'
+          WHEN ms.metadata->>'city' IS NOT NULL AND ms.metadata->>'city' != 'Unknown' THEN ms.metadata->>'city'
+          WHEN ms.latitude IS NOT NULL AND ms.longitude IS NOT NULL THEN 
+            CASE 
+              WHEN ms.latitude BETWEEN -18 AND -15 AND ms.longitude BETWEEN 30 AND 33 THEN 'Harare Province'
+              WHEN ms.latitude BETWEEN -40 AND -35 AND ms.longitude BETWEEN 140 AND 150 THEN 'Victoria, Australia'
+              ELSE 'GPS Location'
+            END
+          ELSE 'Unknown'
+        END
       ORDER BY submission_count DESC
       LIMIT 10
     `

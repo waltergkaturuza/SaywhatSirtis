@@ -1747,11 +1747,16 @@ function DashboardsStub() {
           totalForms: parseInt(data.metrics?.active_forms) || 0,
           totalIndicators: parseInt(data.metrics?.total_indicators) || 0,
           completionRate: parseFloat(data.metrics?.completion_rate) || 0,
-          regionalData: (data.regionalPerformance || []).map((r: any) => ({
-            region: r.region,
-            submissions: parseInt(r.submission_count),
-            completion: parseFloat(r.completion_rate)
-          })),
+               regionalData: (data.regionalPerformance || []).length > 0 
+                 ? (data.regionalPerformance || []).map((r: any) => ({
+                     region: r.region,
+                     submissions: parseInt(r.submission_count),
+                     completion: parseFloat(r.completion_rate) || 0
+                   }))
+                 : [
+                     { region: 'Harare Province', submissions: 0, completion: 0 },
+                     { region: 'GPS Location', submissions: 0, completion: 0 }
+                   ],
           genderData: (data.genderDistribution || []).map((g: any) => ({
             gender: g.gender,
             count: parseInt(g.count),
