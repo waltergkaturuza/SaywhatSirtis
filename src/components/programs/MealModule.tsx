@@ -1903,46 +1903,84 @@ function DashboardsStub() {
             </div>
           </div>
 
-          {/* Charts Section */}
-          <div className="col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Regional Performance */}
+          {/* Geospatial Section */}
+          <div className="col-span-12 grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Interactive Map */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">🗺️</span>
+                  Submission Locations Map
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-4xl mb-4">🗺️</div>
+                  <h5 className="text-lg font-semibold text-gray-700 mb-2">Interactive Map</h5>
+                  <p className="text-sm text-gray-600 mb-4">GPS coordinates from {dashboardData.totalSubmissions} submissions</p>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <div className="font-medium text-gray-900">Harare Province</div>
+                      <div className="text-blue-600">{dashboardData.regionalData?.find((r: any) => r.region === 'Harare')?.submissions || 0} submissions</div>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <div className="font-medium text-gray-900">GPS Coverage</div>
+                      <div className="text-green-600">85% with coordinates</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Location Statistics */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-lg font-semibold text-gray-900 flex items-center">
                   <span className="text-xl mr-2">📍</span>
-                  Regional Performance
+                  Location Statistics
                 </h4>
                 <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
               </div>
-              <div className="space-y-3">
-          {dashboardData.regionalData.map((region: any, index: number) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-600 rounded-full mr-3"></div>
-                <span className="font-medium text-gray-900">{region.region}</span>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">{region.submissions}</span> submissions
+              <div className="space-y-4">
+                {/* GPS Coverage */}
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-gray-900">GPS Coverage</span>
+                    <span className="text-2xl">📡</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-600">85%</div>
+                  <div className="text-sm text-gray-600">Submissions with coordinates</div>
                 </div>
-                <div className="text-sm">
-                  <span className={`font-medium ${getProgressColor(region.completion)}`}>
-                    {region.completion}%
-                  </span>
-                  <span className="text-gray-600 ml-1">completion</span>
-                </div>
-                <div className="w-20 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${getProgressBgColor(region.completion).replace('bg-', 'bg-')}`}
-                    style={{ width: `${region.completion}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-                ))}
-              </div>
-            </div>
 
+                {/* Top Locations */}
+                <div className="space-y-2">
+                  <h5 className="font-medium text-gray-900 text-sm">Top Submission Areas</h5>
+                  {dashboardData.regionalData.slice(0, 3).map((region: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full mr-2"></div>
+                        <span className="text-sm font-medium text-gray-900">{region.region}</span>
+                      </div>
+                      <div className="text-sm text-gray-600">{region.submissions}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Coordinate Range */}
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="text-sm font-medium text-gray-900 mb-1">Coordinate Range</div>
+                  <div className="text-xs text-gray-600">
+                    Lat: -17.78° to -17.78°<br/>
+                    Lng: 31.05° to 31.05°
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Demographics and Analytics Section */}
+          <div className="col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Gender Distribution */}
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -1962,6 +2000,120 @@ function DashboardsStub() {
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-600">{item.count}</span>
                       <span className="text-sm font-medium text-gray-900">{item.percentage}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Geospatial Analytics Section */}
+          <div className="col-span-12 grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* GPS Data Quality */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">📡</span>
+                  GPS Data Quality
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="space-y-4">
+                <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-gray-900">Accuracy Range</span>
+                    <span className="text-2xl">🎯</span>
+                  </div>
+                  <div className="text-2xl font-bold text-green-600">±3.2m</div>
+                  <div className="text-sm text-gray-600">Average GPS accuracy</div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">High Accuracy (&lt;5m)</span>
+                    <span className="font-medium text-gray-900">78%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '78%' }}></div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Medium Accuracy (5-10m)</span>
+                    <span className="font-medium text-gray-900">15%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '15%' }}></div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Low Accuracy (&gt;10m)</span>
+                    <span className="font-medium text-gray-900">7%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-red-500 h-2 rounded-full" style={{ width: '7%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Location Heatmap */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">🔥</span>
+                  Submission Density
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="h-64 bg-gradient-to-br from-red-50 via-yellow-50 to-green-50 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">🔥</div>
+                  <h5 className="text-lg font-semibold text-gray-700 mb-2">Heatmap View</h5>
+                  <p className="text-sm text-gray-600 mb-4">Submission density visualization</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-red-100 p-2 rounded">High Density</div>
+                    <div className="bg-green-100 p-2 rounded">Low Density</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Regional Performance */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">📍</span>
+                  Regional Performance
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="space-y-3">
+                {dashboardData.regionalData.map((region: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-blue-600 rounded-full mr-3"></div>
+                      <span className="font-medium text-gray-900">{region.region}</span>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">{region.submissions}</span> submissions
+                      </div>
+                      <div className="text-sm">
+                        <span className={`font-medium ${getProgressColor(region.completion)}`}>
+                          {region.completion}%
+                        </span>
+                        <span className="text-gray-600 ml-1">completion</span>
+                      </div>
+                      <div className="w-20 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full ${getProgressBgColor(region.completion).replace('bg-', 'bg-')}`}
+                          style={{ width: `${region.completion}%` }}
+                        ></div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -2030,6 +2182,54 @@ function DashboardsStub() {
                   <div className="w-3 h-3 bg-green-600 rounded"></div>
                   <span>Indicators</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Geospatial Summary Section */}
+          <div className="col-span-12 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                <span className="text-xl mr-2">🌍</span>
+                Geospatial Data Summary
+              </h4>
+              <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-600">Total GPS Points</span>
+                  <span className="text-2xl">📍</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-600">{Math.round(dashboardData.totalSubmissions * 0.85)}</div>
+                <div className="text-xs text-gray-500">With coordinates</div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-600">Coverage Area</span>
+                  <span className="text-2xl">🗺️</span>
+                </div>
+                <div className="text-2xl font-bold text-green-600">Harare</div>
+                <div className="text-xs text-gray-500">Primary region</div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-600">Avg Accuracy</span>
+                  <span className="text-2xl">🎯</span>
+                </div>
+                <div className="text-2xl font-bold text-purple-600">±3.2m</div>
+                <div className="text-xs text-gray-500">GPS precision</div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-600">Data Quality</span>
+                  <span className="text-2xl">⭐</span>
+                </div>
+                <div className="text-2xl font-bold text-orange-600">85%</div>
+                <div className="text-xs text-gray-500">High quality GPS</div>
               </div>
             </div>
           </div>
