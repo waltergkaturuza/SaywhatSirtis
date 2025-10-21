@@ -76,13 +76,13 @@ export async function GET(req: NextRequest) {
           ELSE '65+'
         END
       ORDER BY 
-        CASE 
-          WHEN CAST(ms.data->>'age' AS INTEGER) BETWEEN 18 AND 25 THEN 1
-          WHEN CAST(ms.data->>'age' AS INTEGER) BETWEEN 26 AND 35 THEN 2
-          WHEN CAST(ms.data->>'age' AS INTEGER) BETWEEN 36 AND 45 THEN 3
-          WHEN CAST(ms.data->>'age' AS INTEGER) BETWEEN 46 AND 55 THEN 4
-          WHEN CAST(ms.data->>'age' AS INTEGER) BETWEEN 56 AND 65 THEN 5
-          ELSE 6
+        CASE age_group
+          WHEN '18-25' THEN 1
+          WHEN '26-35' THEN 2
+          WHEN '36-45' THEN 3
+          WHEN '46-55' THEN 4
+          WHEN '56-65' THEN 5
+          WHEN '65+' THEN 6
         END
     `
 

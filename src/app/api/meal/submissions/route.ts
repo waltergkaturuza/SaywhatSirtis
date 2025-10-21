@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const canView = roles.some(r => ["ADMIN","SUPER_ADMIN","SYSTEM_ADMINISTRATOR","ADVANCE_USER_2","HR","MEAL_ADMIN"].includes(r))
     if (!canView) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 })
 
-    // Fetch submissions with all related data - with proper type casting
+    // Fetch submissions with all related data - simplified query without problematic JOINs
     const submissions = await prisma.$queryRaw<any[]>`
       SELECT 
         ms.id,
@@ -28,14 +28,10 @@ export async function GET(req: NextRequest) {
         ms.metadata,
         ms.device_info,
         mf.name as form_name,
-        p.name as project_name,
-        u.first_name,
-        u.last_name,
-        u.email as user_email_from_users
+        p.name as project_name
       FROM public.meal_submissions ms
-      LEFT JOIN public.meal_forms mf ON ms.form_id = mf.id
+      LEFT JOIN public.meal_forms mf ON ms.form_id::text = mf.id::text
       LEFT JOIN public.projects p ON ms.project_id::text = p.id::text
-      LEFT JOIN public.users u ON ms.user_id = u.id
       ORDER BY ms.submitted_at DESC
       LIMIT 100
     `
@@ -58,9 +54,10 @@ export async function GET(req: NextRequest) {
           language: deviceInfo.language || 'Unknown'
         },
         dataSize: `${Math.round(JSON.stringify(sub.data || {}).length / 1024 * 10) / 10} KB`,
-        attachments: Array.isArray(sub.attachments) ? sub.attachments.length : 0,
+        attachments: sub.attachments ? (Array.isArray(sub.attachments) ? sub.attachments.length : Object.keys(sub.attachments).length) : 0,
+        attachmentsData: sub.attachments || null,
         completionTime: metadata.completion_time || 'Unknown',
-        submittedBy: sub.first_name && sub.last_name ? `${sub.first_name} ${sub.last_name}` : (sub.user_email || 'Anonymous'),
+        submittedBy: sub.user_email || 'Anonymous',
         status: metadata.status || 'completed',
         coordinates: sub.latitude && sub.longitude ? `${sub.latitude}, ${sub.longitude}` : null
       }

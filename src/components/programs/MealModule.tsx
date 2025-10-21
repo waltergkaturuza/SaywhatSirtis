@@ -1222,7 +1222,34 @@ function SubmissionsStub() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Attachments</label>
-                        <p className="text-gray-900">{selectedSubmission.attachments}</p>
+                        <div className="text-gray-900">
+                          {selectedSubmission.attachments > 0 ? (
+                            <div>
+                              <p className="mb-2">{selectedSubmission.attachments} file(s) attached</p>
+                              {selectedSubmission.attachmentsData && (
+                                <div className="space-y-1">
+                                  {Array.isArray(selectedSubmission.attachmentsData) ? (
+                                    selectedSubmission.attachmentsData.map((file: any, index: number) => (
+                                      <div key={index} className="text-xs bg-gray-100 p-2 rounded">
+                                        📎 {file.name || file.filename || `File ${index + 1}`}
+                                        {file.size && <span className="text-gray-500 ml-2">({Math.round(file.size / 1024)} KB)</span>}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    Object.entries(selectedSubmission.attachmentsData).map(([key, file]: [string, any]) => (
+                                      <div key={key} className="text-xs bg-gray-100 p-2 rounded">
+                                        📎 {file.name || file.filename || key}
+                                        {file.size && <span className="text-gray-500 ml-2">({Math.round(file.size / 1024)} KB)</span>}
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p>No attachments</p>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700">Completion Time</label>
