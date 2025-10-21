@@ -1796,96 +1796,125 @@ function DashboardsStub() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Analytics & Dashboards</h3>
-          <p className="text-sm text-gray-600">Comprehensive monitoring and evaluation insights</p>
-        </div>
-        <div className="flex gap-2">
-          <select 
-            value={selectedPeriod} 
-            onChange={e => setSelectedPeriod(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm"
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="annually">Annually</option>
-          </select>
-          <select 
-            value={selectedProject} 
-            onChange={e => setSelectedProject(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm"
-          >
-            <option value="all">All Projects</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-          <button 
-            onClick={loadDashboardData}
-            className="px-3 py-2 bg-orange-600 text-white rounded-md text-sm hover:bg-orange-700"
-          >
-            🔄 Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <span className="text-blue-600 text-xl">📊</span>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Submissions</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboardData.totalSubmissions.toLocaleString()}</p>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Professional Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">MEAL Analytics Dashboard</h1>
+            <p className="text-sm text-gray-600 mt-1">Monitoring, Evaluation, Accountability & Learning - Real-time Insights</p>
           </div>
-        </div>
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <span className="text-green-600 text-xl">📝</span>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Period:</label>
+              <select 
+                value={selectedPeriod} 
+                onChange={e => setSelectedPeriod(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="annually">Annually</option>
+              </select>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Active Forms</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboardData.totalForms}</p>
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Project:</label>
+              <select 
+                value={selectedProject} 
+                onChange={e => setSelectedProject(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Projects</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <span className="text-purple-600 text-xl">🎯</span>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Indicators</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboardData.totalIndicators}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <span className="text-orange-600 text-xl">✅</span>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Completion Rate</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboardData.completionRate}%</p>
-            </div>
+            <button 
+              onClick={loadDashboardData}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            >
+              <span>🔄</span>
+              <span>Refresh</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Regional Performance */}
-      <div className="bg-white rounded-lg border p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">📍 Regional Performance</h4>
-        <div className="space-y-3">
+      {/* Main Dashboard Content */}
+      <div className="p-6">
+        <div className="grid grid-cols-12 gap-6">
+
+          {/* Key Metrics Row */}
+          <div className="col-span-12 grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            {/* Total Submissions */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Total Submissions</p>
+                  <p className="text-3xl font-bold text-gray-900">{dashboardData.totalSubmissions.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500 mt-1">All time submissions</p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <span className="text-blue-600 text-2xl">📊</span>
+                </div>
+              </div>
+            </div>
+            {/* Active Forms */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Active Forms</p>
+                  <p className="text-3xl font-bold text-gray-900">{dashboardData.totalForms}</p>
+                  <p className="text-xs text-gray-500 mt-1">Currently deployed</p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-xl">
+                  <span className="text-green-600 text-2xl">📝</span>
+                </div>
+              </div>
+            </div>
+            {/* Indicators */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Indicators</p>
+                  <p className="text-3xl font-bold text-gray-900">{dashboardData.totalIndicators}</p>
+                  <p className="text-xs text-gray-500 mt-1">Performance metrics</p>
+                </div>
+                <div className="p-3 bg-purple-100 rounded-xl">
+                  <span className="text-purple-600 text-2xl">🎯</span>
+                </div>
+              </div>
+            </div>
+            {/* Completion Rate */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Completion Rate</p>
+                  <p className="text-3xl font-bold text-gray-900">{dashboardData.completionRate.toFixed(1)}%</p>
+                  <p className="text-xs text-gray-500 mt-1">Form completion success</p>
+                </div>
+                <div className="p-3 bg-orange-100 rounded-xl">
+                  <span className="text-orange-600 text-2xl">✅</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Charts Section */}
+          <div className="col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Regional Performance */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">📍</span>
+                  Regional Performance
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="space-y-3">
           {dashboardData.regionalData.map((region: any, index: number) => (
             <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center">
@@ -1910,169 +1939,177 @@ function DashboardsStub() {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Demographics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Gender Distribution */}
-        <div className="bg-white rounded-lg border p-6">
-          <h4 className="text-lg font-semibold text-gray-900 mb-4">👥 Gender Distribution</h4>
-          <div className="space-y-3">
-            {dashboardData.genderData.map((item: any, index: number) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className={`w-4 h-4 rounded-full mr-3 ${index === 0 ? 'bg-blue-500' : 'bg-pink-500'}`}></div>
-                  <span className="font-medium text-gray-900">{item.gender}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600">{item.count}</span>
-                  <span className="text-sm font-medium text-gray-900">{item.percentage}%</span>
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Gender Distribution */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">👥</span>
+                  Gender Distribution
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="space-y-3">
+                {dashboardData.genderData.map((item: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <div className={`w-4 h-4 rounded-full mr-3 ${index === 0 ? 'bg-blue-500' : 'bg-pink-500'}`}></div>
+                      <span className="font-medium text-gray-900">{item.gender}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600">{item.count}</span>
+                      <span className="text-sm font-medium text-gray-900">{item.percentage}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Age Groups */}
-        <div className="bg-white rounded-lg border p-6">
-          <h4 className="text-lg font-semibold text-gray-900 mb-4">📅 Age Groups</h4>
-          <div className="space-y-3">
-            {dashboardData.ageGroups.map((item: any, index: number) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-4 h-4 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mr-3"></div>
-                  <span className="font-medium text-gray-900">{item.ageGroup}</span>
+          {/* Age Groups and Trend Analysis Row */}
+          <div className="col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Age Groups */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">📅</span>
+                  Age Groups
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="space-y-3">
+                {dashboardData.ageGroups.map((item: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mr-3"></div>
+                      <span className="font-medium text-gray-900">{item.ageGroup}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-gray-600">{item.count}</span>
+                      <span className="text-sm font-medium text-gray-900">{item.percentage}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Trend Analysis */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">📈</span>
+                  Trend Analysis
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="grid grid-cols-12 gap-2">
+                {dashboardData.trendData.map((item: any, index: number) => (
+                  <div key={index} className="text-center">
+                    <div className="text-xs text-gray-600 mb-1">{item.month}</div>
+                    <div className="space-y-1">
+                      <div className="h-16 bg-blue-100 rounded flex items-end">
+                        <div 
+                          className="w-full bg-blue-600 rounded-t"
+                          style={{ height: `${(item.submissions / 350) * 100}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-600">{item.submissions}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-4 text-sm text-gray-600 mt-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-600 rounded"></div>
+                  <span>Submissions</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600">{item.count}</span>
-                  <span className="text-sm font-medium text-gray-900">{item.percentage}%</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-600 rounded"></div>
+                  <span>Indicators</span>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Trend Analysis */}
-      <div className="bg-white rounded-lg border p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">📈 Trend Analysis</h4>
-        <div className="grid grid-cols-12 gap-2 mb-4">
-          {dashboardData.trendData.map((item: any, index: number) => (
-            <div key={index} className="text-center">
-              <div className="text-xs text-gray-600 mb-1">{item.month}</div>
-              <div className="space-y-1">
-                <div className="h-16 bg-blue-100 rounded flex items-end">
-                  <div 
-                    className="w-full bg-blue-600 rounded-t"
-                    style={{ height: `${(item.submissions / 350) * 100}%` }}
-                  ></div>
-                </div>
-                <div className="text-xs text-gray-600">{item.submissions}</div>
+          {/* Top Forms and Indicators Row */}
+          <div className="col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Forms */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">🏆</span>
+                  Top Performing Forms
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="space-y-3">
+                {dashboardData.topForms.map((form: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-orange-600 font-bold text-sm">#{index + 1}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{form.name}</p>
+                        <p className="text-sm text-gray-600">{form.submissions} submissions</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{form.completion}%</p>
+                        <p className="text-xs text-gray-600">completion</p>
+                      </div>
+                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full"
+                          style={{ width: `${form.completion}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-4 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-blue-600 rounded"></div>
-            <span>Submissions</span>
+
+            {/* Indicator Progress */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <span className="text-xl mr-2">🎯</span>
+                  Indicator Progress
+                </h4>
+                <span className="text-xs text-gray-500">Last update: 14 seconds ago</span>
+              </div>
+              <div className="space-y-4">
+                {dashboardData.indicatorProgress.map((indicator: any, index: number) => (
+                  <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="font-medium text-gray-900">{indicator.name}</h5>
+                      <span className={`px-2 py-1 rounded text-sm font-medium ${getProgressBgColor(indicator.progress)} ${getProgressColor(indicator.progress)}`}>
+                        {indicator.progress}%
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                      <span>Current: {indicator.current.toLocaleString()}</span>
+                      <span>Target: {indicator.target.toLocaleString()}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div 
+                        className={`h-3 rounded-full transition-all duration-300 ${
+                          indicator.progress >= 90 ? 'bg-green-600' :
+                          indicator.progress >= 70 ? 'bg-yellow-600' : 'bg-red-600'
+                        }`}
+                        style={{ width: `${indicator.progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-600 rounded"></div>
-            <span>Indicators</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Forms */}
-      <div className="bg-white rounded-lg border p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">🏆 Top Performing Forms</h4>
-        <div className="space-y-3">
-          {dashboardData.topForms.map((form: any, index: number) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-orange-600 font-bold text-sm">#{index + 1}</span>
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">{form.name}</p>
-                  <p className="text-sm text-gray-600">{form.submissions} submissions</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{form.completion}%</p>
-                  <p className="text-xs text-gray-600">completion</p>
-                </div>
-                <div className="w-16 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-600 h-2 rounded-full"
-                    style={{ width: `${form.completion}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Indicator Progress */}
-      <div className="bg-white rounded-lg border p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">🎯 Indicator Progress</h4>
-        <div className="space-y-4">
-          {dashboardData.indicatorProgress.map((indicator: any, index: number) => (
-            <div key={index} className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h5 className="font-medium text-gray-900">{indicator.name}</h5>
-                <span className={`px-2 py-1 rounded text-sm font-medium ${getProgressBgColor(indicator.progress)} ${getProgressColor(indicator.progress)}`}>
-                  {indicator.progress}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                <span>Current: {indicator.current.toLocaleString()}</span>
-                <span>Target: {indicator.target.toLocaleString()}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className={`h-3 rounded-full transition-all duration-300 ${
-                    indicator.progress >= 90 ? 'bg-green-600' :
-                    indicator.progress >= 70 ? 'bg-yellow-600' : 'bg-red-600'
-                  }`}
-                  style={{ width: `${indicator.progress}%` }}
-                ></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Export Options */}
-      <div className="bg-white rounded-lg border p-6">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4">📤 Export & Reports</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-colors">
-            <div className="text-center">
-              <div className="text-2xl mb-2">📊</div>
-              <h5 className="font-medium text-gray-900">Excel Report</h5>
-              <p className="text-sm text-gray-600">Download detailed data</p>
-            </div>
-          </button>
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-colors">
-            <div className="text-center">
-              <div className="text-2xl mb-2">📈</div>
-              <h5 className="font-medium text-gray-900">Power BI</h5>
-              <p className="text-sm text-gray-600">Advanced analytics</p>
-            </div>
-          </button>
-          <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-colors">
-            <div className="text-center">
-              <div className="text-2xl mb-2">🗺️</div>
-              <h5 className="font-medium text-gray-900">Geospatial Map</h5>
-              <p className="text-sm text-gray-600">Regional visualization</p>
-            </div>
-          </button>
         </div>
       </div>
     </div>
