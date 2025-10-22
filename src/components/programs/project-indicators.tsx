@@ -233,7 +233,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           // If no Results Framework, show sample indicators for testing
           const sampleIndicators = [
             {
-              id: 'sample-1',
+              id: crypto.randomUUID(),
               projectId: projectId,
               name: 'Number of Beneficiaries Reached',
               description: 'Total number of people who have benefited from the project',
@@ -247,7 +247,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
               category: 'outcome' as const
             },
             {
-              id: 'sample-2',
+              id: crypto.randomUUID(),
               projectId: projectId,
               name: 'Training Sessions Completed',
               description: 'Number of training sessions delivered to beneficiaries',
@@ -487,6 +487,22 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     if (!quickUpdateValue) return
 
     try {
+      // Check if this is a sample indicator (not in database)
+      const indicator = filteredIndicators.find(ind => ind.id === indicatorId)
+      if (indicator && indicator.name.includes('Number of Beneficiaries') || indicator?.name.includes('Training Sessions')) {
+        // This is a sample indicator, just update the local state
+        const updatedIndicators = indicators.map(ind => 
+          ind.id === indicatorId 
+            ? { ...ind, current: Number(quickUpdateValue) }
+            : ind
+        )
+        setIndicators(updatedIndicators)
+        setFilteredIndicators(updatedIndicators)
+        setEditingIndicator(null)
+        setQuickUpdateValue('')
+        return
+      }
+
       const response = await fetch(`/api/meal/indicators/${indicatorId}`, {
         method: 'PUT',
         headers: {

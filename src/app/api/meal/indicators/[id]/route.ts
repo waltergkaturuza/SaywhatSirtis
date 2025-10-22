@@ -13,51 +13,28 @@ export async function GET(
     
     const { id } = await params
     
-    // Try to get indicator with all columns, fallback if some don't exist
-    let indicator
-    try {
-      indicator = await prisma.$queryRaw<any[]>`
-        SELECT 
-          id,
-          project_id,
-          code,
-          name,
-          level,
-          baseline,
-          target,
-          current,
-          unit,
-          status,
-          notes,
-          last_updated_by,
-          last_updated_at,
-          disaggregation,
-          mapping,
-          created_at,
-          updated_at
-        FROM public.meal_indicators 
-        WHERE id = ${id}::uuid
-      `
-    } catch (error) {
-      console.log('Some columns missing, using basic query')
-      indicator = await prisma.$queryRaw<any[]>`
-        SELECT 
-          id,
-          project_id,
-          code,
-          name,
-          level,
-          baseline,
-          target,
-          unit,
-          disaggregation,
-          mapping,
-          created_at,
-          updated_at
-        FROM public.meal_indicators 
-        WHERE id = ${id}::uuid
-      `
-    }
+    const indicator = await prisma.$queryRaw<any[]>`
+      SELECT 
+        id,
+        project_id,
+        code,
+        name,
+        level,
+        baseline,
+        target,
+        current,
+        unit,
+        status,
+        notes,
+        last_updated_by,
+        last_updated_at,
+        disaggregation,
+        mapping,
+        created_at,
+        updated_at
+      FROM public.meal_indicators 
+      WHERE id = ${id}::uuid
+    `
     
     if (indicator.length === 0) {
       return NextResponse.json({ success: false, error: "Indicator not found" }, { status: 404 })
@@ -85,39 +62,22 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     
-    // Update the indicator - with fallback for missing columns
-    let updated
-    try {
-      // Try with all new columns first
-      updated = await prisma.$queryRaw<any[]>`
-        UPDATE public.meal_indicators 
-        SET 
-          name = COALESCE(${body.name}, name),
-          target = COALESCE(${body.target}, target),
-          unit = COALESCE(${body.unit}, unit),
-          current = COALESCE(${body.current}, current),
-          status = COALESCE(${body.status}, status),
-          notes = COALESCE(${body.notes}, notes),
-          last_updated_by = ${session.user?.name || session.user?.email || 'Unknown User'},
-          last_updated_at = NOW(),
-          updated_at = NOW()
-        WHERE id = ${id}::uuid
-        RETURNING *
-      `
-    } catch (error) {
-      console.log('New columns not available, using fallback update')
-      // Fallback: update only basic columns
-      updated = await prisma.$queryRaw<any[]>`
-        UPDATE public.meal_indicators 
-        SET 
-          name = COALESCE(${body.name}, name),
-          target = COALESCE(${body.target}, target),
-          unit = COALESCE(${body.unit}, unit),
-          updated_at = NOW()
-        WHERE id = ${id}::uuid
-        RETURNING *
-      `
-    }
+    // Update the indicator
+    const updated = await prisma.$queryRaw<any[]>`
+      UPDATE public.meal_indicators 
+      SET 
+        name = COALESCE(${body.name}, name),
+        target = COALESCE(${body.target}, target),
+        unit = COALESCE(${body.unit}, unit),
+        current = COALESCE(${body.current}, current),
+        status = COALESCE(${body.status}, status),
+        notes = COALESCE(${body.notes}, notes),
+        last_updated_by = ${session.user?.name || session.user?.email || 'Unknown User'},
+        last_updated_at = NOW(),
+        updated_at = NOW()
+      WHERE id = ${id}::uuid
+      RETURNING *
+    `
     
     if (updated.length === 0) {
       return NextResponse.json({ success: false, error: "Indicator not found" }, { status: 404 })
