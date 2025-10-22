@@ -132,6 +132,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       // Clear existing indicators and fetch fresh data from Results Framework
       setIndicators([])
       setFilteredIndicators([])
+      setSelectedIndicators([])
+      setSelectedIndicatorDetails([])
+      setEditingIndicator(null)
+      setQuickUpdateValue('')
       setShowAllProjects(false)
       // Fetch Results Framework data for the selected project
       fetchResultsFramework(selectedProjectId)
@@ -159,7 +163,12 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
   const fetchIndicators = async () => {
     try {
-      const response = await fetch('/api/meal/indicators')
+      // Clear any existing indicators first to prevent cached old IDs
+      setIndicators([])
+      setFilteredIndicators([])
+      
+      // Add cache-busting parameter to ensure fresh data
+      const response = await fetch(`/api/meal/indicators?t=${Date.now()}`)
       if (response.ok) {
         const data = await response.json()
         // Transform the data to match our interface
@@ -180,7 +189,12 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           lastUpdatedAt: indicator.last_updated_at,
           notes: indicator.notes
         }))
+        
+        // Debug: Log all indicator IDs to identify any old sample IDs
+        console.log('Fetched indicators with IDs:', transformedIndicators.map(ind => ind.id))
+        
         setIndicators(transformedIndicators)
+        setFilteredIndicators(transformedIndicators)
       }
     } catch (err) {
       console.error('Error fetching indicators:', err)
@@ -221,7 +235,12 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           notes: ''
         }
       ]
+      
+      // Debug: Log sample indicator IDs
+      console.log('Using sample indicators with IDs:', sampleIndicators.map(ind => ind.id))
+      
       setIndicators(sampleIndicators)
+      setFilteredIndicators(sampleIndicators)
     }
   }
 
@@ -363,6 +382,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     
     // Set the extracted indicators as the main indicators list
     console.log('Extracted indicators:', extractedIndicators.length, extractedIndicators)
+    
+    // Debug: Log extracted indicator IDs
+    console.log('Extracted indicators with IDs:', extractedIndicators.map(ind => ind.id))
+    
     setIndicators(extractedIndicators)
     setFilteredIndicators(extractedIndicators)
   }
