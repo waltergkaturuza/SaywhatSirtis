@@ -76,8 +76,8 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   
   // Ensure data structure is properly initialized
   const safeData: ResultsFrameworkData = {
-    objectives: Array.isArray(data?.objectives) ? safeData.objectives : [],
-    projectDuration: typeof data?.projectDuration === 'number' ? safeData.projectDuration : 1
+    objectives: Array.isArray(data?.objectives) ? data.objectives : [],
+    projectDuration: typeof data?.projectDuration === 'number' ? data.projectDuration : 1
   }
 
   const createEmptyIndicator = (): Indicator => ({
