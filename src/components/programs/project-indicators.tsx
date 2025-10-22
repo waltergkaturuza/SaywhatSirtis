@@ -394,14 +394,51 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     if (selectedIndicators.length === 0) return
 
     try {
-      // This would be implemented based on your API structure
-      console.log('Bulk updating indicators:', selectedIndicators)
+      console.log('Bulk updating indicators:', selectedIndicators, 'with details:', selectedIndicatorDetails)
+      
+      // Update each selected indicator individually with their specific values
+      const updatePromises = selectedIndicatorDetails.map(async (indicator) => {
+        // Use the current value from the form (which was updated via onChange)
+        const newValue = indicator.current
+
+        console.log(`Updating indicator ${indicator.name} to ${newValue} ${indicator.unit}`)
+
+        // Update the indicator via API
+        const response = await fetch(`/api/meal/indicators/${indicator.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            current: newValue,
+            notes: updateNotes
+          })
+        })
+
+        if (!response.ok) {
+          console.error(`Failed to update indicator ${indicator.id}:`, response.status)
+        }
+        
+        return response.ok
+      })
+
+      // Wait for all updates to complete
+      const results = await Promise.all(updatePromises)
+      const successCount = results.filter(Boolean).length
+      
+      console.log(`Successfully updated ${successCount} out of ${selectedIndicators.length} indicators`)
+      
+      // Reset form and refresh data
       setShowBulkUpdate(false)
       setSelectedIndicators([])
       setSelectedIndicatorDetails([])
       setBulkUpdateValue('')
       setUpdateNotes('')
+      setBulkUpdateType('set')
+      
+      // Refresh indicators
       fetchIndicators()
+      
     } catch (err) {
       console.error('Error bulk updating indicators:', err)
     }
@@ -1051,76 +1088,50 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                     )}
 
                     <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Update Type
-                        </label>
-                        <select 
-                          value={bulkUpdateType}
-                          onChange={(e) => setBulkUpdateType(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="set">Set to specific value</option>
-                          <option value="add">Add to current value</option>
-                          <option value="percentage">Set as percentage of target</option>
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Value
-                          {selectedIndicatorDetails.length > 0 && (
-                            <span className="text-xs text-gray-500 ml-2">
-                              (Unit: {selectedIndicatorDetails[0]?.unit || 'varies'})
-                            </span>
-                          )}
-                        </label>
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="number"
-                            value={bulkUpdateValue}
-                            onChange={(e) => setBulkUpdateValue(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter value"
-                          />
-                          {selectedIndicatorDetails.length > 0 && (
-                            <span className="text-sm text-gray-500 px-2 py-1 bg-gray-100 rounded">
-                              {selectedIndicatorDetails[0]?.unit}
-                            </span>
-                          )}
-                        </div>
-                        {selectedIndicatorDetails.length > 1 && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Note: Different indicators may have different units
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Preview of what will be updated */}
-                      {bulkUpdateValue && selectedIndicatorDetails.length > 0 && (
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <h6 className="text-sm font-medium text-gray-900 mb-2">Preview:</h6>
-                          <div className="space-y-1">
-                            {selectedIndicatorDetails.map((indicator) => {
-                              let newValue = 0
-                              if (bulkUpdateType === 'set') {
-                                newValue = parseFloat(bulkUpdateValue) || 0
-                              } else if (bulkUpdateType === 'add') {
-                                newValue = indicator.current + (parseFloat(bulkUpdateValue) || 0)
-                              } else if (bulkUpdateType === 'percentage') {
-                                newValue = (indicator.target * (parseFloat(bulkUpdateValue) || 0)) / 100
-                              }
-                              
-                              return (
-                                <div key={indicator.id} className="text-xs text-gray-600">
-                                  <span className="font-medium">{indicator.name}:</span>
-                                  <span className="ml-2">{indicator.current} → {newValue} {indicator.unit}</span>
+                      {/* Individual Value Inputs for Each Selected Indicator */}
+                      {selectedIndicatorDetails.length > 0 && (
+                        <div className="space-y-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Update Values for Each Indicator:
+                          </label>
+                          {selectedIndicatorDetails.map((indicator, index) => (
+                            <div key={indicator.id} className="p-3 border border-gray-200 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <div>
+                                  <span className="text-sm font-medium text-gray-900">{indicator.name}</span>
+                                  <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                                    {indicator.category.toUpperCase()}
+                                  </span>
                                 </div>
-                              )
-                            })}
-                          </div>
+                                <span className="text-xs text-gray-500">
+                                  Current: {indicator.current} {indicator.unit}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="number"
+                                  id={`bulk-value-${indicator.id}`}
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder={`Enter new value in ${indicator.unit}`}
+                                  onChange={(e) => {
+                                    // Update the indicator's value in the details array
+                                    const updatedDetails = selectedIndicatorDetails.map(detail => 
+                                      detail.id === indicator.id 
+                                        ? { ...detail, current: parseFloat(e.target.value) || 0 }
+                                        : detail
+                                    )
+                                    setSelectedIndicatorDetails(updatedDetails)
+                                  }}
+                                />
+                                <span className="text-sm text-gray-500 px-2 py-1 bg-gray-100 rounded">
+                                  {indicator.unit}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
+
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
