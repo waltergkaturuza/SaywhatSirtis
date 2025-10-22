@@ -37,6 +37,9 @@ interface ProjectData {
   budget?: number
   actualSpent?: number
   objectives?: any
+  outcomes?: any
+  indicators?: any
+  outputs?: any
   createdAt?: string
   updatedAt?: string
 }
@@ -485,6 +488,114 @@ export default function ProjectDetailPage() {
                 ))
               ) : (
                 <p className="text-gray-500 text-sm">No objectives defined</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Project Outcomes */}
+        {project.outcomes && (
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <ChartBarIcon className="h-5 w-5 mr-2 text-blue-500" />
+              Project Outcomes
+            </h3>
+            <div className="space-y-4">
+              {Array.isArray(project.outcomes) ? (
+                project.outcomes.map((outcome: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900 mb-2">Outcome {index + 1}</h4>
+                        <p className="text-gray-700 text-sm mb-3">{outcome.description}</p>
+                        <div className="flex items-center space-x-4 text-sm">
+                          {outcome.target && (
+                            <div className="flex items-center">
+                              <span className="text-gray-500 mr-1">Target:</span>
+                              <span className="font-medium text-gray-900">{outcome.target} {outcome.unit}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm">No outcomes defined</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Project Indicators */}
+        {project.indicators && (
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <ChartBarIcon className="h-5 w-5 mr-2 text-green-500" />
+              Project Indicators
+            </h3>
+            <div className="space-y-4">
+              {Array.isArray(project.indicators) ? (
+                project.indicators.map((indicator: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-green-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900 mb-2">{indicator.name || `Indicator ${index + 1}`}</h4>
+                        <p className="text-gray-700 text-sm mb-3">{indicator.description}</p>
+                        <div className="flex items-center space-x-4 text-sm">
+                          {indicator.target && (
+                            <div className="flex items-center">
+                              <span className="text-gray-500 mr-1">Target:</span>
+                              <span className="font-medium text-gray-900">{indicator.target} {indicator.unit}</span>
+                            </div>
+                          )}
+                          {indicator.frequency && (
+                            <div className="flex items-center">
+                              <span className="text-gray-500 mr-1">Frequency:</span>
+                              <span className="font-medium text-gray-900 capitalize">{indicator.frequency}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm">No indicators defined</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Project Outputs */}
+        {project.outputs && (
+          <div className="bg-white rounded-lg border p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <ChartBarIcon className="h-5 w-5 mr-2 text-purple-500" />
+              Project Outputs
+            </h3>
+            <div className="space-y-4">
+              {Array.isArray(project.outputs) ? (
+                project.outputs.map((output: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-purple-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900 mb-2">Output {index + 1}</h4>
+                        <p className="text-gray-700 text-sm mb-3">{output.description}</p>
+                        <div className="flex items-center space-x-4 text-sm">
+                          {output.target && (
+                            <div className="flex items-center">
+                              <span className="text-gray-500 mr-1">Target:</span>
+                              <span className="font-medium text-gray-900">{output.target} {output.unit}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm">No outputs defined</p>
               )}
             </div>
           </div>

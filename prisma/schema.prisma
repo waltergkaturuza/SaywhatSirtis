@@ -1095,6 +1095,9 @@ model projects {
   projectGoal                     String?
   description                     String?
   objectives                      Json?
+  outcomes                        Json?        // Array of outcome objects
+  indicators                      Json?        // Array of indicator objects  
+  outputs                         Json?        // Array of output objects
   timeframe                       String?
   startDate                       DateTime?
   endDate                         DateTime?

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ModulePage } from '@/components/layout/enhanced-layout'
-import { ArrowLeftIcon, CheckIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, CheckIcon, PlusIcon, TrashIcon, ChartBarIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,6 +33,9 @@ interface Project {
   expectedOutcomes: string
   kpis: string
   sustainabilityPlan: string
+  outcomes?: any
+  indicators?: any
+  outputs?: any
 }
 
 export default function EditProjectPage() {
@@ -44,6 +47,11 @@ export default function EditProjectPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // New fields for outcomes, indicators, and outputs
+  const [outcomes, setOutcomes] = useState<Array<{id: string, description: string, target: string, unit: string}>>([])
+  const [indicators, setIndicators] = useState<Array<{id: string, name: string, description: string, target: string, unit: string, frequency: string}>>([])
+  const [outputs, setOutputs] = useState<Array<{id: string, description: string, target: string, unit: string}>>([])
 
   useEffect(() => {
     fetchProject()
@@ -65,6 +73,40 @@ export default function EditProjectPage() {
           startDate: result.data.startDate.split('T')[0],
           endDate: result.data.endDate.split('T')[0]
         })
+        
+        // Load the new fields
+        if (result.data.outcomes) {
+          try {
+            const parsedOutcomes = typeof result.data.outcomes === 'string' 
+              ? JSON.parse(result.data.outcomes) 
+              : result.data.outcomes
+            setOutcomes(Array.isArray(parsedOutcomes) ? parsedOutcomes : [])
+          } catch {
+            setOutcomes([])
+          }
+        }
+        
+        if (result.data.indicators) {
+          try {
+            const parsedIndicators = typeof result.data.indicators === 'string' 
+              ? JSON.parse(result.data.indicators) 
+              : result.data.indicators
+            setIndicators(Array.isArray(parsedIndicators) ? parsedIndicators : [])
+          } catch {
+            setIndicators([])
+          }
+        }
+        
+        if (result.data.outputs) {
+          try {
+            const parsedOutputs = typeof result.data.outputs === 'string' 
+              ? JSON.parse(result.data.outputs) 
+              : result.data.outputs
+            setOutputs(Array.isArray(parsedOutputs) ? parsedOutputs : [])
+          } catch {
+            setOutputs([])
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching project:', err)
@@ -86,7 +128,12 @@ export default function EditProjectPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(project)
+        body: JSON.stringify({
+          ...project,
+          outcomes: outcomes,
+          indicators: indicators,
+          outputs: outputs
+        })
       })
 
       if (!response.ok) {
@@ -111,6 +158,69 @@ export default function EditProjectPage() {
     if (project) {
       setProject({ ...project, [field]: value })
     }
+  }
+
+  // Helper functions for managing iterative fields
+  const addOutcome = () => {
+    const newOutcome = {
+      id: Date.now().toString(),
+      description: '',
+      target: '',
+      unit: ''
+    }
+    setOutcomes([...outcomes, newOutcome])
+  }
+
+  const removeOutcome = (id: string) => {
+    setOutcomes(outcomes.filter(outcome => outcome.id !== id))
+  }
+
+  const updateOutcome = (id: string, field: string, value: string) => {
+    setOutcomes(outcomes.map(outcome => 
+      outcome.id === id ? { ...outcome, [field]: value } : outcome
+    ))
+  }
+
+  const addIndicator = () => {
+    const newIndicator = {
+      id: Date.now().toString(),
+      name: '',
+      description: '',
+      target: '',
+      unit: '',
+      frequency: 'monthly'
+    }
+    setIndicators([...indicators, newIndicator])
+  }
+
+  const removeIndicator = (id: string) => {
+    setIndicators(indicators.filter(indicator => indicator.id !== id))
+  }
+
+  const updateIndicator = (id: string, field: string, value: string) => {
+    setIndicators(indicators.map(indicator => 
+      indicator.id === id ? { ...indicator, [field]: value } : indicator
+    ))
+  }
+
+  const addOutput = () => {
+    const newOutput = {
+      id: Date.now().toString(),
+      description: '',
+      target: '',
+      unit: ''
+    }
+    setOutputs([...outputs, newOutput])
+  }
+
+  const removeOutput = (id: string) => {
+    setOutputs(outputs.filter(output => output.id !== id))
+  }
+
+  const updateOutput = (id: string, field: string, value: string) => {
+    setOutputs(outputs.map(output => 
+      output.id === id ? { ...output, [field]: value } : output
+    ))
   }
 
   if (loading) {
@@ -432,6 +542,268 @@ export default function EditProjectPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Project Outcomes */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Project Outcomes</h3>
+            <Button
+              type="button"
+              onClick={addOutcome}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Outcome
+            </Button>
+          </div>
+          
+          {outcomes.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <ChartBarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>No outcomes defined yet. Click "Add Outcome" to get started.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {outcomes.map((outcome, index) => (
+                <div key={outcome.id} className="border rounded-lg p-4 bg-blue-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-gray-900">Outcome {index + 1}</h4>
+                    <Button
+                      type="button"
+                      onClick={() => removeOutcome(outcome.id)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`outcome-description-${outcome.id}`}>Description</Label>
+                      <Textarea
+                        id={`outcome-description-${outcome.id}`}
+                        value={outcome.description}
+                        onChange={(e) => updateOutcome(outcome.id, 'description', e.target.value)}
+                        placeholder="Describe the expected outcome"
+                        rows={3}
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor={`outcome-target-${outcome.id}`}>Target</Label>
+                        <Input
+                          id={`outcome-target-${outcome.id}`}
+                          value={outcome.target}
+                          onChange={(e) => updateOutcome(outcome.id, 'target', e.target.value)}
+                          placeholder="Target value"
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor={`outcome-unit-${outcome.id}`}>Unit</Label>
+                        <Input
+                          id={`outcome-unit-${outcome.id}`}
+                          value={outcome.unit}
+                          onChange={(e) => updateOutcome(outcome.id, 'unit', e.target.value)}
+                          placeholder="Unit of measurement"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Project Indicators */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Project Indicators</h3>
+            <Button
+              type="button"
+              onClick={addIndicator}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Indicator
+            </Button>
+          </div>
+          
+          {indicators.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <ChartBarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>No indicators defined yet. Click "Add Indicator" to get started.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {indicators.map((indicator, index) => (
+                <div key={indicator.id} className="border rounded-lg p-4 bg-green-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-gray-900">Indicator {index + 1}</h4>
+                    <Button
+                      type="button"
+                      onClick={() => removeIndicator(indicator.id)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`indicator-name-${indicator.id}`}>Indicator Name</Label>
+                      <Input
+                        id={`indicator-name-${indicator.id}`}
+                        value={indicator.name}
+                        onChange={(e) => updateIndicator(indicator.id, 'name', e.target.value)}
+                        placeholder="Enter indicator name"
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`indicator-frequency-${indicator.id}`}>Frequency</Label>
+                      <select
+                        id={`indicator-frequency-${indicator.id}`}
+                        value={indicator.frequency}
+                        onChange={(e) => updateIndicator(indicator.id, 'frequency', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mt-1"
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="annually">Annually</option>
+                      </select>
+                    </div>
+                    
+                    <div className="md:col-span-2">
+                      <Label htmlFor={`indicator-description-${indicator.id}`}>Description</Label>
+                      <Textarea
+                        id={`indicator-description-${indicator.id}`}
+                        value={indicator.description}
+                        onChange={(e) => updateIndicator(indicator.id, 'description', e.target.value)}
+                        placeholder="Describe what this indicator measures"
+                        rows={2}
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`indicator-target-${indicator.id}`}>Target</Label>
+                      <Input
+                        id={`indicator-target-${indicator.id}`}
+                        value={indicator.target}
+                        onChange={(e) => updateIndicator(indicator.id, 'target', e.target.value)}
+                        placeholder="Target value"
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`indicator-unit-${indicator.id}`}>Unit</Label>
+                      <Input
+                        id={`indicator-unit-${indicator.id}`}
+                        value={indicator.unit}
+                        onChange={(e) => updateIndicator(indicator.id, 'unit', e.target.value)}
+                        placeholder="Unit of measurement"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Project Outputs */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Project Outputs</h3>
+            <Button
+              type="button"
+              onClick={addOutput}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Output
+            </Button>
+          </div>
+          
+          {outputs.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <ChartBarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>No outputs defined yet. Click "Add Output" to get started.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {outputs.map((output, index) => (
+                <div key={output.id} className="border rounded-lg p-4 bg-purple-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-gray-900">Output {index + 1}</h4>
+                    <Button
+                      type="button"
+                      onClick={() => removeOutput(output.id)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`output-description-${output.id}`}>Description</Label>
+                      <Textarea
+                        id={`output-description-${output.id}`}
+                        value={output.description}
+                        onChange={(e) => updateOutput(output.id, 'description', e.target.value)}
+                        placeholder="Describe the expected output"
+                        rows={3}
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor={`output-target-${output.id}`}>Target</Label>
+                        <Input
+                          id={`output-target-${output.id}`}
+                          value={output.target}
+                          onChange={(e) => updateOutput(output.id, 'target', e.target.value)}
+                          placeholder="Target value"
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor={`output-unit-${output.id}`}>Unit</Label>
+                        <Input
+                          id={`output-unit-${output.id}`}
+                          value={output.unit}
+                          onChange={(e) => updateOutput(output.id, 'unit', e.target.value)}
+                          placeholder="Unit of measurement"
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </ModulePage>

@@ -154,11 +154,80 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
     objectives: [],
     projectDuration: 3
   })
+  
+  // New fields for outcomes, indicators, and outputs
+  const [outcomes, setOutcomes] = useState<Array<{id: string, description: string, target: string, unit: string}>>([])
+  const [indicators, setIndicators] = useState<Array<{id: string, name: string, description: string, target: string, unit: string, frequency: string}>>([])
+  const [outputs, setOutputs] = useState<Array<{id: string, description: string, target: string, unit: string}>>([])
+
+  // Helper functions for managing iterative fields
+  const addOutcome = () => {
+    const newOutcome = {
+      id: Date.now().toString(),
+      description: '',
+      target: '',
+      unit: ''
+    }
+    setOutcomes([...outcomes, newOutcome])
+  }
+
+  const removeOutcome = (id: string) => {
+    setOutcomes(outcomes.filter(outcome => outcome.id !== id))
+  }
+
+  const updateOutcome = (id: string, field: string, value: string) => {
+    setOutcomes(outcomes.map(outcome => 
+      outcome.id === id ? { ...outcome, [field]: value } : outcome
+    ))
+  }
+
+  const addIndicator = () => {
+    const newIndicator = {
+      id: Date.now().toString(),
+      name: '',
+      description: '',
+      target: '',
+      unit: '',
+      frequency: 'monthly'
+    }
+    setIndicators([...indicators, newIndicator])
+  }
+
+  const removeIndicator = (id: string) => {
+    setIndicators(indicators.filter(indicator => indicator.id !== id))
+  }
+
+  const updateIndicator = (id: string, field: string, value: string) => {
+    setIndicators(indicators.map(indicator => 
+      indicator.id === id ? { ...indicator, [field]: value } : indicator
+    ))
+  }
+
+  const addOutput = () => {
+    const newOutput = {
+      id: Date.now().toString(),
+      description: '',
+      target: '',
+      unit: ''
+    }
+    setOutputs([...outputs, newOutput])
+  }
+
+  const removeOutput = (id: string) => {
+    setOutputs(outputs.filter(output => output.id !== id))
+  }
+
+  const updateOutput = (id: string, field: string, value: string) => {
+    setOutputs(outputs.map(output => 
+      output.id === id ? { ...output, [field]: value } : output
+    ))
+  }
 
   const steps = [
     { number: 1, title: "Project Information", icon: DocumentTextIcon },
     { number: 2, title: "Financial Details", icon: BanknotesIcon },
-    { number: 3, title: "Results Framework", icon: ChartBarIcon }
+    { number: 3, title: "Results Framework", icon: ChartBarIcon },
+    { number: 4, title: "Outcomes & Indicators", icon: ChartBarIcon }
   ]
 
   const isCurrentUser = (role: string) => {
@@ -389,7 +458,10 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
         evaluationFrequency: selectedFrequencies,
         frequencyDates,
         methodologies: selectedMethodologies,
-        resultsFramework: resultsFramework
+        resultsFramework: resultsFramework,
+        outcomes: outcomes,
+        indicators: indicators,
+        outputs: outputs
       }
 
       const response = await fetch('/api/programs/projects', {
@@ -950,6 +1022,279 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
     </div>
   )
 
+  const renderOutcomesAndIndicators = () => (
+    <div className="space-y-8">
+      {/* Outcomes Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Project Outcomes</h3>
+          <Button
+            type="button"
+            onClick={addOutcome}
+            disabled={!canEdit}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Outcome
+          </Button>
+        </div>
+        
+        {outcomes.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <ChartBarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>No outcomes defined yet. Click "Add Outcome" to get started.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {outcomes.map((outcome, index) => (
+              <div key={outcome.id} className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">Outcome {index + 1}</h4>
+                  <Button
+                    type="button"
+                    onClick={() => removeOutcome(outcome.id)}
+                    disabled={!canEdit}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor={`outcome-description-${outcome.id}`}>Description</Label>
+                    <Textarea
+                      id={`outcome-description-${outcome.id}`}
+                      value={outcome.description}
+                      onChange={(e) => updateOutcome(outcome.id, 'description', e.target.value)}
+                      placeholder="Describe the expected outcome"
+                      disabled={!canEdit}
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`outcome-target-${outcome.id}`}>Target</Label>
+                      <Input
+                        id={`outcome-target-${outcome.id}`}
+                        value={outcome.target}
+                        onChange={(e) => updateOutcome(outcome.id, 'target', e.target.value)}
+                        placeholder="Target value"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`outcome-unit-${outcome.id}`}>Unit</Label>
+                      <Input
+                        id={`outcome-unit-${outcome.id}`}
+                        value={outcome.unit}
+                        onChange={(e) => updateOutcome(outcome.id, 'unit', e.target.value)}
+                        placeholder="Unit of measurement"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Indicators Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Project Indicators</h3>
+          <Button
+            type="button"
+            onClick={addIndicator}
+            disabled={!canEdit}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Indicator
+          </Button>
+        </div>
+        
+        {indicators.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <ChartBarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>No indicators defined yet. Click "Add Indicator" to get started.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {indicators.map((indicator, index) => (
+              <div key={indicator.id} className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">Indicator {index + 1}</h4>
+                  <Button
+                    type="button"
+                    onClick={() => removeIndicator(indicator.id)}
+                    disabled={!canEdit}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor={`indicator-name-${indicator.id}`}>Indicator Name</Label>
+                    <Input
+                      id={`indicator-name-${indicator.id}`}
+                      value={indicator.name}
+                      onChange={(e) => updateIndicator(indicator.id, 'name', e.target.value)}
+                      placeholder="Enter indicator name"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor={`indicator-frequency-${indicator.id}`}>Frequency</Label>
+                    <select
+                      id={`indicator-frequency-${indicator.id}`}
+                      value={indicator.frequency}
+                      onChange={(e) => updateIndicator(indicator.id, 'frequency', e.target.value)}
+                      disabled={!canEdit}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="quarterly">Quarterly</option>
+                      <option value="annually">Annually</option>
+                    </select>
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <Label htmlFor={`indicator-description-${indicator.id}`}>Description</Label>
+                    <Textarea
+                      id={`indicator-description-${indicator.id}`}
+                      value={indicator.description}
+                      onChange={(e) => updateIndicator(indicator.id, 'description', e.target.value)}
+                      placeholder="Describe what this indicator measures"
+                      disabled={!canEdit}
+                      rows={2}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor={`indicator-target-${indicator.id}`}>Target</Label>
+                    <Input
+                      id={`indicator-target-${indicator.id}`}
+                      value={indicator.target}
+                      onChange={(e) => updateIndicator(indicator.id, 'target', e.target.value)}
+                      placeholder="Target value"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor={`indicator-unit-${indicator.id}`}>Unit</Label>
+                    <Input
+                      id={`indicator-unit-${indicator.id}`}
+                      value={indicator.unit}
+                      onChange={(e) => updateIndicator(indicator.id, 'unit', e.target.value)}
+                      placeholder="Unit of measurement"
+                      disabled={!canEdit}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Outputs Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Project Outputs</h3>
+          <Button
+            type="button"
+            onClick={addOutput}
+            disabled={!canEdit}
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Output
+          </Button>
+        </div>
+        
+        {outputs.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <ChartBarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>No outputs defined yet. Click "Add Output" to get started.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {outputs.map((output, index) => (
+              <div key={output.id} className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">Output {index + 1}</h4>
+                  <Button
+                    type="button"
+                    onClick={() => removeOutput(output.id)}
+                    disabled={!canEdit}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor={`output-description-${output.id}`}>Description</Label>
+                    <Textarea
+                      id={`output-description-${output.id}`}
+                      value={output.description}
+                      onChange={(e) => updateOutput(output.id, 'description', e.target.value)}
+                      placeholder="Describe the expected output"
+                      disabled={!canEdit}
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`output-target-${output.id}`}>Target</Label>
+                      <Input
+                        id={`output-target-${output.id}`}
+                        value={output.target}
+                        onChange={(e) => updateOutput(output.id, 'target', e.target.value)}
+                        placeholder="Target value"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor={`output-unit-${output.id}`}>Unit</Label>
+                      <Input
+                        id={`output-unit-${output.id}`}
+                        value={output.unit}
+                        onChange={(e) => updateOutput(output.id, 'unit', e.target.value)}
+                        placeholder="Unit of measurement"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div className="max-w-full mx-auto p-6 w-full px-4 lg:px-8 xl:px-12">
       <div className="mb-8">
@@ -1013,12 +1358,14 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
             {currentStep === 1 && "Enter basic project information and management details"}
             {currentStep === 2 && "Specify budget and funding source information"}
             {currentStep === 3 && "Define objectives, outcomes, and outputs with monitoring framework"}
+            {currentStep === 4 && "Define project outcomes, indicators, and outputs"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {currentStep === 1 && renderProjectInformation()}
           {currentStep === 2 && renderFinancialDetails()}
           {currentStep === 3 && renderResultsFramework()}
+          {currentStep === 4 && renderOutcomesAndIndicators()}
         </CardContent>
       </Card>
 
@@ -1045,7 +1392,7 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
           >
             Cancel
           </Button>
-          {currentStep < 3 ? (
+          {currentStep < 4 ? (
             <Button
               type="button"
               onClick={() => setCurrentStep(prev => prev + 1)}
