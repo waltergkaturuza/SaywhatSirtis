@@ -167,18 +167,18 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
     const projectDuration = typeof rf.projectDuration === 'number' ? rf.projectDuration : 1
     
     // Ensure objectives array exists and is properly structured
-    const objectives = Array.isArray(rf.objectives) ? rf.objectives.map(obj => ({
+    const objectives = Array.isArray(rf.objectives) ? rf.objectives.map((obj: any) => ({
       id: obj.id || `objective_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       title: obj.title || '',
       description: obj.description || '',
       isExpanded: obj.isExpanded || false,
-      outcomes: Array.isArray(obj.outcomes) ? obj.outcomes.map(outcome => ({
+      outcomes: Array.isArray(obj.outcomes) ? obj.outcomes.map((outcome: any) => ({
         id: outcome.id || `outcome_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: outcome.title || '',
         description: outcome.description || '',
         isExpanded: outcome.isExpanded || false,
         indicators: Array.isArray(outcome.indicators) ? outcome.indicators : [],
-        outputs: Array.isArray(outcome.outputs) ? outcome.outputs.map(output => ({
+        outputs: Array.isArray(outcome.outputs) ? outcome.outputs.map((output: any) => ({
           id: output.id || `output_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           title: output.title || '',
           description: output.description || '',
