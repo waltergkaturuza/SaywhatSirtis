@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: Request, context: any) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
@@ -13,11 +13,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const body = await req.json()
     const { message, isInternal, attachments } = body
+    const id = context?.params?.id as string
 
     // Create new response
     const newResponse = {
       id: Date.now().toString(),
-      feedbackId: params.id,
+      feedbackId: id,
       respondedBy: session.user?.name || 'Unknown',
       respondedAt: new Date().toISOString(),
       message,
