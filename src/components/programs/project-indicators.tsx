@@ -123,7 +123,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   useEffect(() => {
     setMounted(true)
     fetchProjects()
-    fetchIndicators()
+    // Don't fetch indicators on mount - they should only be loaded when a project is selected
   }, [])
 
   // Filter indicators based on selected project
@@ -434,7 +434,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           }
         })
         setShowIndicatorForm(false)
-        fetchIndicators()
+        // Refresh indicators from the project's Results Framework
+        if (selectedProjectId) {
+          fetchResultsFramework(selectedProjectId)
+        }
       }
     } catch (err) {
       console.error('Error creating indicator:', err)
@@ -493,8 +496,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       setUpdateNotes('')
       setBulkUpdateType('set')
       
-      // Refresh indicators
-      fetchIndicators()
+      // Refresh indicators from the project's Results Framework
+      if (selectedProjectId) {
+        fetchResultsFramework(selectedProjectId)
+      }
       
       // Hide success message after 3 seconds
       setTimeout(() => {
@@ -609,8 +614,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       })
 
       if (response.ok) {
-        // Refresh indicators
-        fetchIndicators()
+        // Refresh indicators from the project's Results Framework
+        if (selectedProjectId) {
+          fetchResultsFramework(selectedProjectId)
+        }
         setShowUpdateModal(false)
         setSelectedIndicator(null)
         setUpdateValue(0)
@@ -797,7 +804,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 Bulk Update
               </button>
               <button
-                onClick={() => fetchIndicators()}
+                onClick={() => selectedProjectId ? fetchResultsFramework(selectedProjectId) : null}
                 className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 <ArrowPathIcon className="h-4 w-4 mr-1" />
