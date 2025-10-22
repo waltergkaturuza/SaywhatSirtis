@@ -38,6 +38,7 @@ interface ProjectTableProps {
 interface Project {
   id: string
   name: string
+  projectGoal?: string
   description: string
   status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED'
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
@@ -749,6 +750,11 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
                   <td className="px-4 py-4">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{project.name}</div>
+                      {project.projectGoal && (
+                        <div className="text-xs text-blue-600 truncate max-w-48" title={project.projectGoal}>
+                          Goal: {project.projectGoal.substring(0, 50)}...
+                        </div>
+                      )}
                       <div className="text-sm text-gray-500 truncate max-w-48">{project.description}</div>
                     </div>
                   </td>

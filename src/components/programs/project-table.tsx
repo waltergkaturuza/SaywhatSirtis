@@ -79,6 +79,11 @@ export default function ProjectTable({
                       {project.name}
                     </div>
                     <div className="text-sm text-gray-500">Manager: {project.manager}</div>
+                    {project.projectGoal && (
+                      <div className="text-xs text-blue-600 truncate" title={project.projectGoal}>
+                        Goal: {project.projectGoal.substring(0, 60)}...
+                      </div>
+                    )}
                     <div className="text-xs text-gray-400 truncate" title={project.description}>
                       {project.description.substring(0, 80)}...
                     </div>
