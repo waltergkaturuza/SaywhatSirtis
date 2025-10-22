@@ -31,7 +31,7 @@ export interface Output {
   id: string
   title: string
   description: string
-  indicator: Indicator
+  indicators: Indicator[]
   isExpanded: boolean
 }
 
@@ -39,7 +39,7 @@ export interface Outcome {
   id: string
   title: string
   description: string
-  indicator: Indicator
+  indicators: Indicator[]
   outputs: Output[]
   isExpanded: boolean
 }
@@ -91,7 +91,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
     id: `output_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: "",
     description: "",
-    indicator: createEmptyIndicator(),
+    indicators: [],
     isExpanded: false
   })
 
@@ -99,7 +99,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
     id: `outcome_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title: "",
     description: "",
-    indicator: createEmptyIndicator(),
+    indicators: [],
     outputs: [],
     isExpanded: false
   })
@@ -205,24 +205,123 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
     })
   }
 
-  const updateIndicator = (indicator: Indicator, field: string, value: any, objectiveId?: string, outcomeId?: string, outputId?: string) => {
-    const newIndicator = { ...indicator }
+  // Create default indicator
+  const createEmptyIndicator = (): Indicator => ({
+    description: '',
+    baseline: '',
+    baselineUnit: '',
+    targets: {},
+    targetUnit: '',
+    monitoringMethod: '',
+    dataCollection: {
+      frequency: 'monthly',
+      source: '',
+      disaggregation: ''
+    },
+    comment: ''
+  })
+
+  // Add indicator to outcome
+  const addIndicatorToOutcome = (objectiveId: string, outcomeId: string) => {
+    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const outcome = objective?.outcomes.find(out => out.id === outcomeId)
+    if (!outcome) return
+
+    const newIndicator = createEmptyIndicator()
+    updateOutcome(objectiveId, outcomeId, {
+      indicators: [...(outcome.indicators || []), newIndicator]
+    })
+  }
+
+  // Remove indicator from outcome
+  const removeIndicatorFromOutcome = (objectiveId: string, outcomeId: string, indicatorIndex: number) => {
+    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const outcome = objective?.outcomes.find(out => out.id === outcomeId)
+    if (!outcome) return
+
+    const newIndicators = [...(outcome.indicators || [])]
+    newIndicators.splice(indicatorIndex, 1)
+    updateOutcome(objectiveId, outcomeId, {
+      indicators: newIndicators
+    })
+  }
+
+  // Update indicator in outcome
+  const updateIndicatorInOutcome = (objectiveId: string, outcomeId: string, indicatorIndex: number, field: string, value: any) => {
+    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const outcome = objective?.outcomes.find(out => out.id === outcomeId)
+    if (!outcome) return
+
+    const newIndicators = [...(outcome.indicators || [])]
+    const indicator = { ...newIndicators[indicatorIndex] }
     
     if (field.startsWith('dataCollection.')) {
       const dcField = field.split('.')[1]
-      newIndicator.dataCollection = { ...newIndicator.dataCollection, [dcField]: value }
+      indicator.dataCollection = { ...indicator.dataCollection, [dcField]: value }
     } else if (field.startsWith('targets.')) {
       const year = field.split('.')[1]
-      newIndicator.targets = { ...newIndicator.targets, [year]: value }
+      indicator.targets = { ...indicator.targets, [year]: value }
     } else {
-      newIndicator[field as keyof Indicator] = value
+      indicator[field as keyof Indicator] = value
     }
 
-    if (outputId && outcomeId && objectiveId) {
-      updateOutput(objectiveId, outcomeId, outputId, { indicator: newIndicator })
-    } else if (outcomeId && objectiveId) {
-      updateOutcome(objectiveId, outcomeId, { indicator: newIndicator })
+    newIndicators[indicatorIndex] = indicator
+    updateOutcome(objectiveId, outcomeId, {
+      indicators: newIndicators
+    })
+  }
+
+  // Add indicator to output
+  const addIndicatorToOutput = (objectiveId: string, outcomeId: string, outputId: string) => {
+    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const outcome = objective?.outcomes.find(out => out.id === outcomeId)
+    const output = outcome?.outputs.find(out => out.id === outputId)
+    if (!output) return
+
+    const newIndicator = createEmptyIndicator()
+    updateOutput(objectiveId, outcomeId, outputId, {
+      indicators: [...(output.indicators || []), newIndicator]
+    })
+  }
+
+  // Remove indicator from output
+  const removeIndicatorFromOutput = (objectiveId: string, outcomeId: string, outputId: string, indicatorIndex: number) => {
+    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const outcome = objective?.outcomes.find(out => out.id === outcomeId)
+    const output = outcome?.outputs.find(out => out.id === outputId)
+    if (!output) return
+
+    const newIndicators = [...(output.indicators || [])]
+    newIndicators.splice(indicatorIndex, 1)
+    updateOutput(objectiveId, outcomeId, outputId, {
+      indicators: newIndicators
+    })
+  }
+
+  // Update indicator in output
+  const updateIndicatorInOutput = (objectiveId: string, outcomeId: string, outputId: string, indicatorIndex: number, field: string, value: any) => {
+    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const outcome = objective?.outcomes.find(out => out.id === outcomeId)
+    const output = outcome?.outputs.find(out => out.id === outputId)
+    if (!output) return
+
+    const newIndicators = [...(output.indicators || [])]
+    const indicator = { ...newIndicators[indicatorIndex] }
+    
+    if (field.startsWith('dataCollection.')) {
+      const dcField = field.split('.')[1]
+      indicator.dataCollection = { ...indicator.dataCollection, [dcField]: value }
+    } else if (field.startsWith('targets.')) {
+      const year = field.split('.')[1]
+      indicator.targets = { ...indicator.targets, [year]: value }
+    } else {
+      indicator[field as keyof Indicator] = value
     }
+
+    newIndicators[indicatorIndex] = indicator
+    updateOutput(objectiveId, outcomeId, outputId, {
+      indicators: newIndicators
+    })
   }
 
   const toggleExpanded = (id: string) => {
@@ -619,11 +718,52 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
                               </div>
                             </div>
 
-                            {renderIndicatorForm(
-                              outcome.indicator,
-                              (field, value) => updateIndicator(outcome.indicator, field, value, objective.id, outcome.id),
-                              "Outcome"
-                            )}
+                            {/* Outcome Indicators */}
+                            <div className="border-t pt-4">
+                              <div className="flex items-center justify-between mb-4">
+                                <h5 className="font-medium text-gray-900">Outcome Indicators</h5>
+                                {!readonly && (
+                                  <button
+                                    onClick={() => addIndicatorToOutcome(objective.id, outcome.id)}
+                                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                                  >
+                                    <PlusIcon className="h-4 w-4 mr-1" />
+                                    Add Indicator
+                                  </button>
+                                )}
+                              </div>
+                              
+                              {outcome.indicators && outcome.indicators.length > 0 ? (
+                                <div className="space-y-4">
+                                  {outcome.indicators.map((indicator, indicatorIndex) => (
+                                    <div key={indicatorIndex} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                      <div className="flex items-center justify-between mb-4">
+                                        <h6 className="font-medium text-gray-900">Indicator {indicatorIndex + 1}</h6>
+                                        {!readonly && (
+                                          <button
+                                            onClick={() => removeIndicatorFromOutcome(objective.id, outcome.id, indicatorIndex)}
+                                            className="p-1 text-red-600 hover:bg-red-100 rounded"
+                                          >
+                                            <TrashIcon className="h-4 w-4" />
+                                          </button>
+                                        )}
+                                      </div>
+                                      
+                                      {renderIndicatorForm(
+                                        indicator,
+                                        (field, value) => updateIndicatorInOutcome(objective.id, outcome.id, indicatorIndex, field, value),
+                                        "Outcome"
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center py-4 text-gray-500">
+                                  <ChartBarIcon className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                  <p className="text-sm">No indicators defined yet. Click "Add Indicator" to get started.</p>
+                                </div>
+                              )}
+                            </div>
 
                             {/* Outputs Section */}
                             <div className="border-t pt-4">
@@ -706,11 +846,52 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
                                         </div>
                                       </div>
 
-                                      {renderIndicatorForm(
-                                        output.indicator,
-                                        (field, value) => updateIndicator(output.indicator, field, value, objective.id, outcome.id, output.id),
-                                        "Output"
-                                      )}
+                                      {/* Output Indicators */}
+                                      <div className="border-t pt-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                          <h6 className="font-medium text-gray-900">Output Indicators</h6>
+                                          {!readonly && (
+                                            <button
+                                              onClick={() => addIndicatorToOutput(objective.id, outcome.id, output.id)}
+                                              className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                                            >
+                                              <PlusIcon className="h-4 w-4 mr-1" />
+                                              Add Indicator
+                                            </button>
+                                          )}
+                                        </div>
+                                        
+                                        {output.indicators && output.indicators.length > 0 ? (
+                                          <div className="space-y-4">
+                                            {output.indicators.map((indicator, indicatorIndex) => (
+                                              <div key={indicatorIndex} className="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                                                <div className="flex items-center justify-between mb-4">
+                                                  <h6 className="font-medium text-gray-900">Indicator {indicatorIndex + 1}</h6>
+                                                  {!readonly && (
+                                                    <button
+                                                      onClick={() => removeIndicatorFromOutput(objective.id, outcome.id, output.id, indicatorIndex)}
+                                                      className="p-1 text-red-600 hover:bg-red-100 rounded"
+                                                    >
+                                                      <TrashIcon className="h-4 w-4" />
+                                                    </button>
+                                                  )}
+                                                </div>
+                                                
+                                                {renderIndicatorForm(
+                                                  indicator,
+                                                  (field, value) => updateIndicatorInOutput(objective.id, outcome.id, output.id, indicatorIndex, field, value),
+                                                  "Output"
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <div className="text-center py-4 text-gray-500">
+                                            <ChartBarIcon className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                            <p className="text-sm">No indicators defined yet. Click "Add Indicator" to get started.</p>
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
