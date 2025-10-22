@@ -80,6 +80,338 @@ interface EscalationRule {
   isActive: boolean
 }
 
+interface FeedbackFormProps {
+  onClose: () => void
+  onSuccess: () => void
+}
+
+interface ReportIssueFormProps {
+  onClose: () => void
+  onSuccess: () => void
+}
+
+function FeedbackForm({ onClose, onSuccess }: FeedbackFormProps) {
+  const [formData, setFormData] = useState({
+    type: 'suggestion' as 'suggestion' | 'complaint' | 'compliment' | 'question',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+    title: '',
+    description: '',
+    contactMethod: 'web' as 'email' | 'phone' | 'whatsapp' | 'sms' | 'web',
+    project: '',
+    location: '',
+    isAnonymous: false,
+    tags: [] as string[]
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    
+    try {
+      const response = await fetch('/api/meal/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+      
+      if (response.ok) {
+        onSuccess()
+      } else {
+        console.error('Failed to submit feedback')
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <select
+            value={formData.type}
+            onChange={(e) => setFormData({...formData, type: e.target.value as any})}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+            required
+          >
+            <option value="suggestion">Suggestion</option>
+            <option value="complaint">Complaint</option>
+            <option value="compliment">Compliment</option>
+            <option value="question">Question</option>
+          </select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <select
+            value={formData.priority}
+            onChange={(e) => setFormData({...formData, priority: e.target.value as any})}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+            required
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+        <input
+          type="text"
+          value={formData.title}
+          onChange={(e) => setFormData({...formData, title: e.target.value})}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+          placeholder="Brief title for your feedback"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => setFormData({...formData, description: e.target.value})}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+          rows={4}
+          placeholder="Please provide detailed feedback..."
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Project (Optional)</label>
+          <input
+            type="text"
+            value={formData.project}
+            onChange={(e) => setFormData({...formData, project: e.target.value})}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+            placeholder="Related project name"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Location (Optional)</label>
+          <input
+            type="text"
+            value={formData.location}
+            onChange={(e) => setFormData({...formData, location: e.target.value})}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+            placeholder="Location where this occurred"
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          id="anonymous"
+          checked={formData.isAnonymous}
+          onChange={(e) => setFormData({...formData, isAnonymous: e.target.checked})}
+          className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+        />
+        <label htmlFor="anonymous" className="ml-2 block text-sm text-gray-700">
+          Submit anonymously
+        </label>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50"
+        >
+          {submitting ? 'Submitting...' : 'Submit Feedback'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function ReportIssueForm({ onClose, onSuccess }: ReportIssueFormProps) {
+  const [formData, setFormData] = useState({
+    type: 'report' as 'report',
+    priority: 'high' as 'low' | 'medium' | 'high' | 'critical',
+    title: '',
+    description: '',
+    contactMethod: 'web' as 'email' | 'phone' | 'whatsapp' | 'sms' | 'web',
+    project: '',
+    location: '',
+    isAnonymous: false,
+    tags: [] as string[]
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    
+    try {
+      const response = await fetch('/api/meal/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+      
+      if (response.ok) {
+        onSuccess()
+      } else {
+        console.error('Failed to report issue')
+      }
+    } catch (error) {
+      console.error('Error reporting issue:', error)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+        <div className="flex">
+          <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Report a Serious Issue</h3>
+            <p className="text-sm text-red-700 mt-1">
+              Use this form to report serious issues that require immediate attention. 
+              All reports are treated confidentially and will be escalated appropriately.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <select
+            value={formData.priority}
+            onChange={(e) => setFormData({...formData, priority: e.target.value as any})}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+            required
+          >
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Contact Method</label>
+          <select
+            value={formData.contactMethod}
+            onChange={(e) => setFormData({...formData, contactMethod: e.target.value as any})}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+            required
+          >
+            <option value="web">Web Form</option>
+            <option value="email">Email</option>
+            <option value="phone">Phone</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="sms">SMS</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Issue Title</label>
+        <input
+          type="text"
+          value={formData.title}
+          onChange={(e) => setFormData({...formData, title: e.target.value})}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+          placeholder="Brief title for the issue"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Issue Description</label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => setFormData({...formData, description: e.target.value})}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+          rows={4}
+          placeholder="Please provide a detailed description of the issue, including when and where it occurred..."
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Project (Optional)</label>
+          <input
+            type="text"
+            value={formData.project}
+            onChange={(e) => setFormData({...formData, project: e.target.value})}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+            placeholder="Related project name"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+          <input
+            type="text"
+            value={formData.location}
+            onChange={(e) => setFormData({...formData, location: e.target.value})}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+            placeholder="Where did this issue occur?"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          id="anonymous-report"
+          checked={formData.isAnonymous}
+          onChange={(e) => setFormData({...formData, isAnonymous: e.target.checked})}
+          className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+        />
+        <label htmlFor="anonymous-report" className="ml-2 block text-sm text-gray-700">
+          Report anonymously
+        </label>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+        >
+          {submitting ? 'Reporting...' : 'Report Issue'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 export default function AccountabilityFeedback() {
   const [activeTab, setActiveTab] = useState<'feedback' | 'reports' | 'analytics' | 'settings'>('feedback')
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
@@ -90,6 +422,7 @@ export default function AccountabilityFeedback() {
   const [selectedPriority, setSelectedPriority] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [showNewFeedback, setShowNewFeedback] = useState(false)
+  const [showReportIssue, setShowReportIssue] = useState(false)
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null)
   const [analyticsData, setAnalyticsData] = useState<any>(null)
 
@@ -264,7 +597,10 @@ export default function AccountabilityFeedback() {
               <ChatBubbleLeftRightIcon className="h-5 w-5" />
               <span>Submit Feedback</span>
             </button>
-            <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2">
+            <button 
+              onClick={() => setShowReportIssue(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+            >
               <FlagIcon className="h-5 w-5" />
               <span>Report Issue</span>
             </button>
@@ -594,6 +930,54 @@ export default function AccountabilityFeedback() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Submission Modal */}
+      {showNewFeedback && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Submit Feedback</h3>
+                <button
+                  onClick={() => setShowNewFeedback(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <FeedbackForm onClose={() => setShowNewFeedback(false)} onSuccess={() => {
+                setShowNewFeedback(false)
+                loadFeedbacks()
+              }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Issue Modal */}
+      {showReportIssue && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Report Issue</h3>
+                <button
+                  onClick={() => setShowReportIssue(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <ReportIssueForm onClose={() => setShowReportIssue(false)} onSuccess={() => {
+                setShowReportIssue(false)
+                loadFeedbacks()
+              }} />
             </div>
           </div>
         </div>
