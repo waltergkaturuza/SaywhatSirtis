@@ -15,7 +15,9 @@ import {
 export interface Indicator {
   description: string
   baseline: string
+  baselineUnit: string
   targets: Record<string, string> // Year 1, Year 2, etc.
+  targetUnit: string
   monitoringMethod: string
   dataCollection: {
     frequency: string
@@ -279,7 +281,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Baseline
@@ -291,6 +293,20 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
             disabled={readonly}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
             placeholder="Current status/value"
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Baseline Unit
+          </label>
+          <input
+            type="text"
+            value={indicator.baselineUnit || ""}
+            onChange={(e) => updateFn('baselineUnit', e.target.value)}
+            disabled={readonly}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
+            placeholder="e.g., people, %, number, etc."
           />
         </div>
         
@@ -312,6 +328,22 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Targets by Year</label>
         {renderTargetInputs(indicator, updateFn)}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Target Unit
+          </label>
+          <input
+            type="text"
+            value={indicator.targetUnit || ""}
+            onChange={(e) => updateFn('targetUnit', e.target.value)}
+            disabled={readonly}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
+            placeholder="e.g., people, %, number, etc."
+          />
+        </div>
       </div>
 
       <div className="border-t pt-4">

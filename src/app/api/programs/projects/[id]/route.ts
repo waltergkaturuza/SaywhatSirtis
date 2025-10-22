@@ -126,9 +126,6 @@ export async function PUT(
         currency: body.currency,
         timeframe: body.timeframe,
         objectives: objectives ? JSON.stringify(objectives) : undefined,
-        outcomes: body.outcomes ? JSON.stringify(body.outcomes) : undefined,
-        indicators: body.indicators ? JSON.stringify(body.indicators) : undefined,
-        outputs: body.outputs ? JSON.stringify(body.outputs) : undefined,
         updatedAt: new Date()
       },
       include: {

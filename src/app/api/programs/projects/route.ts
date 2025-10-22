@@ -118,9 +118,6 @@ export async function POST(request: NextRequest) {
           // Document management
           uploadedDocuments: body.uploadedDocuments || []
         }),
-        outcomes: body.outcomes ? JSON.stringify(body.outcomes) : null,
-        indicators: body.indicators ? JSON.stringify(body.indicators) : null,
-        outputs: body.outputs ? JSON.stringify(body.outputs) : null,
         budget: body.budget ? parseFloat(body.budget) : null,
         actualSpent: 0,
         updatedAt: new Date()
