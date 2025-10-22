@@ -45,6 +45,19 @@ interface ProjectIndicator {
   lastUpdated: string
   trend: 'up' | 'down' | 'stable'
   category: 'output' | 'outcome' | 'impact'
+  // Results Framework specific fields
+  objectiveId?: string
+  outcomeId?: string
+  outputId?: string
+  baseline?: string
+  baselineUnit?: string
+  targetUnit?: string
+  monitoringMethod?: string
+  dataCollection?: {
+    frequency: string
+    source: string
+    disaggregation: string
+  }
 }
 
 interface ProjectIndicatorsProps {
@@ -67,6 +80,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   const [updateValue, setUpdateValue] = useState(0)
   const [filteredIndicators, setFilteredIndicators] = useState<ProjectIndicator[]>([])
   const [showAllProjects, setShowAllProjects] = useState(true)
+  const [resultsFramework, setResultsFramework] = useState<any>(null)
+  const [showBulkUpdate, setShowBulkUpdate] = useState(false)
+  const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
+  const [updateNotes, setUpdateNotes] = useState('')
 
   useEffect(() => {
     setMounted(true)
@@ -80,6 +97,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       const filtered = indicators.filter(indicator => indicator.projectId === selectedProjectId)
       setFilteredIndicators(filtered)
       setShowAllProjects(false)
+      // Fetch Results Framework data for the selected project
+      fetchResultsFramework(selectedProjectId)
     } else {
       setFilteredIndicators(indicators)
       setShowAllProjects(true)
@@ -159,6 +178,93 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       ]
       setIndicators(sampleIndicators)
     }
+  }
+
+  const fetchResultsFramework = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/programs/projects/${projectId}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data.resultsFramework) {
+          setResultsFramework(data.data.resultsFramework)
+          // Extract indicators from Results Framework
+          extractIndicatorsFromFramework(data.data.resultsFramework, projectId)
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching Results Framework:', err)
+    }
+  }
+
+  const extractIndicatorsFromFramework = (framework: any, projectId: string) => {
+    const extractedIndicators: ProjectIndicator[] = []
+    
+    if (framework.objectives && Array.isArray(framework.objectives)) {
+      framework.objectives.forEach((objective: any) => {
+        if (objective.outcomes && Array.isArray(objective.outcomes)) {
+          objective.outcomes.forEach((outcome: any) => {
+            if (outcome.indicators && Array.isArray(outcome.indicators)) {
+              outcome.indicators.forEach((indicator: any) => {
+                extractedIndicators.push({
+                  id: `outcome-${outcome.id}-${indicator.id || Math.random()}`,
+                  projectId,
+                  name: indicator.description || 'Outcome Indicator',
+                  description: `Outcome: ${outcome.title}`,
+                  target: parseFloat(indicator.targets?.Year1 || '0') || 0,
+                  current: 0, // Will be updated by user
+                  unit: indicator.targetUnit || 'units',
+                  frequency: 'monthly' as const,
+                  status: 'on-track' as const,
+                  lastUpdated: new Date().toISOString(),
+                  trend: 'stable' as const,
+                  category: 'outcome' as const,
+                  objectiveId: objective.id,
+                  outcomeId: outcome.id,
+                  baseline: indicator.baseline,
+                  baselineUnit: indicator.baselineUnit,
+                  targetUnit: indicator.targetUnit,
+                  monitoringMethod: indicator.monitoringMethod,
+                  dataCollection: indicator.dataCollection
+                })
+              })
+            }
+            if (outcome.outputs && Array.isArray(outcome.outputs)) {
+              outcome.outputs.forEach((output: any) => {
+                if (output.indicators && Array.isArray(output.indicators)) {
+                  output.indicators.forEach((indicator: any) => {
+                    extractedIndicators.push({
+                      id: `output-${output.id}-${indicator.id || Math.random()}`,
+                      projectId,
+                      name: indicator.description || 'Output Indicator',
+                      description: `Output: ${output.title}`,
+                      target: parseFloat(indicator.targets?.Year1 || '0') || 0,
+                      current: 0, // Will be updated by user
+                      unit: indicator.targetUnit || 'units',
+                      frequency: 'monthly' as const,
+                      status: 'on-track' as const,
+                      lastUpdated: new Date().toISOString(),
+                      trend: 'stable' as const,
+                      category: 'output' as const,
+                      objectiveId: objective.id,
+                      outcomeId: outcome.id,
+                      outputId: output.id,
+                      baseline: indicator.baseline,
+                      baselineUnit: indicator.baselineUnit,
+                      targetUnit: indicator.targetUnit,
+                      monitoringMethod: indicator.monitoringMethod,
+                      dataCollection: indicator.dataCollection
+                    })
+                  })
+                }
+              })
+            }
+          })
+        }
+      })
+    }
+    
+    // Add extracted indicators to the existing indicators
+    setIndicators(prev => [...prev, ...extractedIndicators])
   }
 
   const handleUpdateIndicator = async () => {
@@ -311,13 +417,22 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           </div>
           
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => fetchIndicators()}
-              className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              <ArrowPathIcon className="h-4 w-4 mr-1" />
-              Refresh
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowBulkUpdate(true)}
+                className="flex items-center px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 border border-blue-600 rounded-md"
+              >
+                <PencilIcon className="h-4 w-4 mr-1" />
+                Bulk Update
+              </button>
+              <button
+                onClick={() => fetchIndicators()}
+                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                <ArrowPathIcon className="h-4 w-4 mr-1" />
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -534,40 +649,228 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         </div>
       </div>
 
-      {/* Update Modal */}
+      {/* Enhanced Update Modal */}
       {showUpdateModal && selectedIndicator && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
             <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Update Indicator Progress</h3>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {selectedIndicator.name}
-                </label>
-                <div className="text-sm text-gray-500 mb-4">
-                  Current: {selectedIndicator.current} / Target: {selectedIndicator.target} {selectedIndicator.unit}
-                </div>
-                <input
-                  type="number"
-                  value={updateValue}
-                  onChange={(e) => setUpdateValue(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter new value"
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Update Indicator Progress</h3>
                 <button
                   onClick={() => setShowUpdateModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  Cancel
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Indicator Details */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">{selectedIndicator.name}</h4>
+                  <p className="text-sm text-gray-600 mb-3">{selectedIndicator.description}</p>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500">Category:</span>
+                      <span className="ml-2 font-medium capitalize">{selectedIndicator.category}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Unit:</span>
+                      <span className="ml-2 font-medium">{selectedIndicator.unit}</span>
+                    </div>
+                    {selectedIndicator.baseline && (
+                      <div>
+                        <span className="text-gray-500">Baseline:</span>
+                        <span className="ml-2 font-medium">{selectedIndicator.baseline} {selectedIndicator.baselineUnit}</span>
+                      </div>
+                    )}
+                    {selectedIndicator.monitoringMethod && (
+                      <div>
+                        <span className="text-gray-500">Monitoring:</span>
+                        <span className="ml-2 font-medium">{selectedIndicator.monitoringMethod}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Progress Update */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Progress
+                  </label>
+                  <div className="text-sm text-gray-500 mb-4">
+                    Current: {selectedIndicator.current} / Target: {selectedIndicator.target} {selectedIndicator.unit}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">New Value</label>
+                      <input
+                        type="number"
+                        value={updateValue}
+                        onChange={(e) => setUpdateValue(Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter new value"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Progress %</label>
+                      <div className="px-3 py-2 bg-gray-100 rounded-md text-sm">
+                        {selectedIndicator.target > 0 ? Math.round((updateValue / selectedIndicator.target) * 100) : 0}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Update Notes (Optional)
+                  </label>
+                  <textarea
+                    value={updateNotes}
+                    onChange={(e) => setUpdateNotes(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Add any notes about this update..."
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end space-x-3 pt-4 border-t">
+                  <button
+                    onClick={() => {
+                      setShowUpdateModal(false)
+                      setUpdateNotes('')
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateIndicator}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Update Progress
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Update Modal */}
+      {showBulkUpdate && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-6 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Bulk Update Indicators</h3>
                 <button
-                  onClick={handleUpdateIndicator}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  onClick={() => setShowBulkUpdate(false)}
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  Update
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    Select multiple indicators to update their progress values at once. 
+                    You can update indicators from different objectives, outcomes, and outputs.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Available Indicators */}
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">Available Indicators</h4>
+                    <div className="max-h-96 overflow-y-auto space-y-2">
+                      {filteredIndicators.map((indicator) => (
+                        <div key={indicator.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                          <input
+                            type="checkbox"
+                            checked={selectedIndicators.includes(indicator.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIndicators([...selectedIndicators, indicator.id])
+                              } else {
+                                setSelectedIndicators(selectedIndicators.filter(id => id !== indicator.id))
+                              }
+                            }}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{indicator.name}</p>
+                            <p className="text-xs text-gray-500 capitalize">{indicator.category}</p>
+                            <p className="text-xs text-gray-500">
+                              {indicator.current} / {indicator.target} {indicator.unit}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bulk Update Form */}
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-3">
+                      Update {selectedIndicators.length} Selected Indicators
+                    </h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Update Type
+                        </label>
+                        <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="set">Set to specific value</option>
+                          <option value="add">Add to current value</option>
+                          <option value="percentage">Set as percentage of target</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Value
+                        </label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter value"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Notes
+                        </label>
+                        <textarea
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Add notes for this bulk update..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4 border-t">
+                  <button
+                    onClick={() => setShowBulkUpdate(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    disabled={selectedIndicators.length === 0}
+                  >
+                    Update {selectedIndicators.length} Indicators
+                  </button>
+                </div>
               </div>
             </div>
           </div>
