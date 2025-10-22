@@ -24,5 +24,5 @@ SELECT
     jsonb_array_length("resultsFramework"->'objectives') as objectives_count
 FROM projects 
 WHERE "resultsFramework" IS NOT NULL
-ORDER BY updated_at DESC
+ORDER BY "updatedAt" DESC
 LIMIT 5;
