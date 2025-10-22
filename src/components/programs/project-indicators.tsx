@@ -204,14 +204,54 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
   const fetchResultsFramework = async (projectId: string) => {
     try {
+      console.log('Fetching Results Framework for project:', projectId)
       const response = await fetch(`/api/programs/projects/${projectId}`)
       if (response.ok) {
         const data = await response.json()
+        console.log('Project data received:', data)
         if (data.success && data.data.resultsFramework) {
+          console.log('Results Framework found:', data.data.resultsFramework)
           setResultsFramework(data.data.resultsFramework)
           // Extract indicators from Results Framework
           extractIndicatorsFromFramework(data.data.resultsFramework, projectId)
+        } else {
+          console.log('No Results Framework found for this project')
+          // If no Results Framework, show sample indicators for testing
+          const sampleIndicators = [
+            {
+              id: 'sample-1',
+              projectId: projectId,
+              name: 'Number of Beneficiaries Reached',
+              description: 'Total number of people who have benefited from the project',
+              target: 1000,
+              current: 0,
+              unit: 'people',
+              frequency: 'monthly' as const,
+              status: 'on-track' as const,
+              lastUpdated: new Date().toISOString(),
+              trend: 'stable' as const,
+              category: 'outcome' as const
+            },
+            {
+              id: 'sample-2',
+              projectId: projectId,
+              name: 'Training Sessions Completed',
+              description: 'Number of training sessions delivered to beneficiaries',
+              target: 50,
+              current: 0,
+              unit: 'sessions',
+              frequency: 'monthly' as const,
+              status: 'on-track' as const,
+              lastUpdated: new Date().toISOString(),
+              trend: 'stable' as const,
+              category: 'output' as const
+            }
+          ]
+          setIndicators(sampleIndicators)
+          setFilteredIndicators(sampleIndicators)
         }
+      } else {
+        console.error('Failed to fetch project data:', response.status)
       }
     } catch (err) {
       console.error('Error fetching Results Framework:', err)
@@ -219,9 +259,11 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   }
 
   const extractIndicatorsFromFramework = (framework: any, projectId: string) => {
+    console.log('Extracting indicators from framework:', framework)
     const extractedIndicators: ProjectIndicator[] = []
     
     if (framework.objectives && Array.isArray(framework.objectives)) {
+      console.log('Found objectives:', framework.objectives.length)
       framework.objectives.forEach((objective: any) => {
         if (objective.outcomes && Array.isArray(objective.outcomes)) {
           objective.outcomes.forEach((outcome: any) => {
@@ -289,6 +331,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     }
     
     // Set the extracted indicators as the main indicators list
+    console.log('Extracted indicators:', extractedIndicators.length, extractedIndicators)
     setIndicators(extractedIndicators)
     setFilteredIndicators(extractedIndicators)
   }
