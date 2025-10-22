@@ -27,6 +27,7 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react'
+import { ResultsFramework, ResultsFrameworkData } from './results-framework'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 
@@ -71,6 +72,9 @@ interface Project {
   // Monitoring
   indicators: ProjectIndicator[]
   risks: ProjectRisk[]
+  
+  // Results Framework
+  resultsFramework?: ResultsFrameworkData
 }
 
 interface ProjectIndicator {
@@ -173,6 +177,10 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
     allowVolunteers: false,
     indicators: [],
     risks: [],
+    resultsFramework: {
+      objectives: [],
+      projectDuration: 1
+    },
     ...project
   })
   
@@ -389,12 +397,13 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
           )}
 
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="timeline">Timeline & Budget</TabsTrigger>
+              <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              <TabsTrigger value="location">Location & Lead</TabsTrigger>
+              <TabsTrigger value="budget">Budget & Objectives</TabsTrigger>
               <TabsTrigger value="team">Team & Stakeholders</TabsTrigger>
               <TabsTrigger value="targets">Targets & Impact</TabsTrigger>
-              <TabsTrigger value="indicators">Indicators</TabsTrigger>
               <TabsTrigger value="risks">Risks</TabsTrigger>
             </TabsList>
 
@@ -687,6 +696,99 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
               </div>
             </TabsContent>
 
+            <TabsContent value="location" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location *</Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="Enter project location"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="coordinates">Coordinates (Optional)</Label>
+                  <Input
+                    id="coordinates"
+                    name="coordinates"
+                    value={formData.coordinates || ''}
+                    onChange={(e) => setFormData({ ...formData, coordinates: e.target.value })}
+                    placeholder="Latitude, Longitude"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="budget" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="budget">Total Budget *</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="budget"
+                      name="budget"
+                      type="number"
+                      value={formData.budget}
+                      onChange={(e) => setFormData({ ...formData, budget: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="spent">Actual Spent</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="spent"
+                      name="spent"
+                      type="number"
+                      value={formData.spent}
+                      onChange={(e) => setFormData({ ...formData, spent: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Currency</Label>
+                  <Select value={formData.currency} onValueChange={(value) => setFormData({ ...formData, currency: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency} value={currency}>
+                          {currency}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Results Framework Section */}
+              <div className="border-t pt-6">
+                <div className="mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Objectives, Outcomes & Outputs</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Define objectives, outcomes, and outputs with comprehensive monitoring indicators
+                  </p>
+                </div>
+                
+                <ResultsFramework
+                  data={formData.resultsFramework || { objectives: [], projectDuration: 1 }}
+                  onChange={(data) => setFormData({ ...formData, resultsFramework: data })}
+                  readonly={false}
+                />
+              </div>
+            </TabsContent>
+
             <TabsContent value="team" className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="projectManager">Project Manager *</Label>
@@ -860,83 +962,6 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
               </div>
             </TabsContent>
 
-            <TabsContent value="indicators" className="space-y-4">
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium mb-4">Add New Indicator</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <Input
-                    placeholder="Indicator name"
-                    value={newIndicator.name}
-                    onChange={(e) => setNewIndicator(prev => ({ ...prev, name: e.target.value }))}
-                    disabled={isLoading}
-                  />
-                  <Input
-                    placeholder="Unit of measurement"
-                    value={newIndicator.unit}
-                    onChange={(e) => setNewIndicator(prev => ({ ...prev, unit: e.target.value }))}
-                    disabled={isLoading}
-                  />
-                  <Input
-                    placeholder="Target value"
-                    type="number"
-                    value={newIndicator.target}
-                    onChange={(e) => setNewIndicator(prev => ({ ...prev, target: parseFloat(e.target.value) || 0 }))}
-                    disabled={isLoading}
-                  />
-                  <Input
-                    placeholder="Baseline value"
-                    type="number"
-                    value={newIndicator.baseline}
-                    onChange={(e) => setNewIndicator(prev => ({ ...prev, baseline: parseFloat(e.target.value) || 0 }))}
-                    disabled={isLoading}
-                  />
-                  <Input
-                    placeholder="Current value"
-                    type="number"
-                    value={newIndicator.current}
-                    onChange={(e) => setNewIndicator(prev => ({ ...prev, current: parseFloat(e.target.value) || 0 }))}
-                    disabled={isLoading}
-                  />
-                  <Button type="button" onClick={handleIndicatorAdd} disabled={isLoading}>
-                    Add Indicator
-                  </Button>
-                </div>
-                <Textarea
-                  placeholder="Indicator description"
-                  value={newIndicator.description}
-                  onChange={(e) => setNewIndicator(prev => ({ ...prev, description: e.target.value }))}
-                  className="mt-2"
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                {formData.indicators.map((indicator, index) => (
-                  <div key={indicator.id || index} className="border rounded-lg p-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h5 className="font-medium">{indicator.name}</h5>
-                        <p className="text-sm text-muted-foreground">{indicator.description}</p>
-                        <div className="flex space-x-4 mt-2 text-sm">
-                          <span>Target: {indicator.target} {indicator.unit}</span>
-                          <span>Baseline: {indicator.baseline} {indicator.unit}</span>
-                          <span>Current: {indicator.current} {indicator.unit}</span>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleIndicatorRemove(indicator.id!)}
-                        disabled={isLoading}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
 
             <TabsContent value="risks" className="space-y-4">
               <div className="border rounded-lg p-4">
