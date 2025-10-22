@@ -32,6 +32,7 @@ import {
 import { ProjectDashboard } from "../../components/programs/project-dashboard"
 import { ProjectTable } from "../../components/programs/project-table-enhanced"
 import { ProjectManagement } from "../../components/programs/project-management"
+import { ProjectIndicators } from "../../components/programs/project-indicators"
 import { SaywhatFlagshipEvents } from "../../components/programs/saywhat-flagship-events"
 import { ReportsAnalytics } from "../../components/programs/reports-analytics-enhanced"
 import { ProjectCalendar } from "../../components/programs/project-calendar"
@@ -217,10 +218,10 @@ function EnhancedProgramsContent() {
       description: "Enhanced project management with multiple views"
     },
     {
-      id: "project-table",
-      name: "Project Table",
-      icon: DocumentTextIcon,
-      description: "Traditional project list and management"
+      id: "project-indicators",
+      name: "Project Indicators",
+      icon: ChartBarIcon,
+      description: "Track and update project output indicator progress"
     },
     {
       id: "meal",
@@ -244,7 +245,7 @@ function EnhancedProgramsContent() {
 
   const actions = (
     <div className="flex items-center space-x-4">
-      {(activeTab === "projects" || activeTab === "project-table") && (
+      {activeTab === "projects" && (
         <div className="flex items-center space-x-2">
           <select
             value={viewMode}
@@ -320,11 +321,10 @@ function EnhancedProgramsContent() {
             onProjectSelect={setSelectedProject}
           />
         )
-      case "project-table":
+      case "project-indicators":
         return (
-          <ProjectTable 
+          <ProjectIndicators 
             permissions={permissions as unknown as Record<string, boolean>} 
-            viewMode={viewMode}
             onProjectSelect={setSelectedProject}
             selectedProject={selectedProject}
           />

@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils'
 interface Project {
   id?: string
   name: string
+  projectGoal?: string
   description: string
   objectives: string
   category: string
@@ -473,6 +474,19 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="projectGoal">Project Goal</Label>
+                <Textarea
+                  id="projectGoal"
+                  name="projectGoal"
+                  value={formData.projectGoal || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter the main goal or objective of this project"
+                  disabled={isLoading}
+                  rows={3}
+                />
               </div>
 
               <div className="space-y-2">
