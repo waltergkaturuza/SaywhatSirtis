@@ -67,12 +67,26 @@ export async function GET(req: NextRequest) {
       ${whereClause}
       ORDER BY submitted_at DESC
       LIMIT 100`;
-    const feedbacks = await (prisma as any).$queryRawUnsafe<any[]>(feedbackQuery)
+    let feedbacks: any[] = []
+    try {
+      feedbacks = await (prisma as any).$queryRawUnsafe<any[]>(feedbackQuery)
+    } catch (err: any) {
+      // If table doesn't exist in the current environment, fall back to empty list
+      const message: string = err?.message || ''
+      const code: string = err?.code || ''
+      if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+        feedbacks = []
+      } else {
+        throw err
+      }
+    }
 
     // Get responses for each feedback
     const feedbackIds = feedbacks.map(f => f.id)
-    const responses = feedbackIds.length > 0 
-      ? await (prisma as any).$queryRawUnsafe<any[]>(
+    let responses: any[] = []
+    if (feedbackIds.length > 0) {
+      try {
+        responses = await (prisma as any).$queryRawUnsafe<any[]>(
           `SELECT 
             id,
             feedback_id,
@@ -85,7 +99,16 @@ export async function GET(req: NextRequest) {
            WHERE feedback_id IN (${feedbackIds.map((id:string)=>`'${id}'`).join(',')})
            ORDER BY responded_at ASC`
         )
-      : []
+      } catch (err: any) {
+        const message: string = err?.message || ''
+        const code: string = err?.code || ''
+        if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+          responses = []
+        } else {
+          throw err
+        }
+      }
+    }
 
     // Group responses by feedback_id
     const responsesByFeedback = responses.reduce((acc, response) => {

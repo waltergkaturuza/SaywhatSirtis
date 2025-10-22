@@ -55,7 +55,18 @@ export async function GET(req: NextRequest) {
       ${whereClause}
       ORDER BY ms.submitted_at DESC
       LIMIT 100`;
-    const datasets = await (prisma as any).$queryRawUnsafe<any[]>(datasetsQuery)
+    let datasets: any[] = []
+    try {
+      datasets = await (prisma as any).$queryRawUnsafe<any[]>(datasetsQuery)
+    } catch (err: any) {
+      const message: string = err?.message || ''
+      const code: string = err?.code || ''
+      if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+        datasets = []
+      } else {
+        throw err
+      }
+    }
 
     // Transform data into dataset format
     const transformedDatasets = datasets.map((dataset, index) => {
