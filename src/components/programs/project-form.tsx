@@ -218,7 +218,6 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
     allowVolunteers: false,
     indicators: [],
     risks: [],
-    resultsFramework: initializeResultsFramework(project?.resultsFramework),
     ...project,
     resultsFramework: initializeResultsFramework(project?.resultsFramework)
   })
