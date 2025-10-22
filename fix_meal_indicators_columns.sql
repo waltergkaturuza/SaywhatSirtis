@@ -13,7 +13,7 @@ UPDATE meal_indicators
 SET 
   "current" = 0,
   "status" = 'on-track',
-  "last_updated_at" = "updatedAt"
+  "last_updated_at" = "updated_at"
 WHERE "current" IS NULL;
 
 -- Verify the columns were added
