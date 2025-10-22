@@ -287,12 +287,10 @@ export default function ProjectDetailPage() {
           <div className="flex justify-between items-start mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">{project.name}</h1>
-              {project.projectGoal && (
-                <div className="mb-3">
-                  <h3 className="text-sm font-medium text-gray-700 mb-1">Project Goal</h3>
-                  <p className="text-gray-600 text-sm">{project.projectGoal}</p>
-                </div>
-              )}
+              <div className="mb-3">
+                <h3 className="text-sm font-medium text-gray-700 mb-1">Project Goal</h3>
+                <p className="text-gray-600 text-sm">{project.projectGoal || 'No project goal defined'}</p>
+              </div>
               <p className="text-gray-600">{project.description}</p>
             </div>
             <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(project.status)}`}>

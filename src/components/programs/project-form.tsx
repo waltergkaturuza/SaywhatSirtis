@@ -196,6 +196,7 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
 
   const [formData, setFormData] = useState<Project>({
     name: '',
+    projectGoal: '',
     description: '',
     objectives: '',
     category: '',
