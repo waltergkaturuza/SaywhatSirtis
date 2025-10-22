@@ -10,7 +10,8 @@ import {
   ClockIcon,
   EyeIcon,
   PencilIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  PlusIcon
 } from "@heroicons/react/24/outline"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
@@ -84,6 +85,26 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   const [showBulkUpdate, setShowBulkUpdate] = useState(false)
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
   const [updateNotes, setUpdateNotes] = useState('')
+  const [showIndicatorForm, setShowIndicatorForm] = useState(false)
+  const [editingIndicator, setEditingIndicator] = useState<string | null>(null)
+  const [quickUpdateValue, setQuickUpdateValue] = useState('')
+  const [newIndicator, setNewIndicator] = useState({
+    name: '',
+    description: '',
+    target: 0,
+    unit: '',
+    category: 'output' as const,
+    frequency: 'monthly' as const,
+    baseline: '',
+    baselineUnit: '',
+    targetUnit: '',
+    monitoringMethod: '',
+    dataCollection: {
+      frequency: 'monthly',
+      source: '',
+      disaggregation: 'None'
+    }
+  })
 
   useEffect(() => {
     setMounted(true)
@@ -267,6 +288,95 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     setIndicators(prev => [...prev, ...extractedIndicators])
   }
 
+  const handleCreateIndicator = async () => {
+    if (!selectedProjectId || !newIndicator.name) return
+
+    try {
+      const response = await fetch('/api/meal/indicators', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          project_id: selectedProjectId,
+          name: newIndicator.name,
+          description: newIndicator.description,
+          target: newIndicator.target,
+          unit: newIndicator.unit,
+          level: newIndicator.category,
+          baseline: newIndicator.baseline,
+          baseline_unit: newIndicator.baselineUnit,
+          target_unit: newIndicator.targetUnit,
+          monitoring_method: newIndicator.monitoringMethod,
+          data_collection: newIndicator.dataCollection
+        })
+      })
+
+      if (response.ok) {
+        // Reset form
+        setNewIndicator({
+          name: '',
+          description: '',
+          target: 0,
+          unit: '',
+          category: 'output' as const,
+          frequency: 'monthly' as const,
+          baseline: '',
+          baselineUnit: '',
+          targetUnit: '',
+          monitoringMethod: '',
+          dataCollection: {
+            frequency: 'monthly',
+            source: '',
+            disaggregation: 'None'
+          }
+        })
+        setShowIndicatorForm(false)
+        fetchIndicators()
+      }
+    } catch (err) {
+      console.error('Error creating indicator:', err)
+    }
+  }
+
+  const handleBulkUpdate = async () => {
+    if (selectedIndicators.length === 0) return
+
+    try {
+      // This would be implemented based on your API structure
+      console.log('Bulk updating indicators:', selectedIndicators)
+      setShowBulkUpdate(false)
+      setSelectedIndicators([])
+      fetchIndicators()
+    } catch (err) {
+      console.error('Error bulk updating indicators:', err)
+    }
+  }
+
+  const handleQuickUpdate = async (indicatorId: string) => {
+    if (!quickUpdateValue) return
+
+    try {
+      const response = await fetch(`/api/meal/indicators/${indicatorId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          current: Number(quickUpdateValue)
+        })
+      })
+
+      if (response.ok) {
+        setEditingIndicator(null)
+        setQuickUpdateValue('')
+        fetchIndicators()
+      }
+    } catch (err) {
+      console.error('Error updating indicator:', err)
+    }
+  }
+
   const handleUpdateIndicator = async () => {
     if (!selectedIndicator) return
 
@@ -418,6 +528,13 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           
           <div className="flex items-center space-x-2">
             <div className="flex space-x-2">
+              <button
+                onClick={() => setShowIndicatorForm(true)}
+                className="flex items-center px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 border border-green-600 rounded-md"
+              >
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Indicator
+              </button>
               <button
                 onClick={() => setShowBulkUpdate(true)}
                 className="flex items-center px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 border border-blue-600 rounded-md"
@@ -602,9 +719,50 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                             style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-900">
-                          {indicator.current} / {indicator.target} {indicator.unit}
-                        </span>
+                        {editingIndicator === indicator.id ? (
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="number"
+                              value={quickUpdateValue}
+                              onChange={(e) => setQuickUpdateValue(e.target.value)}
+                              className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              placeholder={indicator.current.toString()}
+                            />
+                            <button
+                              onClick={() => handleQuickUpdate(indicator.id)}
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              <CheckCircleIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingIndicator(null)
+                                setQuickUpdateValue('')
+                              }}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-900">
+                              {indicator.current} / {indicator.target} {indicator.unit}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setEditingIndicator(indicator.id)
+                                setQuickUpdateValue(indicator.current.toString())
+                              }}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="Quick update"
+                            >
+                              <PencilIcon className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -869,6 +1027,273 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                     disabled={selectedIndicators.length === 0}
                   >
                     Update {selectedIndicators.length} Indicators
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Indicator Form */}
+      {showIndicatorForm && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-6 border w-full max-w-3xl shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Add New Indicator</h3>
+                <button
+                  onClick={() => setShowIndicatorForm(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    Create a new indicator for tracking project progress. This will be added to the selected project's Results Framework.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Basic Information */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900">Basic Information</h4>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Indicator Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newIndicator.name}
+                        onChange={(e) => setNewIndicator({...newIndicator, name: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., Number of boreholes drilled"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        value={newIndicator.description}
+                        onChange={(e) => setNewIndicator({...newIndicator, description: e.target.value})}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Describe what this indicator measures..."
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Category *
+                        </label>
+                        <select
+                          value={newIndicator.category}
+                          onChange={(e) => setNewIndicator({...newIndicator, category: e.target.value as any})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="output">Output</option>
+                          <option value="outcome">Outcome</option>
+                          <option value="impact">Impact</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Frequency *
+                        </label>
+                        <select
+                          value={newIndicator.frequency}
+                          onChange={(e) => setNewIndicator({...newIndicator, frequency: e.target.value as any})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                          <option value="quarterly">Quarterly</option>
+                          <option value="annually">Annually</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Targets and Units */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900">Targets & Units</h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Target Value *
+                        </label>
+                        <input
+                          type="number"
+                          value={newIndicator.target}
+                          onChange={(e) => setNewIndicator({...newIndicator, target: Number(e.target.value)})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="1000"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Unit *
+                        </label>
+                        <input
+                          type="text"
+                          value={newIndicator.unit}
+                          onChange={(e) => setNewIndicator({...newIndicator, unit: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="e.g., boreholes, people, %"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Baseline Value
+                        </label>
+                        <input
+                          type="text"
+                          value={newIndicator.baseline}
+                          onChange={(e) => setNewIndicator({...newIndicator, baseline: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Starting value"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Baseline Unit
+                        </label>
+                        <input
+                          type="text"
+                          value={newIndicator.baselineUnit}
+                          onChange={(e) => setNewIndicator({...newIndicator, baselineUnit: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="e.g., boreholes, people"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Target Unit
+                      </label>
+                      <input
+                        type="text"
+                        value={newIndicator.targetUnit}
+                        onChange={(e) => setNewIndicator({...newIndicator, targetUnit: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., boreholes, people, %"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Monitoring & Data Collection */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-gray-900">Monitoring & Data Collection</h4>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Monitoring Method
+                      </label>
+                      <input
+                        type="text"
+                        value={newIndicator.monitoringMethod}
+                        onChange={(e) => setNewIndicator({...newIndicator, monitoringMethod: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., Field surveys, Reports, Direct observation"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Data Collection Frequency
+                      </label>
+                      <select
+                        value={newIndicator.dataCollection.frequency}
+                        onChange={(e) => setNewIndicator({
+                          ...newIndicator, 
+                          dataCollection: {...newIndicator.dataCollection, frequency: e.target.value}
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="annually">Annually</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Data Source
+                      </label>
+                      <input
+                        type="text"
+                        value={newIndicator.dataCollection.source}
+                        onChange={(e) => setNewIndicator({
+                          ...newIndicator, 
+                          dataCollection: {...newIndicator.dataCollection, source: e.target.value}
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g., Project reports, Field teams, Beneficiaries"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Disaggregation
+                      </label>
+                      <select
+                        value={newIndicator.dataCollection.disaggregation}
+                        onChange={(e) => setNewIndicator({
+                          ...newIndicator, 
+                          dataCollection: {...newIndicator.dataCollection, disaggregation: e.target.value}
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="None">None</option>
+                        <option value="Age">Age</option>
+                        <option value="Gender">Gender</option>
+                        <option value="Location">Location</option>
+                        <option value="Disability">Disability</option>
+                        <option value="Education level">Education level</option>
+                        <option value="Income level">Income level</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end space-x-3 pt-4 border-t">
+                  <button
+                    onClick={() => setShowIndicatorForm(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateIndicator}
+                    disabled={!newIndicator.name || !newIndicator.target || !newIndicator.unit}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  >
+                    Create Indicator
                   </button>
                 </div>
               </div>
