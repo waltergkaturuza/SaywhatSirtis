@@ -191,7 +191,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         }))
         
         // Debug: Log all indicator IDs to identify any old sample IDs
-        console.log('Fetched indicators with IDs:', transformedIndicators.map(ind => ind.id))
+        console.log('Fetched indicators with IDs:', transformedIndicators.map((ind: any) => ind.id))
         
         setIndicators(transformedIndicators)
         setFilteredIndicators(transformedIndicators)
