@@ -447,41 +447,38 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     try {
       console.log('Bulk updating indicators:', selectedIndicators, 'with details:', selectedIndicatorDetails)
       
-      // Update each selected indicator individually with their specific values
-      const updatePromises = selectedIndicatorDetails.map(async (indicator) => {
-        // Use the current value from the form (which was updated via onChange)
-        const newValue = indicator.current
-
-        console.log(`Updating indicator ${indicator.name} to ${newValue} ${indicator.unit}`)
-
-        // Update the indicator via API
-        const response = await fetch(`/api/meal/indicators/${indicator.id}`, {
+      // Update the project's resultsFramework with all indicator updates
+      if (selectedProjectId && resultsFramework) {
+        let updatedFramework = { ...resultsFramework }
+        
+        // Update each selected indicator in the framework
+        selectedIndicatorDetails.forEach((indicator) => {
+          updatedFramework = updateIndicatorInFramework(indicator.id, indicator.current)
+        })
+        
+        // Save the updated framework to the project
+        const response = await fetch(`/api/programs/projects/${selectedProjectId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            current: newValue,
-            notes: updateNotes
+            resultsFramework: updatedFramework
           })
         })
 
-        if (!response.ok) {
-          console.error(`Failed to update indicator ${indicator.id}:`, response.status)
+        if (response.ok) {
+          console.log(`Successfully updated ${selectedIndicatorDetails.length} indicators in project framework`)
+          // Refresh the indicators from the updated framework
+          fetchResultsFramework(selectedProjectId)
+        } else {
+          console.error('Failed to update project framework:', response.status)
         }
-        
-        return response.ok
-      })
+      }
 
-      // Wait for all updates to complete
-      const results = await Promise.all(updatePromises)
-      const successCount = results.filter(Boolean).length
-      
-      console.log(`Successfully updated ${successCount} out of ${selectedIndicators.length} indicators`)
-      
       // Set success message and audit trail
       setUpdateResults({
-        successCount,
+        successCount: selectedIndicatorDetails.length,
         totalCount: selectedIndicators.length,
         updatedBy: 'Current User', // This will be updated by the backend with actual user info
         timestamp: new Date().toLocaleString()
@@ -515,6 +512,41 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     setSelectedIndicatorDetails(details)
   }
 
+  const updateIndicatorInFramework = (indicatorId: string, newValue: number) => {
+    if (!resultsFramework) return resultsFramework
+
+    const updatedFramework = { ...resultsFramework }
+    
+    // Update the indicator in the framework
+    updatedFramework.objectives.forEach((objective: any) => {
+      objective.outcomes.forEach((outcome: any) => {
+        // Update outcome indicators
+        if (outcome.indicators) {
+          outcome.indicators.forEach((indicator: any) => {
+            if (indicator.id === indicatorId) {
+              indicator.current = newValue
+              indicator.lastUpdated = new Date().toISOString()
+            }
+          })
+        }
+        
+        // Update output indicators
+        outcome.outputs.forEach((output: any) => {
+          if (output.indicators) {
+            output.indicators.forEach((indicator: any) => {
+              if (indicator.id === indicatorId) {
+                indicator.current = newValue
+                indicator.lastUpdated = new Date().toISOString()
+              }
+            })
+          }
+        })
+      })
+    })
+    
+    return updatedFramework
+  }
+
   const handleQuickUpdate = async (indicatorId: string) => {
     if (!quickUpdateValue) return
 
@@ -535,20 +567,26 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         return
       }
 
-      const response = await fetch(`/api/meal/indicators/${indicatorId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          current: Number(quickUpdateValue)
+      // For real indicators from Results Framework, update the project's resultsFramework
+      if (selectedProjectId && resultsFramework) {
+        const updatedFramework = updateIndicatorInFramework(indicatorId, Number(quickUpdateValue))
+        
+        const response = await fetch(`/api/programs/projects/${selectedProjectId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            resultsFramework: updatedFramework
+          })
         })
-      })
 
-      if (response.ok) {
-        setEditingIndicator(null)
-        setQuickUpdateValue('')
-        fetchIndicators()
+        if (response.ok) {
+          setEditingIndicator(null)
+          setQuickUpdateValue('')
+          // Refresh the indicators from the updated framework
+          fetchResultsFramework(selectedProjectId)
+        }
       }
     } catch (err) {
       console.error('Error updating indicator:', err)
