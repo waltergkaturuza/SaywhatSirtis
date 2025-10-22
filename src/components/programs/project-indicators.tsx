@@ -169,13 +169,16 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           name: indicator.name,
           description: indicator.description || '',
           target: indicator.target || 0,
-          current: Math.floor(Math.random() * (indicator.target || 100)), // Simulate current progress
+          current: indicator.current || 0, // Use actual current value from database
           unit: indicator.unit || 'units',
           frequency: 'monthly' as const,
-          status: Math.random() > 0.7 ? 'on-track' : Math.random() > 0.5 ? 'behind' : 'ahead',
+          status: indicator.status || 'on-track',
           lastUpdated: indicator.updated_at || new Date().toISOString(),
-          trend: Math.random() > 0.5 ? 'up' : Math.random() > 0.3 ? 'down' : 'stable',
-          category: indicator.level || 'output'
+          trend: 'stable' as const,
+          category: indicator.level || 'output',
+          lastUpdatedBy: indicator.last_updated_by,
+          lastUpdatedAt: indicator.last_updated_at,
+          notes: indicator.notes
         }))
         setIndicators(transformedIndicators)
       }
@@ -184,7 +187,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       // Add some sample data for demonstration
       const sampleIndicators = [
         {
-          id: '1',
+          id: crypto.randomUUID(),
           projectId: projects[0]?.id || 'sample-project',
           name: 'Number of Boreholes Drilled',
           description: 'Total boreholes completed',
@@ -195,10 +198,13 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           status: 'behind' as const,
           lastUpdated: new Date().toISOString(),
           trend: 'up' as const,
-          category: 'output' as const
+          category: 'output' as const,
+          lastUpdatedBy: 'System',
+          lastUpdatedAt: new Date().toISOString(),
+          notes: ''
         },
         {
-          id: '2',
+          id: crypto.randomUUID(),
           projectId: projects[0]?.id || 'sample-project',
           name: 'Water Quality Tests',
           description: 'Water quality assessments completed',
@@ -209,7 +215,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           status: 'on-track' as const,
           lastUpdated: new Date().toISOString(),
           trend: 'stable' as const,
-          category: 'outcome' as const
+          category: 'outcome' as const,
+          lastUpdatedBy: 'System',
+          lastUpdatedAt: new Date().toISOString(),
+          notes: ''
         }
       ]
       setIndicators(sampleIndicators)
@@ -489,7 +498,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     try {
       // Check if this is a sample indicator (not in database)
       const indicator = filteredIndicators.find(ind => ind.id === indicatorId)
-      if (indicator && indicator.name.includes('Number of Beneficiaries') || indicator?.name.includes('Training Sessions')) {
+      if (indicator && (indicator.name.includes('Number of Beneficiaries') || indicator.name.includes('Training Sessions') || indicator.name.includes('Boreholes') || indicator.name.includes('Water Quality'))) {
         // This is a sample indicator, just update the local state
         const updatedIndicators = indicators.map(ind => 
           ind.id === indicatorId 
