@@ -88,6 +88,13 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   const [bulkUpdateType, setBulkUpdateType] = useState('set')
   const [bulkUpdateValue, setBulkUpdateValue] = useState('')
   const [selectedIndicatorDetails, setSelectedIndicatorDetails] = useState<ProjectIndicator[]>([])
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [updateResults, setUpdateResults] = useState<{
+    successCount: number
+    totalCount: number
+    updatedBy: string
+    timestamp: string
+  } | null>(null)
   const [showIndicatorForm, setShowIndicatorForm] = useState(false)
   const [editingIndicator, setEditingIndicator] = useState<string | null>(null)
   const [quickUpdateValue, setQuickUpdateValue] = useState('')
@@ -428,6 +435,15 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       
       console.log(`Successfully updated ${successCount} out of ${selectedIndicators.length} indicators`)
       
+      // Set success message and audit trail
+      setUpdateResults({
+        successCount,
+        totalCount: selectedIndicators.length,
+        updatedBy: 'Current User', // You can get this from session/auth
+        timestamp: new Date().toLocaleString()
+      })
+      setShowSuccessMessage(true)
+      
       // Reset form and refresh data
       setShowBulkUpdate(false)
       setSelectedIndicators([])
@@ -438,6 +454,12 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       
       // Refresh indicators
       fetchIndicators()
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false)
+        setUpdateResults(null)
+      }, 3000)
       
     } catch (err) {
       console.error('Error bulk updating indicators:', err)
@@ -568,12 +590,50 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
   return (
     <div className="p-6 space-y-6">
+      {/* Success Message */}
+      {showSuccessMessage && updateResults && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-green-100 rounded-full mb-4">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-black text-center mb-2">Update Successful!</h3>
+            <p className="text-gray-600 text-center mb-4">
+              Successfully updated {updateResults.successCount} out of {updateResults.totalCount} indicators
+            </p>
+            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+              <div className="text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>Updated by:</span>
+                  <span className="font-medium text-black">{updateResults.updatedBy}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span>Date & Time:</span>
+                  <span className="font-medium text-black">{updateResults.timestamp}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setShowSuccessMessage(false)
+                setUpdateResults(null)
+              }}
+              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <ChartBarIcon className="h-8 w-8 text-blue-600 mr-3" />
+          <ChartBarIcon className="h-8 w-8 text-orange-500 mr-3" />
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Project Indicators</h2>
+            <h2 className="text-xl font-bold text-black">Project Indicators</h2>
             <p className="text-gray-600">Track and update project output indicator progress</p>
           </div>
         </div>
@@ -991,14 +1051,14 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
       {/* Bulk Update Modal */}
       {showBulkUpdate && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-6 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-10 mx-auto p-6 border w-full max-w-4xl shadow-2xl rounded-lg bg-white">
             <div className="mt-3">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Bulk Update Indicators</h3>
+                <h3 className="text-xl font-bold text-black">Bulk Update Indicators</h3>
                 <button
                   onClick={() => setShowBulkUpdate(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-red-500 transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1007,8 +1067,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
               </div>
               
               <div className="space-y-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-blue-800">
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                  <p className="text-sm text-orange-800 font-medium">
                     Select multiple indicators to update their progress values at once. 
                     You can update indicators from different objectives, outcomes, and outputs.
                   </p>
@@ -1095,15 +1155,19 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                             Update Values for Each Indicator:
                           </label>
                           {selectedIndicatorDetails.map((indicator, index) => (
-                            <div key={indicator.id} className="p-3 border border-gray-200 rounded-lg">
-                              <div className="flex items-center justify-between mb-2">
+                            <div key={indicator.id} className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
+                              <div className="flex items-center justify-between mb-3">
                                 <div>
-                                  <span className="text-sm font-medium text-gray-900">{indicator.name}</span>
-                                  <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                                  <span className="text-sm font-semibold text-black">{indicator.name}</span>
+                                  <span className={`ml-2 px-2 py-1 text-xs rounded font-medium ${
+                                    indicator.category === 'outcome' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-orange-100 text-orange-800'
+                                  }`}>
                                     {indicator.category.toUpperCase()}
                                   </span>
                                 </div>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
                                   Current: {indicator.current} {indicator.unit}
                                 </span>
                               </div>
@@ -1111,7 +1175,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                                 <input
                                   type="number"
                                   id={`bulk-value-${indicator.id}`}
-                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                                   placeholder={`Enter new value in ${indicator.unit}`}
                                   onChange={(e) => {
                                     // Update the indicator's value in the details array
@@ -1123,7 +1187,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                                     setSelectedIndicatorDetails(updatedDetails)
                                   }}
                                 />
-                                <span className="text-sm text-gray-500 px-2 py-1 bg-gray-100 rounded">
+                                <span className="text-sm text-gray-600 px-3 py-2 bg-gray-100 rounded font-medium">
                                   {indicator.unit}
                                 </span>
                               </div>
@@ -1134,14 +1198,14 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-black mb-2">
                           Notes
                         </label>
                         <textarea
                           value={updateNotes}
                           onChange={(e) => setUpdateNotes(e.target.value)}
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                           placeholder="Add notes for this bulk update..."
                         />
                       </div>
@@ -1152,12 +1216,13 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 <div className="flex justify-end space-x-3 pt-4 border-t">
                   <button
                     onClick={() => setShowBulkUpdate(false)}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                    className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                   >
                     Cancel
                   </button>
                   <button
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    onClick={handleBulkUpdate}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
                     disabled={selectedIndicators.length === 0}
                   >
                     Update {selectedIndicators.length} Indicators
