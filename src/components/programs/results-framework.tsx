@@ -73,6 +73,12 @@ const disaggregationOptions = [
 
 export function ResultsFramework({ data, onChange, readonly = false }: ResultsFrameworkProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
+  
+  // Ensure data structure is properly initialized
+  const safeData: ResultsFrameworkData = {
+    objectives: Array.isArray(data?.objectives) ? safeData.objectives : [],
+    projectDuration: typeof data?.projectDuration === 'number' ? safeData.projectDuration : 1
+  }
 
   const createEmptyIndicator = (): Indicator => ({
     description: "",
@@ -119,33 +125,33 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   }
 
   const addObjective = () => {
-    if (data.objectives.length >= 10) return
+    if (safeData.objectives.length >= 10) return
     
     const newObjective = createEmptyObjective()
     updateData({
-      ...data,
-      objectives: [...data.objectives, newObjective]
+      ...safeData,
+      objectives: [...safeData.objectives, newObjective]
     })
   }
 
   const removeObjective = (objectiveId: string) => {
     updateData({
-      ...data,
-      objectives: data.objectives.filter(obj => obj.id !== objectiveId)
+      ...safeData,
+      objectives: safeData.objectives.filter(obj => obj.id !== objectiveId)
     })
   }
 
   const updateObjective = (objectiveId: string, updates: Partial<Objective>) => {
     updateData({
-      ...data,
-      objectives: data.objectives.map(obj => 
+      ...safeData,
+      objectives: safeData.objectives.map(obj => 
         obj.id === objectiveId ? { ...obj, ...updates } : obj
       )
     })
   }
 
   const addOutcome = (objectiveId: string) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     if (!objective || objective.outcomes.length >= 10) return
 
     const newOutcome = createEmptyOutcome()
@@ -155,7 +161,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   }
 
   const removeOutcome = (objectiveId: string, outcomeId: string) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     if (!objective) return
 
     updateObjective(objectiveId, {
@@ -164,7 +170,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   }
 
   const updateOutcome = (objectiveId: string, outcomeId: string, updates: Partial<Outcome>) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     if (!objective) return
 
     updateObjective(objectiveId, {
@@ -175,7 +181,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   }
 
   const addOutput = (objectiveId: string, outcomeId: string) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     const outcome = objective?.outcomes.find(out => out.id === outcomeId)
     if (!outcome || outcome.outputs.length >= 10) return
 
@@ -186,7 +192,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   }
 
   const removeOutput = (objectiveId: string, outcomeId: string, outputId: string) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     const outcome = objective?.outcomes.find(out => out.id === outcomeId)
     if (!outcome) return
 
@@ -196,7 +202,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   }
 
   const updateOutput = (objectiveId: string, outcomeId: string, outputId: string, updates: Partial<Output>) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     const outcome = objective?.outcomes.find(out => out.id === outcomeId)
     if (!outcome) return
 
@@ -210,7 +216,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
 
   // Add indicator to outcome
   const addIndicatorToOutcome = (objectiveId: string, outcomeId: string) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     const outcome = objective?.outcomes.find(out => out.id === outcomeId)
     if (!outcome) return
 
@@ -222,7 +228,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
 
   // Remove indicator from outcome
   const removeIndicatorFromOutcome = (objectiveId: string, outcomeId: string, indicatorIndex: number) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     const outcome = objective?.outcomes.find(out => out.id === outcomeId)
     if (!outcome) return
 
@@ -235,7 +241,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
 
   // Update indicator in outcome
   const updateIndicatorInOutcome = (objectiveId: string, outcomeId: string, indicatorIndex: number, field: string, value: any) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     const outcome = objective?.outcomes.find(out => out.id === outcomeId)
     if (!outcome) return
 
@@ -260,7 +266,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
 
   // Add indicator to output
   const addIndicatorToOutput = (objectiveId: string, outcomeId: string, outputId: string) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     const outcome = objective?.outcomes.find(out => out.id === outcomeId)
     const output = outcome?.outputs.find(out => out.id === outputId)
     if (!output) return
@@ -273,7 +279,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
 
   // Remove indicator from output
   const removeIndicatorFromOutput = (objectiveId: string, outcomeId: string, outputId: string, indicatorIndex: number) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     const outcome = objective?.outcomes.find(out => out.id === outcomeId)
     const output = outcome?.outputs.find(out => out.id === outputId)
     if (!output) return
@@ -287,7 +293,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
 
   // Update indicator in output
   const updateIndicatorInOutput = (objectiveId: string, outcomeId: string, outputId: string, indicatorIndex: number, field: string, value: any) => {
-    const objective = data.objectives.find(obj => obj.id === objectiveId)
+    const objective = safeData.objectives.find(obj => obj.id === objectiveId)
     const outcome = objective?.outcomes.find(out => out.id === outcomeId)
     const output = outcome?.outputs.find(out => out.id === outputId)
     if (!output) return
@@ -342,7 +348,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   }
 
   const renderTargetInputs = (indicator: Indicator, updateFn: (field: string, value: string) => void) => {
-    const years = Array.from({ length: data.projectDuration || 5 }, (_, i) => `Year ${i + 1}`)
+    const years = Array.from({ length: safeData.projectDuration || 5 }, (_, i) => `Year ${i + 1}`)
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -538,7 +544,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
               Project Duration (Years)
             </label>
             <select
-              value={data.projectDuration || 5}
+              value={safeData.projectDuration || 5}
               onChange={(e) => updateData({ ...data, projectDuration: parseInt(e.target.value) })}
               disabled={readonly}
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
@@ -552,7 +558,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
           {!readonly && (
             <button
               onClick={addObjective}
-              disabled={data.objectives.length >= 10}
+              disabled={safeData.objectives.length >= 10}
               className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               <PlusIcon className="h-4 w-4 mr-2" />
@@ -562,7 +568,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
         </div>
       </div>
 
-      {data.objectives.length === 0 ? (
+      {safeData.objectives.length === 0 ? (
         <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
           <ChartBarIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
           <h4 className="text-lg font-medium text-gray-900 mb-2">No Objectives Yet</h4>
@@ -579,7 +585,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
         </div>
       ) : (
         <div className="space-y-6">
-          {data.objectives.map((objective, objIndex) => (
+          {safeData.objectives.map((objective, objIndex) => (
             <div key={objective.id} className="border border-gray-200 rounded-lg">
               <div className="bg-blue-50 px-4 py-3 border-b border-gray-200">
                 <div className="flex items-center justify-between">
@@ -922,18 +928,18 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div>
             <span className="text-gray-600">Objectives:</span>
-            <span className="ml-2 font-medium">{data.objectives.length}/10</span>
+            <span className="ml-2 font-medium">{safeData.objectives.length}/10</span>
           </div>
           <div>
             <span className="text-gray-600">Outcomes:</span>
             <span className="ml-2 font-medium">
-              {data.objectives.reduce((sum, obj) => sum + obj.outcomes.length, 0)}
+              {safeData.objectives.reduce((sum, obj) => sum + obj.outcomes.length, 0)}
             </span>
           </div>
           <div>
             <span className="text-gray-600">Outputs:</span>
             <span className="ml-2 font-medium">
-              {data.objectives.reduce((sum, obj) => 
+              {safeData.objectives.reduce((sum, obj) => 
                 sum + obj.outcomes.reduce((outSum, outcome) => outSum + outcome.outputs.length, 0), 0
               )}
             </span>

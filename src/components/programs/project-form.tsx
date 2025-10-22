@@ -154,27 +154,43 @@ const currencies = [
 
 export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: ProjectFormProps) {
   // Helper function to ensure resultsFramework data structure is properly initialized
-  const initializeResultsFramework = (rf?: ResultsFrameworkData): ResultsFrameworkData => {
-    if (!rf) {
-      return { objectives: [], projectDuration: 1 }
+  const initializeResultsFramework = (rf?: any): ResultsFrameworkData => {
+    // If no resultsFramework exists, create a default structure
+    if (!rf || typeof rf !== 'object') {
+      return { 
+        objectives: [], 
+        projectDuration: 1 
+      }
     }
     
-    // Ensure all outcomes and outputs have indicators arrays
-    const objectives = (rf.objectives || []).map(obj => ({
-      ...obj,
-      outcomes: (obj.outcomes || []).map(outcome => ({
-        ...outcome,
-        indicators: outcome.indicators || [],
-        outputs: (outcome.outputs || []).map(output => ({
-          ...output,
-          indicators: output.indicators || []
-        }))
-      }))
-    }))
+    // Ensure projectDuration exists
+    const projectDuration = typeof rf.projectDuration === 'number' ? rf.projectDuration : 1
+    
+    // Ensure objectives array exists and is properly structured
+    const objectives = Array.isArray(rf.objectives) ? rf.objectives.map(obj => ({
+      id: obj.id || `objective_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      title: obj.title || '',
+      description: obj.description || '',
+      isExpanded: obj.isExpanded || false,
+      outcomes: Array.isArray(obj.outcomes) ? obj.outcomes.map(outcome => ({
+        id: outcome.id || `outcome_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        title: outcome.title || '',
+        description: outcome.description || '',
+        isExpanded: outcome.isExpanded || false,
+        indicators: Array.isArray(outcome.indicators) ? outcome.indicators : [],
+        outputs: Array.isArray(outcome.outputs) ? outcome.outputs.map(output => ({
+          id: output.id || `output_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          title: output.title || '',
+          description: output.description || '',
+          isExpanded: output.isExpanded || false,
+          indicators: Array.isArray(output.indicators) ? output.indicators : []
+        })) : []
+      })) : []
+    })) : []
     
     return {
       objectives,
-      projectDuration: rf.projectDuration || 1
+      projectDuration
     }
   }
 
