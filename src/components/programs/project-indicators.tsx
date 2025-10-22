@@ -115,8 +115,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   // Filter indicators based on selected project
   useEffect(() => {
     if (selectedProjectId) {
-      const filtered = indicators.filter(indicator => indicator.projectId === selectedProjectId)
-      setFilteredIndicators(filtered)
+      // Clear existing indicators and fetch fresh data from Results Framework
+      setIndicators([])
+      setFilteredIndicators([])
       setShowAllProjects(false)
       // Fetch Results Framework data for the selected project
       fetchResultsFramework(selectedProjectId)
@@ -124,7 +125,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       setFilteredIndicators(indicators)
       setShowAllProjects(true)
     }
-  }, [selectedProjectId, indicators])
+  }, [selectedProjectId])
 
   const fetchProjects = async () => {
     try {
@@ -224,13 +225,14 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       framework.objectives.forEach((objective: any) => {
         if (objective.outcomes && Array.isArray(objective.outcomes)) {
           objective.outcomes.forEach((outcome: any) => {
+            // Extract outcome indicators
             if (outcome.indicators && Array.isArray(outcome.indicators)) {
               outcome.indicators.forEach((indicator: any) => {
                 extractedIndicators.push({
                   id: `outcome-${outcome.id}-${indicator.id || Math.random()}`,
                   projectId,
                   name: indicator.description || 'Outcome Indicator',
-                  description: `Outcome: ${outcome.title}`,
+                  description: `Objective: ${objective.title} → Outcome: ${outcome.title}`,
                   target: parseFloat(indicator.targets?.Year1 || '0') || 0,
                   current: 0, // Will be updated by user
                   unit: indicator.targetUnit || 'units',
@@ -249,6 +251,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 })
               })
             }
+            
+            // Extract output indicators
             if (outcome.outputs && Array.isArray(outcome.outputs)) {
               outcome.outputs.forEach((output: any) => {
                 if (output.indicators && Array.isArray(output.indicators)) {
@@ -257,7 +261,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                       id: `output-${output.id}-${indicator.id || Math.random()}`,
                       projectId,
                       name: indicator.description || 'Output Indicator',
-                      description: `Output: ${output.title}`,
+                      description: `Objective: ${objective.title} → Outcome: ${outcome.title} → Output: ${output.title}`,
                       target: parseFloat(indicator.targets?.Year1 || '0') || 0,
                       current: 0, // Will be updated by user
                       unit: indicator.targetUnit || 'units',
@@ -284,8 +288,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       })
     }
     
-    // Add extracted indicators to the existing indicators
-    setIndicators(prev => [...prev, ...extractedIndicators])
+    // Set the extracted indicators as the main indicators list
+    setIndicators(extractedIndicators)
+    setFilteredIndicators(extractedIndicators)
   }
 
   const handleCreateIndicator = async () => {
@@ -656,8 +661,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       {/* Indicators Table */}
       <div className="bg-white rounded-lg border">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Project Output Indicators</h3>
-          <p className="text-sm text-gray-600">Update and track progress for each indicator</p>
+          <h3 className="text-lg font-semibold text-gray-900">Project Indicators Progress Update</h3>
+          <p className="text-sm text-gray-600">Enter current progress for each indicator from the selected project's Results Framework</p>
         </div>
 
         <div className="overflow-x-auto">
@@ -668,25 +673,16 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                   Indicator
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Project
+                  Target
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                  Current Progress
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Progress
+                  Progress %
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trend
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Updated
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
                 </th>
               </tr>
             </thead>
@@ -697,19 +693,72 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 
                 return (
                   <tr key={indicator.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{indicator.name}</div>
-                        <div className="text-sm text-gray-500">{indicator.description}</div>
+                        <div className="text-xs text-gray-500 mt-1">{indicator.description}</div>
+                        <div className="text-xs text-blue-600 mt-1 capitalize">{indicator.category}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{project?.name || 'Unknown Project'}</div>
+                      <div className="text-sm text-gray-900">
+                        {indicator.target} {indicator.unit}
+                      </div>
+                      {indicator.baseline && (
+                        <div className="text-xs text-gray-500">
+                          Baseline: {indicator.baseline} {indicator.baselineUnit}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(indicator.category)}`}>
-                        {indicator.category}
-                      </span>
+                      {editingIndicator === indicator.id ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            value={quickUpdateValue}
+                            onChange={(e) => setQuickUpdateValue(e.target.value)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder={indicator.current.toString()}
+                            autoFocus
+                          />
+                          <span className="text-xs text-gray-500">{indicator.unit}</span>
+                          <button
+                            onClick={() => handleQuickUpdate(indicator.id)}
+                            className="text-green-600 hover:text-green-900"
+                            title="Save"
+                          >
+                            <CheckCircleIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingIndicator(null)
+                              setQuickUpdateValue('')
+                            }}
+                            className="text-red-600 hover:text-red-900"
+                            title="Cancel"
+                          >
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-900">
+                            {indicator.current} {indicator.unit}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEditingIndicator(indicator.id)
+                              setQuickUpdateValue(indicator.current.toString())
+                            }}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Update progress"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -719,85 +768,15 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                             style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                           ></div>
                         </div>
-                        {editingIndicator === indicator.id ? (
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="number"
-                              value={quickUpdateValue}
-                              onChange={(e) => setQuickUpdateValue(e.target.value)}
-                              className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                              placeholder={indicator.current.toString()}
-                            />
-                            <button
-                              onClick={() => handleQuickUpdate(indicator.id)}
-                              className="text-green-600 hover:text-green-900"
-                            >
-                              <CheckCircleIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingIndicator(null)
-                                setQuickUpdateValue('')
-                              }}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-900">
-                              {indicator.current} / {indicator.target} {indicator.unit}
-                            </span>
-                            <button
-                              onClick={() => {
-                                setEditingIndicator(indicator.id)
-                                setQuickUpdateValue(indicator.current.toString())
-                              }}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="Quick update"
-                            >
-                              <PencilIcon className="h-3 w-3" />
-                            </button>
-                          </div>
-                        )}
+                        <span className="text-sm text-gray-900">
+                          {Math.round(progressPercentage)}%
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(indicator.status)}`}>
                         {indicator.status.replace('-', ' ')}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {getTrendIcon(indicator.trend)}
-                        <span className="ml-1 text-sm text-gray-900 capitalize">{indicator.trend}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(indicator.lastUpdated).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => {
-                            setSelectedIndicator(indicator)
-                            setUpdateValue(indicator.current)
-                            setShowUpdateModal(true)
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => onProjectSelect(indicator.projectId)}
-                          className="text-gray-600 hover:text-gray-900"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 )
