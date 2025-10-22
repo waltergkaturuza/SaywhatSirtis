@@ -85,6 +85,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   const [showBulkUpdate, setShowBulkUpdate] = useState(false)
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
   const [updateNotes, setUpdateNotes] = useState('')
+  const [bulkUpdateType, setBulkUpdateType] = useState('set')
+  const [bulkUpdateValue, setBulkUpdateValue] = useState('')
+  const [selectedIndicatorDetails, setSelectedIndicatorDetails] = useState<ProjectIndicator[]>([])
   const [showIndicatorForm, setShowIndicatorForm] = useState(false)
   const [editingIndicator, setEditingIndicator] = useState<string | null>(null)
   const [quickUpdateValue, setQuickUpdateValue] = useState('')
@@ -395,10 +398,18 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       console.log('Bulk updating indicators:', selectedIndicators)
       setShowBulkUpdate(false)
       setSelectedIndicators([])
+      setSelectedIndicatorDetails([])
+      setBulkUpdateValue('')
+      setUpdateNotes('')
       fetchIndicators()
     } catch (err) {
       console.error('Error bulk updating indicators:', err)
     }
+  }
+
+  const updateSelectedIndicatorDetails = (indicatorIds: string[]) => {
+    const details = filteredIndicators.filter(indicator => indicatorIds.includes(indicator.id))
+    setSelectedIndicatorDetails(details)
   }
 
   const handleQuickUpdate = async (indicatorId: string) => {
@@ -977,20 +988,36 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                             type="checkbox"
                             checked={selectedIndicators.includes(indicator.id)}
                             onChange={(e) => {
+                              let newSelected
                               if (e.target.checked) {
-                                setSelectedIndicators([...selectedIndicators, indicator.id])
+                                newSelected = [...selectedIndicators, indicator.id]
                               } else {
-                                setSelectedIndicators(selectedIndicators.filter(id => id !== indicator.id))
+                                newSelected = selectedIndicators.filter(id => id !== indicator.id)
                               }
+                              setSelectedIndicators(newSelected)
+                              updateSelectedIndicatorDetails(newSelected)
                             }}
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">{indicator.name}</p>
-                            <p className="text-xs text-gray-500 capitalize">{indicator.category}</p>
-                            <p className="text-xs text-gray-500">
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                indicator.category === 'outcome' ? 'bg-green-100 text-green-800' : 
+                                indicator.category === 'output' ? 'bg-blue-100 text-blue-800' : 
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {indicator.category.toUpperCase()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
                               {indicator.current} / {indicator.target} {indicator.unit}
                             </p>
+                            {indicator.baseline && (
+                              <p className="text-xs text-gray-400">
+                                Baseline: {indicator.baseline} {indicator.baselineUnit}
+                              </p>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1002,32 +1029,106 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                     <h4 className="font-medium text-gray-900 mb-3">
                       Update {selectedIndicators.length} Selected Indicators
                     </h4>
+                    
+                    {/* Selected Indicators Summary */}
+                    {selectedIndicatorDetails.length > 0 && (
+                      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                        <h5 className="text-sm font-medium text-blue-900 mb-2">Selected Indicators:</h5>
+                        <div className="space-y-1">
+                          {selectedIndicatorDetails.map((indicator) => (
+                            <div key={indicator.id} className="text-xs text-blue-800">
+                              <span className="font-medium">{indicator.name}</span>
+                              <span className="ml-2 px-1 py-0.5 bg-blue-200 rounded text-blue-800">
+                                {indicator.category.toUpperCase()}
+                              </span>
+                              <span className="ml-2 text-blue-600">
+                                ({indicator.unit})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Update Type
                         </label>
-                        <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select 
+                          value={bulkUpdateType}
+                          onChange={(e) => setBulkUpdateType(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
                           <option value="set">Set to specific value</option>
                           <option value="add">Add to current value</option>
                           <option value="percentage">Set as percentage of target</option>
                         </select>
                       </div>
+                      
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Value
+                          {selectedIndicatorDetails.length > 0 && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              (Unit: {selectedIndicatorDetails[0]?.unit || 'varies'})
+                            </span>
+                          )}
                         </label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter value"
-                        />
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            value={bulkUpdateValue}
+                            onChange={(e) => setBulkUpdateValue(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter value"
+                          />
+                          {selectedIndicatorDetails.length > 0 && (
+                            <span className="text-sm text-gray-500 px-2 py-1 bg-gray-100 rounded">
+                              {selectedIndicatorDetails[0]?.unit}
+                            </span>
+                          )}
+                        </div>
+                        {selectedIndicatorDetails.length > 1 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Note: Different indicators may have different units
+                          </p>
+                        )}
                       </div>
+
+                      {/* Preview of what will be updated */}
+                      {bulkUpdateValue && selectedIndicatorDetails.length > 0 && (
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                          <h6 className="text-sm font-medium text-gray-900 mb-2">Preview:</h6>
+                          <div className="space-y-1">
+                            {selectedIndicatorDetails.map((indicator) => {
+                              let newValue = 0
+                              if (bulkUpdateType === 'set') {
+                                newValue = parseFloat(bulkUpdateValue) || 0
+                              } else if (bulkUpdateType === 'add') {
+                                newValue = indicator.current + (parseFloat(bulkUpdateValue) || 0)
+                              } else if (bulkUpdateType === 'percentage') {
+                                newValue = (indicator.target * (parseFloat(bulkUpdateValue) || 0)) / 100
+                              }
+                              
+                              return (
+                                <div key={indicator.id} className="text-xs text-gray-600">
+                                  <span className="font-medium">{indicator.name}:</span>
+                                  <span className="ml-2">{indicator.current} → {newValue} {indicator.unit}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Notes
                         </label>
                         <textarea
+                          value={updateNotes}
+                          onChange={(e) => setUpdateNotes(e.target.value)}
                           rows={3}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Add notes for this bulk update..."
@@ -1299,6 +1400,43 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                         <option value="Income level">Income level</option>
                       </select>
                     </div>
+                  </div>
+
+                  {/* Additional Fields from Project Creation Form */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Responsible Person
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Name of person responsible for data collection"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Reporting Schedule
+                      </label>
+                      <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="annually">Annually</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Data Quality Assurance
+                    </label>
+                    <textarea
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Describe how data quality will be ensured..."
+                    />
                   </div>
                 </div>
 
