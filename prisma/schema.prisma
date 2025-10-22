@@ -1095,6 +1095,7 @@ model projects {
   projectGoal                     String?
   description                     String?
   objectives                      Json?
+  resultsFramework                Json?
   timeframe                       String?
   startDate                       DateTime?
   endDate                         DateTime?
