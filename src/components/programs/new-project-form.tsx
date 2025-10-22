@@ -117,6 +117,7 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   // Project Information State
   const [projectCode, setProjectCode] = useState("")
   const [projectTitle, setProjectTitle] = useState("")
+  const [projectGoal, setProjectGoal] = useState("")
   const [description, setDescription] = useState("")
   const [projectLead, setProjectLead] = useState<string>("")
   const [projectTeam, setProjectTeam] = useState<string[]>([])
@@ -356,6 +357,12 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
       return
     }
 
+    if (!projectGoal.trim()) {
+      setError('Project goal is required')
+      setIsSubmitting(false)
+      return
+    }
+
     if (!projectLead) {
       setError('Project Lead must be selected')
       setIsSubmitting(false)
@@ -365,6 +372,7 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
     try {
       const projectData = {
         name: projectTitle,
+        projectGoal,
         description,
         projectCode,
         startDate,
@@ -454,6 +462,19 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
             )}
           </select>
         </div>
+      </div>
+
+      <div>
+        <Label htmlFor="projectGoal">Project Goal *</Label>
+        <Textarea
+          id="projectGoal"
+          value={projectGoal}
+          onChange={(e) => setProjectGoal(e.target.value)}
+          placeholder="Enter project goal"
+          rows={3}
+          disabled={!canEdit}
+          className="focus:ring-green-500 focus:border-green-500"
+        />
       </div>
 
       <div>
