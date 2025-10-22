@@ -40,8 +40,8 @@ export async function GET(req: NextRequest) {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-    // Get feedback data
-    const feedbacks = await prisma.$queryRaw<any[]>`
+    // Get feedback data (use $queryRawUnsafe because the WHERE clause is dynamically assembled)
+    const feedbackQuery = `
       SELECT 
         id,
         type,
@@ -66,24 +66,26 @@ export async function GET(req: NextRequest) {
       FROM public.meal_feedback
       ${whereClause}
       ORDER BY submitted_at DESC
-      LIMIT 100
-    `
+      LIMIT 100`;
+    const feedbacks = await (prisma as any).$queryRawUnsafe<any[]>(feedbackQuery)
 
     // Get responses for each feedback
     const feedbackIds = feedbacks.map(f => f.id)
-    const responses = feedbackIds.length > 0 ? await prisma.$queryRaw<any[]>`
-      SELECT 
-        id,
-        feedback_id,
-        responded_by,
-        responded_at,
-        message,
-        is_internal,
-        attachments
-      FROM public.meal_feedback_responses
-      WHERE feedback_id = ANY(${feedbackIds})
-      ORDER BY responded_at ASC
-    ` : []
+    const responses = feedbackIds.length > 0 
+      ? await (prisma as any).$queryRawUnsafe<any[]>(
+          `SELECT 
+            id,
+            feedback_id,
+            responded_by,
+            responded_at,
+            message,
+            is_internal,
+            attachments
+           FROM public.meal_feedback_responses
+           WHERE feedback_id IN (${feedbackIds.map((id:string)=>`'${id}'`).join(',')})
+           ORDER BY responded_at ASC`
+        )
+      : []
 
     // Group responses by feedback_id
     const responsesByFeedback = responses.reduce((acc, response) => {

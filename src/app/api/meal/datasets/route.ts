@@ -33,8 +33,8 @@ export async function GET(req: NextRequest) {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-    // Get datasets with metadata
-    const datasets = await prisma.$queryRaw<any[]>`
+    // Get datasets with metadata (unsafe due to dynamic WHERE clause)
+    const datasetsQuery = `
       SELECT 
         ms.id,
         ms.form_id,
@@ -54,8 +54,8 @@ export async function GET(req: NextRequest) {
       LEFT JOIN public.projects p ON ms.project_id::text = p.id::text
       ${whereClause}
       ORDER BY ms.submitted_at DESC
-      LIMIT 100
-    `
+      LIMIT 100`;
+    const datasets = await (prisma as any).$queryRawUnsafe<any[]>(datasetsQuery)
 
     // Transform data into dataset format
     const transformedDatasets = datasets.map((dataset, index) => {
