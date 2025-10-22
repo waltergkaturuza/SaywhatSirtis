@@ -112,9 +112,21 @@ export async function GET(req: NextRequest) {
       }
     ]
 
+    const convertBigInt = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj
+      if (typeof obj === 'bigint') return Number(obj)
+      if (Array.isArray(obj)) return obj.map(convertBigInt)
+      if (typeof obj === 'object') {
+        const out: any = {}
+        for (const [k, v] of Object.entries(obj)) out[k] = convertBigInt(v)
+        return out
+      }
+      return obj
+    }
+
     return NextResponse.json({ 
       success: true, 
-      data: reports,
+      data: convertBigInt(reports),
       total: reports.length
     })
   } catch (e) {
