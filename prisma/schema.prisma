@@ -1168,7 +1168,12 @@ model meal_indicators {
   level         String   // input|output|outcome|impact
   baseline      Float?   
   target        Float?
+  current       Float?   @default(0)
   unit          String?
+  status        String?  @default("on-track")
+  notes         String?
+  lastUpdatedBy String?
+  lastUpdatedAt DateTime?
   disaggregation Json?
   mapping       Json?    // array of question keys and aggregation type
   createdAt     DateTime @default(now())

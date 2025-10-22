@@ -22,7 +22,12 @@ export async function GET(
         level,
         baseline,
         target,
+        current,
         unit,
+        status,
+        notes,
+        last_updated_by,
+        last_updated_at,
         disaggregation,
         mapping,
         created_at,
@@ -64,6 +69,11 @@ export async function PUT(
         name = COALESCE(${body.name}, name),
         target = COALESCE(${body.target}, target),
         unit = COALESCE(${body.unit}, unit),
+        current = COALESCE(${body.current}, current),
+        status = COALESCE(${body.status}, status),
+        notes = COALESCE(${body.notes}, notes),
+        last_updated_by = ${session.user?.email || 'Unknown'},
+        last_updated_at = NOW(),
         updated_at = NOW()
       WHERE id = ${id}
       RETURNING *

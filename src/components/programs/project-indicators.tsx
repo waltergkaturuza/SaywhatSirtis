@@ -59,6 +59,10 @@ interface ProjectIndicator {
     source: string
     disaggregation: string
   }
+  // Audit trail fields
+  lastUpdatedBy?: string
+  lastUpdatedAt?: string
+  notes?: string
 }
 
 interface ProjectIndicatorsProps {
@@ -299,7 +303,11 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                   baselineUnit: indicator.baselineUnit,
                   targetUnit: indicator.targetUnit,
                   monitoringMethod: indicator.monitoringMethod,
-                  dataCollection: indicator.dataCollection
+                  dataCollection: indicator.dataCollection,
+                  // Audit trail fields
+                  lastUpdatedBy: 'System',
+                  lastUpdatedAt: new Date().toISOString(),
+                  notes: ''
                 })
               })
             }
@@ -329,7 +337,11 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                       baselineUnit: indicator.baselineUnit,
                       targetUnit: indicator.targetUnit,
                       monitoringMethod: indicator.monitoringMethod,
-                      dataCollection: indicator.dataCollection
+                      dataCollection: indicator.dataCollection,
+                      // Audit trail fields
+                      lastUpdatedBy: 'System',
+                      lastUpdatedAt: new Date().toISOString(),
+                      notes: ''
                     })
                   })
                 }
@@ -835,6 +847,12 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last Updated
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Notes
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -928,6 +946,19 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(indicator.status)}`}>
                         {indicator.status.replace('-', ' ')}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {indicator.lastUpdatedBy || 'Unknown'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {indicator.lastUpdatedAt ? new Date(indicator.lastUpdatedAt).toLocaleDateString() : 'Never'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 max-w-xs truncate" title={indicator.notes || ''}>
+                        {indicator.notes || 'No notes'}
+                      </div>
                     </td>
                   </tr>
                 )
