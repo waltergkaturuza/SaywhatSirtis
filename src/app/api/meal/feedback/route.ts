@@ -40,41 +40,31 @@ export async function GET(req: NextRequest) {
 
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''
 
-    // Get feedback data (use $queryRawUnsafe because the WHERE clause is dynamically assembled)
-    const feedbackQuery = `
-      SELECT 
-        id,
-        type,
-        priority,
-        status,
-        title,
-        description,
-        submitted_by,
-        submitted_at,
-        is_anonymous,
-        contact_method,
-        project,
-        location,
-        tags,
-        assigned_to,
-        resolution,
-        resolved_at,
-        escalation_level,
-        attachments,
-        created_at,
-        updated_at
-      FROM public.meal_feedback
-      ${whereClause}
-      ORDER BY submitted_at DESC
-      LIMIT 100`;
+    // Get feedback data using Prisma client instead of raw queries
     let feedbacks: any[] = []
     try {
-      feedbacks = await (prisma as any).$queryRawUnsafe<any[]>(feedbackQuery)
+      feedbacks = await prisma.meal_feedback.findMany({
+        where: {
+          ...(type && type !== 'all' ? { type } : {}),
+          ...(status && status !== 'all' ? { status } : {}),
+          ...(priority && priority !== 'all' ? { priority } : {}),
+          ...(project && project !== 'all' ? { project } : {}),
+          ...(search ? {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } }
+            ]
+          } : {})
+        },
+        orderBy: { submittedAt: 'desc' },
+        take: 100
+      })
     } catch (err: any) {
       // If table doesn't exist in the current environment, fall back to empty list
       const message: string = err?.message || ''
       const code: string = err?.code || ''
       if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+        console.log('MEAL feedback table not found, returning empty list')
         feedbacks = []
       } else {
         throw err
@@ -86,23 +76,17 @@ export async function GET(req: NextRequest) {
     let responses: any[] = []
     if (feedbackIds.length > 0) {
       try {
-        responses = await (prisma as any).$queryRawUnsafe<any[]>(
-          `SELECT 
-            id,
-            feedback_id,
-            responded_by,
-            responded_at,
-            message,
-            is_internal,
-            attachments
-           FROM public.meal_feedback_responses
-           WHERE feedback_id IN (${feedbackIds.map((id:string)=>`'${id}'`).join(',')})
-           ORDER BY responded_at ASC`
-        )
+        responses = await prisma.meal_feedback_responses.findMany({
+          where: {
+            feedbackId: { in: feedbackIds }
+          },
+          orderBy: { respondedAt: 'asc' }
+        })
       } catch (err: any) {
         const message: string = err?.message || ''
         const code: string = err?.code || ''
         if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+          console.log('MEAL feedback responses table not found, returning empty list')
           responses = []
         } else {
           throw err
@@ -110,12 +94,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Group responses by feedback_id
+    // Group responses by feedbackId
     const responsesByFeedback = responses.reduce((acc, response) => {
-      if (!acc[response.feedback_id]) {
-        acc[response.feedback_id] = []
+      if (!acc[response.feedbackId]) {
+        acc[response.feedbackId] = []
       }
-      acc[response.feedback_id].push(response)
+      acc[response.feedbackId].push(response)
       return acc
     }, {} as Record<string, any[]>)
 
@@ -156,34 +140,41 @@ export async function POST(req: NextRequest) {
     } = body
 
     // Create new feedback
-    const newFeedback = {
-      id: Date.now().toString(),
-      type,
-      priority,
-      status: 'open',
-      title,
-      description,
-      submittedBy: isAnonymous ? 'Anonymous' : session.user?.name || 'Unknown',
-      submittedAt: new Date().toISOString(),
-      isAnonymous,
-      contactMethod,
-      project,
-      location,
-      tags: tags || [],
-      escalationLevel: 0,
-      attachments: attachments || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    try {
+      const newFeedback = await prisma.meal_feedback.create({
+        data: {
+          type,
+          priority,
+          title,
+          description,
+          submittedBy: isAnonymous ? 'Anonymous' : session.user?.name || 'Unknown',
+          isAnonymous,
+          contactMethod,
+          project,
+          location,
+          tags: tags || [],
+          attachments: attachments || []
+        }
+      })
+
+      return NextResponse.json({ 
+        success: true, 
+        data: newFeedback,
+        message: "Feedback submitted successfully"
+      })
+    } catch (err: any) {
+      const message: string = err?.message || ''
+      const code: string = err?.code || ''
+      if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+        console.log('MEAL feedback table not found, cannot create feedback')
+        return NextResponse.json({ 
+          success: false, 
+          error: "Feedback system is not available. Please try again later." 
+        }, { status: 503 })
+      } else {
+        throw err
+      }
     }
-
-    // Here you would typically save to the database
-    // For now, we'll return success
-
-    return NextResponse.json({ 
-      success: true, 
-      data: newFeedback,
-      message: "Feedback submitted successfully"
-    })
   } catch (e) {
     console.error("MEAL feedback creation error", e)
     return NextResponse.json({ success: false, error: "Failed to submit feedback" }, { status: 500 })

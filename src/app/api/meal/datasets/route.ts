@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
       LIMIT 100`;
     let datasets: any[] = []
     try {
-      datasets = await (prisma as any).$queryRawUnsafe<any[]>(datasetsQuery)
+      datasets = await (prisma as any).$queryRawUnsafe(datasetsQuery)
     } catch (err: any) {
       const message: string = err?.message || ''
       const code: string = err?.code || ''

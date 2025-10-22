@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,76 +12,30 @@ export async function GET(req: NextRequest) {
     const canView = roles.some(r => ["ADMIN","SUPER_ADMIN","SYSTEM_ADMINISTRATOR","MEAL_ADMIN"].includes(r))
     if (!canView) return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 })
 
-    // Mock escalation rules - in a real system, these would come from the database
-    const escalationRules = [
-      {
-        id: '1',
-        name: 'Critical Issues Escalation',
-        conditions: {
-          priority: ['critical'],
-          keywords: ['corruption', 'fraud', 'safety', 'emergency']
-        },
-        actions: {
-          assignTo: 'Senior Management',
-          notify: ['director@example.com', 'legal@example.com'],
-          deadline: 2, // hours
-          autoEscalate: true
-        },
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: '2',
-        name: 'Water Quality Issues',
-        conditions: {
-          type: ['complaint'],
-          keywords: ['water', 'quality', 'contamination', 'taste', 'color']
-        },
-        actions: {
-          assignTo: 'Water Quality Team',
-          notify: ['water-team@example.com'],
-          deadline: 24, // hours
-          autoEscalate: true
-        },
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: '3',
-        name: 'Accessibility Issues',
-        conditions: {
-          type: ['suggestion', 'complaint'],
-          keywords: ['accessibility', 'elderly', 'disabled', 'ramp', 'access']
-        },
-        actions: {
-          assignTo: 'Infrastructure Team',
-          notify: ['infrastructure@example.com'],
-          deadline: 48, // hours
-          autoEscalate: false
-        },
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      },
-      {
-        id: '4',
-        name: 'Financial Misconduct',
-        conditions: {
-          keywords: ['corruption', 'fraud', 'misappropriation', 'funds', 'money']
-        },
-        actions: {
-          assignTo: 'Legal Team',
-          notify: ['legal@example.com', 'audit@example.com'],
-          deadline: 1, // hours
-          autoEscalate: true
-        },
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+    // Fetch real escalation rules from database
+    let escalationRules: any[] = []
+    
+    try {
+      escalationRules = await prisma.meal_escalation_rules.findMany({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' }
+      })
+    } catch (dbError: any) {
+      // If table doesn't exist, return empty array
+      const message: string = dbError?.message || ''
+      const code: string = dbError?.code || ''
+      if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+        console.log('MEAL escalation rules table not found, returning empty array')
+        escalationRules = []
+      } else {
+        throw dbError
       }
-    ]
+    }
+
+    // If no rules exist, return empty array (no default rules)
+    if (escalationRules.length === 0) {
+      escalationRules = []
+    }
 
     return NextResponse.json({ 
       success: true, 
@@ -105,26 +60,36 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { name, conditions, actions, isActive } = body
 
-    // Create new escalation rule
-    const newRule = {
-      id: Date.now().toString(),
-      name,
-      conditions,
-      actions,
-      isActive: isActive || true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: session.user?.name || 'Unknown'
+    // Create new escalation rule in database
+    try {
+      const newRule = await prisma.meal_escalation_rules.create({
+        data: {
+          name,
+          conditions,
+          actions,
+          isActive: isActive || true,
+          createdBy: session.user?.name || 'Unknown'
+        }
+      })
+
+      return NextResponse.json({ 
+        success: true, 
+        data: newRule,
+        message: "Escalation rule created successfully"
+      })
+    } catch (dbError: any) {
+      const message: string = dbError?.message || ''
+      const code: string = dbError?.code || ''
+      if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+        console.log('MEAL escalation rules table not found, cannot create rule')
+        return NextResponse.json({ 
+          success: false, 
+          error: "Escalation system is not available. Please try again later." 
+        }, { status: 503 })
+      } else {
+        throw dbError
+      }
     }
-
-    // Here you would typically save to the database
-    // For now, we'll return success
-
-    return NextResponse.json({ 
-      success: true, 
-      data: newRule,
-      message: "Escalation rule created successfully"
-    })
   } catch (e) {
     console.error("MEAL escalation rule creation error", e)
     return NextResponse.json({ success: false, error: "Failed to create escalation rule" }, { status: 500 })

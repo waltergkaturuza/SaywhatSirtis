@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,119 +17,154 @@ export async function GET(req: NextRequest) {
     const project = searchParams.get('project')
     const dateRange = searchParams.get('dateRange') || '30' // days
 
-    // Mock analytics data - in a real system, these would be calculated from the database
-    const analytics = {
-      overview: {
-        totalFeedback: 156,
-        openIssues: 23,
-        resolvedIssues: 128,
-        criticalIssues: 5,
-        resolutionRate: 82.1,
-        avgResponseTime: '2.5 hours',
-        avgResolutionTime: '3.2 days'
-      },
-      byType: {
-        suggestion: 45,
-        complaint: 67,
-        compliment: 23,
-        report: 15,
-        question: 6
-      },
-      byStatus: {
-        open: 23,
-        in_progress: 5,
-        resolved: 128,
-        closed: 0
-      },
-      byPriority: {
-        low: 89,
-        medium: 45,
-        high: 17,
-        critical: 5
-      },
-      byProject: {
-        'Community Water Program': 98,
-        'All Projects': 45,
-        'Health Program': 13
-      },
-      byContactMethod: {
-        web: 67,
-        whatsapp: 45,
-        email: 23,
-        phone: 15,
-        sms: 6
-      },
-      trends: {
-        daily: [
-          { date: '2024-01-10', count: 3 },
-          { date: '2024-01-11', count: 5 },
-          { date: '2024-01-12', count: 2 },
-          { date: '2024-01-13', count: 7 },
-          { date: '2024-01-14', count: 4 },
-          { date: '2024-01-15', count: 6 },
-          { date: '2024-01-16', count: 3 }
-        ],
-        weekly: [
-          { week: 'Week 1', count: 15 },
-          { week: 'Week 2', count: 23 },
-          { week: 'Week 3', count: 18 },
-          { week: 'Week 4', count: 21 }
-        ],
-        monthly: [
-          { month: 'October 2023', count: 45 },
-          { month: 'November 2023', count: 52 },
-          { month: 'December 2023', count: 38 },
-          { month: 'January 2024', count: 21 }
-        ]
-      },
-      topKeywords: [
-        { keyword: 'water quality', count: 23 },
-        { keyword: 'accessibility', count: 18 },
-        { keyword: 'corruption', count: 12 },
-        { keyword: 'elderly', count: 9 },
-        { keyword: 'infrastructure', count: 8 }
-      ],
-      responseTime: {
-        average: 2.5, // hours
-        byPriority: {
-          low: 4.2,
-          medium: 2.8,
-          high: 1.5,
-          critical: 0.8
+    // Calculate real analytics from database
+    let analytics: any = {}
+    
+    try {
+      // Get total feedback count
+      const totalFeedback = await prisma.meal_feedback.count()
+      
+      // Get feedback by status
+      const feedbackByStatus = await prisma.meal_feedback.groupBy({
+        by: ['status'],
+        _count: { status: true }
+      })
+      
+      // Get feedback by type
+      const feedbackByType = await prisma.meal_feedback.groupBy({
+        by: ['type'],
+        _count: { type: true }
+      })
+      
+      // Get feedback by priority
+      const feedbackByPriority = await prisma.meal_feedback.groupBy({
+        by: ['priority'],
+        _count: { priority: true }
+      })
+      
+      // Get feedback by project
+      const feedbackByProject = await prisma.meal_feedback.groupBy({
+        by: ['project'],
+        _count: { project: true },
+        where: { project: { not: null } }
+      })
+      
+      // Get feedback by contact method
+      const feedbackByContactMethod = await prisma.meal_feedback.groupBy({
+        by: ['contactMethod'],
+        _count: { contactMethod: true },
+        where: { contactMethod: { not: null } }
+      })
+      
+      // Calculate resolution rate
+      const resolvedCount = await prisma.meal_feedback.count({
+        where: { status: 'resolved' }
+      })
+      const resolutionRate = totalFeedback > 0 ? Math.round((resolvedCount / totalFeedback) * 100) : 0
+      
+      // Calculate open issues
+      const openIssues = await prisma.meal_feedback.count({
+        where: { status: 'open' }
+      })
+      
+      // Calculate critical issues
+      const criticalIssues = await prisma.meal_feedback.count({
+        where: { priority: 'critical' }
+      })
+      
+      // Transform data to match expected format
+      const byStatus = feedbackByStatus.reduce((acc, item) => {
+        acc[item.status] = item._count.status
+        return acc
+      }, {} as Record<string, number>)
+      
+      const byType = feedbackByType.reduce((acc, item) => {
+        acc[item.type] = item._count.type
+        return acc
+      }, {} as Record<string, number>)
+      
+      const byPriority = feedbackByPriority.reduce((acc, item) => {
+        acc[item.priority] = item._count.priority
+        return acc
+      }, {} as Record<string, number>)
+      
+      const byProject = feedbackByProject.reduce((acc, item) => {
+        acc[item.project || 'Unknown'] = item._count.project
+        return acc
+      }, {} as Record<string, number>)
+      
+      const byContactMethod = feedbackByContactMethod.reduce((acc, item) => {
+        acc[item.contactMethod || 'Unknown'] = item._count.contactMethod
+        return acc
+      }, {} as Record<string, number>)
+      
+      analytics = {
+        overview: {
+          totalFeedback,
+          openIssues,
+          resolvedIssues: resolvedCount,
+          criticalIssues,
+          resolutionRate,
+          avgResponseTime: '2.5 hours', // This would need response time calculation
+          avgResolutionTime: '3.2 days' // This would need resolution time calculation
         },
-        byType: {
-          suggestion: 3.2,
-          complaint: 2.1,
-          compliment: 1.8,
-          report: 1.2,
-          question: 2.5
+        byType,
+        byStatus,
+        byPriority,
+        byProject,
+        byContactMethod,
+        trends: {
+          daily: [], // Would need date-based queries
+          weekly: [], // Would need date-based queries  
+          monthly: [] // Would need date-based queries
+        },
+        topKeywords: [], // Would need text analysis
+        responseTime: {
+          average: 2.5, // Would need response time calculation
+          byPriority: {},
+          byType: {}
+        },
+        satisfaction: {
+          overall: 4.2, // Would need satisfaction rating system
+          byType: {},
+          trends: []
+        },
+        escalation: {
+          totalEscalated: 0, // Would need escalation tracking
+          escalationRate: 0,
+          byLevel: {},
+          avgEscalationTime: '0 hours'
         }
-      },
-      satisfaction: {
-        overall: 4.2, // out of 5
-        byType: {
-          suggestion: 4.5,
-          complaint: 3.8,
-          compliment: 4.9,
-          report: 4.1,
-          question: 4.3
-        },
-        trends: [
-          { month: 'Oct 2023', rating: 3.8 },
-          { month: 'Nov 2023', rating: 4.0 },
-          { month: 'Dec 2023', rating: 4.1 },
-          { month: 'Jan 2024', rating: 4.2 }
-        ]
-      },
-      escalation: {
-        totalEscalated: 12,
-        escalationRate: 7.7, // percentage
-        byLevel: {
-          1: 8,
-          2: 3,
-          3: 1
-        },
-        avgEscalationTime: '4.2 hours'
+      }
+    } catch (dbError: any) {
+      // If database tables don't exist, return empty analytics
+      const message: string = dbError?.message || ''
+      const code: string = dbError?.code || ''
+      if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+        console.log('MEAL feedback tables not found, returning empty analytics')
+        analytics = {
+          overview: {
+            totalFeedback: 0,
+            openIssues: 0,
+            resolvedIssues: 0,
+            criticalIssues: 0,
+            resolutionRate: 0,
+            avgResponseTime: '0 hours',
+            avgResolutionTime: '0 days'
+          },
+          byType: {},
+          byStatus: {},
+          byPriority: {},
+          byProject: {},
+          byContactMethod: {},
+          trends: { daily: [], weekly: [], monthly: [] },
+          topKeywords: [],
+          responseTime: { average: 0, byPriority: {}, byType: {} },
+          satisfaction: { overall: 0, byType: {}, trends: [] },
+          escalation: { totalEscalated: 0, escalationRate: 0, byLevel: {}, avgEscalationTime: '0 hours' }
+        }
+      } else {
+        throw dbError
       }
     }
 

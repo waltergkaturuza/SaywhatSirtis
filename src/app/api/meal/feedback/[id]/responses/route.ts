@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
+import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request, context: any) {
   try {
@@ -16,24 +17,35 @@ export async function POST(req: Request, context: any) {
     const id = context?.params?.id as string
 
     // Create new response
-    const newResponse = {
-      id: Date.now().toString(),
-      feedbackId: id,
-      respondedBy: session.user?.name || 'Unknown',
-      respondedAt: new Date().toISOString(),
-      message,
-      isInternal: isInternal || false,
-      attachments: attachments || []
+    try {
+      const newResponse = await prisma.meal_feedback_responses.create({
+        data: {
+          feedbackId: id,
+          respondedBy: session.user?.name || 'Unknown',
+          message,
+          isInternal: isInternal || false,
+          attachments: attachments || []
+        }
+      })
+
+      return NextResponse.json({ 
+        success: true, 
+        data: newResponse,
+        message: "Response added successfully"
+      })
+    } catch (err: any) {
+      const message: string = err?.message || ''
+      const code: string = err?.code || ''
+      if (message.includes('relation') || message.includes('does not exist') || code === '42P01') {
+        console.log('MEAL feedback responses table not found, cannot create response')
+        return NextResponse.json({ 
+          success: false, 
+          error: "Feedback system is not available. Please try again later." 
+        }, { status: 503 })
+      } else {
+        throw err
+      }
     }
-
-    // Here you would typically save to the database
-    // For now, we'll return success
-
-    return NextResponse.json({ 
-      success: true, 
-      data: newResponse,
-      message: "Response added successfully"
-    })
   } catch (e) {
     console.error("MEAL feedback response creation error", e)
     return NextResponse.json({ success: false, error: "Failed to add response" }, { status: 500 })

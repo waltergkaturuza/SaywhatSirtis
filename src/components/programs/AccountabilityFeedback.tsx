@@ -106,11 +106,18 @@ export default function AccountabilityFeedback() {
       if (response.ok) {
         const result = await response.json()
         if (result.success) {
-          setFeedbacks(result.data)
+          setFeedbacks(result.data || [])
+        } else {
+          console.error('Failed to load feedbacks:', result.error)
+          setFeedbacks([])
         }
+      } else {
+        console.error('Failed to load feedbacks:', response.status, response.statusText)
+        setFeedbacks([])
       }
     } catch (error) {
       console.error('Failed to load feedbacks:', error)
+      setFeedbacks([])
     } finally {
       setLoading(false)
     }
@@ -399,8 +406,24 @@ export default function AccountabilityFeedback() {
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Feedback ({filteredFeedbacks.length})</h3>
             </div>
-            <div className="divide-y divide-gray-200">
-              {filteredFeedbacks.map((feedback) => (
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Loading feedback...</p>
+                </div>
+              </div>
+            ) : filteredFeedbacks.length === 0 ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-center">
+                  <ChatBubbleLeftRightIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No feedback found</p>
+                  <p className="text-sm text-gray-500 mt-1">Submit the first feedback to get started</p>
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {filteredFeedbacks.map((feedback) => (
                 <div key={feedback.id} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-4">
@@ -477,7 +500,8 @@ export default function AccountabilityFeedback() {
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -499,10 +523,10 @@ export default function AccountabilityFeedback() {
                       <div className="w-32 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-orange-500 h-2 rounded-full" 
-                          style={{ width: `${(count / analytics.total) * 100}%` }}
+                          style={{ width: `${(Number(count) / analytics.total) * 100}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">{count}</span>
+                      <span className="text-sm font-medium text-gray-900">{String(count)}</span>
                     </div>
                   </div>
                 ))}
@@ -522,10 +546,10 @@ export default function AccountabilityFeedback() {
                       <div className="w-32 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-blue-500 h-2 rounded-full" 
-                          style={{ width: `${(count / analytics.total) * 100}%` }}
+                          style={{ width: `${(Number(count) / analytics.total) * 100}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">{count}</span>
+                      <span className="text-sm font-medium text-gray-900">{String(count)}</span>
                     </div>
                   </div>
                 ))}
@@ -541,7 +565,7 @@ export default function AccountabilityFeedback() {
                   <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(priority)} mb-2`}>
                     {priority}
                   </div>
-                  <div className="text-2xl font-bold text-gray-900">{count}</div>
+                  <div className="text-2xl font-bold text-gray-900">{String(count)}</div>
                 </div>
               ))}
             </div>

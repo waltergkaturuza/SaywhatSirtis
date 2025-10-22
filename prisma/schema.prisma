@@ -1823,3 +1823,64 @@ model meal_form_projects {
 
   @@unique([formId, projectId])
 }
+
+model meal_feedback {
+  id              String    @id @default(cuid())
+  type            String    // suggestion, complaint, compliment, report, question
+  priority        String    // low, medium, high, critical
+  status          String    @default("open") // open, in_progress, resolved, closed
+  title           String
+  description     String
+  submittedBy     String
+  submittedAt     DateTime  @default(now())
+  isAnonymous     Boolean   @default(false)
+  contactMethod   String?   // web, whatsapp, email, phone, sms
+  project         String?
+  location        String?
+  tags            String[]  @default([])
+  assignedTo      String?
+  resolution      String?
+  resolvedAt      DateTime?
+  escalationLevel Int       @default(0)
+  attachments     Json?     // array of file attachments
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  meal_feedback_responses meal_feedback_responses[]
+
+  @@index([type])
+  @@index([priority])
+  @@index([status])
+  @@index([submittedAt])
+  @@index([assignedTo])
+  @@index([project])
+}
+
+model meal_feedback_responses {
+  id          String    @id @default(cuid())
+  feedbackId  String
+  respondedBy String
+  respondedAt DateTime @default(now())
+  message     String
+  isInternal  Boolean   @default(false)
+  attachments Json?     // array of file attachments
+
+  meal_feedback meal_feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId])
+  @@index([respondedAt])
+}
+
+model meal_escalation_rules {
+  id          String    @id @default(cuid())
+  name        String
+  conditions  Json      // conditions for escalation (type, priority, keywords, etc.)
+  actions     Json      // actions to take (assignTo, notify, deadline, autoEscalate)
+  isActive    Boolean   @default(true)
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([createdBy])
+}
