@@ -33,7 +33,7 @@ export async function GET(
         created_at,
         updated_at
       FROM public.meal_indicators 
-      WHERE id = ${id}
+      WHERE id = ${id}::uuid
     `
     
     if (indicator.length === 0) {
@@ -72,10 +72,10 @@ export async function PUT(
         current = COALESCE(${body.current}, current),
         status = COALESCE(${body.status}, status),
         notes = COALESCE(${body.notes}, notes),
-        last_updated_by = ${session.user?.email || 'Unknown'},
+        last_updated_by = ${session.user?.name || session.user?.email || 'Unknown User'},
         last_updated_at = NOW(),
         updated_at = NOW()
-      WHERE id = ${id}
+      WHERE id = ${id}::uuid
       RETURNING *
     `
     
@@ -106,7 +106,7 @@ export async function DELETE(
     
     await prisma.$queryRaw`
       DELETE FROM public.meal_indicators 
-      WHERE id = ${id}
+      WHERE id = ${id}::uuid
     `
     
     return NextResponse.json({ success: true, message: "Indicator deleted successfully" })

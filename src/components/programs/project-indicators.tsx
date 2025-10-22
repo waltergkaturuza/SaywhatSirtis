@@ -451,7 +451,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       setUpdateResults({
         successCount,
         totalCount: selectedIndicators.length,
-        updatedBy: 'Current User', // You can get this from session/auth
+        updatedBy: 'Current User', // This will be updated by the backend with actual user info
         timestamp: new Date().toLocaleString()
       })
       setShowSuccessMessage(true)
