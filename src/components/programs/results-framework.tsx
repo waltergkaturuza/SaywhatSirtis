@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { 
   PlusIcon, 
   TrashIcon, 
@@ -75,10 +75,10 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   
   // Ensure data structure is properly initialized
-  const safeData: ResultsFrameworkData = {
+  const safeData: ResultsFrameworkData = useMemo(() => ({
     objectives: Array.isArray(data?.objectives) ? data.objectives : [],
     projectDuration: typeof data?.projectDuration === 'number' ? data.projectDuration : 1
-  }
+  }), [data?.objectives, data?.projectDuration])
 
   const createEmptyIndicator = (): Indicator => ({
     description: "",
