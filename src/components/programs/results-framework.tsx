@@ -77,10 +77,12 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   const createEmptyIndicator = (): Indicator => ({
     description: "",
     baseline: "",
+    baselineUnit: "",
     targets: {},
+    targetUnit: "",
     monitoringMethod: "",
     dataCollection: {
-      frequency: "",
+      frequency: "monthly",
       source: "",
       disaggregation: ""
     },
@@ -205,21 +207,6 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
     })
   }
 
-  // Create default indicator
-  const createEmptyIndicator = (): Indicator => ({
-    description: '',
-    baseline: '',
-    baselineUnit: '',
-    targets: {},
-    targetUnit: '',
-    monitoringMethod: '',
-    dataCollection: {
-      frequency: 'monthly',
-      source: '',
-      disaggregation: ''
-    },
-    comment: ''
-  })
 
   // Add indicator to outcome
   const addIndicatorToOutcome = (objectiveId: string, outcomeId: string) => {
@@ -322,6 +309,26 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
     updateOutput(objectiveId, outcomeId, outputId, {
       indicators: newIndicators
     })
+  }
+
+  const updateIndicator = (indicator: Indicator, field: string, value: any, objectiveId?: string, outcomeId?: string, outputId?: string) => {
+    const newIndicator = { ...indicator }
+    
+    if (field.startsWith('dataCollection.')) {
+      const dcField = field.split('.')[1]
+      newIndicator.dataCollection = { ...newIndicator.dataCollection, [dcField]: value }
+    } else if (field.startsWith('targets.')) {
+      const year = field.split('.')[1]
+      newIndicator.targets = { ...newIndicator.targets, [year]: value }
+    } else {
+      newIndicator[field as keyof Indicator] = value
+    }
+
+    if (outputId && outcomeId && objectiveId) {
+      updateOutput(objectiveId, outcomeId, outputId, { indicators: [newIndicator] })
+    } else if (outcomeId && objectiveId) {
+      updateOutcome(objectiveId, outcomeId, { indicators: [newIndicator] })
+    }
   }
 
   const toggleExpanded = (id: string) => {
@@ -736,7 +743,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
                               {outcome.indicators && outcome.indicators.length > 0 ? (
                                 <div className="space-y-4">
                                   {outcome.indicators.map((indicator, indicatorIndex) => (
-                                    <div key={indicatorIndex} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                    <div key={indicatorIndex} className="border border-gray-200 rounded-lg p-4 bg-green-50">
                                       <div className="flex items-center justify-between mb-4">
                                         <h6 className="font-medium text-gray-900">Indicator {indicatorIndex + 1}</h6>
                                         {!readonly && (

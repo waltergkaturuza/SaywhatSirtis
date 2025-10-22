@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { 
   ChartBarIcon,
-  TrendingUpIcon,
-  TrendingDownIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -200,8 +200,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'up': return <TrendingUpIcon className="h-4 w-4 text-green-500" />
-      case 'down': return <TrendingDownIcon className="h-4 w-4 text-red-500" />
+      case 'up': return <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />
+      case 'down': return <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />
       default: return <ClockIcon className="h-4 w-4 text-gray-500" />
     }
   }
@@ -406,7 +406,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
