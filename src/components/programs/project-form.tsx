@@ -153,6 +153,31 @@ const currencies = [
 ]
 
 export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: ProjectFormProps) {
+  // Helper function to ensure resultsFramework data structure is properly initialized
+  const initializeResultsFramework = (rf?: ResultsFrameworkData): ResultsFrameworkData => {
+    if (!rf) {
+      return { objectives: [], projectDuration: 1 }
+    }
+    
+    // Ensure all outcomes and outputs have indicators arrays
+    const objectives = (rf.objectives || []).map(obj => ({
+      ...obj,
+      outcomes: (obj.outcomes || []).map(outcome => ({
+        ...outcome,
+        indicators: outcome.indicators || [],
+        outputs: (outcome.outputs || []).map(output => ({
+          ...output,
+          indicators: output.indicators || []
+        }))
+      }))
+    }))
+    
+    return {
+      objectives,
+      projectDuration: rf.projectDuration || 1
+    }
+  }
+
   const [formData, setFormData] = useState<Project>({
     name: '',
     description: '',
@@ -177,11 +202,9 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
     allowVolunteers: false,
     indicators: [],
     risks: [],
-    resultsFramework: {
-      objectives: [],
-      projectDuration: 1
-    },
-    ...project
+    resultsFramework: initializeResultsFramework(project?.resultsFramework),
+    ...project,
+    resultsFramework: initializeResultsFramework(project?.resultsFramework)
   })
   
   const [isLoading, setIsLoading] = useState(false)
