@@ -122,6 +122,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
   useEffect(() => {
     setMounted(true)
+    // Clear any cached data that might contain old sample indicators
+    localStorage.removeItem('project-indicators-cache')
+    sessionStorage.removeItem('project-indicators-cache')
     fetchProjects()
     // Don't fetch indicators on mount - they should only be loaded when a project is selected
   }, [])
@@ -130,6 +133,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   useEffect(() => {
     if (selectedProjectId) {
       // Clear existing indicators and fetch fresh data from Results Framework
+      console.log('Clearing all indicators and fetching fresh data for project:', selectedProjectId)
       setIndicators([])
       setFilteredIndicators([])
       setSelectedIndicators([])
@@ -555,11 +559,31 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   const handleQuickUpdate = async (indicatorId: string) => {
     if (!quickUpdateValue) return
 
+    console.log('Attempting to update indicator:', indicatorId, 'with value:', quickUpdateValue)
+
     try {
       // Check if this is a sample indicator (not in database)
       const indicator = filteredIndicators.find(ind => ind.id === indicatorId)
+      console.log('Found indicator:', indicator)
+      
+      // Check for any invalid UUID patterns
+      if (indicatorId.includes('sample-') || indicatorId === 'sample-1' || indicatorId === 'sample-2') {
+        console.log('Detected old sample indicator with invalid ID, updating local state only')
+        const updatedIndicators = indicators.map(ind => 
+          ind.id === indicatorId 
+            ? { ...ind, current: Number(quickUpdateValue) }
+            : ind
+        )
+        setIndicators(updatedIndicators)
+        setFilteredIndicators(updatedIndicators)
+        setEditingIndicator(null)
+        setQuickUpdateValue('')
+        return
+      }
+      
       if (indicator && (indicator.name.includes('Number of Beneficiaries') || indicator.name.includes('Training Sessions') || indicator.name.includes('Boreholes') || indicator.name.includes('Water Quality'))) {
         // This is a sample indicator, just update the local state
+        console.log('Sample indicator detected, updating local state only')
         const updatedIndicators = indicators.map(ind => 
           ind.id === indicatorId 
             ? { ...ind, current: Number(quickUpdateValue) }
