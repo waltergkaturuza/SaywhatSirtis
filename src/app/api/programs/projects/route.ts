@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: crypto.randomUUID(),
         name: body.name,
+        projectGoal: body.projectGoal,
         description: body.description,
         timeframe: body.timeframe || `${body.startDate} to ${body.endDate}`,
         startDate: new Date(body.startDate),

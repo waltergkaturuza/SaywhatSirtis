@@ -111,6 +111,7 @@ export async function PUT(
       where: { id: projectId },
       data: {
         name: body.name,
+        projectGoal: body.projectGoal,
         description: body.description,
         status: body.status,
         priority: body.priority,

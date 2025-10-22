@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 interface Project {
   id: string
   name: string
+  projectGoal?: string
   description: string
   projectLead: string
   status: string
@@ -346,6 +347,18 @@ export default function EditProjectPage() {
                 className="mt-1"
               />
             </div>
+          </div>
+
+          <div className="mt-6">
+            <Label htmlFor="projectGoal">Project Goal</Label>
+            <Textarea
+              id="projectGoal"
+              value={project.projectGoal || ''}
+              onChange={(e) => handleInputChange('projectGoal', e.target.value)}
+              rows={3}
+              className="mt-1"
+              placeholder="Enter project goal"
+            />
           </div>
 
           <div className="mt-6">

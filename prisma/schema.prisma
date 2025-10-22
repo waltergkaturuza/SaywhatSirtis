@@ -1092,6 +1092,7 @@ model performance_value_assessments {
 model projects {
   id                              String       @id
   name                            String
+  projectGoal                     String?
   description                     String?
   objectives                      Json?
   timeframe                       String?
