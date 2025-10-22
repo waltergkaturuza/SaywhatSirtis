@@ -8,13 +8,12 @@ ALTER TABLE meal_indicators ADD COLUMN IF NOT EXISTS last_updated_at TIMESTAMP;
 ALTER TABLE meal_indicators ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE meal_indicators ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'on-track';
 
--- Update existing records
+-- Update existing records (after columns are added)
 UPDATE meal_indicators 
 SET 
   current = 0,
   status = 'on-track',
-  last_updated_at = updated_at
-WHERE current IS NULL;
+  last_updated_at = updated_at;
 
 -- Check if columns were added successfully
 SELECT column_name, data_type 
