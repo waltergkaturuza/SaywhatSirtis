@@ -333,7 +333,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                   name: indicator.description || 'Outcome Indicator',
                   description: `Objective: ${objective.title} → Outcome: ${outcome.title}`,
                   target: parseFloat(indicator.targets?.Year1 || '0') || 0,
-                  current: 0, // Will be updated by user
+                  current: indicator.current || 0, // Use saved value or default to 0
                   unit: indicator.targetUnit || 'units',
                   frequency: 'monthly' as const,
                   status: 'on-track' as const,
@@ -348,9 +348,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                   monitoringMethod: indicator.monitoringMethod,
                   dataCollection: indicator.dataCollection,
                   // Audit trail fields
-                  lastUpdatedBy: 'System',
-                  lastUpdatedAt: new Date().toISOString(),
-                  notes: ''
+                  lastUpdatedBy: indicator.lastUpdatedBy || 'System',
+                  lastUpdatedAt: indicator.lastUpdated || new Date().toISOString(),
+                  notes: indicator.notes || ''
                 })
               })
             }
@@ -366,7 +366,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                       name: indicator.description || 'Output Indicator',
                       description: `Objective: ${objective.title} → Outcome: ${outcome.title} → Output: ${output.title}`,
                       target: parseFloat(indicator.targets?.Year1 || '0') || 0,
-                      current: 0, // Will be updated by user
+                      current: indicator.current || 0, // Use saved value or default to 0
                       unit: indicator.targetUnit || 'units',
                       frequency: 'monthly' as const,
                       status: 'on-track' as const,
@@ -382,9 +382,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                       monitoringMethod: indicator.monitoringMethod,
                       dataCollection: indicator.dataCollection,
                       // Audit trail fields
-                      lastUpdatedBy: 'System',
-                      lastUpdatedAt: new Date().toISOString(),
-                      notes: ''
+                      lastUpdatedBy: indicator.lastUpdatedBy || 'System',
+                      lastUpdatedAt: indicator.lastUpdated || new Date().toISOString(),
+                      notes: indicator.notes || ''
                     })
                   })
                 }
@@ -536,7 +536,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   const updateIndicatorInFramework = (indicatorId: string, newValue: number) => {
     if (!resultsFramework) return resultsFramework
 
-    const updatedFramework = { ...resultsFramework }
+    const updatedFramework = JSON.parse(JSON.stringify(resultsFramework)) // Deep clone
     
     // Update the indicator in the framework
     updatedFramework.objectives.forEach((objective: any) => {
@@ -545,8 +545,11 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         if (outcome.indicators) {
           outcome.indicators.forEach((indicator: any) => {
             if (indicator.id === indicatorId) {
+              // Add current progress tracking fields if they don't exist
               indicator.current = newValue
               indicator.lastUpdated = new Date().toISOString()
+              indicator.lastUpdatedBy = 'Current User'
+              console.log('Updated outcome indicator:', indicator.id, 'to value:', newValue)
             }
           })
         }
@@ -556,8 +559,11 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           if (output.indicators) {
             output.indicators.forEach((indicator: any) => {
               if (indicator.id === indicatorId) {
+                // Add current progress tracking fields if they don't exist
                 indicator.current = newValue
                 indicator.lastUpdated = new Date().toISOString()
+                indicator.lastUpdatedBy = 'Current User'
+                console.log('Updated output indicator:', indicator.id, 'to value:', newValue)
               }
             })
           }
@@ -565,6 +571,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       })
     })
     
+    console.log('Updated framework with new values:', updatedFramework)
     return updatedFramework
   }
 
