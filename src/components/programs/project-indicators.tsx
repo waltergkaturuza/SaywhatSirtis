@@ -149,6 +149,16 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     }
   }, [selectedProjectId])
 
+  // Debug indicators state changes
+  useEffect(() => {
+    console.log('Indicators state changed:', {
+      indicators: indicators.length,
+      filteredIndicators: filteredIndicators.length,
+      selectedProjectId,
+      showAllProjects
+    })
+  }, [indicators, filteredIndicators, selectedProjectId, showAllProjects])
+
   const fetchProjects = async () => {
     try {
       setLoading(true)
@@ -293,6 +303,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
               category: 'output' as const
             }
           ]
+          console.log('Setting sample indicators:', sampleIndicators)
           setIndicators(sampleIndicators)
           setFilteredIndicators(sampleIndicators)
         }
@@ -390,6 +401,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     // Debug: Log extracted indicator IDs
     console.log('Extracted indicators with IDs:', extractedIndicators.map(ind => ind.id))
     
+    console.log('Setting indicators state with', extractedIndicators.length, 'indicators')
     setIndicators(extractedIndicators)
     setFilteredIndicators(extractedIndicators)
   }
