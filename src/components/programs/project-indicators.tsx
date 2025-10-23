@@ -99,26 +99,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     updatedBy: string
     timestamp: string
   } | null>(null)
-  const [showIndicatorForm, setShowIndicatorForm] = useState(false)
   const [editingIndicator, setEditingIndicator] = useState<string | null>(null)
   const [quickUpdateValue, setQuickUpdateValue] = useState('')
-  const [newIndicator, setNewIndicator] = useState({
-    name: '',
-    description: '',
-    target: 0,
-    unit: '',
-    category: 'output' as const,
-    frequency: 'monthly' as const,
-    baseline: '',
-    baselineUnit: '',
-    targetUnit: '',
-    monitoringMethod: '',
-    dataCollection: {
-      frequency: 'monthly',
-      source: '',
-      disaggregation: 'None'
-    }
-  })
 
   useEffect(() => {
     setMounted(true)
@@ -406,59 +388,6 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     setFilteredIndicators(extractedIndicators)
   }
 
-  const handleCreateIndicator = async () => {
-    if (!selectedProjectId || !newIndicator.name) return
-
-    try {
-      const response = await fetch('/api/meal/indicators', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          project_id: selectedProjectId,
-          name: newIndicator.name,
-          description: newIndicator.description,
-          target: newIndicator.target,
-          unit: newIndicator.unit,
-          level: newIndicator.category,
-          baseline: newIndicator.baseline,
-          baseline_unit: newIndicator.baselineUnit,
-          target_unit: newIndicator.targetUnit,
-          monitoring_method: newIndicator.monitoringMethod,
-          data_collection: newIndicator.dataCollection
-        })
-      })
-
-      if (response.ok) {
-        // Reset form
-        setNewIndicator({
-          name: '',
-          description: '',
-          target: 0,
-          unit: '',
-          category: 'output' as const,
-          frequency: 'monthly' as const,
-          baseline: '',
-          baselineUnit: '',
-          targetUnit: '',
-          monitoringMethod: '',
-          dataCollection: {
-            frequency: 'monthly',
-            source: '',
-            disaggregation: 'None'
-          }
-        })
-        setShowIndicatorForm(false)
-        // Refresh indicators from the project's Results Framework
-        if (selectedProjectId) {
-          fetchResultsFramework(selectedProjectId)
-        }
-      }
-    } catch (err) {
-      console.error('Error creating indicator:', err)
-    }
-  }
 
   const handleBulkUpdate = async () => {
     if (selectedIndicators.length === 0) return
@@ -832,13 +761,6 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           
           <div className="flex items-center space-x-2">
             <div className="flex space-x-2">
-              <button
-                onClick={() => setShowIndicatorForm(true)}
-                className="flex items-center px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 border border-green-600 rounded-md"
-              >
-                <PlusIcon className="h-4 w-4 mr-1" />
-                Add Indicator
-              </button>
               <button
                 onClick={() => setShowBulkUpdate(true)}
                 className="flex items-center px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 border border-blue-600 rounded-md"
@@ -1401,9 +1323,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         </div>
       )}
 
-      {/* Add New Indicator Form */}
-      {showIndicatorForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      {/* Add New Indicator Form - Removed - indicators are now created in project edit popup */}
+    </div>
+  )
+}
           <div className="relative top-10 mx-auto p-6 border w-full max-w-3xl shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <div className="flex justify-between items-center mb-6">
