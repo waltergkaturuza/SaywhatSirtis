@@ -402,63 +402,69 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Project Management</h2>
-          <p className="text-sm text-gray-600">
-            Manage and track all your projects with advanced filtering and multiple view modes
-          </p>
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 mb-6">
+        <div className="flex items-center">
+          <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+            <ViewColumnsIcon className="h-8 w-8 text-white" />
+          </div>
+          <div className="ml-4">
+            <h2 className="text-2xl font-bold text-white">Project Management</h2>
+            <p className="text-orange-100">
+              Manage and track all your projects with advanced filtering and multiple view modes
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Controls Bar */}
-      <div className="flex items-center justify-between">
-        {/* Left side - Search and Filters */}
-        <div className="flex items-center space-x-4">
-          {/* Search */}
-          <div className="relative">
-            <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search projects..."
-              value={filters.search}
-              onChange={(e) => setFilters((prev: ProjectFilters) => ({ ...prev, search: e.target.value }))}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 w-64"
-            />
-          </div>
+      <div className="bg-white rounded-xl shadow-md border-l-4 border-orange-500 p-5">
+        <div className="flex items-center justify-between">
+          {/* Left side - Search and Filters */}
+          <div className="flex items-center space-x-4">
+            {/* Search */}
+            <div className="relative">
+              <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-orange-400" />
+              <input
+                type="text"
+                placeholder="🔍 Search projects..."
+                value={filters.search}
+                onChange={(e) => setFilters((prev: ProjectFilters) => ({ ...prev, search: e.target.value }))}
+                className="pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 w-72 font-medium hover:border-orange-400 transition-colors shadow-sm"
+              />
+            </div>
 
-          {/* Filter Toggle */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center space-x-2 px-3 py-2 border rounded-md transition-colors ${
-              showFilters 
-                ? 'border-orange-500 bg-orange-50 text-orange-700' 
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <FunnelIcon className="h-4 w-4" />
-            <span>Filters</span>
-            {Object.values(filters).some(filter => 
-              Array.isArray(filter) ? filter.length > 0 : 
-              typeof filter === 'string' ? filter !== '' :
-              typeof filter === 'object' && filter !== null ? 
-                Object.values(filter).some(v => v !== '' && v !== 0) : false
-            ) && (
-              <span className="bg-orange-600 text-white text-xs rounded-full px-2 py-1">
-                Active
-              </span>
-            )}
-          </button>
-
-          {/* Sort */}
-          <div className="relative">
-            <button className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
-              <ArrowsUpDownIcon className="h-4 w-4" />
-              <span>Sort</span>
-              <ChevronDownIcon className="h-4 w-4" />
+            {/* Filter Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center space-x-2 px-4 py-2.5 border-2 rounded-lg font-medium transition-all shadow-sm ${
+                showFilters 
+                  ? 'border-orange-500 bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 shadow-md' 
+                  : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+              }`}
+            >
+              <FunnelIcon className="h-5 w-5" />
+              <span>Filters</span>
+              {Object.values(filters).some(filter => 
+                Array.isArray(filter) ? filter.length > 0 : 
+                typeof filter === 'string' ? filter !== '' :
+                typeof filter === 'object' && filter !== null ? 
+                  Object.values(filter).some(v => v !== '' && v !== 0) : false
+              ) && (
+                <span className="bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-bold rounded-full px-2.5 py-1 shadow-md">
+                  Active
+                </span>
+              )}
             </button>
+
+            {/* Sort */}
+            <div className="relative">
+              <button className="flex items-center space-x-2 px-4 py-2.5 border-2 border-gray-300 rounded-lg text-gray-700 font-medium bg-white hover:bg-gray-50 shadow-sm transition-all">
+                <ArrowsUpDownIcon className="h-5 w-5" />
+                <span>Sort</span>
+                <ChevronDownIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-        </div>
 
         {/* Right side - View modes and bulk actions */}
         <div className="flex items-center space-x-4">
@@ -473,25 +479,26 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
           )}
 
           {/* View Mode Selector */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 shadow-inner">
             {viewModes.map((mode) => {
               const Icon = mode.icon
               return (
                 <button
                   key={mode.id}
                   onClick={() => setViewMode(mode.id as ViewMode)}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all transform ${
                     viewMode === mode.id
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg scale-105'
+                      : 'text-gray-600 hover:bg-white hover:text-orange-600 hover:shadow-sm'
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-5 w-5" />
                   <span>{mode.name}</span>
                 </button>
               )
             })}
           </div>
+        </div>
         </div>
       </div>
 
@@ -507,15 +514,27 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
       )}
 
       {/* Project Count and Status */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
-        <div>
-          Showing {filteredAndSortedProjects.length} of {projects.length} projects
+      <div className="flex items-center justify-between bg-gradient-to-r from-gray-50 to-white rounded-lg p-4 border-2 border-gray-200 shadow-sm">
+        <div className="text-sm font-semibold text-gray-800">
+          📊 Showing <span className="text-orange-600 font-bold">{filteredAndSortedProjects.length}</span> of <span className="font-bold">{projects.length}</span> projects
         </div>
-        <div className="flex items-center space-x-4">
-          <span>Active: {projects.filter(p => p.status === 'active').length}</span>
-          <span>Planning: {projects.filter(p => p.status === 'planning').length}</span>
-          <span>On Hold: {projects.filter(p => p.status === 'on-hold').length}</span>
-          <span>Completed: {projects.filter(p => p.status === 'completed').length}</span>
+        <div className="flex items-center space-x-4 text-sm font-medium">
+          <span className="flex items-center bg-green-100 px-3 py-1.5 rounded-lg">
+            <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+            Active: <span className="ml-1 font-bold text-green-700">{projects.filter(p => p.status === 'active').length}</span>
+          </span>
+          <span className="flex items-center bg-blue-100 px-3 py-1.5 rounded-lg">
+            <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+            Planning: <span className="ml-1 font-bold text-blue-700">{projects.filter(p => p.status === 'planning').length}</span>
+          </span>
+          <span className="flex items-center bg-gray-100 px-3 py-1.5 rounded-lg">
+            <span className="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+            On Hold: <span className="ml-1 font-bold text-gray-700">{projects.filter(p => p.status === 'on-hold').length}</span>
+          </span>
+          <span className="flex items-center bg-green-100 px-3 py-1.5 rounded-lg">
+            <span className="w-2 h-2 bg-green-600 rounded-full mr-2"></span>
+            Completed: <span className="ml-1 font-bold text-green-700">{projects.filter(p => p.status === 'completed').length}</span>
+          </span>
         </div>
       </div>
 
