@@ -129,8 +129,30 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       const response = await fetch('/api/auth/session')
       if (response.ok) {
         const session = await response.json()
+        console.log('Session data:', session)
         if (session?.user) {
-          setCurrentUser(session.user.name || session.user.email || 'Unknown User')
+          // Try to get employee name first, then fall back to user name/email
+          let userName = session.user.name || session.user.email || 'Unknown User'
+          
+          // If we have an employeeId, try to fetch the employee's full name
+          if (session.user.employeeId) {
+            try {
+              const empResponse = await fetch(`/api/hr/employees?employeeId=${session.user.employeeId}`)
+              if (empResponse.ok) {
+                const empData = await empResponse.json()
+                if (empData.data && empData.data.length > 0) {
+                  const employee = empData.data[0]
+                  userName = `${employee.firstName} ${employee.lastName}`.trim()
+                  console.log('Using employee name:', userName)
+                }
+              }
+            } catch (empErr) {
+              console.log('Could not fetch employee name, using session name')
+            }
+          }
+          
+          setCurrentUser(userName)
+          console.log('Current user set to:', userName)
         }
       }
     } catch (err) {
@@ -1110,25 +1132,25 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gradient-to-r from-orange-500 to-orange-600">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-1/4">
                   Indicator
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-32">
                   Target
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-40">
                   Current Progress
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-32">
                   Progress %
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-28">
                   Status
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-40">
                   Last Updated
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-1/5">
                   Notes
                 </th>
               </tr>
@@ -1237,16 +1259,27 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {indicator.lastUpdatedBy || 'Unknown'}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {indicator.lastUpdatedAt ? new Date(indicator.lastUpdatedAt).toLocaleDateString() : 'Never'}
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-md">
+                          {(indicator.lastUpdatedBy || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {indicator.lastUpdatedBy || 'Unknown'}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {indicator.lastUpdatedAt ? new Date(indicator.lastUpdatedAt).toLocaleDateString('en-GB', { 
+                              day: '2-digit', 
+                              month: 'short', 
+                              year: 'numeric' 
+                            }) : 'Never'}
+                          </div>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs truncate" title={indicator.notes || ''}>
-                        {indicator.notes || 'No notes'}
+                    <td className="px-6 py-4 max-w-xs">
+                      <div className="text-sm text-gray-700 whitespace-normal leading-relaxed">
+                        {indicator.notes || <span className="text-gray-400 italic">No notes</span>}
                       </div>
                     </td>
                   </tr>
