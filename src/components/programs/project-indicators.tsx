@@ -708,12 +708,26 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     progress: getProgressPercentage(indicator.current, indicator.target)
   }))
   
-  // Legend mapping for indicators
-  const indicatorLegend = filteredIndicators.map((indicator, index) => ({
-    number: index + 1,
-    name: indicator.name,
-    category: indicator.category
-  }))
+  // Legend mapping for indicators with full hierarchy
+  const indicatorLegend = filteredIndicators.map((indicator, index) => {
+    // Extract objective and outcome info from description
+    const descParts = indicator.description.split(' → ')
+    const objective = descParts[0]?.replace('Objective: ', '') || ''
+    const outcome = descParts[1]?.replace('Outcome: ', '') || ''
+    const output = descParts[2]?.replace('Output: ', '') || ''
+    
+    return {
+      number: index + 1,
+      name: indicator.name,
+      category: indicator.category,
+      objective: objective,
+      outcome: outcome,
+      output: output,
+      hierarchy: output 
+        ? `${objective} → ${outcome} → ${output}`
+        : `${objective} → ${outcome}`
+    }
+  })
 
   const statusData = [
     { name: 'On Track', value: filteredIndicators.filter(i => i.status === 'on-track').length },
@@ -944,19 +958,47 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             </BarChart>
           </ResponsiveContainer>
           
-          {/* Legend */}
-          <div className="mt-4 max-h-40 overflow-y-auto border-t pt-3">
-            <h4 className="text-xs font-semibold text-gray-700 mb-2">Indicator Legend:</h4>
-            <div className="grid grid-cols-1 gap-1 text-xs">
-              {indicatorLegend.map((item) => (
-                <div key={item.number} className="flex items-start">
-                  <span className="font-medium text-gray-900 mr-2">Indicator {item.number}:</span>
-                  <span className="text-gray-600 flex-1">{item.name}</span>
-                  <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${getCategoryColor(item.category)}`}>
-                    {item.category}
-                  </span>
-                </div>
-              ))}
+          {/* Legend - Grouped by Objective and Outcome */}
+          <div className="mt-4 max-h-48 overflow-y-auto border-t pt-3">
+            <h4 className="text-xs font-semibold text-gray-700 mb-2">Indicator Legend (by Objective → Outcome):</h4>
+            <div className="space-y-3 text-xs">
+              {(() => {
+                // Group indicators by objective and outcome
+                const grouped: any = {}
+                indicatorLegend.forEach((item) => {
+                  const key = `${item.objective}|||${item.outcome}`
+                  if (!grouped[key]) {
+                    grouped[key] = {
+                      objective: item.objective,
+                      outcome: item.outcome,
+                      indicators: []
+                    }
+                  }
+                  grouped[key].indicators.push(item)
+                })
+                
+                return Object.values(grouped).map((group: any, groupIndex: number) => (
+                  <div key={groupIndex} className="bg-gray-50 p-2 rounded">
+                    <div className="font-semibold text-gray-800 mb-1">
+                      {group.objective}
+                    </div>
+                    <div className="text-gray-600 ml-2 mb-2">
+                      → {group.outcome}
+                    </div>
+                    <div className="ml-4 space-y-1">
+                      {group.indicators.map((item: any) => (
+                        <div key={item.number} className="flex items-start">
+                          <span className="font-bold text-orange-600 mr-2">#{item.number}</span>
+                          <span className="text-gray-700 flex-1">{item.name}</span>
+                          <span className={`ml-2 px-1.5 py-0.5 rounded ${getCategoryColor(item.category)}`}>
+                            {item.category}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              })()}
             </div>
           </div>
         </div>
