@@ -431,6 +431,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
     try {
       console.log('Bulk updating indicators:', selectedIndicators, 'with details:', selectedIndicatorDetails)
+      console.log('Update notes:', updateNotes)
       
       // Update the project's resultsFramework with all indicator updates
       if (selectedProjectId && resultsFramework) {
@@ -439,6 +440,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         // Update each selected indicator in the framework (cumulative updates)
         selectedIndicatorDetails.forEach((indicator) => {
           // The value in indicator.current is the INCREMENT, not the new total
+          console.log(`Updating indicator ${indicator.id} with increment ${indicator.current} and notes: "${updateNotes}"`)
           updatedFramework = updateIndicatorInFramework(updatedFramework, indicator.id, indicator.current, updateNotes)
         })
         
@@ -467,8 +469,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         successCount: selectedIndicatorDetails.length,
         totalCount: selectedIndicators.length,
         updatedBy: currentUser,
-        timestamp: new Date().toLocaleString()
-      })
+        timestamp: new Date().toLocaleString(),
+        notes: updateNotes
+      } as any)
       setShowSuccessMessage(true)
       
       // Reset form and refresh data
@@ -547,7 +550,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 indicator.current = newValue
                 indicator.lastUpdated = now
                 indicator.lastUpdatedBy = currentUser
-                console.log('✓ Updated outcome indicator:', indicator.id, 'from', previousValue, 'to', newValue, '(+' + incrementValue + ')')
+                indicator.notes = notes // Save the current notes to main notes field
+                console.log('✓ Updated outcome indicator:', indicator.id, 'from', previousValue, 'to', newValue, '(+' + incrementValue + ')', 'notes:', notes)
               }
             })
           }
@@ -581,7 +585,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                   indicator.current = newValue
                   indicator.lastUpdated = now
                   indicator.lastUpdatedBy = currentUser
-                  console.log('✓ Updated output indicator:', indicator.id, 'from', previousValue, 'to', newValue, '(+' + incrementValue + ')')
+                  indicator.notes = notes // Save the current notes to main notes field
+                  console.log('✓ Updated output indicator:', indicator.id, 'from', previousValue, 'to', newValue, '(+' + incrementValue + ')', 'notes:', notes)
                 }
               })
             }
@@ -793,16 +798,22 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             <p className="text-gray-600 text-center mb-4">
               Successfully updated {updateResults.successCount} out of {updateResults.totalCount} indicators
             </p>
-            <div className="bg-gray-50 rounded-lg p-3 mb-4">
-              <div className="text-sm text-gray-600">
-                <div className="flex justify-between">
-                  <span>Updated by:</span>
-                  <span className="font-medium text-black">{updateResults.updatedBy}</span>
+            <div className="bg-gradient-to-br from-orange-50 to-green-50 rounded-lg p-4 mb-4 border border-orange-200">
+              <div className="text-sm text-gray-700">
+                <div className="flex justify-between mb-2">
+                  <span className="font-medium">Updated by:</span>
+                  <span className="font-bold text-orange-600">{updateResults.updatedBy}</span>
                 </div>
-                <div className="flex justify-between mt-1">
-                  <span>Date & Time:</span>
-                  <span className="font-medium text-black">{updateResults.timestamp}</span>
+                <div className="flex justify-between mb-2">
+                  <span className="font-medium">Date & Time:</span>
+                  <span className="font-bold text-black">{updateResults.timestamp}</span>
                 </div>
+                {(updateResults as any).notes && (
+                  <div className="mt-3 pt-3 border-t border-orange-200">
+                    <span className="font-medium text-gray-700 block mb-1">Notes:</span>
+                    <span className="text-sm text-gray-800 bg-white p-2 rounded block">{(updateResults as any).notes}</span>
+                  </div>
+                )}
               </div>
             </div>
             <button
