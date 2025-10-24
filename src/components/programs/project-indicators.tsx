@@ -383,11 +383,11 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       
       // Update the project's resultsFramework with all indicator updates
       if (selectedProjectId && resultsFramework) {
-        let updatedFramework = { ...resultsFramework }
+        let updatedFramework = JSON.parse(JSON.stringify(resultsFramework)) // Deep clone once
         
         // Update each selected indicator in the framework
         selectedIndicatorDetails.forEach((indicator) => {
-          updatedFramework = updateIndicatorInFramework(indicator.id, indicator.current)
+          updatedFramework = updateIndicatorInFramework(updatedFramework, indicator.id, indicator.current)
         })
         
         // Save the updated framework to the project
@@ -448,11 +448,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     setSelectedIndicatorDetails(details)
   }
 
-  const updateIndicatorInFramework = (indicatorId: string, newValue: number) => {
-    if (!resultsFramework) return resultsFramework
+  const updateIndicatorInFramework = (framework: any, indicatorId: string, newValue: number) => {
+    if (!framework) return framework
 
-    const updatedFramework = JSON.parse(JSON.stringify(resultsFramework)) // Deep clone
-    
+    // Work directly on the passed framework (already cloned by caller)
     console.log('Updating indicator with composite ID:', indicatorId, 'to value:', newValue)
     
     // Parse the composite ID to get the parts
@@ -465,7 +464,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     console.log('Parsed ID parts:', { type, parentId, actualIndicatorId })
     
     // Update the indicator in the framework
-    updatedFramework.objectives.forEach((objective: any) => {
+    framework.objectives.forEach((objective: any) => {
       objective.outcomes.forEach((outcome: any) => {
         if (type === 'outcome' && outcome.id === parentId) {
           // Update outcome indicators
@@ -501,8 +500,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       })
     })
     
-    console.log('Updated framework with new values:', updatedFramework)
-    return updatedFramework
+    console.log('Updated framework with new values for indicator:', indicatorId)
+    return framework
   }
 
   const handleQuickUpdate = async (indicatorId: string) => {
@@ -547,7 +546,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
       // For real indicators from Results Framework, update the project's resultsFramework
       if (selectedProjectId && resultsFramework) {
-        const updatedFramework = updateIndicatorInFramework(indicatorId, Number(quickUpdateValue))
+        const clonedFramework = JSON.parse(JSON.stringify(resultsFramework))
+        const updatedFramework = updateIndicatorInFramework(clonedFramework, indicatorId, Number(quickUpdateValue))
         
         const response = await fetch(`/api/programs/projects/${selectedProjectId}`, {
           method: 'PUT',
