@@ -179,10 +179,10 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:static print:bg-transparent print:p-0">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-[95vw] max-h-[92vh] overflow-hidden print:max-w-full print:max-h-full print:shadow-none print:rounded-none">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-[95vw] max-h-[92vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-orange-600 text-white px-6 py-4 flex items-center justify-between print:hidden">
+        <div className="bg-orange-600 text-white px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <DocumentTextIcon className="h-6 w-6" />
             <div>
@@ -198,25 +198,10 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
           </button>
         </div>
 
-        {/* Print-Only Header with Logo */}
-        <div className="hidden print:block print:mb-8">
-          <div className="flex items-center justify-between border-b-4 border-orange-600 pb-4 mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-orange-600">SAYWHAT</h1>
-              <p className="text-sm text-gray-600">Programs & Projects Management</p>
-            </div>
-            <div className="text-right text-sm text-gray-600">
-              <p>Generated: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-              <p>Time: {new Date().toLocaleTimeString('en-GB')}</p>
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">PROJECT REPORT</h2>
-        </div>
-
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(92vh-140px)] print:overflow-visible print:max-h-full print:p-0">
+        <div className="p-6 overflow-y-auto max-h-[calc(92vh-140px)]">
           {loading && (
-            <div className="flex items-center justify-center py-12 print:hidden">
+            <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
               <span className="ml-3 text-gray-600">Loading project details...</span>
             </div>
@@ -234,25 +219,25 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
           {project && !loading && (
             <div className="space-y-6">
               {/* Project Header */}
-              <div className="border-b border-gray-200 pb-6 print-no-break">
-                <div className="flex items-start justify-between print:block">
+              <div className="border-b border-gray-200 pb-6">
+                <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3 print:text-3xl">{project.name}</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">{project.name}</h3>
                     
                     {/* Project Goal */}
                     {project.projectGoal && (
-                      <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg mb-4 print:mb-6 print:bg-white print:border-2">
-                        <p className="text-sm font-bold text-orange-700 mb-2 print:text-base">🎯 PROJECT GOAL:</p>
-                        <p className="text-gray-800 print:text-lg print:font-medium">{project.projectGoal}</p>
+                      <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg mb-4">
+                        <p className="text-sm font-bold text-orange-700 mb-2">🎯 PROJECT GOAL:</p>
+                        <p className="text-gray-800">{project.projectGoal}</p>
                       </div>
                     )}
                     
                     <div className="mb-3">
-                      <p className="text-sm font-semibold text-gray-700 mb-1 print:text-base">Description:</p>
-                      <p className="text-gray-600 text-base print:text-lg">{project.description}</p>
+                      <p className="text-sm font-semibold text-gray-700 mb-1">Description:</p>
+                      <p className="text-gray-600 text-base">{project.description}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3 print:mt-3">
+                  <div className="flex items-center space-x-3">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(project.status)}`}>
                       {project.status.replace('-', ' ').toUpperCase()}
                     </span>
@@ -441,7 +426,7 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
 
               {/* Results Framework Section */}
               {project.resultsFramework && project.resultsFramework.objectives && project.resultsFramework.objectives.length > 0 && (
-                <div className="border-t border-gray-200 pt-6 print:page-break-before print:pt-0">
+                <div className="border-t border-gray-200 pt-6">
                   <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
                     <DocumentTextIcon className="h-6 w-6 text-orange-600 mr-2" />
                     Results Framework
@@ -449,7 +434,7 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
                   
                   <div className="space-y-6">
                     {project.resultsFramework.objectives.map((objective: any, objIndex: number) => (
-                      <div key={objective.id || objIndex} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border-l-4 border-blue-500 shadow-md print-no-break print:shadow-none print:bg-white print:border-2 print:mb-4">
+                      <div key={objective.id || objIndex} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border-l-4 border-blue-500 shadow-md">
                         <h5 className="text-lg font-bold text-blue-900 mb-2">
                           📊 Objective {objIndex + 1}: {objective.title}
                         </h5>
@@ -567,86 +552,464 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200 print:hidden">
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
           <div className="text-sm text-gray-500">
             Project ID: {projectId}
           </div>
           <div className="flex items-center space-x-3">
             <button
               onClick={() => {
-                // Add comprehensive print styles
-                const printStyle = document.createElement('style')
-                printStyle.id = 'print-results-framework'
-                printStyle.textContent = `
-                  @media print {
-                    @page { 
-                      size: A4;
-                      margin: 2cm;
-                    }
+                // Create a new window for PDF generation
+                const printWindow = window.open('', '_blank', 'width=800,height=600')
+                if (!printWindow) return
+
+                // Get the current project data
+                const projectData = project
+                if (!projectData) return
+
+                // Create the PDF content HTML
+                const pdfContent = `
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <meta charset="utf-8">
+                    <title>${projectData.name} - Project Report</title>
+                    <style>
+                      @page { 
+                        size: A4;
+                        margin: 2cm;
+                      }
+                      
+                      body { 
+                        font-family: Arial, sans-serif;
+                        font-size: 11pt;
+                        line-height: 1.4;
+                        color: #000;
+                        margin: 0;
+                        padding: 0;
+                      }
+                      
+                      .header {
+                        border-bottom: 4px solid #f97316;
+                        padding-bottom: 20px;
+                        margin-bottom: 30px;
+                      }
+                      
+                      .logo {
+                        font-size: 28px;
+                        font-weight: bold;
+                        color: #f97316;
+                        margin-bottom: 5px;
+                      }
+                      
+                      .subtitle {
+                        color: #6b7280;
+                        font-size: 12px;
+                        margin-bottom: 20px;
+                      }
+                      
+                      .report-title {
+                        font-size: 24px;
+                        font-weight: bold;
+                        color: #111827;
+                        margin-bottom: 30px;
+                      }
+                      
+                      .project-header {
+                        margin-bottom: 30px;
+                        page-break-inside: avoid;
+                      }
+                      
+                      .project-name {
+                        font-size: 28px;
+                        font-weight: bold;
+                        color: #111827;
+                        margin-bottom: 20px;
+                      }
+                      
+                      .project-goal {
+                        background: #fef3c7;
+                        border-left: 4px solid #f97316;
+                        padding: 15px;
+                        margin-bottom: 20px;
+                        border-radius: 4px;
+                      }
+                      
+                      .goal-label {
+                        font-weight: bold;
+                        color: #f97316;
+                        margin-bottom: 8px;
+                        font-size: 14px;
+                      }
+                      
+                      .goal-text {
+                        color: #111827;
+                        font-size: 16px;
+                        font-weight: 500;
+                      }
+                      
+                      .description {
+                        margin-bottom: 20px;
+                      }
+                      
+                      .description-label {
+                        font-weight: bold;
+                        color: #374151;
+                        margin-bottom: 5px;
+                        font-size: 14px;
+                      }
+                      
+                      .description-text {
+                        color: #6b7280;
+                        font-size: 16px;
+                      }
+                      
+                      .status-badges {
+                        margin-bottom: 30px;
+                      }
+                      
+                      .badge {
+                        display: inline-block;
+                        padding: 4px 12px;
+                        border-radius: 20px;
+                        font-size: 12px;
+                        font-weight: bold;
+                        margin-right: 10px;
+                      }
+                      
+                      .badge-active {
+                        background: #dcfce7;
+                        color: #166534;
+                      }
+                      
+                      .badge-high {
+                        background: #fef3c7;
+                        color: #92400e;
+                      }
+                      
+                      .metrics {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 20px;
+                        margin-bottom: 30px;
+                        page-break-inside: avoid;
+                      }
+                      
+                      .metric-card {
+                        background: #f9fafb;
+                        padding: 15px;
+                        border-radius: 8px;
+                        text-align: center;
+                      }
+                      
+                      .metric-value {
+                        font-size: 24px;
+                        font-weight: bold;
+                        color: #111827;
+                        margin-bottom: 5px;
+                      }
+                      
+                      .metric-label {
+                        font-size: 12px;
+                        color: #6b7280;
+                        text-transform: uppercase;
+                        font-weight: bold;
+                      }
+                      
+                      .results-framework {
+                        page-break-before: always;
+                        margin-top: 40px;
+                      }
+                      
+                      .framework-title {
+                        font-size: 20px;
+                        font-weight: bold;
+                        color: #111827;
+                        margin-bottom: 20px;
+                        border-bottom: 2px solid #f97316;
+                        padding-bottom: 10px;
+                      }
+                      
+                      .objective {
+                        background: #eff6ff;
+                        border-left: 4px solid #3b82f6;
+                        padding: 20px;
+                        margin-bottom: 20px;
+                        page-break-inside: avoid;
+                      }
+                      
+                      .objective-title {
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #1e40af;
+                        margin-bottom: 10px;
+                      }
+                      
+                      .objective-desc {
+                        color: #1e40af;
+                        margin-bottom: 15px;
+                        font-size: 14px;
+                      }
+                      
+                      .outcome {
+                        background: white;
+                        border-left: 4px solid #10b981;
+                        padding: 15px;
+                        margin-bottom: 15px;
+                        page-break-inside: avoid;
+                      }
+                      
+                      .outcome-title {
+                        font-size: 16px;
+                        font-weight: bold;
+                        color: #047857;
+                        margin-bottom: 8px;
+                      }
+                      
+                      .outcome-desc {
+                        color: #374151;
+                        margin-bottom: 10px;
+                        font-size: 13px;
+                      }
+                      
+                      .indicators {
+                        background: #f0fdf4;
+                        padding: 10px;
+                        border-radius: 4px;
+                        margin-top: 10px;
+                      }
+                      
+                      .indicator {
+                        background: white;
+                        padding: 8px;
+                        margin-bottom: 8px;
+                        border-radius: 4px;
+                        border: 1px solid #d1fae5;
+                        page-break-inside: avoid;
+                      }
+                      
+                      .indicator-desc {
+                        font-weight: bold;
+                        color: #111827;
+                        margin-bottom: 5px;
+                        font-size: 13px;
+                      }
+                      
+                      .indicator-metrics {
+                        display: grid;
+                        grid-template-columns: repeat(3, 1fr);
+                        gap: 10px;
+                        font-size: 11px;
+                        color: #6b7280;
+                      }
+                      
+                      .current-value {
+                        font-weight: bold;
+                        color: #f97316;
+                      }
+                      
+                      .output {
+                        background: #fef3c7;
+                        border-left: 4px solid #f59e0b;
+                        padding: 15px;
+                        margin-bottom: 15px;
+                        page-break-inside: avoid;
+                      }
+                      
+                      .output-title {
+                        font-size: 14px;
+                        font-weight: bold;
+                        color: #92400e;
+                        margin-bottom: 8px;
+                      }
+                      
+                      .output-desc {
+                        color: #374151;
+                        margin-bottom: 10px;
+                        font-size: 12px;
+                      }
+                      
+                      .summary {
+                        background: #f9fafb;
+                        padding: 20px;
+                        border-radius: 8px;
+                        margin-top: 30px;
+                        page-break-inside: avoid;
+                      }
+                      
+                      .summary-title {
+                        font-size: 16px;
+                        font-weight: bold;
+                        color: #111827;
+                        margin-bottom: 15px;
+                        text-align: center;
+                      }
+                      
+                      .summary-grid {
+                        display: grid;
+                        grid-template-columns: repeat(4, 1fr);
+                        gap: 20px;
+                        text-align: center;
+                      }
+                      
+                      .summary-item {
+                        padding: 10px;
+                      }
+                      
+                      .summary-value {
+                        font-size: 20px;
+                        font-weight: bold;
+                        margin-bottom: 5px;
+                      }
+                      
+                      .summary-label {
+                        font-size: 11px;
+                        color: #6b7280;
+                        text-transform: uppercase;
+                        font-weight: bold;
+                      }
+                      
+                      .blue { color: #3b82f6; }
+                      .green { color: #10b981; }
+                      .orange { color: #f59e0b; }
+                      .gray { color: #6b7280; }
+                    </style>
+                  </head>
+                  <body>
+                    <div class="header">
+                      <div class="logo">SAYWHAT</div>
+                      <div class="subtitle">Programs & Projects Management</div>
+                      <div class="report-title">PROJECT REPORT</div>
+                    </div>
                     
-                    /* Hide everything except the modal content */
-                    body > *:not(.print-content-wrapper) {
-                      display: none !important;
-                    }
+                    <div class="project-header">
+                      <div class="project-name">${projectData.name}</div>
+                      ${projectData.projectGoal ? `
+                        <div class="project-goal">
+                          <div class="goal-label">🎯 PROJECT GOAL:</div>
+                          <div class="goal-text">${projectData.projectGoal}</div>
+                        </div>
+                      ` : ''}
+                      <div class="description">
+                        <div class="description-label">Description:</div>
+                        <div class="description-text">${projectData.description}</div>
+                      </div>
+                      <div class="status-badges">
+                        <span class="badge badge-active">${projectData.status.replace('-', ' ').toUpperCase()}</span>
+                        <span class="badge badge-high">${projectData.priority.toUpperCase()}</span>
+                      </div>
+                    </div>
                     
-                    /* Hide all navigation, headers, footers */
-                    nav, header, footer, .print-hide {
-                      display: none !important;
-                    }
+                    <div class="metrics">
+                      <div class="metric-card">
+                        <div class="metric-value">${projectData.progress || 0}%</div>
+                        <div class="metric-label">Progress</div>
+                      </div>
+                      <div class="metric-card">
+                        <div class="metric-value">$${(projectData.budget || 0).toLocaleString()}</div>
+                        <div class="metric-label">Budget</div>
+                      </div>
+                      <div class="metric-card">
+                        <div class="metric-value">${projectData.timeframe || 'N/A'}</div>
+                        <div class="metric-label">Timeline</div>
+                      </div>
+                    </div>
                     
-                    /* Reset modal styling for print */
-                    .print-content-wrapper {
-                      position: static !important;
-                      background: white !important;
-                      padding: 0 !important;
-                      max-width: 100% !important;
-                      max-height: none !important;
-                      overflow: visible !important;
-                      box-shadow: none !important;
-                      border-radius: 0 !important;
-                    }
-                    
-                    /* Page breaks */
-                    .print-page-break {
-                      page-break-before: always;
-                    }
-                    
-                    /* Prevent breaks inside elements */
-                    .print-no-break {
-                      page-break-inside: avoid;
-                    }
-                    
-                    /* Typography */
-                    body { 
-                      font-size: 11pt;
-                      line-height: 1.4;
-                      color: #000;
-                    }
-                    
-                    h1, h2, h3, h4, h5, h6 {
-                      page-break-after: avoid;
-                      color: #000;
-                    }
-                    
-                    /* Remove backgrounds and borders for clean print */
-                    * {
-                      -webkit-print-color-adjust: exact;
-                      print-color-adjust: exact;
-                    }
-                  }
+                    ${projectData.resultsFramework && projectData.resultsFramework.objectives && projectData.resultsFramework.objectives.length > 0 ? `
+                      <div class="results-framework">
+                        <div class="framework-title">📊 Results Framework</div>
+                        ${projectData.resultsFramework.objectives.map((objective: any, objIndex: number) => `
+                          <div class="objective">
+                            <div class="objective-title">📊 Objective ${objIndex + 1}: ${objective.title}</div>
+                            ${objective.description ? `<div class="objective-desc">${objective.description}</div>` : ''}
+                            ${objective.outcomes && objective.outcomes.length > 0 ? `
+                              ${objective.outcomes.map((outcome: any, outIndex: number) => `
+                                <div class="outcome">
+                                  <div class="outcome-title">→ Outcome ${outIndex + 1}: ${outcome.title}</div>
+                                  ${outcome.description ? `<div class="outcome-desc">${outcome.description}</div>` : ''}
+                                  ${outcome.indicators && outcome.indicators.length > 0 ? `
+                                    <div class="indicators">
+                                      <div style="font-weight: bold; color: #047857; margin-bottom: 8px; font-size: 12px;">📈 Outcome Indicators:</div>
+                                      ${outcome.indicators.map((indicator: any) => `
+                                        <div class="indicator">
+                                          <div class="indicator-desc">${indicator.description}</div>
+                                          <div class="indicator-metrics">
+                                            <span>Baseline: ${indicator.baseline || 0} ${indicator.baselineUnit || ''}</span>
+                                            <span>Target (Y1): ${indicator.targets?.Year1 || 0} ${indicator.targetUnit || ''}</span>
+                                            <span class="current-value">Current: ${indicator.current || 0} ${indicator.targetUnit || ''}</span>
+                                          </div>
+                                        </div>
+                                      `).join('')}
+                                    </div>
+                                  ` : ''}
+                                  ${outcome.outputs && outcome.outputs.length > 0 ? `
+                                    ${outcome.outputs.map((output: any, outpIndex: number) => `
+                                      <div class="output">
+                                        <div class="output-title">➜ Output ${outpIndex + 1}: ${output.title}</div>
+                                        ${output.description ? `<div class="output-desc">${output.description}</div>` : ''}
+                                        ${output.indicators && output.indicators.length > 0 ? `
+                                          <div class="indicators">
+                                            <div style="font-weight: bold; color: #92400e; margin-bottom: 8px; font-size: 11px;">📊 Output Indicators:</div>
+                                            ${output.indicators.map((indicator: any) => `
+                                              <div class="indicator">
+                                                <div class="indicator-desc">${indicator.description}</div>
+                                                <div class="indicator-metrics">
+                                                  <span>Baseline: ${indicator.baseline || 0} ${indicator.baselineUnit || ''}</span>
+                                                  <span>Target (Y1): ${indicator.targets?.Year1 || 0} ${indicator.targetUnit || ''}</span>
+                                                  <span class="current-value">Current: ${indicator.current || 0} ${indicator.targetUnit || ''}</span>
+                                                </div>
+                                              </div>
+                                            `).join('')}
+                                          </div>
+                                        ` : ''}
+                                      </div>
+                                    `).join('')}
+                                  ` : ''}
+                                </div>
+                              `).join('')}
+                            ` : ''}
+                          </div>
+                        `).join('')}
+                        
+                        <div class="summary">
+                          <div class="summary-title">Framework Summary</div>
+                          <div class="summary-grid">
+                            <div class="summary-item">
+                              <div class="summary-value blue">${projectData.resultsFramework.objectives.length}</div>
+                              <div class="summary-label">Objectives</div>
+                            </div>
+                            <div class="summary-item">
+                              <div class="summary-value green">${projectData.resultsFramework.objectives.reduce((sum: number, obj: any) => sum + (obj.outcomes?.length || 0), 0)}</div>
+                              <div class="summary-label">Outcomes</div>
+                            </div>
+                            <div class="summary-item">
+                              <div class="summary-value orange">${projectData.resultsFramework.objectives.reduce((sum: number, obj: any) => sum + (obj.outcomes?.reduce((outSum: number, out: any) => outSum + (out.outputs?.length || 0), 0) || 0), 0)}</div>
+                              <div class="summary-label">Outputs</div>
+                            </div>
+                            <div class="summary-item">
+                              <div class="summary-value gray">${projectData.resultsFramework.objectives.reduce((sum: number, obj: any) => sum + (obj.outcomes?.reduce((outSum: number, out: any) => outSum + (out.indicators?.length || 0) + (out.outputs?.reduce((opSum: number, op: any) => opSum + (op.indicators?.length || 0), 0) || 0), 0) || 0), 0)}</div>
+                              <div class="summary-label">Total Indicators</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ` : ''}
+                  </body>
+                  </html>
                 `
-                document.head.appendChild(printStyle)
-                
-                // Add print class to modal
-                document.querySelector('.fixed.inset-0')?.classList.add('print-content-wrapper')
-                
-                window.print()
-                
-                // Cleanup
-                setTimeout(() => {
-                  document.getElementById('print-results-framework')?.remove()
-                  document.querySelector('.print-content-wrapper')?.classList.remove('print-content-wrapper')
-                }, 1000)
+
+                // Write content to new window
+                printWindow.document.write(pdfContent)
+                printWindow.document.close()
+
+                // Wait for content to load, then print
+                printWindow.onload = () => {
+                  setTimeout(() => {
+                    printWindow.print()
+                    // Close the window after printing
+                    setTimeout(() => printWindow.close(), 1000)
+                  }, 500)
+                }
               }}
               className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
             >
