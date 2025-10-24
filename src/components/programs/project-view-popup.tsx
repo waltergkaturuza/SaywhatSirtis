@@ -28,6 +28,7 @@ interface ProjectViewPopupProps {
 interface ProjectDetails {
   id: string
   name: string
+  projectGoal?: string
   description: string
   status: string
   priority: string
@@ -46,6 +47,7 @@ interface ProjectDetails {
   province: string
   currency: string
   objectives: any
+  resultsFramework?: any
   timeframe: string
   createdAt: string
   updatedAt: string
@@ -92,10 +94,26 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
           parsedObjectives = { raw: data.objectives }
         }
 
+        // Parse resultsFramework if it's a string
+        let parsedResultsFramework = data.resultsFramework
+        if (typeof data.resultsFramework === 'string') {
+          try {
+            parsedResultsFramework = JSON.parse(data.resultsFramework)
+            console.log('Parsed resultsFramework from string:', parsedResultsFramework)
+          } catch (err) {
+            console.error('Failed to parse resultsFramework:', err)
+            parsedResultsFramework = null
+          }
+        }
+        
+        console.log('Project resultsFramework loaded:', parsedResultsFramework)
+        console.log('Objectives count:', parsedResultsFramework?.objectives?.length || 0)
+
         setProject({
           ...data,
           manager: normalizedManager,
-          objectivesParsed: parsedObjectives
+          objectivesParsed: parsedObjectives,
+          resultsFramework: parsedResultsFramework
         })
       } else {
         throw new Error(result.error || 'Failed to load project details')
@@ -205,6 +223,15 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">{project.name}</h3>
+                    
+                    {/* Project Goal */}
+                    {project.projectGoal && (
+                      <div className="bg-orange-50 border-l-4 border-orange-500 p-3 rounded-lg mb-3">
+                        <p className="text-sm font-medium text-orange-700 mb-1">🎯 Project Goal:</p>
+                        <p className="text-gray-800">{project.projectGoal}</p>
+                      </div>
+                    )}
+                    
                     <p className="text-gray-600 text-lg">{project.description}</p>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -393,6 +420,130 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
                   </div>
                 </div>
               </div>
+
+              {/* Results Framework Section */}
+              {project.resultsFramework && project.resultsFramework.objectives && project.resultsFramework.objectives.length > 0 && (
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <DocumentTextIcon className="h-6 w-6 text-orange-600 mr-2" />
+                    Results Framework
+                  </h4>
+                  
+                  <div className="space-y-6">
+                    {project.resultsFramework.objectives.map((objective: any, objIndex: number) => (
+                      <div key={objective.id || objIndex} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border-l-4 border-blue-500 shadow-md">
+                        <h5 className="text-lg font-bold text-blue-900 mb-2">
+                          📊 Objective {objIndex + 1}: {objective.title}
+                        </h5>
+                        {objective.description && (
+                          <p className="text-sm text-blue-800 mb-4">{objective.description}</p>
+                        )}
+                        
+                        {/* Outcomes */}
+                        {objective.outcomes && objective.outcomes.length > 0 && (
+                          <div className="space-y-4 mt-4">
+                            {objective.outcomes.map((outcome: any, outIndex: number) => (
+                              <div key={outcome.id || outIndex} className="bg-white rounded-lg p-4 border-l-4 border-green-500 shadow-sm">
+                                <h6 className="text-md font-bold text-green-700 mb-2">
+                                  → Outcome {outIndex + 1}: {outcome.title}
+                                </h6>
+                                {outcome.description && (
+                                  <p className="text-sm text-gray-700 mb-3">{outcome.description}</p>
+                                )}
+                                
+                                {/* Outcome Indicators */}
+                                {outcome.indicators && outcome.indicators.length > 0 && (
+                                  <div className="bg-green-50 rounded-lg p-3 mb-3">
+                                    <p className="text-xs font-semibold text-green-700 mb-2">📈 Outcome Indicators:</p>
+                                    <div className="space-y-2">
+                                      {outcome.indicators.map((indicator: any, indIndex: number) => (
+                                        <div key={indicator.id || indIndex} className="bg-white p-2 rounded border border-green-200">
+                                          <p className="text-sm font-medium text-gray-900">{indicator.description}</p>
+                                          <div className="grid grid-cols-3 gap-2 mt-1 text-xs text-gray-600">
+                                            <span>Baseline: {indicator.baseline} {indicator.baselineUnit}</span>
+                                            <span>Target (Y1): {indicator.targets?.Year1} {indicator.targetUnit}</span>
+                                            <span className="font-semibold text-green-600">Current: {indicator.current || 0} {indicator.targetUnit}</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Outputs */}
+                                {outcome.outputs && outcome.outputs.length > 0 && (
+                                  <div className="space-y-3">
+                                    {outcome.outputs.map((output: any, outpIndex: number) => (
+                                      <div key={output.id || outpIndex} className="bg-orange-50 rounded-lg p-3 border-l-4 border-orange-400">
+                                        <h6 className="text-sm font-bold text-orange-700 mb-2">
+                                          ➜ Output {outpIndex + 1}: {output.title}
+                                        </h6>
+                                        {output.description && (
+                                          <p className="text-xs text-gray-700 mb-2">{output.description}</p>
+                                        )}
+                                        
+                                        {/* Output Indicators */}
+                                        {output.indicators && output.indicators.length > 0 && (
+                                          <div className="bg-white rounded p-2">
+                                            <p className="text-xs font-semibold text-orange-700 mb-2">📊 Output Indicators:</p>
+                                            <div className="space-y-1">
+                                              {output.indicators.map((indicator: any, indIndex: number) => (
+                                                <div key={indicator.id || indIndex} className="text-xs bg-orange-50 p-2 rounded border border-orange-200">
+                                                  <p className="font-medium text-gray-900">{indicator.description}</p>
+                                                  <div className="grid grid-cols-3 gap-2 mt-1 text-xs text-gray-600">
+                                                    <span>Baseline: {indicator.baseline} {indicator.baselineUnit}</span>
+                                                    <span>Target (Y1): {indicator.targets?.Year1} {indicator.targetUnit}</span>
+                                                    <span className="font-semibold text-orange-600">Current: {indicator.current || 0} {indicator.targetUnit}</span>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Framework Summary */}
+                  <div className="bg-gradient-to-r from-gray-50 to-white rounded-lg p-4 border border-gray-200 mt-4">
+                    <div className="grid grid-cols-4 gap-4 text-center">
+                      <div>
+                        <p className="text-2xl font-bold text-blue-600">{project.resultsFramework.objectives.length}</p>
+                        <p className="text-xs text-gray-600">Objectives</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-green-600">
+                          {project.resultsFramework.objectives.reduce((sum: number, obj: any) => sum + (obj.outcomes?.length || 0), 0)}
+                        </p>
+                        <p className="text-xs text-gray-600">Outcomes</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-orange-600">
+                          {project.resultsFramework.objectives.reduce((sum: number, obj: any) => 
+                            sum + (obj.outcomes?.reduce((outSum: number, out: any) => outSum + (out.outputs?.length || 0), 0) || 0), 0)}
+                        </p>
+                        <p className="text-xs text-gray-600">Outputs</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-gray-700">
+                          {project.resultsFramework.objectives.reduce((sum: number, obj: any) => 
+                            sum + (obj.outcomes?.reduce((outSum: number, out: any) => 
+                              outSum + (out.indicators?.length || 0) + (out.outputs?.reduce((opSum: number, op: any) => opSum + (op.indicators?.length || 0), 0) || 0), 0) || 0), 0)}
+                        </p>
+                        <p className="text-xs text-gray-600">Total Indicators</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
