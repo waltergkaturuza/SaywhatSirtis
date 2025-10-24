@@ -699,12 +699,20 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     }
   }
 
-  // Chart data preparation
-  const chartData = filteredIndicators.map(indicator => ({
-    name: indicator.name,
+  // Chart data preparation with numbered labels
+  const chartData = filteredIndicators.map((indicator, index) => ({
+    name: `Indicator ${index + 1}`,
+    fullName: indicator.name,
     current: indicator.current,
     target: indicator.target,
     progress: getProgressPercentage(indicator.current, indicator.target)
+  }))
+  
+  // Legend mapping for indicators
+  const indicatorLegend = filteredIndicators.map((indicator, index) => ({
+    number: index + 1,
+    name: indicator.name,
+    category: indicator.category
   }))
 
   const statusData = [
@@ -914,13 +922,43 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
+              <XAxis dataKey="name" angle={0} textAnchor="middle" />
               <YAxis />
-              <Tooltip />
-              <Bar dataKey="current" fill="#3B82F6" />
-              <Bar dataKey="target" fill="#E5E7EB" />
+              <Tooltip 
+                content={({ active, payload }: any) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload
+                    return (
+                      <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
+                        <p className="font-semibold text-sm text-gray-900">{data.fullName}</p>
+                        <p className="text-xs text-blue-600">Current: {data.current}</p>
+                        <p className="text-xs text-gray-600">Target: {data.target}</p>
+                      </div>
+                    )
+                  }
+                  return null
+                }}
+              />
+              <Bar dataKey="current" fill="#3B82F6" name="Current" />
+              <Bar dataKey="target" fill="#E5E7EB" name="Target" />
             </BarChart>
           </ResponsiveContainer>
+          
+          {/* Legend */}
+          <div className="mt-4 max-h-40 overflow-y-auto border-t pt-3">
+            <h4 className="text-xs font-semibold text-gray-700 mb-2">Indicator Legend:</h4>
+            <div className="grid grid-cols-1 gap-1 text-xs">
+              {indicatorLegend.map((item) => (
+                <div key={item.number} className="flex items-start">
+                  <span className="font-medium text-gray-900 mr-2">Indicator {item.number}:</span>
+                  <span className="text-gray-600 flex-1">{item.name}</span>
+                  <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${getCategoryColor(item.category)}`}>
+                    {item.category}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Status Distribution */}
@@ -933,7 +971,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent, value }: any) => value > 0 ? `${name}: ${value}` : ''}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
@@ -942,9 +980,41 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip 
+                content={({ active, payload }: any) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0]
+                    return (
+                      <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
+                        <p className="font-semibold text-sm text-gray-900">{data.name}</p>
+                        <p className="text-xs text-gray-600">Count: {data.value} indicators</p>
+                        <p className="text-xs text-gray-500">
+                          {((data.value / filteredIndicators.length) * 100).toFixed(1)}% of total
+                        </p>
+                      </div>
+                    )
+                  }
+                  return null
+                }}
+              />
             </PieChart>
           </ResponsiveContainer>
+          
+          {/* Status Legend */}
+          <div className="mt-4 border-t pt-3">
+            <h4 className="text-xs font-semibold text-gray-700 mb-2">Status Breakdown:</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {statusData.map((item, index) => (
+                <div key={item.name} className="flex items-center">
+                  <div 
+                    className="w-3 h-3 rounded-full mr-2" 
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span className="text-gray-700">{item.name}: <span className="font-medium">{item.value}</span></span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
