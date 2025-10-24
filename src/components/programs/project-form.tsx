@@ -155,8 +155,26 @@ const currencies = [
 export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: ProjectFormProps) {
   // Helper function to ensure resultsFramework data structure is properly initialized
   const initializeResultsFramework = (rf?: any): ResultsFrameworkData => {
+    console.log('Initializing Results Framework with:', rf, 'Type:', typeof rf)
+    
+    // If resultsFramework is a string, parse it first
+    let parsedRf = rf
+    if (typeof rf === 'string') {
+      try {
+        parsedRf = JSON.parse(rf)
+        console.log('Parsed resultsFramework from string:', parsedRf)
+      } catch (parseError) {
+        console.error('Failed to parse resultsFramework string:', parseError)
+        return { 
+          objectives: [], 
+          projectDuration: 1 
+        }
+      }
+    }
+    
     // If no resultsFramework exists, create a default structure
-    if (!rf || typeof rf !== 'object') {
+    if (!parsedRf || typeof parsedRf !== 'object') {
+      console.log('No valid resultsFramework, using default')
       return { 
         objectives: [], 
         projectDuration: 1 
@@ -164,10 +182,10 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
     }
     
     // Ensure projectDuration exists
-    const projectDuration = typeof rf.projectDuration === 'number' ? rf.projectDuration : 1
+    const projectDuration = typeof parsedRf.projectDuration === 'number' ? parsedRf.projectDuration : 1
     
     // Ensure objectives array exists and is properly structured
-    const objectives = Array.isArray(rf.objectives) ? rf.objectives.map((obj: any) => ({
+    const objectives = Array.isArray(parsedRf.objectives) ? parsedRf.objectives.map((obj: any) => ({
       id: obj.id || `objective_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       title: obj.title || '',
       description: obj.description || '',
@@ -177,16 +195,27 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
         title: outcome.title || '',
         description: outcome.description || '',
         isExpanded: outcome.isExpanded || false,
-        indicators: Array.isArray(outcome.indicators) ? outcome.indicators : [],
+        indicators: Array.isArray(outcome.indicators) ? outcome.indicators.map((ind: any) => ({
+          ...ind, // Preserve all existing indicator fields
+          id: ind.id || `ind_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        })) : [],
         outputs: Array.isArray(outcome.outputs) ? outcome.outputs.map((output: any) => ({
           id: output.id || `output_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           title: output.title || '',
           description: output.description || '',
           isExpanded: output.isExpanded || false,
-          indicators: Array.isArray(output.indicators) ? output.indicators : []
+          indicators: Array.isArray(output.indicators) ? output.indicators.map((ind: any) => ({
+            ...ind, // Preserve all existing indicator fields
+            id: ind.id || `ind_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          })) : []
         })) : []
       })) : []
     })) : []
+    
+    console.log('Initialized Results Framework with', objectives.length, 'objectives')
+    if (objectives.length > 0) {
+      console.log('First objective:', objectives[0])
+    }
     
     return {
       objectives,
