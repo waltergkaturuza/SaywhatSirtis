@@ -126,7 +126,7 @@ export async function PUT(
         currency: body.currency,
         timeframe: body.timeframe,
         objectives: objectives ? JSON.stringify(objectives) : undefined,
-        resultsFramework: body.resultsFramework ? JSON.stringify(body.resultsFramework) : undefined,
+        resultsFramework: body.resultsFramework || undefined, // Prisma handles JSON automatically
         updatedAt: new Date()
       },
       include: {

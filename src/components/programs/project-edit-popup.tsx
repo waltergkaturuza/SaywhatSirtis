@@ -24,6 +24,7 @@ interface ProjectEditPopupProps {
 
 interface ProjectFormData {
   name: string
+  projectGoal?: string
   description: string
   status: string
   priority: string
@@ -51,6 +52,7 @@ interface Manager {
 export function ProjectEditPopup({ projectId, isOpen, onClose, onSave, permissions }: ProjectEditPopupProps) {
   const [formData, setFormData] = useState<ProjectFormData>({
     name: '',
+    projectGoal: '',
     description: '',
     status: 'PLANNING',
     priority: 'MEDIUM',
@@ -130,6 +132,7 @@ export function ProjectEditPopup({ projectId, isOpen, onClose, onSave, permissio
         const project = result.data
         setFormData({
           name: project.name || '',
+          projectGoal: project.projectGoal || '',
           description: project.description || '',
           status: project.status || 'PLANNING',
           priority: project.priority || 'MEDIUM',
@@ -146,7 +149,28 @@ export function ProjectEditPopup({ projectId, isOpen, onClose, onSave, permissio
           objectives: typeof project.objectives === 'string' ? project.objectives : JSON.stringify(project.objectives || '')
         })
 
-        // Parse extended fields from objectives JSON
+        // Load Results Framework from the dedicated field (NEW WAY - separate JSONB field)
+        console.log('Loading resultsFramework from project:', project.resultsFramework)
+        console.log('Type of resultsFramework:', typeof project.resultsFramework)
+        if (project.resultsFramework) {
+          let framework = project.resultsFramework
+          // Handle string case for backwards compatibility
+          if (typeof framework === 'string') {
+            try {
+              framework = JSON.parse(framework)
+              console.log('Parsed resultsFramework from string')
+            } catch (parseError) {
+              console.error('Failed to parse resultsFramework:', parseError)
+              framework = { objectives: [], projectDuration: 3 }
+            }
+          }
+          if (framework && typeof framework === 'object') {
+            console.log('✓ Setting resultsFramework with', framework.objectives?.length || 0, 'objectives')
+            setResultsFramework(framework as ResultsFrameworkData)
+          }
+        }
+
+        // Parse extended fields from objectives JSON (OLD WAY - for backwards compatibility)
         try {
           const obj = typeof project.objectives === 'string' ? JSON.parse(project.objectives || '{}') : (project.objectives || {})
           setProjectCode(obj.projectCode || '')
@@ -159,7 +183,9 @@ export function ProjectEditPopup({ projectId, isOpen, onClose, onSave, permissio
           setEvaluationFrequency(Array.isArray(obj.evaluationFrequency) ? obj.evaluationFrequency : [])
           setFrequencyDates(typeof obj.frequencyDates === 'object' && obj.frequencyDates ? obj.frequencyDates : {})
           setMethodologies(Array.isArray(obj.methodologies) ? obj.methodologies : [])
-          if (obj.resultsFramework && typeof obj.resultsFramework === 'object') {
+          // Fallback: If no resultsFramework in dedicated field, try from objectives JSON
+          if (!project.resultsFramework && obj.resultsFramework && typeof obj.resultsFramework === 'object') {
+            console.log('Using resultsFramework from objectives JSON (fallback)')
             setResultsFramework(obj.resultsFramework as ResultsFrameworkData)
           }
         } catch {}
@@ -221,9 +247,12 @@ export function ProjectEditPopup({ projectId, isOpen, onClose, onSave, permissio
         frequencyDates,
         methodologies,
         countries: selectedCountries,
-        provinces: selectedProvinces,
-        resultsFramework
+        provinces: selectedProvinces
+        // resultsFramework removed - saved separately
       }
+
+      console.log('Saving project with resultsFramework:', resultsFramework)
+      console.log('Results Framework has', resultsFramework?.objectives?.length || 0, 'objectives')
 
       const response = await fetch(`/api/programs/projects/${projectId}`, {
         method: 'PUT',
@@ -235,7 +264,8 @@ export function ProjectEditPopup({ projectId, isOpen, onClose, onSave, permissio
           managerId: formData.managerId || projectLead || undefined,
           country: selectedCountries?.[0] || formData.country,
           province: selectedCountries?.[0] && selectedProvinces[selectedCountries[0]] ? selectedProvinces[selectedCountries[0]].join(', ') : formData.province,
-          objectives: JSON.stringify(objectivesPayload)
+          objectives: JSON.stringify(objectivesPayload),
+          resultsFramework: resultsFramework // Save to dedicated field
         })
       })
       
@@ -364,6 +394,26 @@ export function ProjectEditPopup({ projectId, isOpen, onClose, onSave, permissio
                       <option value="CANCELLED">Cancelled</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Project Goal - Highly Visible */}
+                <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl border-2 border-orange-400 shadow-md">
+                  <label className="block text-sm font-bold text-orange-700 mb-2 flex items-center">
+                    <span className="w-3 h-3 bg-orange-500 rounded-full mr-2 animate-pulse"></span>
+                    🎯 PROJECT GOAL *
+                  </label>
+                  <textarea
+                    name="projectGoal"
+                    value={formData.projectGoal || ''}
+                    onChange={handleInputChange}
+                    rows={3}
+                    placeholder="Enter the main goal or objective of this project (e.g., Improve water access for 50,000 people)"
+                    className="w-full px-3 py-2 border-2 border-orange-400 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-600 bg-white font-medium"
+                    required
+                  />
+                  <p className="text-xs text-orange-700 font-semibold mt-2 bg-white bg-opacity-50 p-2 rounded">
+                    💡 This field is REQUIRED for tracking project objectives and outcomes
+                  </p>
                 </div>
 
                 <div>

@@ -301,25 +301,29 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         
         let framework = data.data.resultsFramework
         
-        // If resultsFramework is a string, parse it
+        // Prisma should return resultsFramework as an object (Json type auto-parses)
+        // But handle string case for backwards compatibility
         if (typeof framework === 'string') {
           try {
             framework = JSON.parse(framework)
-            console.log('Parsed resultsFramework from string:', framework)
+            console.log('Parsed resultsFramework from string (backwards compatibility):', framework)
           } catch (parseError) {
             console.error('Failed to parse resultsFramework string:', parseError)
             framework = null
           }
         }
         
-        if (data.success && framework && framework.objectives) {
-          console.log('Results Framework found with objectives:', framework.objectives.length)
+        if (data.success && framework && framework.objectives && Array.isArray(framework.objectives)) {
+          console.log('✓ Results Framework found with', framework.objectives.length, 'objectives')
+          console.log('Full framework structure:', JSON.stringify(framework, null, 2))
           setResultsFramework(framework)
           // Extract indicators from Results Framework
           extractIndicatorsFromFramework(framework, projectId)
         } else {
-          console.log('No Results Framework or no objectives found for this project')
+          console.log('❌ No Results Framework or no objectives found for this project')
           console.log('Framework value:', framework)
+          console.log('Has objectives?', framework?.objectives)
+          console.log('Is array?', Array.isArray(framework?.objectives))
           // Clear indicators if no framework
           setIndicators([])
           setFilteredIndicators([])
