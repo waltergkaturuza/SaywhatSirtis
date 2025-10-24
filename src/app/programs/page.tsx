@@ -244,21 +244,21 @@ function EnhancedProgramsContent() {
   ]
 
   const actions = (
-    <div className="flex items-center space-x-4">
+    <div className="flex items-center space-x-3">
       {activeTab === "projects" && (
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <select
             value={viewMode}
             onChange={(e) => setViewMode(e.target.value as 'list' | 'kanban' | 'timeline' | 'calendar')}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-orange-500 focus:border-orange-500"
+            className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white hover:border-orange-400 transition-colors shadow-sm"
           >
-            <option value="list">List View</option>
-            <option value="kanban">Kanban Board</option>
-            <option value="timeline">Timeline View</option>
-            <option value="calendar">Calendar View</option>
+            <option value="list">📋 List View</option>
+            <option value="kanban">📊 Kanban Board</option>
+            <option value="timeline">📅 Timeline View</option>
+            <option value="calendar">🗓️ Calendar View</option>
           </select>
           
-          <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+          <button className="flex items-center px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all">
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filter
           </button>
@@ -266,8 +266,8 @@ function EnhancedProgramsContent() {
       )}
 
       {activeTab === "calendar" && (
-        <div className="flex items-center space-x-2">
-          <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+        <div className="flex items-center space-x-3">
+          <button className="flex items-center px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-all">
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filter
           </button>
@@ -275,7 +275,7 @@ function EnhancedProgramsContent() {
       )}
 
       {permissions.canGenerateReports && (
-        <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+        <button className="flex items-center px-4 py-2 border-2 border-green-500 rounded-lg text-sm font-medium text-green-700 bg-white hover:bg-green-50 shadow-sm transition-all">
           <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
           Export
         </button>
@@ -284,9 +284,9 @@ function EnhancedProgramsContent() {
       {permissions.canCreate && (
         <button 
           onClick={() => router.push('/programs/new')}
-          className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-md text-sm hover:bg-orange-700 transition-colors"
+          className="flex items-center px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-sm font-semibold hover:from-orange-600 hover:to-orange-700 shadow-lg transition-all transform hover:scale-105"
         >
-          <PlusIcon className="h-4 w-4 mr-2" />
+          <PlusIcon className="h-5 w-5 mr-2" />
           {activeTab === "calendar" ? "New Event" : "New Project"}
         </button>
       )}
@@ -365,39 +365,41 @@ function EnhancedProgramsContent() {
       <div className="space-y-6">
         {/* Success Message */}
         {showSuccessMessage && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 relative">
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg p-5 relative animate-pulse">
             <div className="flex items-center">
-              <CheckCircleIcon className="h-5 w-5 text-green-400 mr-3" />
-              <div className="flex-1">
-                <h3 className="text-sm font-medium text-green-800">Project Created Successfully!</h3>
-                <p className="text-sm text-green-600 mt-1">Your new project has been created and is ready for management.</p>
+              <div className="bg-white bg-opacity-20 p-2 rounded-lg">
+                <CheckCircleIcon className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1 ml-4">
+                <h3 className="text-lg font-bold text-white">Project Created Successfully!</h3>
+                <p className="text-sm text-green-100 mt-1">Your new project has been created and is ready for management.</p>
               </div>
               <button
                 onClick={() => setShowSuccessMessage(false)}
-                className="ml-4 text-green-400 hover:text-green-600"
+                className="ml-4 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-1 transition-colors"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <XMarkIcon className="h-5 w-5 text-white" />
               </button>
             </div>
           </div>
         )}
 
         {/* Enhanced Tab Navigation with Descriptions */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8 overflow-x-auto">
+        <div className="bg-white rounded-xl shadow-md border-b-4 border-gray-200 p-2">
+          <nav className="flex space-x-2 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex flex-col items-center min-w-0 transition-colors ${
+                className={`py-3 px-4 rounded-lg font-semibold text-sm whitespace-nowrap flex flex-col items-center min-w-0 transition-all transform ${
                   activeTab === tab.id
-                    ? "border-orange-500 text-orange-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-green-300 hover:text-green-600"
+                    ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg scale-105"
+                    : "bg-white text-gray-600 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100 hover:text-green-700 hover:shadow-md"
                 }`}
                 title={tab.description}
               >
-                <tab.icon className="h-5 w-5 mb-1" />
-                <span className="truncate">{tab.name}</span>
+                <tab.icon className="h-6 w-6 mb-1.5" />
+                <span className="truncate text-xs">{tab.name}</span>
               </button>
             ))}
           </nav>
@@ -405,22 +407,22 @@ function EnhancedProgramsContent() {
 
         {/* Project Context Bar */}
         {selectedProject && (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-5 relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="flex-shrink-0">
-                  <div className="h-10 w-10 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <ClipboardDocumentListIcon className="h-6 w-6 text-white" />
+                  <div className="h-12 w-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center shadow-md">
+                    <ClipboardDocumentListIcon className="h-7 w-7 text-white" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-orange-900">Project Selected: #{selectedProject}</h3>
-                  <p className="text-sm text-orange-600">Working on active project context</p>
+                  <h3 className="text-lg font-bold text-white">Project Selected: #{selectedProject}</h3>
+                  <p className="text-sm text-orange-100">Working on active project context</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedProject(null)}
-                className="text-orange-600 hover:text-orange-800 text-sm font-medium transition-colors"
+                className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg text-sm font-semibold transition-all"
               >
                 Clear Selection
               </button>
