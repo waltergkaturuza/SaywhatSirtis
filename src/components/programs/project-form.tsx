@@ -476,28 +476,6 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
             </TabsList>
 
             <TabsContent value="basic" className="space-y-4">
-              {/* Project Goal - Highlighted and Prominent */}
-              <div className="space-y-2 bg-gradient-to-r from-orange-50 to-orange-100 p-5 rounded-xl border-2 border-orange-400 shadow-md">
-                <Label htmlFor="projectGoal" className="text-orange-700 font-bold text-base flex items-center">
-                  <span className="w-3 h-3 bg-orange-500 rounded-full mr-2 animate-pulse"></span>
-                  🎯 PROJECT GOAL *
-                </Label>
-                <Textarea
-                  id="projectGoal"
-                  name="projectGoal"
-                  value={formData.projectGoal || ''}
-                  onChange={handleInputChange}
-                  placeholder="Enter the main goal or objective of this project (e.g., Improve water access for 50,000 people in rural communities)"
-                  disabled={isLoading}
-                  rows={3}
-                  className="border-2 border-orange-400 focus:border-orange-600 focus:ring-2 focus:ring-orange-500 bg-white font-medium text-gray-900"
-                  required
-                />
-                <p className="text-xs text-orange-700 font-semibold bg-white bg-opacity-50 p-2 rounded">
-                  💡 This field is REQUIRED for tracking project objectives and outcomes in the Results Framework
-                </p>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Project Name *</Label>
@@ -573,6 +551,20 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="projectGoal">Project Goal *</Label>
+                <Textarea
+                  id="projectGoal"
+                  name="projectGoal"
+                  value={formData.projectGoal || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter the main goal of this project"
+                  disabled={isLoading}
+                  rows={2}
+                  required
+                />
               </div>
 
               <div className="space-y-2">

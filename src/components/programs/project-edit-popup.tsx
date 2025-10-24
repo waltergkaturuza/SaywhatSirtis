@@ -396,24 +396,17 @@ export function ProjectEditPopup({ projectId, isOpen, onClose, onSave, permissio
                   </div>
                 </div>
 
-                {/* Project Goal - Highly Visible */}
-                <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl border-2 border-orange-400 shadow-md">
-                  <label className="block text-sm font-bold text-orange-700 mb-2 flex items-center">
-                    <span className="w-3 h-3 bg-orange-500 rounded-full mr-2 animate-pulse"></span>
-                    🎯 PROJECT GOAL *
-                  </label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Project Goal *</label>
                   <textarea
                     name="projectGoal"
                     value={formData.projectGoal || ''}
                     onChange={handleInputChange}
-                    rows={3}
-                    placeholder="Enter the main goal or objective of this project (e.g., Improve water access for 50,000 people)"
-                    className="w-full px-3 py-2 border-2 border-orange-400 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-600 bg-white font-medium"
+                    rows={2}
+                    placeholder="Enter the main goal of this project"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
                     required
                   />
-                  <p className="text-xs text-orange-700 font-semibold mt-2 bg-white bg-opacity-50 p-2 rounded">
-                    💡 This field is REQUIRED for tracking project objectives and outcomes
-                  </p>
                 </div>
 
                 <div>
