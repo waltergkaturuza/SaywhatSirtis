@@ -179,10 +179,10 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-[95vw] max-h-[92vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:static print:bg-transparent print:p-0">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-[95vw] max-h-[92vh] overflow-hidden print:max-w-full print:max-h-full print:shadow-none print:rounded-none">
         {/* Header */}
-        <div className="bg-orange-600 text-white px-6 py-4 flex items-center justify-between">
+        <div className="bg-orange-600 text-white px-6 py-4 flex items-center justify-between print:bg-white print:text-black print:border-b-4 print:border-orange-600">
           <div className="flex items-center space-x-3">
             <DocumentTextIcon className="h-6 w-6" />
             <div>
@@ -192,14 +192,14 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-orange-200 transition-colors"
+            className="text-white hover:text-orange-200 transition-colors print:hidden"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(92vh-140px)]">
+        <div className="p-6 overflow-y-auto max-h-[calc(92vh-140px)] print:overflow-visible print:max-h-full">
           {loading && (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
@@ -423,7 +423,7 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
 
               {/* Results Framework Section */}
               {project.resultsFramework && project.resultsFramework.objectives && project.resultsFramework.objectives.length > 0 && (
-                <div className="border-t border-gray-200 pt-6">
+                <div className="border-t border-gray-200 pt-6 print:page-break-before print:pt-0">
                   <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
                     <DocumentTextIcon className="h-6 w-6 text-orange-600 mr-2" />
                     Results Framework
@@ -549,16 +549,37 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
+        <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200 print:hidden">
           <div className="text-sm text-gray-500">
             Project ID: {projectId}
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => window.print()}
+              onClick={() => {
+                // Add print styles before printing
+                const printStyle = document.createElement('style')
+                printStyle.id = 'print-results-framework'
+                printStyle.textContent = `
+                  @media print {
+                    @page { 
+                      size: A4;
+                      margin: 1cm;
+                    }
+                    .print-hide { display: none !important; }
+                    .print-show { display: block !important; }
+                    .print-page-break { page-break-before: always; }
+                    body { font-size: 10pt; }
+                    h2, h3, h4, h5, h6 { page-break-after: avoid; }
+                  }
+                `
+                document.head.appendChild(printStyle)
+                window.print()
+                // Remove print styles after printing
+                setTimeout(() => document.getElementById('print-results-framework')?.remove(), 1000)
+              }}
               className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
             >
-              Print
+              📄 Print
             </button>
             <button
               onClick={onClose}
