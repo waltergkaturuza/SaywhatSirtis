@@ -797,32 +797,41 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <ChartBarIcon className="h-8 w-8 text-orange-500 mr-3" />
-          <div>
-            <h2 className="text-xl font-bold text-black">Project Indicators</h2>
-            <p className="text-gray-600">Track and update project output indicator progress</p>
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+              <ChartBarIcon className="h-8 w-8 text-white" />
+            </div>
+            <div className="ml-4">
+              <h2 className="text-2xl font-bold text-white">Project Indicators Dashboard</h2>
+              <p className="text-orange-100">Track and update project output indicator progress with complete audit trail</p>
+            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <div className="text-sm text-gray-600">
-            {filteredIndicators.length} indicators {selectedProjectId ? `for selected project` : `across ${projects.length} projects`}
+          
+          <div className="flex items-center space-x-3">
+            <div className="bg-white bg-opacity-20 px-4 py-2 rounded-lg">
+              <div className="text-sm font-medium text-white">
+                {filteredIndicators.length} indicators
+              </div>
+              <div className="text-xs text-orange-100">
+                {selectedProjectId ? `Selected Project` : `${projects.length} Projects`}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Project Filter */}
-      <div className="bg-white rounded-lg border p-4">
+      <div className="bg-white rounded-xl shadow-md border-l-4 border-orange-500 p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">Filter by Project:</label>
+            <div className="flex items-center space-x-3">
+              <label className="text-sm font-semibold text-gray-800">Filter by Project:</label>
               <select
                 value={selectedProjectId || ''}
                 onChange={(e) => setSelectedProjectId(e.target.value || null)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white hover:border-orange-400 transition-colors"
               >
                 <option value="">All Projects</option>
                 {projects.map((project) => (
@@ -834,36 +843,36 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             </div>
             
             {selectedProjectId && (
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">
-                  Showing indicators for: <span className="font-medium text-gray-900">
+              <div className="flex items-center space-x-2 bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
+                <span className="text-sm text-gray-700">
+                  Showing: <span className="font-semibold text-orange-600">
                     {projects.find(p => p.id === selectedProjectId)?.name}
                   </span>
                 </span>
                 <button
                   onClick={() => setSelectedProjectId(null)}
-                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  className="text-xs font-medium text-orange-600 hover:text-orange-800 underline"
                 >
-                  Clear filter
+                  Clear
                 </button>
               </div>
             )}
           </div>
           
           <div className="flex items-center space-x-2">
-            <div className="flex space-x-2">
+            <div className="flex space-x-3">
               <button
                 onClick={() => setShowBulkUpdate(true)}
-                className="flex items-center px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 border border-blue-600 rounded-md"
+                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg shadow-md transition-all transform hover:scale-105"
               >
-                <PencilIcon className="h-4 w-4 mr-1" />
+                <PencilIcon className="h-4 w-4 mr-2" />
                 Bulk Update
               </button>
               <button
                 onClick={() => selectedProjectId ? fetchResultsFramework(selectedProjectId) : null}
-                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+                className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border-2 border-gray-300 rounded-lg shadow-sm transition-all"
               >
-                <ArrowPathIcon className="h-4 w-4 mr-1" />
+                <ArrowPathIcon className="h-4 w-4 mr-2" />
                 Refresh
               </button>
             </div>
@@ -873,56 +882,60 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <ChartBarIcon className="h-6 w-6 text-blue-600" />
+        {/* Total Indicators */}
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-orange-100 mb-1">Total Indicators</p>
+              <p className="text-4xl font-bold text-white">{filteredIndicators.length}</p>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Indicators</p>
-              <p className="text-2xl font-bold text-gray-900">{filteredIndicators.length}</p>
+            <div className="p-3 bg-white bg-opacity-20 rounded-lg">
+              <ChartBarIcon className="h-8 w-8 text-white" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircleIcon className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">On Track</p>
-              <p className="text-2xl font-bold text-gray-900">
+        {/* On Track */}
+        <div className="bg-white rounded-xl shadow-md border-2 border-green-500 p-6 transform hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">On Track</p>
+              <p className="text-4xl font-bold text-green-600">
                 {filteredIndicators.filter(i => i.status === 'on-track').length}
               </p>
             </div>
+            <div className="p-3 bg-green-100 rounded-lg">
+              <CheckCircleIcon className="h-8 w-8 text-green-600" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Behind</p>
-              <p className="text-2xl font-bold text-gray-900">
+        {/* Behind */}
+        <div className="bg-white rounded-xl shadow-md border-2 border-gray-300 p-6 transform hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Behind</p>
+              <p className="text-4xl font-bold text-gray-700">
                 {filteredIndicators.filter(i => i.status === 'behind').length}
               </p>
             </div>
+            <div className="p-3 bg-gray-100 rounded-lg">
+              <ExclamationTriangleIcon className="h-8 w-8 text-gray-500" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <CheckCircleIcon className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Completed</p>
-              <p className="text-2xl font-bold text-gray-900">
+        {/* Completed */}
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-100 mb-1">Completed</p>
+              <p className="text-4xl font-bold text-white">
                 {filteredIndicators.filter(i => i.status === 'completed').length}
               </p>
+            </div>
+            <div className="p-3 bg-white bg-opacity-20 rounded-lg">
+              <CheckCircleIcon className="h-8 w-8 text-white" />
             </div>
           </div>
         </div>
@@ -931,8 +944,13 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Progress Chart */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Indicator Progress</h3>
+        <div className="bg-white rounded-xl shadow-lg border-t-4 border-orange-500 p-6">
+          <div className="flex items-center mb-4">
+            <div className="p-2 bg-orange-100 rounded-lg mr-3">
+              <ChartBarIcon className="h-5 w-5 text-orange-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Indicator Progress</h3>
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -953,14 +971,17 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                   return null
                 }}
               />
-              <Bar dataKey="current" fill="#3B82F6" name="Current" />
-              <Bar dataKey="target" fill="#E5E7EB" name="Target" />
+              <Bar dataKey="current" fill="#F97316" name="Current" />
+              <Bar dataKey="target" fill="#D1D5DB" name="Target" />
             </BarChart>
           </ResponsiveContainer>
           
           {/* Legend - Grouped by Objective and Outcome */}
-          <div className="mt-4 max-h-48 overflow-y-auto border-t pt-3">
-            <h4 className="text-xs font-semibold text-gray-700 mb-2">Indicator Legend (by Objective → Outcome):</h4>
+          <div className="mt-4 max-h-48 overflow-y-auto border-t-2 border-orange-200 pt-3 bg-gradient-to-b from-orange-50 to-white p-3 rounded-lg">
+            <h4 className="text-xs font-bold text-orange-600 mb-3 flex items-center">
+              <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+              Indicator Legend (by Objective → Outcome):
+            </h4>
             <div className="space-y-3 text-xs">
               {(() => {
                 // Group indicators by objective and outcome
@@ -978,19 +999,21 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 })
                 
                 return Object.values(grouped).map((group: any, groupIndex: number) => (
-                  <div key={groupIndex} className="bg-gray-50 p-2 rounded">
-                    <div className="font-semibold text-gray-800 mb-1">
+                  <div key={groupIndex} className="bg-white p-3 rounded-lg border-l-4 border-orange-400 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="font-bold text-black mb-1 text-sm flex items-center">
+                      <span className="text-orange-500 mr-2">📊</span>
                       {group.objective}
                     </div>
-                    <div className="text-gray-600 ml-2 mb-2">
-                      → {group.outcome}
+                    <div className="text-gray-700 ml-6 mb-2 font-semibold flex items-center">
+                      <span className="text-green-500 mr-2">→</span>
+                      {group.outcome}
                     </div>
-                    <div className="ml-4 space-y-1">
+                    <div className="ml-8 space-y-1.5">
                       {group.indicators.map((item: any) => (
-                        <div key={item.number} className="flex items-start">
-                          <span className="font-bold text-orange-600 mr-2">#{item.number}</span>
-                          <span className="text-gray-700 flex-1">{item.name}</span>
-                          <span className={`ml-2 px-1.5 py-0.5 rounded ${getCategoryColor(item.category)}`}>
+                        <div key={item.number} className="flex items-start hover:bg-orange-50 p-1.5 rounded transition-colors">
+                          <span className="font-bold text-orange-600 mr-2 min-w-[24px]">#{item.number}</span>
+                          <span className="text-gray-800 flex-1 text-xs leading-relaxed">{item.name}</span>
+                          <span className={`ml-2 px-2 py-0.5 rounded font-semibold text-xs ${getCategoryColor(item.category)}`}>
                             {item.category}
                           </span>
                         </div>
@@ -1004,8 +1027,13 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         </div>
 
         {/* Status Distribution */}
-        <div className="bg-white rounded-lg border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Distribution</h3>
+        <div className="bg-white rounded-xl shadow-lg border-t-4 border-green-500 p-6">
+          <div className="flex items-center mb-4">
+            <div className="p-2 bg-green-100 rounded-lg mr-3">
+              <CheckCircleIcon className="h-5 w-5 text-green-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Status Distribution</h3>
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
@@ -1043,16 +1071,20 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           </ResponsiveContainer>
           
           {/* Status Legend */}
-          <div className="mt-4 border-t pt-3">
-            <h4 className="text-xs font-semibold text-gray-700 mb-2">Status Breakdown:</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="mt-4 border-t-2 border-green-200 pt-3 bg-gradient-to-b from-green-50 to-white p-3 rounded-lg">
+            <h4 className="text-xs font-bold text-green-600 mb-3 flex items-center">
+              <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+              Status Breakdown:
+            </h4>
+            <div className="grid grid-cols-2 gap-3 text-xs">
               {statusData.map((item, index) => (
-                <div key={item.name} className="flex items-center">
+                <div key={item.name} className="flex items-center bg-white p-2 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                   <div 
-                    className="w-3 h-3 rounded-full mr-2" 
+                    className="w-4 h-4 rounded-full mr-2 shadow-inner" 
                     style={{ backgroundColor: COLORS[index % COLORS.length] }}
                   />
-                  <span className="text-gray-700">{item.name}: <span className="font-medium">{item.value}</span></span>
+                  <span className="text-gray-800 font-medium">{item.name}:</span>
+                  <span className="ml-1 font-bold text-black">{item.value}</span>
                 </div>
               ))}
             </div>
@@ -1061,35 +1093,42 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       </div>
 
       {/* Indicators Table */}
-      <div className="bg-white rounded-lg border">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Project Indicators Progress Update</h3>
-          <p className="text-sm text-gray-600">Enter current progress for each indicator from the selected project's Results Framework</p>
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-orange-500">
+        <div className="px-6 py-5 bg-gradient-to-r from-gray-50 to-white border-b-2 border-orange-200">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg mr-3">
+              <PencilIcon className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-black">Project Indicators Progress Update</h3>
+              <p className="text-sm text-gray-600 mt-1">Enter <span className="font-semibold text-orange-600">incremental progress</span> for each indicator - values will be <span className="font-semibold text-green-600">added</span> to current totals</p>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gradient-to-r from-orange-500 to-orange-600">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
                   Indicator
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
                   Target
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
                   Current Progress
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
                   Progress %
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
                   Last Updated
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">
                   Notes
                 </th>
               </tr>
@@ -1100,12 +1139,18 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 const progressPercentage = getProgressPercentage(indicator.current, indicator.target)
                 
                 return (
-                  <tr key={indicator.id} className="hover:bg-gray-50">
+                  <tr key={indicator.id} className="hover:bg-orange-50 transition-colors border-b border-gray-100">
                     <td className="px-6 py-4">
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{indicator.name}</div>
-                        <div className="text-xs text-gray-500 mt-1">{indicator.description}</div>
-                        <div className="text-xs text-blue-600 mt-1 capitalize">{indicator.category}</div>
+                        <div className="text-sm font-semibold text-black">{indicator.name}</div>
+                        <div className="text-xs text-gray-600 mt-1">{indicator.description}</div>
+                        <div className={`inline-block text-xs font-bold mt-2 px-2 py-1 rounded ${
+                          indicator.category === 'outcome' ? 'bg-green-100 text-green-700' : 
+                          indicator.category === 'output' ? 'bg-orange-100 text-orange-700' : 
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {indicator.category.toUpperCase()}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -1125,65 +1170,70 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                             type="number"
                             value={quickUpdateValue}
                             onChange={(e) => setQuickUpdateValue(e.target.value)}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder={indicator.current.toString()}
+                            className="w-20 px-3 py-1.5 text-sm font-medium border-2 border-orange-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-orange-50"
+                            placeholder="Add..."
                             autoFocus
                           />
-                          <span className="text-xs text-gray-500">{indicator.unit}</span>
+                          <span className="text-xs font-medium text-gray-600">{indicator.unit}</span>
                           <button
                             onClick={() => handleQuickUpdate(indicator.id)}
-                            className="text-green-600 hover:text-green-900"
-                            title="Save"
+                            className="p-1 bg-green-500 text-white rounded-lg hover:bg-green-600 shadow-md transition-all"
+                            title="Save increment"
                           >
-                            <CheckCircleIcon className="h-4 w-4" />
+                            <CheckCircleIcon className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() => {
                               setEditingIndicator(null)
                               setQuickUpdateValue('')
                             }}
-                            className="text-red-600 hover:text-red-900"
+                            className="p-1 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all"
                             title="Cancel"
                           >
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                           </button>
                         </div>
                       ) : (
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-900">
-                            {indicator.current} {indicator.unit}
+                          <span className="text-sm font-bold text-black">
+                            {indicator.current}
                           </span>
+                          <span className="text-xs text-gray-600">{indicator.unit}</span>
                           <button
                             onClick={() => {
                               setEditingIndicator(indicator.id)
-                              setQuickUpdateValue(indicator.current.toString())
+                              setQuickUpdateValue('') // Start with empty for increment
                             }}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Update progress"
+                            className="p-1 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
+                            title="Add increment"
                           >
-                            <PencilIcon className="h-4 w-4" />
+                            <PlusIcon className="h-4 w-4" />
                           </button>
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-20 bg-gray-200 rounded-full h-2 mr-2">
+                        <div className="w-24 bg-gray-200 rounded-full h-3 mr-3 shadow-inner">
                           <div 
-                            className="bg-blue-600 h-2 rounded-full" 
+                            className={`h-3 rounded-full transition-all ${
+                              progressPercentage >= 75 ? 'bg-gradient-to-r from-green-500 to-green-600' :
+                              progressPercentage >= 50 ? 'bg-gradient-to-r from-orange-400 to-orange-500' :
+                              'bg-gradient-to-r from-orange-300 to-orange-400'
+                            }`}
                             style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-900">
+                        <span className="text-sm font-bold text-gray-900">
                           {Math.round(progressPercentage)}%
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(indicator.status)}`}>
-                        {indicator.status.replace('-', ' ')}
+                      <span className={`inline-flex px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm ${getStatusColor(indicator.status)}`}>
+                        {indicator.status.replace('-', ' ').toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
