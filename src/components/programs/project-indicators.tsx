@@ -33,6 +33,15 @@ interface Project {
   }
 }
 
+interface UpdateHistory {
+  value: number
+  incrementBy: number
+  previousValue: number
+  updatedBy: string
+  updatedAt: string
+  notes?: string
+}
+
 interface ProjectIndicator {
   id: string
   projectId: string
@@ -63,6 +72,7 @@ interface ProjectIndicator {
   lastUpdatedBy?: string
   lastUpdatedAt?: string
   notes?: string
+  updateHistory?: UpdateHistory[]
 }
 
 interface ProjectIndicatorsProps {
@@ -101,6 +111,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   } | null>(null)
   const [editingIndicator, setEditingIndicator] = useState<string | null>(null)
   const [quickUpdateValue, setQuickUpdateValue] = useState('')
+  const [currentUser, setCurrentUser] = useState<string>('System')
+  const [showAuditTrail, setShowAuditTrail] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -108,8 +120,23 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     localStorage.removeItem('project-indicators-cache')
     sessionStorage.removeItem('project-indicators-cache')
     fetchProjects()
+    fetchCurrentUser()
     // Don't fetch indicators on mount - they should only be loaded when a project is selected
   }, [])
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/auth/session')
+      if (response.ok) {
+        const session = await response.json()
+        if (session?.user) {
+          setCurrentUser(session.user.name || session.user.email || 'Unknown User')
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching current user:', err)
+    }
+  }
 
   // Filter indicators based on selected project
   useEffect(() => {
@@ -318,7 +345,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                   // Audit trail fields
                   lastUpdatedBy: indicator.lastUpdatedBy || 'System',
                   lastUpdatedAt: indicator.lastUpdated || new Date().toISOString(),
-                  notes: indicator.notes || ''
+                  notes: indicator.notes || '',
+                  updateHistory: indicator.updateHistory || []
                 })
               })
             }
@@ -352,7 +380,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                       // Audit trail fields
                       lastUpdatedBy: indicator.lastUpdatedBy || 'System',
                       lastUpdatedAt: indicator.lastUpdated || new Date().toISOString(),
-                      notes: indicator.notes || ''
+                      notes: indicator.notes || '',
+                      updateHistory: indicator.updateHistory || []
                     })
                   })
                 }
@@ -385,9 +414,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       if (selectedProjectId && resultsFramework) {
         let updatedFramework = JSON.parse(JSON.stringify(resultsFramework)) // Deep clone once
         
-        // Update each selected indicator in the framework
+        // Update each selected indicator in the framework (cumulative updates)
         selectedIndicatorDetails.forEach((indicator) => {
-          updatedFramework = updateIndicatorInFramework(updatedFramework, indicator.id, indicator.current)
+          // The value in indicator.current is the INCREMENT, not the new total
+          updatedFramework = updateIndicatorInFramework(updatedFramework, indicator.id, indicator.current, updateNotes)
         })
         
         // Save the updated framework to the project
@@ -414,7 +444,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       setUpdateResults({
         successCount: selectedIndicatorDetails.length,
         totalCount: selectedIndicators.length,
-        updatedBy: 'Current User', // This will be updated by the backend with actual user info
+        updatedBy: currentUser,
         timestamp: new Date().toLocaleString()
       })
       setShowSuccessMessage(true)
@@ -448,11 +478,11 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     setSelectedIndicatorDetails(details)
   }
 
-  const updateIndicatorInFramework = (framework: any, indicatorId: string, newValue: number) => {
+  const updateIndicatorInFramework = (framework: any, indicatorId: string, incrementValue: number, notes: string = '') => {
     if (!framework) return framework
 
     // Work directly on the passed framework (already cloned by caller)
-    console.log('Updating indicator with composite ID:', indicatorId, 'to value:', newValue)
+    console.log('Updating indicator with composite ID:', indicatorId, 'incrementing by:', incrementValue)
     
     // Parse the composite ID to get the parts
     // Format: "outcome-{outcomeId}-{indicatorId}" or "output-{outputId}-{indicatorId}"
@@ -463,6 +493,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     
     console.log('Parsed ID parts:', { type, parentId, actualIndicatorId })
     
+    const now = new Date().toISOString()
+    
     // Update the indicator in the framework
     framework.objectives.forEach((objective: any) => {
       objective.outcomes.forEach((outcome: any) => {
@@ -471,11 +503,29 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           if (outcome.indicators) {
             outcome.indicators.forEach((indicator: any, index: number) => {
               if (indicator.id === actualIndicatorId) {
-                // Add current progress tracking fields
+                const previousValue = indicator.current || 0
+                const newValue = previousValue + incrementValue
+                
+                // Initialize update history if it doesn't exist
+                if (!indicator.updateHistory) {
+                  indicator.updateHistory = []
+                }
+                
+                // Add to update history
+                indicator.updateHistory.push({
+                  value: newValue,
+                  incrementBy: incrementValue,
+                  previousValue: previousValue,
+                  updatedBy: currentUser,
+                  updatedAt: now,
+                  notes: notes
+                })
+                
+                // Update current progress tracking fields
                 indicator.current = newValue
-                indicator.lastUpdated = new Date().toISOString()
-                indicator.lastUpdatedBy = 'Current User'
-                console.log('✓ Updated outcome indicator:', indicator.id, 'to value:', newValue)
+                indicator.lastUpdated = now
+                indicator.lastUpdatedBy = currentUser
+                console.log('✓ Updated outcome indicator:', indicator.id, 'from', previousValue, 'to', newValue, '(+' + incrementValue + ')')
               }
             })
           }
@@ -487,11 +537,29 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             if (output.id === parentId && output.indicators) {
               output.indicators.forEach((indicator: any, index: number) => {
                 if (indicator.id === actualIndicatorId) {
-                  // Add current progress tracking fields
+                  const previousValue = indicator.current || 0
+                  const newValue = previousValue + incrementValue
+                  
+                  // Initialize update history if it doesn't exist
+                  if (!indicator.updateHistory) {
+                    indicator.updateHistory = []
+                  }
+                  
+                  // Add to update history
+                  indicator.updateHistory.push({
+                    value: newValue,
+                    incrementBy: incrementValue,
+                    previousValue: previousValue,
+                    updatedBy: currentUser,
+                    updatedAt: now,
+                    notes: notes
+                  })
+                  
+                  // Update current progress tracking fields
                   indicator.current = newValue
-                  indicator.lastUpdated = new Date().toISOString()
-                  indicator.lastUpdatedBy = 'Current User'
-                  console.log('✓ Updated output indicator:', indicator.id, 'to value:', newValue)
+                  indicator.lastUpdated = now
+                  indicator.lastUpdatedBy = currentUser
+                  console.log('✓ Updated output indicator:', indicator.id, 'from', previousValue, 'to', newValue, '(+' + incrementValue + ')')
                 }
               })
             }
@@ -500,7 +568,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       })
     })
     
-    console.log('Updated framework with new values for indicator:', indicatorId)
+    console.log('Updated framework with cumulative values for indicator:', indicatorId)
     return framework
   }
 
@@ -547,7 +615,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       // For real indicators from Results Framework, update the project's resultsFramework
       if (selectedProjectId && resultsFramework) {
         const clonedFramework = JSON.parse(JSON.stringify(resultsFramework))
-        const updatedFramework = updateIndicatorInFramework(clonedFramework, indicatorId, Number(quickUpdateValue))
+        const updatedFramework = updateIndicatorInFramework(clonedFramework, indicatorId, Number(quickUpdateValue), '')
         
         const response = await fetch(`/api/programs/projects/${selectedProjectId}`, {
           method: 'PUT',
@@ -1242,7 +1310,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                       {selectedIndicatorDetails.length > 0 && (
                         <div className="space-y-3">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Update Values for Each Indicator:
+                            Enter Increment Values for Each Indicator (will be ADDED to current values):
                           </label>
                           {selectedIndicatorDetails.map((indicator, index) => (
                             <div key={indicator.id} className="p-4 border border-gray-200 rounded-lg bg-white shadow-sm">
@@ -1266,7 +1334,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                                   type="number"
                                   id={`bulk-value-${indicator.id}`}
                                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                                  placeholder={`Enter new value in ${indicator.unit}`}
+                                  placeholder={`Enter increment in ${indicator.unit} (e.g., +5)`}
                                   onChange={(e) => {
                                     // Update the indicator's value in the details array
                                     const updatedDetails = selectedIndicatorDetails.map(detail => 
