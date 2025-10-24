@@ -247,47 +247,33 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       if (response.ok) {
         const data = await response.json()
         console.log('Project data received:', data)
-        if (data.success && data.data.resultsFramework) {
-          console.log('Results Framework found:', data.data.resultsFramework)
-          setResultsFramework(data.data.resultsFramework)
+        console.log('Raw resultsFramework:', data.data.resultsFramework)
+        console.log('Type of resultsFramework:', typeof data.data.resultsFramework)
+        
+        let framework = data.data.resultsFramework
+        
+        // If resultsFramework is a string, parse it
+        if (typeof framework === 'string') {
+          try {
+            framework = JSON.parse(framework)
+            console.log('Parsed resultsFramework from string:', framework)
+          } catch (parseError) {
+            console.error('Failed to parse resultsFramework string:', parseError)
+            framework = null
+          }
+        }
+        
+        if (data.success && framework && framework.objectives) {
+          console.log('Results Framework found with objectives:', framework.objectives.length)
+          setResultsFramework(framework)
           // Extract indicators from Results Framework
-          extractIndicatorsFromFramework(data.data.resultsFramework, projectId)
+          extractIndicatorsFromFramework(framework, projectId)
         } else {
-          console.log('No Results Framework found for this project')
-          // If no Results Framework, show sample indicators for testing
-          const sampleIndicators = [
-            {
-              id: crypto.randomUUID(),
-              projectId: projectId,
-              name: 'Number of Beneficiaries Reached',
-              description: 'Total number of people who have benefited from the project',
-              target: 1000,
-              current: 0,
-              unit: 'people',
-              frequency: 'monthly' as const,
-              status: 'on-track' as const,
-              lastUpdated: new Date().toISOString(),
-              trend: 'stable' as const,
-              category: 'outcome' as const
-            },
-            {
-              id: crypto.randomUUID(),
-              projectId: projectId,
-              name: 'Training Sessions Completed',
-              description: 'Number of training sessions delivered to beneficiaries',
-              target: 50,
-              current: 0,
-              unit: 'sessions',
-              frequency: 'monthly' as const,
-              status: 'on-track' as const,
-              lastUpdated: new Date().toISOString(),
-              trend: 'stable' as const,
-              category: 'output' as const
-            }
-          ]
-          console.log('Setting sample indicators:', sampleIndicators)
-          setIndicators(sampleIndicators)
-          setFilteredIndicators(sampleIndicators)
+          console.log('No Results Framework or no objectives found for this project')
+          console.log('Framework value:', framework)
+          // Clear indicators if no framework
+          setIndicators([])
+          setFilteredIndicators([])
         }
       } else {
         console.error('Failed to fetch project data:', response.status)
