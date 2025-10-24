@@ -100,7 +100,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
     title: "",
     description: "",
     indicators: [],
-    isExpanded: false
+    isExpanded: true // Start expanded for better UX
   })
 
   const createEmptyOutcome = (): Outcome => ({
@@ -109,7 +109,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
     description: "",
     indicators: [],
     outputs: [],
-    isExpanded: false
+    isExpanded: true // Start expanded for better UX
   })
 
   const createEmptyObjective = (): Objective => ({
@@ -117,11 +117,27 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
     title: "",
     description: "",
     outcomes: [],
-    isExpanded: false
+    isExpanded: true // Start expanded for better UX
   })
 
   const updateData = (newData: ResultsFrameworkData) => {
-    onChange(newData)
+    // Safety check: ensure all objectives, outcomes, and outputs have valid IDs
+    const sanitizedData = {
+      ...newData,
+      objectives: (newData.objectives || []).map(obj => ({
+        ...obj,
+        id: obj.id || `objective_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        outcomes: (obj.outcomes || []).map(outcome => ({
+          ...outcome,
+          id: outcome.id || `outcome_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          outputs: (outcome.outputs || []).map(output => ({
+            ...output,
+            id: output.id || `output_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          }))
+        }))
+      }))
+    }
+    onChange(sanitizedData)
   }
 
   const addObjective = () => {
@@ -338,6 +354,12 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
   }
 
   const toggleExpanded = (id: string) => {
+    // Safety check: don't crash if id is undefined/null
+    if (!id) {
+      console.warn('toggleExpanded called with invalid id:', id)
+      return
+    }
+    
     const newExpanded = new Set(expandedSections)
     if (newExpanded.has(id)) {
       newExpanded.delete(id)
