@@ -524,17 +524,25 @@ export function ProjectForm({ project, onSubmit, onCancel, isEditing = false }: 
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="projectGoal">Project Goal</Label>
+              <div className="space-y-2 bg-orange-50 p-4 rounded-lg border-2 border-orange-200">
+                <Label htmlFor="projectGoal" className="text-orange-700 font-semibold flex items-center">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
+                  Project Goal *
+                </Label>
                 <Textarea
                   id="projectGoal"
                   name="projectGoal"
                   value={formData.projectGoal || ''}
                   onChange={handleInputChange}
-                  placeholder="Enter the main goal or objective of this project"
+                  placeholder="Enter the main goal or objective of this project (e.g., Improve water access for 50,000 people in rural communities)"
                   disabled={isLoading}
                   rows={3}
+                  className="border-2 border-orange-300 focus:border-orange-500 focus:ring-orange-500 bg-white"
+                  required
                 />
+                <p className="text-xs text-orange-600 font-medium">
+                  💡 This field is important for tracking project objectives and outcomes
+                </p>
               </div>
 
               <div className="space-y-2">
