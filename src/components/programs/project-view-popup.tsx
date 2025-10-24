@@ -182,7 +182,7 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:static print:bg-transparent print:p-0">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-[95vw] max-h-[92vh] overflow-hidden print:max-w-full print:max-h-full print:shadow-none print:rounded-none">
         {/* Header */}
-        <div className="bg-orange-600 text-white px-6 py-4 flex items-center justify-between print:bg-white print:text-black print:border-b-4 print:border-orange-600">
+        <div className="bg-orange-600 text-white px-6 py-4 flex items-center justify-between print:hidden">
           <div className="flex items-center space-x-3">
             <DocumentTextIcon className="h-6 w-6" />
             <div>
@@ -192,16 +192,31 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-orange-200 transition-colors print:hidden"
+            className="text-white hover:text-orange-200 transition-colors"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
 
+        {/* Print-Only Header with Logo */}
+        <div className="hidden print:block print:mb-8">
+          <div className="flex items-center justify-between border-b-4 border-orange-600 pb-4 mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-orange-600">SAYWHAT</h1>
+              <p className="text-sm text-gray-600">Programs & Projects Management</p>
+            </div>
+            <div className="text-right text-sm text-gray-600">
+              <p>Generated: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+              <p>Time: {new Date().toLocaleTimeString('en-GB')}</p>
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">PROJECT REPORT</h2>
+        </div>
+
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(92vh-140px)] print:overflow-visible print:max-h-full">
+        <div className="p-6 overflow-y-auto max-h-[calc(92vh-140px)] print:overflow-visible print:max-h-full print:p-0">
           {loading && (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-12 print:hidden">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
               <span className="ml-3 text-gray-600">Loading project details...</span>
             </div>
@@ -219,22 +234,25 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
           {project && !loading && (
             <div className="space-y-6">
               {/* Project Header */}
-              <div className="border-b border-gray-200 pb-6">
-                <div className="flex items-start justify-between">
+              <div className="border-b border-gray-200 pb-6 print-no-break">
+                <div className="flex items-start justify-between print:block">
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{project.name}</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3 print:text-3xl">{project.name}</h3>
                     
                     {/* Project Goal */}
                     {project.projectGoal && (
-                      <div className="bg-orange-50 border-l-4 border-orange-500 p-3 rounded-lg mb-3">
-                        <p className="text-sm font-medium text-orange-700 mb-1">🎯 Project Goal:</p>
-                        <p className="text-gray-800">{project.projectGoal}</p>
+                      <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg mb-4 print:mb-6 print:bg-white print:border-2">
+                        <p className="text-sm font-bold text-orange-700 mb-2 print:text-base">🎯 PROJECT GOAL:</p>
+                        <p className="text-gray-800 print:text-lg print:font-medium">{project.projectGoal}</p>
                       </div>
                     )}
                     
-                    <p className="text-gray-600 text-lg">{project.description}</p>
+                    <div className="mb-3">
+                      <p className="text-sm font-semibold text-gray-700 mb-1 print:text-base">Description:</p>
+                      <p className="text-gray-600 text-base print:text-lg">{project.description}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-3 print:mt-3">
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(project.status)}`}>
                       {project.status.replace('-', ' ').toUpperCase()}
                     </span>
@@ -431,7 +449,7 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
                   
                   <div className="space-y-6">
                     {project.resultsFramework.objectives.map((objective: any, objIndex: number) => (
-                      <div key={objective.id || objIndex} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border-l-4 border-blue-500 shadow-md">
+                      <div key={objective.id || objIndex} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border-l-4 border-blue-500 shadow-md print-no-break print:shadow-none print:bg-white print:border-2 print:mb-4">
                         <h5 className="text-lg font-bold text-blue-900 mb-2">
                           📊 Objective {objIndex + 1}: {objective.title}
                         </h5>
@@ -556,30 +574,83 @@ export function ProjectViewPopup({ projectId, isOpen, onClose, onEdit, permissio
           <div className="flex items-center space-x-3">
             <button
               onClick={() => {
-                // Add print styles before printing
+                // Add comprehensive print styles
                 const printStyle = document.createElement('style')
                 printStyle.id = 'print-results-framework'
                 printStyle.textContent = `
                   @media print {
                     @page { 
                       size: A4;
-                      margin: 1cm;
+                      margin: 2cm;
                     }
-                    .print-hide { display: none !important; }
-                    .print-show { display: block !important; }
-                    .print-page-break { page-break-before: always; }
-                    body { font-size: 10pt; }
-                    h2, h3, h4, h5, h6 { page-break-after: avoid; }
+                    
+                    /* Hide everything except the modal content */
+                    body > *:not(.print-content-wrapper) {
+                      display: none !important;
+                    }
+                    
+                    /* Hide all navigation, headers, footers */
+                    nav, header, footer, .print-hide {
+                      display: none !important;
+                    }
+                    
+                    /* Reset modal styling for print */
+                    .print-content-wrapper {
+                      position: static !important;
+                      background: white !important;
+                      padding: 0 !important;
+                      max-width: 100% !important;
+                      max-height: none !important;
+                      overflow: visible !important;
+                      box-shadow: none !important;
+                      border-radius: 0 !important;
+                    }
+                    
+                    /* Page breaks */
+                    .print-page-break {
+                      page-break-before: always;
+                    }
+                    
+                    /* Prevent breaks inside elements */
+                    .print-no-break {
+                      page-break-inside: avoid;
+                    }
+                    
+                    /* Typography */
+                    body { 
+                      font-size: 11pt;
+                      line-height: 1.4;
+                      color: #000;
+                    }
+                    
+                    h1, h2, h3, h4, h5, h6 {
+                      page-break-after: avoid;
+                      color: #000;
+                    }
+                    
+                    /* Remove backgrounds and borders for clean print */
+                    * {
+                      -webkit-print-color-adjust: exact;
+                      print-color-adjust: exact;
+                    }
                   }
                 `
                 document.head.appendChild(printStyle)
+                
+                // Add print class to modal
+                document.querySelector('.fixed.inset-0')?.classList.add('print-content-wrapper')
+                
                 window.print()
-                // Remove print styles after printing
-                setTimeout(() => document.getElementById('print-results-framework')?.remove(), 1000)
+                
+                // Cleanup
+                setTimeout(() => {
+                  document.getElementById('print-results-framework')?.remove()
+                  document.querySelector('.print-content-wrapper')?.classList.remove('print-content-wrapper')
+                }, 1000)
               }}
               className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
             >
-              📄 Print
+              📄 Export PDF
             </button>
             <button
               onClick={onClose}
