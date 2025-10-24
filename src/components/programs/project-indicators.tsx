@@ -467,36 +467,51 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
     const updatedFramework = JSON.parse(JSON.stringify(resultsFramework)) // Deep clone
     
+    console.log('Updating indicator with composite ID:', indicatorId, 'to value:', newValue)
+    
+    // Parse the composite ID to get the parts
+    // Format: "outcome-{outcomeId}-{indicatorId}" or "output-{outputId}-{indicatorId}"
+    const parts = indicatorId.split('-')
+    const type = parts[0] // 'outcome' or 'output'
+    const parentId = parts[1] // outcome or output ID
+    const actualIndicatorId = parts.slice(2).join('-') // indicator ID (may contain dashes)
+    
+    console.log('Parsed ID parts:', { type, parentId, actualIndicatorId })
+    
     // Update the indicator in the framework
     updatedFramework.objectives.forEach((objective: any) => {
       objective.outcomes.forEach((outcome: any) => {
-        // Update outcome indicators
-        if (outcome.indicators) {
-          outcome.indicators.forEach((indicator: any) => {
-            if (indicator.id === indicatorId) {
-              // Add current progress tracking fields if they don't exist
-              indicator.current = newValue
-              indicator.lastUpdated = new Date().toISOString()
-              indicator.lastUpdatedBy = 'Current User'
-              console.log('Updated outcome indicator:', indicator.id, 'to value:', newValue)
-            }
-          })
-        }
-        
-        // Update output indicators
-        outcome.outputs.forEach((output: any) => {
-          if (output.indicators) {
-            output.indicators.forEach((indicator: any) => {
-              if (indicator.id === indicatorId) {
-                // Add current progress tracking fields if they don't exist
+        if (type === 'outcome' && outcome.id === parentId) {
+          // Update outcome indicators
+          if (outcome.indicators) {
+            outcome.indicators.forEach((indicator: any, index: number) => {
+              if (indicator.id === actualIndicatorId) {
+                // Add current progress tracking fields
                 indicator.current = newValue
                 indicator.lastUpdated = new Date().toISOString()
                 indicator.lastUpdatedBy = 'Current User'
-                console.log('Updated output indicator:', indicator.id, 'to value:', newValue)
+                console.log('✓ Updated outcome indicator:', indicator.id, 'to value:', newValue)
               }
             })
           }
-        })
+        }
+        
+        // Update output indicators
+        if (type === 'output' && outcome.outputs) {
+          outcome.outputs.forEach((output: any) => {
+            if (output.id === parentId && output.indicators) {
+              output.indicators.forEach((indicator: any, index: number) => {
+                if (indicator.id === actualIndicatorId) {
+                  // Add current progress tracking fields
+                  indicator.current = newValue
+                  indicator.lastUpdated = new Date().toISOString()
+                  indicator.lastUpdatedBy = 'Current User'
+                  console.log('✓ Updated output indicator:', indicator.id, 'to value:', newValue)
+                }
+              })
+            }
+          })
+        }
       })
     })
     
