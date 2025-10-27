@@ -225,38 +225,47 @@ function FormsStub() {
         {loading ? (
           <div className="text-gray-600">Loading...</div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
+          <div className="space-y-6">
+            {/* Forms Table - Full Width */}
+            <div className="overflow-x-auto bg-white rounded-lg border shadow-sm">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead>
+                <thead className="bg-gray-50">
                   <tr className="text-left">
-                    <th className="py-2 pr-4">Name</th>
-                    <th className="py-2 pr-4">Project</th>
-                    <th className="py-2 pr-4">Created By</th>
-                    <th className="py-2 pr-4">Last Updated By</th>
-                    <th className="py-2 pr-4">Status</th>
-                    <th className="py-2 pr-4">Form Link</th>
-                    <th className="py-2 pr-4">Created</th>
-                    <th className="py-2 pr-4"></th>
+                    <th className="py-3 px-4 font-semibold text-gray-700">Name</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700">Project</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700">Created By</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700">Last Updated By</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700">Status</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700 min-w-[250px]">Form Link</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700">Created</th>
+                    <th className="py-3 px-4 font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 bg-white">
                   {forms.map(f => (
-                    <tr key={f.id}>
-                      <td className="py-2 pr-4">{f.name}</td>
-                      <td className="py-2 pr-4">
+                    <tr key={f.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4 font-medium text-gray-900">{f.name}</td>
+                      <td className="py-3 px-4 max-w-[150px]">
                         {f.assignedProjects && f.assignedProjects.length > 0 ? (
-                          <div className="text-xs">
+                          <div className="text-xs text-gray-700 truncate" title={f.assignedProjects.filter(Boolean).join(', ')}>
                             {f.assignedProjects.filter(Boolean).join(', ')}
                           </div>
                         ) : (
-                          f.projectName || '-'
+                          <span className="text-gray-500">{f.projectName || '-'}</span>
                         )}
                       </td>
-                      <td className="py-2 pr-4">{f.createdByFirstName && f.createdByLastName ? `${f.createdByFirstName} ${f.createdByLastName}` : (f.createdBy || '-')}</td>
-                      <td className="py-2 pr-4">{f.updatedByFirstName && f.updatedByLastName ? `${f.updatedByFirstName} ${f.updatedByLastName}` : (f.updatedBy || '-')}</td>
-                      <td className="py-2 pr-4">
-                        <span className={`px-2 py-1 rounded text-xs ${
+                      <td className="py-3 px-4 max-w-[120px]">
+                        <div className="truncate" title={f.createdByFirstName && f.createdByLastName ? `${f.createdByFirstName} ${f.createdByLastName}` : (f.createdBy || '-')}>
+                          {f.createdByFirstName && f.createdByLastName ? `${f.createdByFirstName} ${f.createdByLastName}` : (f.createdBy || '-')}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 max-w-[120px]">
+                        <div className="truncate" title={f.updatedByFirstName && f.updatedByLastName ? `${f.updatedByFirstName} ${f.updatedByLastName}` : (f.updatedBy || '-')}>
+                          {f.updatedByFirstName && f.updatedByLastName ? `${f.updatedByFirstName} ${f.updatedByLastName}` : (f.updatedBy || '-')}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                           f.status === 'published' ? 'bg-green-100 text-green-800' :
                           f.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-gray-100 text-gray-800'
@@ -264,14 +273,15 @@ function FormsStub() {
                           {f.status}
                         </span>
                       </td>
-                      <td className="py-2 pr-4">
+                      <td className="py-3 px-4 min-w-[250px]">
                         {f.status === 'published' ? (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <input 
                               type="text" 
                               value={`${typeof window !== 'undefined' ? window.location.origin : ''}/forms/${f.id}`}
                               readOnly
-                              className="px-2 py-1 text-xs border rounded bg-gray-50 w-32"
+                              className="px-3 py-1.5 text-xs border rounded-md bg-gray-50 flex-1 font-mono"
+                              title={`${typeof window !== 'undefined' ? window.location.origin : ''}/forms/${f.id}`}
                             />
                             <button 
                               onClick={() => {
@@ -279,29 +289,40 @@ function FormsStub() {
                                 navigator.clipboard.writeText(link)
                                 alert('Form link copied to clipboard!')
                               }}
-                              className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                              className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700 transition-colors whitespace-nowrap"
+                              title="Copy link to clipboard"
                             >
-                              📋
+                              📋 Copy
                             </button>
                           </div>
                         ) : (
                           <span className="text-gray-400 text-xs">Not published</span>
                         )}
                       </td>
-                      <td className="py-2 pr-4">{(() => { const c = (f.createdAt ?? f.created_at); return c ? new Date(c).toLocaleString() : '-'; })()}</td>
-                      <td className="py-2 pr-4 text-right">
-                        <button onClick={()=>setSelected(f)} className="px-2 py-1 border rounded-md">Edit</button>
+                      <td className="py-3 px-4 text-sm text-gray-600 whitespace-nowrap">
+                        {(() => { const c = (f.createdAt ?? f.created_at); return c ? new Date(c).toLocaleString() : '-'; })()}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button 
+                          onClick={()=>setSelected(f)} 
+                          className="px-3 py-1.5 bg-orange-600 text-white rounded-md text-xs hover:bg-orange-700 transition-colors whitespace-nowrap"
+                        >
+                          ✏️ Edit
+                        </button>
                       </td>
                     </tr>
                   ))}
                   {forms.length === 0 && (
-                    <tr><td className="py-4 text-gray-500" colSpan={8}>No forms yet. Create one above.</td></tr>
+                    <tr><td className="py-8 text-center text-gray-500" colSpan={8}>No forms yet. Create one above.</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
-            <div>
-              {selected ? (
+
+            {/* Editing Panel - Full Width Below Table */}
+            {selected && (
+              <div className="bg-white rounded-lg border shadow-lg p-6">
+                <div className="space-y-4">{selected ? (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold">Editing: {selected.name}</h4>
@@ -370,12 +391,18 @@ function FormsStub() {
               ) : (
                 <div className="text-gray-600">Select a form to edit fields.</div>
               )}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
-      <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded text-sm text-orange-700">
-        Next: field editor UI (text/number/date/select/GPS/file), conditional logic, indicator mapping.
+      
+      {/* Info Banner - Full Width */}
+      <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 to-orange-100 border-l-4 border-orange-500 rounded-lg text-sm shadow-sm">
+        <p className="text-orange-900 font-medium">
+          ✨ <strong>Next Features:</strong> Field editor UI (text/number/date/select/GPS/file), conditional logic, and indicator mapping.
+        </p>
       </div>
     </div>
   )
