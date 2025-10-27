@@ -1318,8 +1318,14 @@ function IndicatorsStub() {
 
   useEffect(() => {
     loadProjects()
-    loadIndicators()
   }, [])
+
+  // Load indicators after projects are fetched
+  useEffect(() => {
+    if (projects.length > 0) {
+      loadIndicators()
+    }
+  }, [projects])
 
   const loadProjects = async () => {
     try {
@@ -1331,11 +1337,90 @@ function IndicatorsStub() {
 
   const loadIndicators = async () => {
     setLoading(true)
+    setError(null)
     try {
-      const res = await fetch('/api/meal/indicators')
-      const j = await res.json()
-      if (j.success) setIndicators(j.data)
-    } catch (e) { setError('Failed to load indicators') }
+      // Fetch all indicators from projects' resultsFramework
+      const extractedIndicators: any[] = []
+      
+      for (const project of projects) {
+        // Fetch full project data including resultsFramework
+        const projectRes = await fetch(`/api/programs/projects/${project.id}`)
+        const projectData = await projectRes.json()
+        
+        if (projectData.success && projectData.data?.resultsFramework) {
+          const rf = projectData.data.resultsFramework
+          
+          // Parse if string
+          const framework = typeof rf === 'string' ? JSON.parse(rf) : rf
+          
+          if (framework && framework.objectives && Array.isArray(framework.objectives)) {
+            framework.objectives.forEach((objective: any) => {
+              if (objective.outcomes && Array.isArray(objective.outcomes)) {
+                objective.outcomes.forEach((outcome: any) => {
+                  // Extract outcome indicators
+                  if (outcome.indicators && Array.isArray(outcome.indicators)) {
+                    outcome.indicators.forEach((indicator: any) => {
+                      extractedIndicators.push({
+                        ...indicator,
+                        projectId: project.id,
+                        projectName: project.name,
+                        objectiveTitle: objective.title,
+                        outcomeTitle: outcome.title,
+                        level: 'outcome',
+                        category: 'outcome',
+                        unit: indicator.targetUnit || indicator.baselineUnit || '',
+                        baseline: parseFloat(indicator.baseline) || 0,
+                        target: parseFloat(indicator.targets?.Year1) || 0,
+                        current: parseFloat(indicator.current) || 0,
+                        name: indicator.description,
+                        description: indicator.comment || '',
+                        frequency: indicator.dataCollection?.frequency || 'monthly',
+                        dataSource: indicator.dataCollection?.source || 'Not specified',
+                        responsiblePerson: indicator.lastUpdatedBy || 'Not assigned'
+                      })
+                    })
+                  }
+                  
+                  // Extract output indicators
+                  if (outcome.outputs && Array.isArray(outcome.outputs)) {
+                    outcome.outputs.forEach((output: any) => {
+                      if (output.indicators && Array.isArray(output.indicators)) {
+                        output.indicators.forEach((indicator: any) => {
+                          extractedIndicators.push({
+                            ...indicator,
+                            projectId: project.id,
+                            projectName: project.name,
+                            objectiveTitle: objective.title,
+                            outcomeTitle: outcome.title,
+                            outputTitle: output.title,
+                            level: 'output',
+                            category: 'output',
+                            unit: indicator.targetUnit || indicator.baselineUnit || '',
+                            baseline: parseFloat(indicator.baseline) || 0,
+                            target: parseFloat(indicator.targets?.Year1) || 0,
+                            current: parseFloat(indicator.current) || 0,
+                            name: indicator.description,
+                            description: indicator.comment || '',
+                            frequency: indicator.dataCollection?.frequency || 'monthly',
+                            dataSource: indicator.dataCollection?.source || 'Not specified',
+                            responsiblePerson: indicator.lastUpdatedBy || 'Not assigned'
+                          })
+                        })
+                      }
+                    })
+                  }
+                })
+              }
+            })
+          }
+        }
+      }
+      
+      setIndicators(extractedIndicators)
+    } catch (e) { 
+      console.error('Failed to load indicators:', e)
+      setError('Failed to load indicators from projects')
+    }
     finally { setLoading(false) }
   }
 
@@ -1546,58 +1631,104 @@ function IndicatorsStub() {
             {indicators
               .filter(ind => !selectedProject || ind.projectId === selectedProject)
               .map(indicator => (
-              <div key={indicator.id} className="p-4">
+              <div key={indicator.id} className="p-4 border-l-4 border-l-orange-500 bg-gradient-to-r from-white to-orange-50">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
+                    {/* Hierarchical Path */}
+                    <div className="mb-3 text-xs space-y-1 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-blue-700">📊 Project: {indicator.projectName}</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <span className="text-blue-600">→ Objective: {indicator.objectiveTitle}</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-8">
+                        <span className="text-green-600">→ Outcome: {indicator.outcomeTitle}</span>
+                      </div>
+                      {indicator.outputTitle && (
+                        <div className="flex items-center gap-2 ml-12">
+                          <span className="text-orange-600">→ Output: {indicator.outputTitle}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Indicator Details */}
                     <div className="flex items-center gap-2 mb-2">
-                      <h5 className="font-medium text-gray-900">{indicator.name}</h5>
-                      <span className={`px-2 py-1 rounded text-xs ${getCategoryColor(indicator.category)}`}>
+                      <h5 className="font-semibold text-gray-900 text-base">{indicator.name}</h5>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getCategoryColor(indicator.category)}`}>
                         {indicator.category.toUpperCase()}
                       </span>
                     </div>
+                    
                     {indicator.description && (
-                      <p className="text-sm text-gray-600 mb-2">{indicator.description}</p>
+                      <p className="text-sm text-gray-600 mb-3 italic bg-gray-50 p-2 rounded">{indicator.description}</p>
                     )}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500">Baseline:</span>
-                        <span className="ml-1 font-medium">{indicator.baseline} {indicator.unit}</span>
+
+                    {/* Metrics Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                      <div className="bg-white border border-gray-200 p-2 rounded-lg">
+                        <span className="text-xs text-gray-500 block mb-1">Baseline</span>
+                        <span className="text-base font-bold text-gray-900">{indicator.baseline}</span>
+                        <span className="text-xs text-gray-600 ml-1">{indicator.unit}</span>
                       </div>
-                      <div>
-                        <span className="text-gray-500">Target:</span>
-                        <span className="ml-1 font-medium">{indicator.target} {indicator.unit}</span>
+                      <div className="bg-blue-50 border border-blue-200 p-2 rounded-lg">
+                        <span className="text-xs text-blue-600 block mb-1 font-medium">Target (Y1)</span>
+                        <span className="text-base font-bold text-blue-900">{indicator.target}</span>
+                        <span className="text-xs text-blue-700 ml-1">{indicator.unit}</span>
                       </div>
-                      <div>
-                        <span className="text-gray-500">Current:</span>
-                        <span className="ml-1 font-medium">{indicator.current || 0} {indicator.unit}</span>
+                      <div className="bg-green-50 border border-green-200 p-2 rounded-lg">
+                        <span className="text-xs text-green-600 block mb-1 font-medium">Current</span>
+                        <span className="text-base font-bold text-green-900">{indicator.current || 0}</span>
+                        <span className="text-xs text-green-700 ml-1">{indicator.unit}</span>
                       </div>
-                      <div>
-                        <span className="text-gray-500">Progress:</span>
-                        <span className="ml-1 font-medium">
-                          {getProgressPercentage(indicator.current || 0, indicator.target)}%
+                      <div className="bg-orange-50 border border-orange-200 p-2 rounded-lg">
+                        <span className="text-xs text-orange-600 block mb-1 font-medium">Progress</span>
+                        <span className="text-base font-bold text-orange-900">
+                          {getProgressPercentage(indicator.current || 0, indicator.target).toFixed(1)}%
                         </span>
                       </div>
                     </div>
-                    <div className="mt-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+
+                    {/* Progress Bar */}
+                    <div className="mb-3">
+                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
                         <div 
-                          className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${getProgressPercentage(indicator.current || 0, indicator.target)}%` }}
-                        ></div>
+                          className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                          style={{ width: `${Math.min(getProgressPercentage(indicator.current || 0, indicator.target), 100)}%` }}
+                        >
+                          {getProgressPercentage(indicator.current || 0, indicator.target) > 10 && (
+                            <span className="text-xs text-white font-bold drop-shadow">
+                              {getProgressPercentage(indicator.current || 0, indicator.target).toFixed(1)}%
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                      <span>📊 {indicator.frequency}</span>
-                      <span>📋 {indicator.dataSource || 'No source specified'}</span>
-                      <span>👤 {indicator.responsiblePerson || 'Not assigned'}</span>
+
+                    {/* Metadata */}
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
+                      <span className="flex items-center gap-1">
+                        <span className="text-orange-600">📊</span> 
+                        <span className="font-medium">Frequency:</span> {indicator.frequency}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="text-blue-600">📋</span> 
+                        <span className="font-medium">Source:</span> {indicator.dataSource}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="text-green-600">👤</span> 
+                        <span className="font-medium">Updated by:</span> {indicator.responsiblePerson}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
-                      📊 Update
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2 ml-4">
+                    <button className="px-3 py-2 text-xs bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm flex items-center gap-1 whitespace-nowrap">
+                      <span>📊</span> Update
                     </button>
-                    <button className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700">
-                      ✏️ Edit
+                    <button className="px-3 py-2 text-xs bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all shadow-sm flex items-center gap-1 whitespace-nowrap">
+                      <span>✏️</span> Edit
                     </button>
                   </div>
                 </div>
