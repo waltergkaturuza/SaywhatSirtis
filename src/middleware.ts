@@ -153,7 +153,8 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  // ALLOW camera and geolocation for MEAL forms on mobile devices
+  response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self)')
   
   // CORS headers for API routes
   response.headers.set('Access-Control-Allow-Origin', process.env.NODE_ENV === 'production' ? 'https://sirtis.saywhat.org' : '*')
