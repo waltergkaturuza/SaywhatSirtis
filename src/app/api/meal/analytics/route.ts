@@ -64,18 +64,21 @@ export async function GET(req: NextRequest) {
       LIMIT 10
     `
 
-    // Get gender distribution
+    // Get gender distribution with safe percentage calculation
     const genderDistribution = await prisma.$queryRaw<any[]>`
       SELECT 
         COALESCE(ms.data->>'gender', ms.data->>'sex', 'Unknown') as gender,
         COUNT(*) as count,
-        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM public.meal_submissions), 1) as percentage
+        COALESCE(
+          ROUND(COUNT(*) * 100.0 / NULLIF((SELECT COUNT(*) FROM public.meal_submissions), 0), 1),
+          0
+        ) as percentage
       FROM public.meal_submissions ms
       GROUP BY ms.data->>'gender', ms.data->>'sex'
       ORDER BY count DESC
     `
 
-    // Get age groups
+    // Get age groups with safe percentage calculation
     const ageGroups = await prisma.$queryRaw<any[]>`
       SELECT 
         age_group,
@@ -92,7 +95,10 @@ export async function GET(req: NextRequest) {
             ELSE '65+'
           END as age_group,
           COUNT(*) as count,
-          ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM public.meal_submissions), 1) as percentage
+          COALESCE(
+            ROUND(COUNT(*) * 100.0 / NULLIF((SELECT COUNT(*) FROM public.meal_submissions), 0), 1),
+            0
+          ) as percentage
         FROM public.meal_submissions ms
         WHERE ms.data->>'age' IS NOT NULL
           AND ms.data->>'age' ~ '^[0-9]+$'
@@ -128,13 +134,16 @@ export async function GET(req: NextRequest) {
       LIMIT 30
     `
 
-    // Get top performing forms
+    // Get top performing forms with safe completion rate
     const topForms = await prisma.$queryRaw<any[]>`
       SELECT 
         mf.name as form_name,
         COUNT(*) as submission_count,
-        ROUND(
-          COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1
+        COALESCE(
+          ROUND(
+            COUNT(CASE WHEN ms.metadata->>'status' = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 1
+          ),
+          0
         ) as completion_rate
       FROM public.meal_submissions ms
       LEFT JOIN public.meal_forms mf ON ms.form_id = mf.id
@@ -171,15 +180,21 @@ export async function GET(req: NextRequest) {
       indicatorProgress: indicatorProgress || []
     }
 
-    // Convert BigInt values to numbers for JSON serialization
+    // Convert BigInt values to numbers and fix NaN for JSON serialization
     const convertBigInt = (obj: any): any => {
       if (obj === null || obj === undefined) return obj
       if (typeof obj === 'bigint') return Number(obj)
+      if (typeof obj === 'number' && isNaN(obj)) return 0 // Fix NaN values
       if (Array.isArray(obj)) return obj.map(convertBigInt)
       if (typeof obj === 'object') {
         const converted: any = {}
         for (const [key, value] of Object.entries(obj)) {
-          converted[key] = convertBigInt(value)
+          // Fix percentage fields specifically
+          if (key === 'percentage' && (value === null || isNaN(Number(value)))) {
+            converted[key] = 0
+          } else {
+            converted[key] = convertBigInt(value)
+          }
         }
         return converted
       }
