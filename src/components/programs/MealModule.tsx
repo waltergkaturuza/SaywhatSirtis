@@ -1811,6 +1811,13 @@ function DashboardsStub() {
     return 'bg-red-100'
   }
 
+  // Safe percentage formatter to handle NaN, null, undefined
+  const formatPercentage = (value: any): string => {
+    const num = parseFloat(value)
+    if (isNaN(num) || num === null || num === undefined) return '0'
+    return num.toFixed(1)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -2045,7 +2052,7 @@ function DashboardsStub() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-600">{item.count}</span>
-                      <span className="text-sm font-medium text-gray-900">{item.percentage}%</span>
+                      <span className="text-sm font-medium text-gray-900">{formatPercentage(item.percentage)}%</span>
                     </div>
                   </div>
                 ))}
@@ -2150,7 +2157,7 @@ function DashboardsStub() {
                       </div>
                       <div className="text-sm">
                         <span className={`font-medium ${getProgressColor(region.completion)}`}>
-                          {region.completion}%
+                          {formatPercentage(region.completion)}%
                         </span>
                         <span className="text-gray-600 ml-1">completion</span>
                       </div>
@@ -2187,7 +2194,7 @@ function DashboardsStub() {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-gray-600">{item.count}</span>
-                      <span className="text-sm font-medium text-gray-900">{item.percentage}%</span>
+                      <span className="text-sm font-medium text-gray-900">{formatPercentage(item.percentage)}%</span>
                     </div>
                   </div>
                 ))}
@@ -2307,13 +2314,13 @@ function DashboardsStub() {
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">{form.completion}%</p>
+                        <p className="text-sm font-medium text-gray-900">{formatPercentage(form.completion)}%</p>
                         <p className="text-xs text-gray-600">completion</p>
                       </div>
                       <div className="w-16 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-green-600 h-2 rounded-full"
-                          style={{ width: `${form.completion}%` }}
+                          style={{ width: `${formatPercentage(form.completion)}%` }}
                         ></div>
                       </div>
                     </div>
