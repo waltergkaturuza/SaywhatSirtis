@@ -1133,6 +1133,8 @@ model meal_forms {
   updatedBy    String?
   publishedAt  DateTime?
   schema       Json     // JSON form schema (fields, logic, options)
+  conditionalLogic Json? // JSON conditional logic rules
+  indicatorMappings Json? // JSON field-to-indicator mappings
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

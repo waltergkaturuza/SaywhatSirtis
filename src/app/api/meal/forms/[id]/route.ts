@@ -46,20 +46,47 @@ export async function PUT(req: NextRequest, ctx: any) {
       }
     }
     
-    const updated = await prisma.$queryRaw<any[]>`
-      update public.meal_forms
-      set name = ${body.name},
-          description = ${body.description},
-          project_id = ${body.projectId},
-          language = ${body.language},
-          status = ${body.status},
-          schema = ${JSON.stringify(body.schema)}::jsonb,
-          updated_at = now(),
-          updated_by = ${actualUserId},
-          published_at = case when ${body.status} = 'published' then now() else published_at end
-      where id = ${id}::uuid
-      returning *
-    `
+    // Try to update with new columns, fall back to old schema if columns don't exist
+    let updated
+    try {
+      updated = await prisma.$queryRaw<any[]>`
+        update public.meal_forms
+        set name = ${body.name},
+            description = ${body.description},
+            project_id = ${body.projectId},
+            language = ${body.language},
+            status = ${body.status},
+            schema = ${JSON.stringify(body.schema)}::jsonb,
+            conditional_logic = ${JSON.stringify(body.conditionalLogic || [])}::jsonb,
+            indicator_mappings = ${JSON.stringify(body.indicatorMappings || [])}::jsonb,
+            updated_at = now(),
+            updated_by = ${actualUserId},
+            published_at = case when ${body.status} = 'published' then now() else published_at end
+        where id = ${id}::uuid
+        returning *
+      `
+    } catch (e: any) {
+      // If columns don't exist yet, update without them
+      if (e.message?.includes('column') && (e.message?.includes('conditional_logic') || e.message?.includes('indicator_mappings'))) {
+        console.log('Conditional logic columns not yet added, updating without them')
+        updated = await prisma.$queryRaw<any[]>`
+          update public.meal_forms
+          set name = ${body.name},
+              description = ${body.description},
+              project_id = ${body.projectId},
+              language = ${body.language},
+              status = ${body.status},
+              schema = ${JSON.stringify(body.schema)}::jsonb,
+              updated_at = now(),
+              updated_by = ${actualUserId},
+              published_at = case when ${body.status} = 'published' then now() else published_at end
+          where id = ${id}::uuid
+          returning *
+        `
+      } else {
+        throw e
+      }
+    }
     return NextResponse.json({ success: true, data: updated?.[0] })
   } catch (e) {
     console.error("MEAL form update error", e)

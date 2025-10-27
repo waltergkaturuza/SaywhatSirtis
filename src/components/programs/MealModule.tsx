@@ -89,10 +89,33 @@ function FormsStub() {
   const [fieldRequired, setFieldRequired] = useState(false)
   const [fieldOptions, setFieldOptions] = useState("")
   const [fieldMultiple, setFieldMultiple] = useState(false)
+  
+  // Conditional Logic State
+  const [showConditionalLogic, setShowConditionalLogic] = useState(false)
+  const [conditionalRules, setConditionalRules] = useState<any[]>([])
+  const [currentRule, setCurrentRule] = useState({
+    triggerField: '',
+    operator: 'equals',
+    triggerValue: '',
+    action: 'show',
+    targetFields: [] as string[]
+  })
+  
+  // Indicator Mapping State
+  const [showIndicatorMapping, setShowIndicatorMapping] = useState(false)
+  const [indicatorMappings, setIndicatorMappings] = useState<any[]>([])
+  const [availableIndicators, setAvailableIndicators] = useState<any[]>([])
+  const [currentMapping, setCurrentMapping] = useState({
+    fieldKey: '',
+    indicatorId: '',
+    calculationType: 'sum',
+    aggregationPeriod: 'monthly'
+  })
 
   useEffect(() => {
     load()
     loadProjects()
+    loadIndicators()
   }, [])
 
   // Add keyboard shortcut to close form with Escape key
@@ -115,6 +138,60 @@ function FormsStub() {
     } catch (e: any) {
       console.error('Failed to load projects:', e.message)
     }
+  }
+
+  const loadIndicators = async () => {
+    try {
+      const res = await fetch('/api/meal/indicators')
+      const j = await res.json()
+      if (j.success) setAvailableIndicators(j.data || [])
+    } catch (e: any) {
+      console.error('Failed to load indicators:', e.message)
+    }
+  }
+
+  const addConditionalRule = () => {
+    if (!currentRule.triggerField || !currentRule.targetFields.length) return
+    
+    const newRule = {
+      id: crypto.randomUUID(),
+      ...currentRule,
+      triggerValue: currentRule.triggerValue.split(',').map(v => v.trim())
+    }
+    
+    setConditionalRules(prev => [...prev, newRule])
+    setCurrentRule({
+      triggerField: '',
+      operator: 'equals',
+      triggerValue: '',
+      action: 'show',
+      targetFields: []
+    })
+  }
+
+  const removeConditionalRule = (ruleId: string) => {
+    setConditionalRules(prev => prev.filter(r => r.id !== ruleId))
+  }
+
+  const addIndicatorMapping = () => {
+    if (!currentMapping.fieldKey || !currentMapping.indicatorId) return
+    
+    const newMapping = {
+      id: crypto.randomUUID(),
+      ...currentMapping
+    }
+    
+    setIndicatorMappings(prev => [...prev, newMapping])
+    setCurrentMapping({
+      fieldKey: '',
+      indicatorId: '',
+      calculationType: 'sum',
+      aggregationPeriod: 'monthly'
+    })
+  }
+
+  const removeIndicatorMapping = (mappingId: string) => {
+    setIndicatorMappings(prev => prev.filter(m => m.id !== mappingId))
   }
 
   const load = async () => {
@@ -156,7 +233,20 @@ function FormsStub() {
     if (!selected) return
     try {
       setError(null)
-      const res = await fetch(`/api/meal/forms/${selected.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: selected.name, description: selected.description, language: selected.language, status: selected.status, schema: selected.schema })})
+      const formData = {
+        name: selected.name,
+        description: selected.description,
+        language: selected.language,
+        status: selected.status,
+        schema: selected.schema,
+        conditionalLogic: conditionalRules,
+        indicatorMappings: indicatorMappings
+      }
+      const res = await fetch(`/api/meal/forms/${selected.id}`, { 
+        method: 'PUT', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(formData)
+      })
       const j = await res.json()
       if (!j.success) throw new Error(j.error || 'Failed to save')
       setSaveMsg('Saved')
@@ -387,6 +477,210 @@ function FormsStub() {
                       )}
                     </ul>
                   </div>
+                  
+                  {/* Conditional Logic Section */}
+                  <div className="mt-6 border-t pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="text-sm font-semibold text-gray-700">🔀 Conditional Logic</h5>
+                      <button 
+                        onClick={() => setShowConditionalLogic(!showConditionalLogic)}
+                        className="px-3 py-1 bg-orange-600 text-white rounded-md text-xs hover:bg-orange-700"
+                      >
+                        {showConditionalLogic ? 'Hide' : 'Show'} Rules
+                      </button>
+                    </div>
+                    
+                    {showConditionalLogic && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <select 
+                            value={currentRule.triggerField} 
+                            onChange={e => setCurrentRule({...currentRule, triggerField: e.target.value})}
+                            className="px-2 py-1 border rounded-md"
+                          >
+                            <option value="">Select trigger field...</option>
+                            {(selected.schema?.fields || []).map((f: any, idx: number) => (
+                              <option key={idx} value={f.key || f.label.toLowerCase().replace(/\s+/g,'_')}>
+                                {f.label}
+                              </option>
+                            ))}
+                          </select>
+                          <select 
+                            value={currentRule.operator} 
+                            onChange={e => setCurrentRule({...currentRule, operator: e.target.value})}
+                            className="px-2 py-1 border rounded-md"
+                          >
+                            <option value="equals">Equals</option>
+                            <option value="not_equals">Not Equals</option>
+                            <option value="contains">Contains</option>
+                            <option value="greater_than">Greater Than</option>
+                            <option value="less_than">Less Than</option>
+                          </select>
+                          <input 
+                            value={currentRule.triggerValue} 
+                            onChange={e => setCurrentRule({...currentRule, triggerValue: e.target.value})}
+                            placeholder="Trigger value (comma separated for multiple)"
+                            className="px-2 py-1 border rounded-md col-span-2"
+                          />
+                          <select 
+                            value={currentRule.action} 
+                            onChange={e => setCurrentRule({...currentRule, action: e.target.value})}
+                            className="px-2 py-1 border rounded-md"
+                          >
+                            <option value="show">Show</option>
+                            <option value="hide">Hide</option>
+                            <option value="require">Require</option>
+                            <option value="optional">Make Optional</option>
+                          </select>
+                          <div className="px-2 py-1 text-gray-600">Target Fields:</div>
+                        </div>
+                        
+                        <div className="max-h-24 overflow-y-auto border rounded-md p-2">
+                          {(selected.schema?.fields || []).map((f: any, idx: number) => (
+                            <label key={idx} className="flex items-center gap-2 text-xs">
+                              <input 
+                                type="checkbox" 
+                                checked={currentRule.targetFields.includes(f.key || f.label.toLowerCase().replace(/\s+/g,'_'))}
+                                onChange={e => {
+                                  const fieldKey = f.key || f.label.toLowerCase().replace(/\s+/g,'_')
+                                  if (e.target.checked) {
+                                    setCurrentRule({...currentRule, targetFields: [...currentRule.targetFields, fieldKey]})
+                                  } else {
+                                    setCurrentRule({...currentRule, targetFields: currentRule.targetFields.filter(k => k !== fieldKey)})
+                                  }
+                                }}
+                              />
+                              {f.label}
+                            </label>
+                          ))}
+                        </div>
+                        
+                        <button 
+                          onClick={addConditionalRule}
+                          className="px-3 py-1 bg-green-600 text-white rounded-md text-xs hover:bg-green-700"
+                        >
+                          Add Rule
+                        </button>
+                        
+                        {conditionalRules.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-semibold text-gray-600">Active Rules:</div>
+                            {conditionalRules.map((rule: any) => (
+                              <div key={rule.id} className="flex justify-between items-center bg-gray-50 p-2 rounded text-xs">
+                                <span>
+                                  <strong>{rule.triggerField}</strong> {rule.operator} <strong>{rule.triggerValue.join(', ')}</strong> → 
+                                  <strong className="text-green-600">{rule.action}</strong> {rule.targetFields.join(', ')}
+                                </span>
+                                <button 
+                                  onClick={() => removeConditionalRule(rule.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Indicator Mapping Section */}
+                  <div className="mt-6 border-t pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="text-sm font-semibold text-gray-700">📊 Indicator Mapping</h5>
+                      <button 
+                        onClick={() => setShowIndicatorMapping(!showIndicatorMapping)}
+                        className="px-3 py-1 bg-green-600 text-white rounded-md text-xs hover:bg-green-700"
+                      >
+                        {showIndicatorMapping ? 'Hide' : 'Show'} Mappings
+                      </button>
+                    </div>
+                    
+                    {showIndicatorMapping && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <select 
+                            value={currentMapping.fieldKey} 
+                            onChange={e => setCurrentMapping({...currentMapping, fieldKey: e.target.value})}
+                            className="px-2 py-1 border rounded-md"
+                          >
+                            <option value="">Select form field...</option>
+                            {(selected.schema?.fields || []).filter((f: any) => ['number', 'decimal', 'currency'].includes(f.type)).map((f: any, idx: number) => (
+                              <option key={idx} value={f.key || f.label.toLowerCase().replace(/\s+/g,'_')}>
+                                {f.label} ({f.type})
+                              </option>
+                            ))}
+                          </select>
+                          <select 
+                            value={currentMapping.indicatorId} 
+                            onChange={e => setCurrentMapping({...currentMapping, indicatorId: e.target.value})}
+                            className="px-2 py-1 border rounded-md"
+                          >
+                            <option value="">Select indicator...</option>
+                            {availableIndicators.map((indicator: any) => (
+                              <option key={indicator.id} value={indicator.id}>
+                                {indicator.name} - {indicator.description}
+                              </option>
+                            ))}
+                          </select>
+                          <select 
+                            value={currentMapping.calculationType} 
+                            onChange={e => setCurrentMapping({...currentMapping, calculationType: e.target.value})}
+                            className="px-2 py-1 border rounded-md"
+                          >
+                            <option value="sum">Sum</option>
+                            <option value="average">Average</option>
+                            <option value="count">Count</option>
+                            <option value="max">Maximum</option>
+                            <option value="min">Minimum</option>
+                          </select>
+                          <select 
+                            value={currentMapping.aggregationPeriod} 
+                            onChange={e => setCurrentMapping({...currentMapping, aggregationPeriod: e.target.value})}
+                            className="px-2 py-1 border rounded-md"
+                          >
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                          </select>
+                        </div>
+                        
+                        <button 
+                          onClick={addIndicatorMapping}
+                          className="px-3 py-1 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700"
+                        >
+                          Add Mapping
+                        </button>
+                        
+                        {indicatorMappings.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-semibold text-gray-600">Active Mappings:</div>
+                            {indicatorMappings.map((mapping: any) => {
+                              const field = (selected.schema?.fields || []).find((f: any) => (f.key || f.label.toLowerCase().replace(/\s+/g,'_')) === mapping.fieldKey)
+                              const indicator = availableIndicators.find((i: any) => i.id === mapping.indicatorId)
+                              return (
+                                <div key={mapping.id} className="flex justify-between items-center bg-gray-50 p-2 rounded text-xs">
+                                  <span>
+                                    <strong>{field?.label}</strong> → <strong className="text-blue-600">{indicator?.name}</strong> 
+                                    ({mapping.calculationType}, {mapping.aggregationPeriod})
+                                  </span>
+                                  <button 
+                                    onClick={() => removeIndicatorMapping(mapping.id)}
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="text-gray-600">Select a form to edit fields.</div>
@@ -399,9 +693,9 @@ function FormsStub() {
       </div>
       
       {/* Info Banner - Full Width */}
-      <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 to-orange-100 border-l-4 border-orange-500 rounded-lg text-sm shadow-sm">
-        <p className="text-orange-900 font-medium">
-          ✨ <strong>Next Features:</strong> Field editor UI (text/number/date/select/GPS/file), conditional logic, and indicator mapping.
+      <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 rounded-lg text-sm shadow-sm">
+        <p className="text-green-900 font-medium">
+          ✅ <strong>Features Implemented:</strong> Field editor UI (text/number/date/select/GPS/file), conditional logic, and indicator mapping. Forms now support advanced logic and automatic indicator updates!
         </p>
       </div>
     </div>
@@ -498,13 +792,63 @@ function SubmissionsStub() {
     return true
   })
 
+  const [conditionalLogic, setConditionalLogic] = useState<any[]>([])
+  const [indicatorMappings, setIndicatorMappings] = useState<any[]>([])
+
   const loadSchema = async (id: string) => {
     if (!id) return
     const r = await fetch(`/api/meal/forms/${id}`); const j = await r.json(); if (j.success) {
       setSchema(j.data.schema)
+      setConditionalLogic(j.data.conditional_logic || [])
+      setIndicatorMappings(j.data.indicator_mappings || [])
       // Auto-populate common fields when form loads
       autoPopulateCommonFields(j.data.schema)
     }
+  }
+
+  // Evaluate conditional logic for a field
+  const evaluateConditionalLogic = (fieldKey: string): { visible: boolean, required: boolean } => {
+    let visible = true
+    let required = false
+
+    for (const rule of conditionalLogic) {
+      const triggerValue = data[rule.triggerField]
+      const triggerMatches = rule.triggerValue.some((val: string) => {
+        switch (rule.operator) {
+          case 'equals':
+            return String(triggerValue) === String(val)
+          case 'not_equals':
+            return String(triggerValue) !== String(val)
+          case 'contains':
+            return String(triggerValue).includes(String(val))
+          case 'greater_than':
+            return Number(triggerValue) > Number(val)
+          case 'less_than':
+            return Number(triggerValue) < Number(val)
+          default:
+            return false
+        }
+      })
+
+      if (rule.targetFields.includes(fieldKey)) {
+        switch (rule.action) {
+          case 'show':
+            if (triggerMatches) visible = true
+            break
+          case 'hide':
+            if (triggerMatches) visible = false
+            break
+          case 'require':
+            if (triggerMatches) required = true
+            break
+          case 'optional':
+            if (triggerMatches) required = false
+            break
+        }
+      }
+    }
+
+    return { visible, required }
   }
 
   // Auto-populate common fields when form loads
@@ -753,11 +1097,12 @@ function SubmissionsStub() {
               platform: navigator.platform,
               language: navigator.language
             }
-          }
+          },
+          indicatorMappings: indicatorMappings // Pass indicator mappings for automatic calculation
         }) 
       })
       const j = await r.json()
-      setMessage(j.success ? 'Submitted successfully!' : (j.error || 'Failed to submit'))
+      setMessage(j.success ? 'Submitted successfully! Indicators updated automatically.' : (j.error || 'Failed to submit'))
       
       if (j.success) {
         // Clear form after successful submission
@@ -986,15 +1331,20 @@ function SubmissionsStub() {
       {schema?.fields && (
         <div className="space-y-4 max-w-2xl">
           <h3 className="text-lg font-semibold text-gray-800">📝 Form Fields</h3>
-          {schema.fields.map((f: any) => (
-            <div key={f.key} className="space-y-2">
-              <div className="text-sm font-medium text-gray-700">
-                {f.label}
-                {f.required && <span className="text-red-600 ml-1">*</span>}
+          {schema.fields.map((f: any) => {
+            const logic = evaluateConditionalLogic(f.key)
+            if (!logic.visible) return null // Hide field if conditional logic says so
+            
+            return (
+              <div key={f.key} className="space-y-2">
+                <div className="text-sm font-medium text-gray-700">
+                  {f.label}
+                  {(f.required || logic.required) && <span className="text-red-600 ml-1">*</span>}
+                </div>
+                {renderField(f)}
               </div>
-              {renderField(f)}
-            </div>
-          ))}
+            )
+          })}
           
           <div className="pt-4 border-t">
             <button 

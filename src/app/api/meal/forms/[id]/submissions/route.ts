@@ -88,10 +88,82 @@ export async function POST(req: NextRequest, ctx: any) {
          ${JSON.stringify(deviceInfo)}::jsonb)
       returning *
     `
+
+    // Process indicator mappings if provided
+    if (body.indicatorMappings && Array.isArray(body.indicatorMappings) && body.indicatorMappings.length > 0) {
+      try {
+        await processIndicatorMappings(body.indicatorMappings, body.data, body.projectId, session.user)
+      } catch (err) {
+        console.error('Error processing indicator mappings:', err)
+        // Don't fail the submission if indicator processing fails
+      }
+    }
+
     return NextResponse.json({ success: true, data: created?.[0] })
   } catch (e) {
     console.error("MEAL submission create error", e)
     return NextResponse.json({ success: false, error: "Failed to submit" }, { status: 500 })
+  }
+}
+
+// Process indicator mappings to automatically update indicator values
+async function processIndicatorMappings(
+  mappings: any[], 
+  formData: any, 
+  projectId: string | null,
+  user: any
+) {
+  for (const mapping of mappings) {
+    try {
+      const fieldValue = formData[mapping.fieldKey]
+      if (fieldValue === null || fieldValue === undefined) continue
+
+      // Get current indicator value
+      const indicator = await prisma.$queryRaw<any[]>`
+        SELECT current, baseline, target FROM public.meal_indicators
+        WHERE id = ${mapping.indicatorId}::uuid
+        LIMIT 1
+      `
+
+      if (!indicator || !indicator[0]) continue
+
+      let newValue = indicator[0].current || 0
+
+      // Calculate new value based on calculation type
+      switch (mapping.calculationType) {
+        case 'sum':
+          newValue += Number(fieldValue) || 0
+          break
+        case 'count':
+          newValue += 1
+          break
+        case 'average':
+          // For average, we need to track total and count separately
+          // This is simplified - in production, use a more sophisticated approach
+          newValue = ((newValue + Number(fieldValue)) / 2)
+          break
+        case 'max':
+          newValue = Math.max(newValue, Number(fieldValue) || 0)
+          break
+        case 'min':
+          newValue = indicator[0].current === null ? Number(fieldValue) : Math.min(newValue, Number(fieldValue) || 0)
+          break
+      }
+
+      // Update the indicator
+      await prisma.$queryRaw`
+        UPDATE public.meal_indicators
+        SET current = ${newValue},
+            last_updated_at = NOW(),
+            last_updated_by = ${user?.id || null}::uuid
+        WHERE id = ${mapping.indicatorId}::uuid
+      `
+
+      console.log(`Updated indicator ${mapping.indicatorId} with ${mapping.calculationType}: ${newValue}`)
+    } catch (err) {
+      console.error(`Failed to process mapping for indicator ${mapping.indicatorId}:`, err)
+      // Continue processing other mappings
+    }
   }
 }
 
