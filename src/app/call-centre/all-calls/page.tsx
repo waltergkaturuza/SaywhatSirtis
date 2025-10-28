@@ -28,12 +28,23 @@ interface CallRecord {
   callerProvince?: string
   callerAge?: string
   callerGender?: string
+  callerKeyPopulation?: string
+  callerAddress?: string
   clientName?: string
   clientAge?: string
   clientSex?: string
+  clientAddress?: string
+  clientProvince?: string
   communicationMode: string
-  purpose: string
+  howDidYouHearAboutUs?: string
   validity: string
+  newOrRepeatCall?: string
+  language?: string
+  callDescription?: string
+  purpose: string
+  isCase?: string
+  perpetrator?: string
+  servicesRecommended?: string
   officer: string
   dateTime: string
   duration?: string
@@ -42,6 +53,7 @@ interface CallRecord {
   voucherIssued: string
   voucherValue?: string
   notes?: string
+  comment?: string
 }
 
 const statuses = {
