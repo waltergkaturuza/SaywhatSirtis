@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ModulePage } from "@/components/layout/enhanced-layout";
 import { 
   MagnifyingGlassIcon,
@@ -784,6 +784,12 @@ interface EditCallPopupProps {
 function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
   const { data: session } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Referral dropdown state
+  const [referralOrganizations, setReferralOrganizations] = useState<any[]>([]);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [showOtherReferral, setShowOtherReferral] = useState(false);
+  const [otherReferralText, setOtherReferralText] = useState('');
   const [formData, setFormData] = useState({
     // Basic call info
     callerName: call.callerName || '',
@@ -822,6 +828,48 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
     voucherIssued: call.voucherIssued || 'NO',
     voucherValue: call.voucherValue || ''
   });
+
+  // Fetch referral organizations
+  const fetchReferralOrganizations = useCallback(async () => {
+    setReferralLoading(true);
+    try {
+      const response = await fetch('/api/call-centre/referrals');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.organizations)) {
+          setReferralOrganizations(data.organizations);
+        }
+      } else {
+        console.error('Failed to fetch referral organizations');
+      }
+    } catch (error) {
+      console.error('Error fetching referral organizations:', error);
+    } finally {
+      setReferralLoading(false);
+    }
+  }, []);
+
+  // Load referral organizations on mount
+  useEffect(() => {
+    fetchReferralOrganizations();
+  }, [fetchReferralOrganizations]);
+
+  // Handle referral selection
+  const handleReferralChange = (value: string) => {
+    if (value === 'OTHER') {
+      setShowOtherReferral(true);
+      setFormData(prev => ({ ...prev, referredTo: '' }));
+    } else {
+      setShowOtherReferral(false);
+      setOtherReferralText('');
+      setFormData(prev => ({ ...prev, referredTo: value }));
+    }
+  };
+
+  const handleOtherReferralChange = (value: string) => {
+    setOtherReferralText(value);
+    setFormData(prev => ({ ...prev, referredTo: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1142,6 +1190,27 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                 >
                   <option value="HIV/AIDS">HIV/AIDS</option>
                   <option value="Information and Counselling">Information and Counselling</option>
+                  <option value="In-house Case">In-house Case</option>
+                  <option value="Cancer Screening">Cancer Screening</option>
+                  <option value="Child Protection">Child Protection</option>
+                  <option value="Contraception">Contraception</option>
+                  <option value="DSA">DSA</option>
+                  <option value="Dropped Call">Dropped Call</option>
+                  <option value="GBV">GBV</option>
+                  <option value="Legal Assistance">Legal Assistance</option>
+                  <option value="Medical Assistance">Medical Assistance</option>
+                  <option value="MHM">MHM</option>
+                  <option value="Mental Health">Mental Health</option>
+                  <option value="Prank Call">Prank Call</option>
+                  <option value="PrEP & PEP">PrEP & PEP</option>
+                  <option value="Pre & Post Natal Care">Pre & Post Natal Care</option>
+                  <option value="Relationship Issues">Relationship Issues</option>
+                  <option value="Reproductive System Disorders">Reproductive System Disorders</option>
+                  <option value="PAC">PAC</option>
+                  <option value="STIs">STIs</option>
+                  <option value="Sexual Harassment">Sexual Harassment</option>
+                  <option value="TB">TB</option>
+                  <option value="Test Call">Test Call</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
@@ -1226,14 +1295,69 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Referred To</label>
-                <input
-                  type="text"
-                  value={formData.referredTo}
-                  onChange={(e) => setFormData({...formData, referredTo: e.target.value})}
-                  placeholder="Organization or person"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Referral</label>
+                <select
+                  value={showOtherReferral ? 'OTHER' : formData.referredTo}
+                  onChange={(e) => handleReferralChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
+                  disabled={referralLoading}
+                >
+                  <option value="">Select organization or service...</option>
+                  {referralLoading ? (
+                    <option value="">Loading organizations...</option>
+                  ) : (
+                    <>
+                      {referralOrganizations.map((org) => (
+                        <option key={org.id} value={org.name}>
+                          {org.name} {org.category && `(${org.category})`}
+                        </option>
+                      ))}
+                      <option value="OTHER">Other (specify below)</option>
+                    </>
+                  )}
+                </select>
+                
+                {/* Show organization details when selected */}
+                {formData.referredTo && !showOtherReferral && (
+                  (() => {
+                    const selectedOrg = referralOrganizations.find(org => org.name === formData.referredTo);
+                    return selectedOrg ? (
+                      <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <p className="text-sm text-blue-800">
+                          <strong>{selectedOrg.name}</strong>
+                          {selectedOrg.contact?.phone && (
+                            <span className="block text-xs mt-1">
+                              📞 {selectedOrg.contact.phone}
+                            </span>
+                          )}
+                          {selectedOrg.contact?.email && (
+                            <span className="block text-xs">
+                              📧 {selectedOrg.contact.email}
+                            </span>
+                          )}
+                          {selectedOrg.focusAreas && selectedOrg.focusAreas.length > 0 && (
+                            <span className="block text-xs mt-1">
+                              <strong>Focus:</strong> {selectedOrg.focusAreas.join(', ')}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    ) : null;
+                  })()
+                )}
+
+                {/* Other referral text input */}
+                {showOtherReferral && (
+                  <div className="mt-2">
+                    <input
+                      type="text"
+                      value={otherReferralText}
+                      onChange={(e) => handleOtherReferralChange(e.target.value)}
+                      placeholder="Please specify the referral organization or service..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
