@@ -135,13 +135,69 @@ export async function GET(request: NextRequest) {
       callsByPurpose = [];
     }
 
+    // Calculate average call duration and peak hour
+    let averageCallDuration = 'N/A'
+    let peakHour = 'N/A'
+
+    try {
+      // Get calls with resolution times for duration calculation
+      const resolvedCallsToday = await prisma.call_records.findMany({
+        where: {
+          createdAt: { gte: todayStart, lte: todayEnd },
+          resolvedAt: { not: null }
+        },
+        select: {
+          createdAt: true,
+          resolvedAt: true
+        }
+      })
+
+      // Calculate average duration in minutes
+      if (resolvedCallsToday.length > 0) {
+        const totalDurationMs = resolvedCallsToday.reduce((sum, call) => {
+          if (call.resolvedAt && call.createdAt) {
+            return sum + (call.resolvedAt.getTime() - call.createdAt.getTime())
+          }
+          return sum
+        }, 0)
+        const avgDurationMinutes = totalDurationMs / (resolvedCallsToday.length * 1000 * 60)
+        averageCallDuration = `${Math.round(avgDurationMinutes)} min`
+      }
+
+      // Get hourly distribution for peak hour calculation
+      const callsByHour: { [key: number]: number } = {}
+      const todayCalls = await prisma.call_records.findMany({
+        where: { createdAt: { gte: todayStart, lte: todayEnd } },
+        select: { createdAt: true }
+      })
+
+      // Count calls by hour
+      todayCalls.forEach(call => {
+        const hour = call.createdAt.getHours()
+        callsByHour[hour] = (callsByHour[hour] || 0) + 1
+      })
+
+      // Find peak hour
+      if (Object.keys(callsByHour).length > 0) {
+        const peakHourNum = Object.entries(callsByHour).reduce((a, b) => 
+          callsByHour[parseInt(a[0])] > callsByHour[parseInt(b[0])] ? a : b
+        )[0]
+        const hour = parseInt(peakHourNum)
+        const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+        const ampm = hour < 12 ? 'AM' : 'PM'
+        peakHour = `${displayHour}:00 ${ampm}`
+      }
+    } catch (error) {
+      console.warn('Failed to calculate duration/peak hour metrics:', error)
+    }
+
     const todayStats = {
       callsReceived: todayTotal,
       validCalls: todayTotal, // placeholder until validity metric defined
       invalidCalls: 0, // placeholder
       newCases: todayOpen,
-      averageCallDuration: 'N/A',
-      peakHour: 'N/A'
+      averageCallDuration,
+      peakHour
     }
 
     const summaryStats = {
