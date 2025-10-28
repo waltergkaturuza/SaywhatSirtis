@@ -33,6 +33,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Helper function to calculate time ago
+    function getTimeAgo(date: Date): string {
+      const now = new Date()
+      const diffMs = now.getTime() - date.getTime()
+      const diffMins = Math.floor(diffMs / (1000 * 60))
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+      if (diffMins < 1) return 'Just now'
+      if (diffMins < 60) return `${diffMins} min ago`
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+    }
+
+    let activitiesData
+
     try {
       // Get recent activities from call records and case updates
       const [recentCalls, recentCases, pendingCases] = await Promise.all([
@@ -159,14 +175,14 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      const activitiesData = {
+      activitiesData = {
         recentActivities: recentActivities.slice(0, 10), // Limit to 10 most recent
         pendingTasks
       }
     } catch (error) {
       console.error('Error fetching activities data:', error)
       // Return fallback data if queries fail
-      const activitiesData = {
+      activitiesData = {
         recentActivities: [
           {
             id: 'sample_1',
@@ -208,20 +224,6 @@ export async function GET(request: NextRequest) {
           }
         ]
       }
-    }
-
-    // Helper function to calculate time ago
-    function getTimeAgo(date: Date): string {
-      const now = new Date()
-      const diffMs = now.getTime() - date.getTime()
-      const diffMins = Math.floor(diffMs / (1000 * 60))
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-      if (diffMins < 1) return 'Just now'
-      if (diffMins < 60) return `${diffMins} min ago`
-      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
     }
 
     return NextResponse.json(activitiesData)
