@@ -181,10 +181,10 @@ export async function GET(request: NextRequest) {
         id: project.id,
         name: project.name,
         status: project.status?.toLowerCase() || 'planning',
-        progress: averageProgress, // You might want to store actual progress per project
+        progress: project.progress || averageProgress, // Use actual project progress if available
         dueDate: project.endDate?.toISOString() || '',
         lead: project.users_projects_managerIdTousers ? `${project.users_projects_managerIdTousers.firstName || ''} ${project.users_projects_managerIdTousers.lastName || ''}`.trim() || 'Unassigned' : 'Unassigned',
-        priority: 'medium', // You might want to add this field to your schema
+        priority: project.priority?.toLowerCase() || 'medium', // Use actual project priority from database
         budget: project.budget || 0,
         spent: project.actualSpent || 0
       }))
