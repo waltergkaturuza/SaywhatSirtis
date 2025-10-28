@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
       ])
 
       // Process recent activities
-      const recentActivities = []
+      const recentActivities: any[] = []
 
       // Add recent calls as activities
       recentCalls.forEach(call => {
