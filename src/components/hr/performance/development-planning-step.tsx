@@ -121,30 +121,18 @@ export function DevelopmentPlanningStep({ formData, updateFormData }: Developmen
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="space-y-4">
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-              <p className="text-sm text-blue-800 font-medium mb-2">Focus Areas for Career Development Progress:</p>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>• Progress made toward career goals during this review period</li>
-                <li>• Skills developed or enhanced that align with career aspirations</li>
-                <li>• Leadership opportunities taken or responsibilities expanded</li>
-                <li>• Professional development activities completed (training, certifications, etc.)</li>
-                <li>• Next steps planned for continued career advancement</li>
-              </ul>
-            </div>
-            <Textarea
-              placeholder="Document the employee's career development progress during this review period. Include specific achievements, skills gained, leadership growth, training completed, and concrete steps taken toward their career goals. Highlight measurable progress and future development opportunities..."
-              value={formData.development.careerAspirations}
-              onChange={(e) => updateFormData({
-                development: {
-                  ...formData.development,
-                  careerAspirations: e.target.value
-                }
-              })}
-              rows={6}
-              className="border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-lg"
-            />
-          </div>
+          <Textarea
+            placeholder="Document the employee's career development progress during this review period. Include specific achievements, skills gained, leadership growth, training completed, and concrete steps taken toward their career goals. Highlight measurable progress and future development opportunities..."
+            value={formData.development.careerAspirations}
+            onChange={(e) => updateFormData({
+              development: {
+                ...formData.development,
+                careerAspirations: e.target.value
+              }
+            })}
+            rows={6}
+            className="border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-lg"
+          />
         </CardContent>
       </Card>
 
