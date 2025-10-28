@@ -28,7 +28,7 @@ interface CallRecord {
   callerProvince?: string
   callerAge?: string
   callerGender?: string
-  callerKeyPopulation?: string
+  callerKeyPopulation?: string // Key population field for caller demographics
   callerAddress?: string
   clientName?: string
   clientAge?: string
