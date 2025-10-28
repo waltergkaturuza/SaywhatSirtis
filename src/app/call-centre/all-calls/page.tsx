@@ -380,25 +380,25 @@ export default function AllCallsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 table-fixed">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/4 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Call Details
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/4 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Caller Information
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/5 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Communication
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/8 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Officer
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-20 px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -441,81 +441,84 @@ export default function AllCallsPage() {
                     
                     return (
                       <tr key={call.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="w-1/4 px-4 py-3">
                           <div className="text-sm">
-                            <div className="font-medium text-gray-900">{call.callNumber}</div>
-                            <div className="text-gray-500">{call.id}</div>
-                            <div className="text-gray-500">{call.dateTime ? new Date(call.dateTime).toLocaleString() : 'N/A'}</div>
-                            <div className="text-gray-500">Duration: {call.duration || 'N/A'}</div>
+                            <div className="font-medium text-gray-900 truncate">{call.callNumber}</div>
+                            <div className="text-gray-500 text-xs truncate">{call.id}</div>
+                            <div className="text-gray-500 text-xs">{call.dateTime ? new Date(call.dateTime).toLocaleDateString() : 'N/A'}</div>
+                            <div className="text-gray-500 text-xs">Duration: {call.duration || 'N/A'}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="w-1/4 px-4 py-3">
                           <div className="text-sm">
-                            <div className="font-medium text-gray-900">{call.callerName || 'Unknown'}</div>
-                            <div className="text-gray-500">{call.callerPhone || 'N/A'}</div>
-                            <div className="text-gray-500">{call.callerProvince || 'N/A'}</div>
-                            <div className="text-gray-500">{call.callerGender || 'N/A'}, {call.callerAge || 'N/A'}</div>
+                            <div className="font-medium text-gray-900 truncate">{call.callerName || 'Unknown'}</div>
+                            <div className="text-gray-500 text-xs truncate">{call.callerPhone || 'N/A'}</div>
+                            <div className="text-gray-500 text-xs truncate">{call.callerProvince || 'N/A'}</div>
+                            <div className="text-gray-500 text-xs">{call.callerGender || 'N/A'}, {call.callerAge || 'N/A'}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center text-sm">
-                            <commIcon.icon className={`mr-2 h-5 w-5 ${commIcon.color}`} />
-                            <div>
-                              <div className="font-medium text-gray-900">{call.communicationMode}</div>
-                              <div className="text-gray-500">{call.purpose}</div>
-                              <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                call.validity === 'Valid' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100'
-                              }`}>
-                                {call.validity || 'N/A'}
-                              </div>
+                        <td className="w-1/5 px-4 py-3">
+                          <div className="text-sm">
+                            <div className="flex items-center mb-1">
+                              <commIcon.icon className={`mr-1 h-4 w-4 ${commIcon.color}`} />
+                              <span className="font-medium text-gray-900 text-xs truncate">{call.communicationMode}</span>
+                            </div>
+                            <div className="text-gray-500 text-xs truncate mb-1">{call.purpose}</div>
+                            <div className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                              call.validity === 'Valid' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100'
+                            }`}>
+                              {call.validity || 'invalid'}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="w-1/6 px-3 py-3">
                           <div className="flex items-center">
-                            <statusInfo.icon className={`mr-2 h-5 w-5`} />
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusInfo.color}`}>
+                            <statusInfo.icon className={`mr-1 h-4 w-4 text-gray-400`} />
+                            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${statusInfo.color}`}>
                               {call.status}
                             </span>
                           </div>
                           {call.referredTo && call.referredTo !== "N/A" && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              Referred to: {call.referredTo}
+                            <div className="text-xs text-gray-500 mt-1 truncate">
+                              → {call.referredTo}
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {call.officer}
+                        <td className="w-1/8 px-3 py-3 text-sm text-gray-900">
+                          <div className="truncate" title={call.officer}>
+                            {call.officer}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end space-x-2">
+                        <td className="w-20 px-2 py-3 text-right">
+                          <div className="flex items-center justify-end space-x-1">
                             <button 
                               onClick={() => {
                                 setSelectedCall(call);
                                 setShowCallDetail(true);
                               }}
-                              className="text-orange-600 hover:text-orange-700"
+                              className="text-orange-600 hover:text-orange-700 p-1"
                               title="View Call Details"
                             >
-                              <EyeIcon className="h-5 w-5" />
+                              <EyeIcon className="h-4 w-4" />
                             </button>
                             {canEdit && (
                               <>
                                 <button 
-                                  className="text-indigo-600 hover:text-indigo-900"
+                                  className="text-indigo-600 hover:text-indigo-900 p-1"
                                   onClick={() => {
                                     // Navigate to edit page
                                     window.location.href = `/call-centre/cases/${call.id}/edit`;
                                   }}
                                   title="Edit Call"
                                 >
-                                  <PencilIcon className="h-5 w-5" />
+                                  <PencilIcon className="h-4 w-4" />
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteCall(call.id)}
-                                  className="text-red-600 hover:text-red-900"
+                                  className="text-red-600 hover:text-red-900 p-1"
+                                  title="Delete Call"
                                 >
-                                  <TrashIcon className="h-5 w-5" />
+                                  <TrashIcon className="h-4 w-4" />
                                 </button>
                               </>
                             )}
