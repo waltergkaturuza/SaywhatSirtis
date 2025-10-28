@@ -67,6 +67,8 @@ export default function AllCallsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
   const [showCallDetail, setShowCallDetail] = useState(false);
+  const [showEditCall, setShowEditCall] = useState(false);
+  const [editingCall, setEditingCall] = useState<CallRecord | null>(null);
 
   useEffect(() => {
     fetchCalls();
@@ -109,10 +111,11 @@ export default function AllCallsPage() {
 
   // Check permissions
   const hasAccess = session?.user?.permissions?.includes("callcentre.access");
+  // Call editing should be less restrictive than case editing (for data capturers)
   const canEdit = session?.user?.permissions?.some(permission => 
-    ['callcentre.officer', 'callcentre.access', 'calls.edit', 'calls.full_access', 'admin'].includes(permission)
+    ['callcentre.access', 'calls.edit', 'calls.full_access', 'callcentre.officer', 'data_capturer', 'admin'].includes(permission)
   ) || session?.user?.roles?.some(role => 
-    ['admin', 'manager', 'advance_user_1', 'call_center_officer'].includes(role?.toLowerCase())
+    ['admin', 'manager', 'advance_user_1', 'call_center_officer', 'data_capturer', 'call_center_agent'].includes(role?.toLowerCase())
   ) || true; // Temporary: Always allow edit for now - remove this in production
 
   // Debug permissions
@@ -550,8 +553,8 @@ export default function AllCallsPage() {
                                 <button 
                                   className="text-indigo-600 hover:text-indigo-900 p-1"
                                   onClick={() => {
-                                    // Navigate to edit page
-                                    window.location.href = `/call-centre/cases/${call.id}/edit`;
+                                    setEditingCall(call);
+                                    setShowEditCall(true);
                                   }}
                                   title="Edit Call"
                                 >
@@ -749,6 +752,384 @@ export default function AllCallsPage() {
           </div>
         </div>
       )}
+
+      {/* Edit Call Popup */}
+      {showEditCall && editingCall && (
+        <EditCallPopup 
+          call={editingCall}
+          onClose={() => {
+            setShowEditCall(false);
+            setEditingCall(null);
+          }}
+          onSave={(updatedCall) => {
+            // Update the call in the list
+            setCalls(calls.map(c => c.id === updatedCall.id ? updatedCall : c));
+            setFilteredCalls(filteredCalls.map(c => c.id === updatedCall.id ? updatedCall : c));
+            setShowEditCall(false);
+            setEditingCall(null);
+          }}
+        />
+      )}
     </ModulePage>
+  );
+}
+
+// Edit Call Popup Component
+interface EditCallPopupProps {
+  call: CallRecord;
+  onClose: () => void;
+  onSave: (updatedCall: CallRecord) => void;
+}
+
+function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
+  const { data: session } = useSession();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    // Basic call info
+    callerName: call.callerName || '',
+    callerPhone: call.callerPhone || '',
+    callerProvince: call.callerProvince || '',
+    callerAge: call.callerAge || '',
+    callerGender: call.callerGender || '',
+    
+    // Client info
+    clientName: call.clientName || '',
+    clientAge: call.clientAge || '',
+    clientSex: call.clientSex || '',
+    
+    // Call details
+    communicationMode: call.communicationMode || 'inbound',
+    purpose: call.purpose || '',
+    validity: call.validity || 'valid',
+    status: call.status || 'OPEN',
+    referredTo: call.referredTo || '',
+    notes: call.notes || '',
+    duration: call.duration || '',
+    
+    // Voucher info
+    voucherIssued: call.voucherIssued || 'NO',
+    voucherValue: call.voucherValue || ''
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/call-centre/calls/${call.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update call');
+      }
+
+      const result = await response.json();
+      
+      // Create updated call object
+      const updatedCall: CallRecord = {
+        ...call,
+        callerName: formData.callerName,
+        callerPhone: formData.callerPhone,
+        callerProvince: formData.callerProvince,
+        callerAge: formData.callerAge,
+        callerGender: formData.callerGender,
+        clientName: formData.clientName,
+        clientAge: formData.clientAge,
+        clientSex: formData.clientSex,
+        communicationMode: formData.communicationMode,
+        purpose: formData.purpose,
+        validity: formData.validity,
+        status: formData.status,
+        referredTo: formData.referredTo,
+        notes: formData.notes,
+        duration: formData.duration,
+        voucherIssued: formData.voucherIssued,
+        voucherValue: formData.voucherValue
+      };
+
+      onSave(updatedCall);
+    } catch (error) {
+      console.error('Error updating call:', error);
+      alert('Failed to update call. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">Edit Call Record</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p className="text-sm text-gray-600 mt-1">Call Number: {call.callNumber}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Caller Information */}
+          <div className="bg-blue-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Caller Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Caller Name</label>
+                <input
+                  type="text"
+                  value={formData.callerName}
+                  onChange={(e) => setFormData({...formData, callerName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={formData.callerPhone}
+                  onChange={(e) => setFormData({...formData, callerPhone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
+                <select
+                  value={formData.callerProvince}
+                  onChange={(e) => setFormData({...formData, callerProvince: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="N/A">Select Province</option>
+                  <option value="Harare">Harare</option>
+                  <option value="Bulawayo">Bulawayo</option>
+                  <option value="Manicaland">Manicaland</option>
+                  <option value="Mashonaland Central">Mashonaland Central</option>
+                  <option value="Mashonaland East">Mashonaland East</option>
+                  <option value="Mashonaland West">Mashonaland West</option>
+                  <option value="Masvingo">Masvingo</option>
+                  <option value="Matabeleland North">Matabeleland North</option>
+                  <option value="Matabeleland South">Matabeleland South</option>
+                  <option value="Midlands">Midlands</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Age Group</label>
+                <select
+                  value={formData.callerAge}
+                  onChange={(e) => setFormData({...formData, callerAge: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="-14">Under 14</option>
+                  <option value="15-19">15-19</option>
+                  <option value="20-24">20-24</option>
+                  <option value="25-29">25-29</option>
+                  <option value="30-34">30-34</option>
+                  <option value="35-39">35-39</option>
+                  <option value="40-44">40-44</option>
+                  <option value="45-49">45-49</option>
+                  <option value="50+">50+</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                <select
+                  value={formData.callerGender}
+                  onChange={(e) => setFormData({...formData, callerGender: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="N/A">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Client Information */}
+          <div className="bg-green-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Client Information (if different from caller)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+                <input
+                  type="text"
+                  value={formData.clientName}
+                  onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                  placeholder="Leave empty if same as caller"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Age</label>
+                <input
+                  type="text"
+                  value={formData.clientAge}
+                  onChange={(e) => setFormData({...formData, clientAge: e.target.value})}
+                  placeholder="e.g., 25"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Sex</label>
+                <select
+                  value={formData.clientSex}
+                  onChange={(e) => setFormData({...formData, clientSex: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="N/A">Select Sex</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Call Details */}
+          <div className="bg-yellow-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Call Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Communication Mode</label>
+                <select
+                  value={formData.communicationMode}
+                  onChange={(e) => setFormData({...formData, communicationMode: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="inbound">Inbound</option>
+                  <option value="outbound">Outbound</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                <select
+                  value={formData.purpose}
+                  onChange={(e) => setFormData({...formData, purpose: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="HIV/AIDS">HIV/AIDS</option>
+                  <option value="Information and Counselling">Information and Counselling</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Call Validity</label>
+                <select
+                  value={formData.validity}
+                  onChange={(e) => setFormData({...formData, validity: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="valid">Valid</option>
+                  <option value="invalid">Invalid</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="OPEN">Open</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="RESOLVED">Resolved</option>
+                  <option value="CLOSED">Closed</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                <input
+                  type="text"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                  placeholder="e.g., 5 min"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Referred To</label>
+                <input
+                  type="text"
+                  value={formData.referredTo}
+                  onChange={(e) => setFormData({...formData, referredTo: e.target.value})}
+                  placeholder="Organization or person"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Voucher Information */}
+          <div className="bg-purple-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Voucher Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Issued</label>
+                <select
+                  value={formData.voucherIssued}
+                  onChange={(e) => setFormData({...formData, voucherIssued: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="NO">No</option>
+                  <option value="YES">Yes</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Value</label>
+                <input
+                  type="text"
+                  value={formData.voucherValue}
+                  onChange={(e) => setFormData({...formData, voucherValue: e.target.value})}
+                  placeholder="e.g., 50"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({...formData, notes: e.target.value})}
+              rows={4}
+              placeholder="Additional notes about the call..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
