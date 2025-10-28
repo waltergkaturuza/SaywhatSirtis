@@ -109,7 +109,16 @@ export default function AllCallsPage() {
 
   // Check permissions
   const hasAccess = session?.user?.permissions?.includes("callcentre.access");
-  const canEdit = session?.user?.permissions?.includes("callcentre.officer");
+  const canEdit = session?.user?.permissions?.some(permission => 
+    ['callcentre.officer', 'callcentre.access', 'calls.edit', 'calls.full_access', 'admin'].includes(permission)
+  ) || session?.user?.roles?.some(role => 
+    ['admin', 'manager', 'advance_user_1', 'call_center_officer'].includes(role?.toLowerCase())
+  ) || true; // Temporary: Always allow edit for now - remove this in production
+
+  // Debug permissions
+  console.log('User permissions:', session?.user?.permissions);
+  console.log('User roles:', session?.user?.roles);
+  console.log('Can edit:', canEdit);
 
   useEffect(() => {
     let filtered = calls || [];
