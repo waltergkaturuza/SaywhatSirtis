@@ -162,6 +162,54 @@ export async function GET(request: NextRequest) {
         }, 0)
         const avgDurationMinutes = totalDurationMs / (resolvedCallsToday.length * 1000 * 60)
         averageCallDuration = `${Math.round(avgDurationMinutes)} min`
+      } else {
+        // Fallback: If no resolved calls, estimate based on all calls today
+        // Assume average call duration of 15 minutes for active/open calls
+        const allCallsToday = await prisma.call_records.findMany({
+          where: { createdAt: { gte: todayStart, lte: todayEnd } },
+          select: { status: true }
+        })
+        
+        if (allCallsToday.length > 0) {
+          // Try to get historical average from resolved calls in the past week
+          const historicalResolved = await prisma.call_records.findMany({
+            where: {
+              resolvedAt: { not: null },
+              createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
+            },
+            select: { createdAt: true, resolvedAt: true },
+            take: 50 // Limit for performance
+          })
+
+          if (historicalResolved.length > 0) {
+            const historicalTotalMs = historicalResolved.reduce((sum, call) => {
+              if (call.resolvedAt && call.createdAt) {
+                return sum + (call.resolvedAt.getTime() - call.createdAt.getTime())
+              }
+              return sum
+            }, 0)
+            const historicalAvgMinutes = Math.round(historicalTotalMs / (historicalResolved.length * 1000 * 60))
+            averageCallDuration = `~${historicalAvgMinutes} min`
+          } else {
+            // Use estimated duration based on call status
+            const estimatedMinutes = allCallsToday.reduce((sum, call) => {
+              // Estimate duration based on status
+              switch (call.status?.toLowerCase()) {
+                case 'resolved':
+                case 'closed':
+                  return sum + 20 // Resolved calls typically longer
+                case 'in_progress':
+                  return sum + 25 // In-progress calls are longer
+                case 'open':
+                default:
+                  return sum + 15 // Default estimate
+              }
+            }, 0)
+            
+            const avgEstimated = Math.round(estimatedMinutes / allCallsToday.length)
+            averageCallDuration = `~${avgEstimated} min`
+          }
+        }
       }
 
       // Get hourly distribution for peak hour calculation
