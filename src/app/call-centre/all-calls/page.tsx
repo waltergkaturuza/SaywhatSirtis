@@ -791,19 +791,31 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
     callerProvince: call.callerProvince || '',
     callerAge: call.callerAge || '',
     callerGender: call.callerGender || '',
+    callerKeyPopulation: call.callerKeyPopulation || 'N/A',
+    callerAddress: call.callerAddress || '',
     
     // Client info
     clientName: call.clientName || '',
     clientAge: call.clientAge || '',
     clientSex: call.clientSex || '',
+    clientAddress: call.clientAddress || '',
+    clientProvince: call.clientProvince || '',
     
     // Call details
     communicationMode: call.communicationMode || 'inbound',
-    purpose: call.purpose || '',
+    howDidYouHearAboutUs: call.howDidYouHearAboutUs || '',
     validity: call.validity || 'valid',
+    newOrRepeatCall: call.newOrRepeatCall || 'new',
+    language: call.language || 'English',
+    callDescription: call.callDescription || '',
+    purpose: call.purpose || '',
+    isCase: call.isCase || 'NO',
+    perpetrator: call.perpetrator || '',
+    servicesRecommended: call.servicesRecommended || '',
     status: call.status || 'OPEN',
     referredTo: call.referredTo || '',
     notes: call.notes || '',
+    comment: call.comment || '',
     duration: call.duration || '',
     
     // Voucher info
@@ -838,15 +850,27 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
         callerProvince: formData.callerProvince,
         callerAge: formData.callerAge,
         callerGender: formData.callerGender,
+        callerKeyPopulation: formData.callerKeyPopulation,
+        callerAddress: formData.callerAddress,
         clientName: formData.clientName,
         clientAge: formData.clientAge,
         clientSex: formData.clientSex,
+        clientAddress: formData.clientAddress,
+        clientProvince: formData.clientProvince,
         communicationMode: formData.communicationMode,
-        purpose: formData.purpose,
+        howDidYouHearAboutUs: formData.howDidYouHearAboutUs,
         validity: formData.validity,
+        newOrRepeatCall: formData.newOrRepeatCall,
+        language: formData.language,
+        callDescription: formData.callDescription,
+        purpose: formData.purpose,
+        isCase: formData.isCase,
+        perpetrator: formData.perpetrator,
+        servicesRecommended: formData.servicesRecommended,
         status: formData.status,
         referredTo: formData.referredTo,
         notes: formData.notes,
+        comment: formData.comment,
         duration: formData.duration,
         voucherIssued: formData.voucherIssued,
         voucherValue: formData.voucherValue
@@ -953,13 +977,36 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                   <option value="Other">Other</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Key Population</label>
+                <select
+                  value={formData.callerKeyPopulation}
+                  onChange={(e) => setFormData({...formData, callerKeyPopulation: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="Child">Child</option>
+                  <option value="Young Person">Young Person</option>
+                  <option value="Adult">Adult</option>
+                  <option value="N/A">N/A</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <input
+                  type="text"
+                  value={formData.callerAddress}
+                  onChange={(e) => setFormData({...formData, callerAddress: e.target.value})}
+                  placeholder="Caller's address"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
             </div>
           </div>
 
           {/* Client Information */}
           <div className="bg-green-50 rounded-lg p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Client Information (if different from caller)</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
                 <input
@@ -993,6 +1040,36 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                   <option value="Other">Other</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Province</label>
+                <select
+                  value={formData.clientProvince}
+                  onChange={(e) => setFormData({...formData, clientProvince: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="N/A">Select Province</option>
+                  <option value="Harare">Harare</option>
+                  <option value="Bulawayo">Bulawayo</option>
+                  <option value="Manicaland">Manicaland</option>
+                  <option value="Mashonaland Central">Mashonaland Central</option>
+                  <option value="Mashonaland East">Mashonaland East</option>
+                  <option value="Mashonaland West">Mashonaland West</option>
+                  <option value="Masvingo">Masvingo</option>
+                  <option value="Matabeleland North">Matabeleland North</option>
+                  <option value="Matabeleland South">Matabeleland South</option>
+                  <option value="Midlands">Midlands</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Address</label>
+                <input
+                  type="text"
+                  value={formData.clientAddress}
+                  onChange={(e) => setFormData({...formData, clientAddress: e.target.value})}
+                  placeholder="Client's address (if different from caller)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
             </div>
           </div>
 
@@ -1013,16 +1090,14 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
-                <select
-                  value={formData.purpose}
-                  onChange={(e) => setFormData({...formData, purpose: e.target.value})}
+                <label className="block text-sm font-medium text-gray-700 mb-1">How Did You Hear About Us</label>
+                <input
+                  type="text"
+                  value={formData.howDidYouHearAboutUs}
+                  onChange={(e) => setFormData({...formData, howDidYouHearAboutUs: e.target.value})}
+                  placeholder="e.g., Radio, TV, Friend referral..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                >
-                  <option value="HIV/AIDS">HIV/AIDS</option>
-                  <option value="Information and Counselling">Information and Counselling</option>
-                  <option value="Other">Other</option>
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Call Validity</label>
@@ -1033,6 +1108,41 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                 >
                   <option value="valid">Valid</option>
                   <option value="invalid">Invalid</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New or Repeat Call</label>
+                <select
+                  value={formData.newOrRepeatCall}
+                  onChange={(e) => setFormData({...formData, newOrRepeatCall: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="new">New</option>
+                  <option value="repeat">Repeat</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
+                <select
+                  value={formData.language}
+                  onChange={(e) => setFormData({...formData, language: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="English">English</option>
+                  <option value="Shona">Shona</option>
+                  <option value="Ndebele">Ndebele</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                <select
+                  value={formData.purpose}
+                  onChange={(e) => setFormData({...formData, purpose: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="HIV/AIDS">HIV/AIDS</option>
+                  <option value="Information and Counselling">Information and Counselling</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
               <div>
@@ -1055,6 +1165,63 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                   value={formData.duration}
                   onChange={(e) => setFormData({...formData, duration: e.target.value})}
                   placeholder="e.g., 5 min"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Call Description</label>
+                <textarea
+                  value={formData.callDescription}
+                  onChange={(e) => setFormData({...formData, callDescription: e.target.value})}
+                  rows={3}
+                  placeholder="Describe the caller's inquiry or concern..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Is this a Case?</label>
+                <div className="flex space-x-4 mt-2">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="isCase"
+                      value="YES"
+                      checked={formData.isCase === 'YES'}
+                      onChange={(e) => setFormData({...formData, isCase: e.target.value})}
+                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                    />
+                    <span className="ml-2 text-sm">YES</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="isCase"
+                      value="NO"
+                      checked={formData.isCase === 'NO'}
+                      onChange={(e) => setFormData({...formData, isCase: e.target.value})}
+                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                    />
+                    <span className="ml-2 text-sm">NO</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Perpetrator</label>
+                <input
+                  type="text"
+                  value={formData.perpetrator}
+                  onChange={(e) => setFormData({...formData, perpetrator: e.target.value})}
+                  placeholder="If relevant to the case"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Services Recommended</label>
+                <input
+                  type="text"
+                  value={formData.servicesRecommended}
+                  onChange={(e) => setFormData({...formData, servicesRecommended: e.target.value})}
+                  placeholder="Services provided or recommended"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
@@ -1101,14 +1268,29 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
 
           {/* Notes */}
           <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              rows={4}
-              placeholder="Additional notes about the call..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes & Comments</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  rows={3}
+                  placeholder="Additional notes about the call..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Comments</label>
+                <textarea
+                  value={formData.comment}
+                  onChange={(e) => setFormData({...formData, comment: e.target.value})}
+                  rows={3}
+                  placeholder="Additional comments or notes..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons */}

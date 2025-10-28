@@ -55,6 +55,7 @@ export async function PUT(
       callerEmail: body.callerEmail || existingCall.callerEmail,
       callerAge: body.callerAge || existingCall.callerAge,
       callerGender: body.callerGender || existingCall.callerGender,
+      callerKeyPopulation: body.callerKeyPopulation || existingCall.callerKeyPopulation,
       callerProvince: body.callerProvince || existingCall.callerProvince,
       callerAddress: body.callerAddress || existingCall.callerAddress,
       
@@ -67,12 +68,19 @@ export async function PUT(
       
       // Call Details
       modeOfCommunication: body.communicationMode || existingCall.modeOfCommunication,
-      purpose: body.purpose || existingCall.purpose,
+      howDidYouHearAboutUs: body.howDidYouHearAboutUs || existingCall.howDidYouHearAboutUs,
       callValidity: body.validity || existingCall.callValidity,
+      newOrRepeatCall: body.newOrRepeatCall || existingCall.newOrRepeatCall,
+      language: body.language || existingCall.language,
+      callDescription: body.callDescription || existingCall.callDescription,
+      purpose: body.purpose || existingCall.purpose,
+      isCase: body.isCase || existingCall.isCase,
+      perpetrator: body.perpetrator || existingCall.perpetrator,
+      servicesRecommended: body.servicesRecommended || existingCall.servicesRecommended,
       status: body.status || existingCall.status,
       referral: body.referredTo || existingCall.referral,
       notes: body.notes || existingCall.notes,
-      comment: body.notes || existingCall.comment,
+      comment: body.comment || existingCall.comment,
       
       // Voucher Information
       voucherIssued: body.voucherIssued || existingCall.voucherIssued,
