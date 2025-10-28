@@ -105,6 +105,12 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
+  // Draft saving state
+  const [isDraftSaving, setIsDraftSaving] = useState(false)
+  const [draftSaved, setDraftSaved] = useState(false)
+  const [draftId, setDraftId] = useState<string | null>(null)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  
   // Employee selection state
   const [employees, setEmployees] = useState<Array<{id: string, name: string, department: string, position: string}>>([])
   const [loadingEmployees, setLoadingEmployees] = useState(false)
@@ -112,6 +118,7 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
   // Fetch employees when component mounts
   useEffect(() => {
     fetchEmployees()
+    loadDraft()
   }, [])
   
   // Project Information State
@@ -155,6 +162,16 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
     projectDuration: 3
   })
   
+  // Auto-save draft when form data changes (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (projectCode || projectTitle || description) {
+        saveDraft()
+      }
+    }, 2000) // Auto-save after 2 seconds of inactivity
+
+    return () => clearTimeout(timer)
+  }, [projectCode, projectTitle, projectGoal, description, projectLead, selectedCategories, startDate, endDate, totalBudget, fundingSource])
 
   const steps = [
     { number: 1, title: "Project Information", icon: DocumentTextIcon },
@@ -404,6 +421,8 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
       const result = await response.json()
 
       if (result.success) {
+        // Delete the draft since project was successfully created
+        await deleteDraft()
         onSuccess()
       } else {
         throw new Error(result.error || 'Failed to create project')
@@ -413,6 +432,116 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
       setError(error instanceof Error ? error.message : 'Failed to create project. Please try again.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Draft saving functions
+  const saveDraft = async () => {
+    if (!session?.user?.id || isDraftSaving) return
+    
+    setIsDraftSaving(true)
+    try {
+      const draftData = {
+        projectCode,
+        projectTitle,
+        projectGoal,
+        description,
+        projectLead,
+        projectTeam,
+        selectedCategories,
+        startDate,
+        endDate,
+        selectedCountries,
+        selectedProvinces,
+        uploadedDocuments,
+        implementingOrganizations,
+        selectedFrequencies,
+        frequencyDates,
+        selectedMethodologies,
+        totalBudget,
+        fundingSource,
+        resultsFramework,
+        currentStep
+      }
+
+      const url = draftId ? `/api/programs/projects/drafts/${draftId}` : '/api/programs/projects/drafts'
+      const method = draftId ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(draftData),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        if (!draftId) {
+          setDraftId(result.data.id)
+        }
+        setDraftSaved(true)
+        setLastSaved(new Date())
+        
+        // Hide the "saved" indicator after 3 seconds
+        setTimeout(() => setDraftSaved(false), 3000)
+      }
+    } catch (error) {
+      console.error('Draft save error:', error)
+    } finally {
+      setIsDraftSaving(false)
+    }
+  }
+
+  const loadDraft = async () => {
+    if (!session?.user?.id) return
+    
+    try {
+      const response = await fetch('/api/programs/projects/drafts')
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        const draft = result.data
+        setDraftId(draft.id)
+        setProjectCode(draft.projectCode || "")
+        setProjectTitle(draft.projectTitle || "")
+        setProjectGoal(draft.projectGoal || "")
+        setDescription(draft.description || "")
+        setProjectLead(draft.projectLead || "")
+        setProjectTeam(draft.projectTeam || [])
+        setSelectedCategories(draft.selectedCategories || [])
+        setStartDate(draft.startDate || "")
+        setEndDate(draft.endDate || "")
+        setSelectedCountries(draft.selectedCountries || ["Zimbabwe"])
+        setSelectedProvinces(draft.selectedProvinces || { "Zimbabwe": [] })
+        setUploadedDocuments(draft.uploadedDocuments || [])
+        setImplementingOrganizations(draft.implementingOrganizations || [""])
+        setSelectedFrequencies(draft.selectedFrequencies || [])
+        setFrequencyDates(draft.frequencyDates || {})
+        setSelectedMethodologies(draft.selectedMethodologies || [])
+        setTotalBudget(draft.totalBudget || "")
+        setFundingSource(draft.fundingSource || "")
+        setResultsFramework(draft.resultsFramework || { objectives: [], projectDuration: 1 })
+        setCurrentStep(draft.currentStep || 1)
+        setLastSaved(new Date(draft.updatedAt))
+      }
+    } catch (error) {
+      console.error('Draft load error:', error)
+    }
+  }
+
+  const deleteDraft = async () => {
+    if (!draftId) return
+    
+    try {
+      await fetch(`/api/programs/projects/drafts/${draftId}`, {
+        method: 'DELETE'
+      })
+      setDraftId(null)
+      setLastSaved(null)
+    } catch (error) {
+      console.error('Draft delete error:', error)
     }
   }
 
@@ -1038,7 +1167,41 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
             </Button>
           )}
         </div>
-        <div className="flex space-x-4">
+        <div className="flex items-center space-x-4">
+          {/* Draft Status Indicator */}
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            {isDraftSaving && (
+              <div className="flex items-center space-x-1">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
+                <span>Saving draft...</span>
+              </div>
+            )}
+            {draftSaved && (
+              <div className="flex items-center space-x-1 text-green-600">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Draft saved</span>
+              </div>
+            )}
+            {lastSaved && !isDraftSaving && !draftSaved && (
+              <span className="text-gray-500">
+                Last saved: {lastSaved.toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+
+          {/* Save Draft Button */}
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={saveDraft}
+            disabled={isDraftSaving || !session?.user?.id}
+            className="hover:bg-blue-50 border-blue-300 text-blue-700"
+          >
+            {isDraftSaving ? 'Saving...' : 'Save Draft'}
+          </Button>
+
           <Button 
             type="button" 
             variant="outline" 

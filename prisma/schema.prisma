@@ -1120,6 +1120,38 @@ model projects {
   @@index([status])
 }
 
+model ProjectDraft {
+  id                        String   @id @default(cuid())
+  userId                    String
+  projectCode               String?
+  projectTitle              String?
+  projectGoal               String?
+  description               String?
+  projectLead               String?
+  projectTeam               Json?    // Array of strings
+  selectedCategories        Json?    // Array of strings
+  startDate                 String?
+  endDate                   String?
+  selectedCountries         Json?    // Array of strings
+  selectedProvinces         Json?    // Object with country-province mapping
+  uploadedDocuments         Json?    // Array of document objects
+  implementingOrganizations Json?    // Array of strings
+  selectedFrequencies       Json?    // Array of strings
+  frequencyDates            Json?    // Object with frequency-date mapping
+  selectedMethodologies     Json?    // Array of strings
+  totalBudget               String?
+  fundingSource             String?
+  resultsFramework          Json?    // Results framework object
+  currentStep               Int      @default(1)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  // Relations
+  user                      users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 /// MEAL Module
 model meal_forms {
   id           String   @id @default(cuid())
@@ -1524,6 +1556,7 @@ model users {
   sessions                                                          sessions[]
   users                                                             users?                       @relation("usersTousers", fields: [supervisorId], references: [id])
   other_users                                                       users[]                      @relation("usersTousers")
+  ProjectDraft                                                      ProjectDraft[]
 }
 
 model verificationtokens {
