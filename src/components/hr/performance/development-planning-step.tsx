@@ -136,21 +136,21 @@ export function DevelopmentPlanningStep({ formData, updateFormData }: Developmen
         </CardContent>
       </Card>
 
-      {/* Training & Development Needs */}
+      {/* Training & Development Achievements */}
       <Card className="border-2 border-gray-200 shadow-md">
         <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b-2 border-green-200">
           <CardTitle className="text-xl font-bold text-gray-900 flex items-center">
             <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
-            Training & Development Needs
+            Training & Development Achievements
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">
           {formData.development.trainingNeeds.map((need, index) => (
             <div key={index} className="flex gap-3 items-center">
               <Input
-                placeholder="Training or development need..."
+                placeholder="Training or development achievement..."
                 value={need}
                 onChange={(e) => updateTrainingNeed(index, e.target.value)}
                 className="flex-1 border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
@@ -175,7 +175,7 @@ export function DevelopmentPlanningStep({ formData, updateFormData }: Developmen
             <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Add Training Need
+            Add Training Achievement
           </Button>
         </CardContent>
       </Card>
