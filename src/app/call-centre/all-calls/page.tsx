@@ -383,22 +383,25 @@ export default function AllCallsPage() {
             <table className="min-w-full divide-y divide-gray-200 table-fixed">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="w-1/4 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Call Details
                   </th>
-                  <th className="w-1/4 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Caller Information
                   </th>
-                  <th className="w-1/5 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client Information
+                  </th>
+                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Communication
                   </th>
                   <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="w-1/8 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-1/12 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Officer
                   </th>
-                  <th className="w-20 px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="w-16 px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -406,7 +409,7 @@ export default function AllCallsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
                         <span className="ml-3 text-gray-500">Loading call records...</span>
@@ -415,7 +418,7 @@ export default function AllCallsPage() {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="text-red-500">
                         <ExclamationTriangleIcon className="mx-auto h-12 w-12 mb-4" />
                         <p>{error}</p>
@@ -430,7 +433,7 @@ export default function AllCallsPage() {
                   </tr>
                 ) : filteredCalls.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                       No call records found
                     </td>
                   </tr>
@@ -441,7 +444,7 @@ export default function AllCallsPage() {
                     
                     return (
                       <tr key={call.id} className="hover:bg-gray-50 align-top">
-                        <td className="w-1/4 px-4 py-3">
+                        <td className="w-1/6 px-3 py-3">
                           <div className="text-sm">
                             <div className="font-medium text-gray-900 truncate">{call.callNumber}</div>
                             <div className="text-gray-500 text-xs truncate">{call.id}</div>
@@ -449,7 +452,7 @@ export default function AllCallsPage() {
                             <div className="text-gray-500 text-xs">Duration: {call.duration || 'N/A'}</div>
                           </div>
                         </td>
-                        <td className="w-1/4 px-4 py-3">
+                        <td className="w-1/6 px-3 py-3">
                           <div className="text-sm">
                             <div className="font-medium text-gray-900 truncate">{call.callerName || 'Unknown'}</div>
                             <div className="text-gray-500 text-xs truncate">{call.callerPhone || 'N/A'}</div>
@@ -457,7 +460,26 @@ export default function AllCallsPage() {
                             <div className="text-gray-500 text-xs">{call.callerGender || 'N/A'}, {call.callerAge || 'N/A'}</div>
                           </div>
                         </td>
-                        <td className="w-1/5 px-4 py-3">
+                        <td className="w-1/6 px-3 py-3">
+                          <div className="text-sm">
+                            {call.clientName ? (
+                              <>
+                                <div className="font-medium text-gray-900 truncate" title={call.clientName}>
+                                  {call.clientName}
+                                </div>
+                                <div className="text-gray-500 text-xs">
+                                  {call.clientSex || 'N/A'}, {call.clientAge || 'N/A'}
+                                </div>
+                                <div className="text-xs text-blue-600 font-medium">Client</div>
+                              </>
+                            ) : (
+                              <div className="text-gray-400 text-xs italic">
+                                Same as caller
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="w-1/6 px-3 py-3">
                           <div className="text-sm">
                             <div className="flex items-center mb-1">
                               <commIcon.icon className={`mr-1 h-4 w-4 ${commIcon.color}`} />
@@ -497,12 +519,12 @@ export default function AllCallsPage() {
                             </div>
                           )}
                         </td>
-                        <td className="w-1/8 px-3 py-3 text-sm text-gray-900">
+                        <td className="w-1/12 px-2 py-3 text-sm text-gray-900">
                           <div className="truncate" title={call.officer}>
                             {call.officer}
                           </div>
                         </td>
-                        <td className="w-20 px-2 py-3 text-right">
+                        <td className="w-16 px-2 py-3 text-right">
                           <div className="flex items-center justify-end space-x-1">
                             <button 
                               onClick={() => {
