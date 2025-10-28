@@ -440,7 +440,7 @@ export default function AllCallsPage() {
                     const commIcon = getCommunicationIcon(call.communicationMode);
                     
                     return (
-                      <tr key={call.id} className="hover:bg-gray-50">
+                      <tr key={call.id} className="hover:bg-gray-50 align-top">
                         <td className="w-1/4 px-4 py-3">
                           <div className="text-sm">
                             <div className="font-medium text-gray-900 truncate">{call.callNumber}</div>
@@ -472,15 +472,28 @@ export default function AllCallsPage() {
                           </div>
                         </td>
                         <td className="w-1/6 px-3 py-3">
-                          <div className="flex items-center">
+                          <div className="flex items-center mb-1">
                             <statusInfo.icon className={`mr-1 h-4 w-4 text-gray-400`} />
                             <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${statusInfo.color}`}>
                               {call.status}
                             </span>
                           </div>
                           {call.referredTo && call.referredTo !== "N/A" && (
-                            <div className="text-xs text-gray-500 mt-1 truncate">
-                              → {call.referredTo}
+                            <div className="text-xs text-gray-500 mt-1 leading-tight">
+                              <div className="font-medium text-gray-600 mb-0.5">→ Referred to:</div>
+                              <div 
+                                className="break-words overflow-hidden" 
+                                style={{
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: 'vertical',
+                                  maxHeight: '3.6em',
+                                  lineHeight: '1.2em'
+                                }}
+                                title={call.referredTo}
+                              >
+                                {call.referredTo}
+                              </div>
                             </div>
                           )}
                         </td>
