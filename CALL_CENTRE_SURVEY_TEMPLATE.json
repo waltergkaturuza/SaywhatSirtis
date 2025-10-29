@@ -1,0 +1,91 @@
+{
+  "name": "SAYWHAT Call Centre Service Survey",
+  "description": "Customer satisfaction survey for the SAYWHAT Call Centre department",
+  "language": "en",
+  "status": "draft",
+  "schema": {
+    "fields": [
+      {
+        "key": "gender",
+        "label": "1. What is your gender?",
+        "type": "checkbox",
+        "required": true,
+        "options": ["Male", "Female", "Other"]
+      },
+      {
+        "key": "call_frequency",
+        "label": "2. How frequently do you call the SAYWHAT Call Centre department?",
+        "type": "radio",
+        "required": true,
+        "options": ["Daily", "Weekly", "Monthly", "Rarely", "Never"]
+      },
+      {
+        "key": "prompt_response",
+        "label": "3. The Call Centre department responds promptly to inquiries and requests.",
+        "type": "radio",
+        "required": false,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ]
+      },
+      {
+        "key": "knowledgeable_reps",
+        "label": "4. The Call Centre representatives are knowledgeable and able to resolve issues effectively.",
+        "type": "radio",
+        "required": false,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ]
+      },
+      {
+        "key": "reasonable_wait_time",
+        "label": "5. The wait time to connect with a Call Centre representative is reasonable.",
+        "type": "radio",
+        "required": false,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ]
+      },
+      {
+        "key": "additional_comments",
+        "label": "6. Additional Comments (Optional)",
+        "type": "longtext",
+        "required": false
+      }
+    ]
+  },
+  "conditionalLogic": [
+    {
+      "id": "rule-001",
+      "triggerField": "call_frequency",
+      "operator": "equals",
+      "triggerValue": ["Never"],
+      "action": "hide",
+      "targetFields": ["prompt_response", "knowledgeable_reps", "reasonable_wait_time"],
+      "description": "Hide service quality questions if user never calls"
+    },
+    {
+      "id": "rule-002",
+      "triggerField": "call_frequency",
+      "operator": "equals",
+      "triggerValue": ["Never"],
+      "action": "show",
+      "targetFields": ["additional_comments"],
+      "description": "Always show additional comments field"
+    }
+  ],
+  "indicatorMappings": []
+}
+

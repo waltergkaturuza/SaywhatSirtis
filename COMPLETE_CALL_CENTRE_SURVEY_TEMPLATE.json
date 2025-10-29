@@ -1,0 +1,216 @@
+{
+  "name": "SAYWHAT Call Centre Service Survey - Complete",
+  "description": "Comprehensive customer satisfaction survey for the SAYWHAT Call Centre department with 14 questions",
+  "language": "en",
+  "status": "draft",
+  "schema": {
+    "fields": [
+      {
+        "key": "gender",
+        "label": "1. What is your gender?",
+        "type": "checkbox",
+        "required": true,
+        "options": ["Male", "Female", "Other"],
+        "helpText": ""
+      },
+      {
+        "key": "call_frequency",
+        "label": "2. How frequently do you call the SAYWHAT Call Centre department?",
+        "type": "radio",
+        "required": true,
+        "options": ["Daily", "Weekly", "Monthly", "Rarely", "Never"],
+        "helpText": "This helps us understand your experience level with our service"
+      },
+      {
+        "key": "prompt_response",
+        "label": "3. The Call Centre department responds promptly to inquiries and requests.",
+        "type": "radio",
+        "required": true,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ],
+        "helpText": ""
+      },
+      {
+        "key": "knowledgeable_reps",
+        "label": "4. The Call Centre representatives are knowledgeable and able to resolve issues effectively.",
+        "type": "radio",
+        "required": true,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ],
+        "helpText": ""
+      },
+      {
+        "key": "reasonable_wait_time",
+        "label": "5. The wait time to connect with a Call Centre representative is reasonable.",
+        "type": "radio",
+        "required": true,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ],
+        "helpText": ""
+      },
+      {
+        "key": "professionalism_courtesy",
+        "label": "6. The Call Centre representatives demonstrate professionalism and courtesy.",
+        "type": "radio",
+        "required": true,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ],
+        "helpText": ""
+      },
+      {
+        "key": "accurate_information",
+        "label": "7. The Call Centre department provides accurate and reliable information.",
+        "type": "radio",
+        "required": true,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ],
+        "helpText": ""
+      },
+      {
+        "key": "meets_expectations",
+        "label": "8. The Call Centre department meets or exceeds my expectations.",
+        "type": "radio",
+        "required": true,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ],
+        "helpText": ""
+      },
+      {
+        "key": "active_listening",
+        "label": "9. The Call Centre representatives actively listen and understand clients' concerns.",
+        "type": "radio",
+        "required": true,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ],
+        "helpText": ""
+      },
+      {
+        "key": "follow_up",
+        "label": "10. The Call Centre representatives does follow up on client cases.",
+        "type": "radio",
+        "required": true,
+        "options": [
+          "5. Strongly Agree",
+          "4. Agree",
+          "3. Neutral",
+          "2. Disagree",
+          "1. Strongly Disagree"
+        ],
+        "helpText": ""
+      },
+      {
+        "key": "service_access",
+        "label": "11. Were you able to get/access the service you wanted?",
+        "type": "radio",
+        "required": true,
+        "options": ["YES", "NO"],
+        "helpText": ""
+      },
+      {
+        "key": "overall_satisfaction",
+        "label": "12. What is your overall satisfaction with the SAYWHAT Call Centre service line?",
+        "type": "radio",
+        "required": true,
+        "options": [
+          "5. Extremely satisfied",
+          "4. Very satisfied",
+          "3. Satisfied",
+          "2. Partly satisfied",
+          "1. Not satisfied at All"
+        ],
+        "helpText": ""
+      },
+      {
+        "key": "would_refer",
+        "label": "13. Would you refer someone to the SAYWHAT Call Centre for help?",
+        "type": "radio",
+        "required": false,
+        "options": ["YES", "NO"],
+        "helpText": ""
+      },
+      {
+        "key": "recommendations",
+        "label": "14. Suggest any recommendations or areas of improvement.",
+        "type": "longtext",
+        "required": true,
+        "helpText": "Your feedback helps us improve our service"
+      }
+    ]
+  },
+  "conditionalLogic": [
+    {
+      "id": "rule-hide-service-questions",
+      "triggerField": "call_frequency",
+      "operator": "equals",
+      "triggerValue": ["Never"],
+      "action": "hide",
+      "targetFields": [
+        "prompt_response",
+        "knowledgeable_reps",
+        "reasonable_wait_time",
+        "professionalism_courtesy",
+        "accurate_information",
+        "meets_expectations",
+        "active_listening",
+        "follow_up",
+        "service_access",
+        "overall_satisfaction"
+      ],
+      "description": "Hide service quality questions (Q3-12) if user never calls the Call Centre"
+    }
+  ],
+  "indicatorMappings": [
+    {
+      "id": "satisfaction-score",
+      "fieldKey": "overall_satisfaction",
+      "indicatorId": "call-centre-satisfaction",
+      "calculationType": "average",
+      "aggregationPeriod": "monthly",
+      "description": "Track average satisfaction score monthly"
+    },
+    {
+      "id": "referral-rate",
+      "fieldKey": "would_refer",
+      "indicatorId": "call-centre-referral-rate",
+      "calculationType": "percentage",
+      "aggregationPeriod": "monthly",
+      "description": "Track percentage of users who would refer others"
+    }
+  ]
+}
+
