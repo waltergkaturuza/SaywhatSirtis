@@ -22,7 +22,7 @@ export interface Indicator {
   dataCollection: {
     frequency: string
     source: string
-    disaggregation: string
+    disaggregation: string[]
   }
   comment: string
 }
@@ -90,7 +90,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
     dataCollection: {
       frequency: "monthly",
       source: "",
-      disaggregation: ""
+      disaggregation: []
     },
     comment: ""
   })
@@ -519,17 +519,34 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Disaggregation
             </label>
-            <select
-              value={indicator.dataCollection.disaggregation}
-              onChange={(e) => updateFn('dataCollection.disaggregation', e.target.value)}
-              disabled={readonly}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-100"
-            >
-              <option value="">Select disaggregation</option>
-              {disaggregationOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+            <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white">
+              <div className="grid grid-cols-1 gap-2">
+                {disaggregationOptions.map(option => {
+                  const selected = Array.isArray(indicator.dataCollection.disaggregation)
+                    ? indicator.dataCollection.disaggregation.includes(option)
+                    : false
+                  return (
+                    <label key={option} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        disabled={readonly}
+                        checked={selected}
+                        onChange={(e) => {
+                          const current = Array.isArray(indicator.dataCollection.disaggregation)
+                            ? indicator.dataCollection.disaggregation
+                            : []
+                          const next = e.target.checked
+                            ? Array.from(new Set([...current, option]))
+                            : current.filter(v => v !== option)
+                          updateFn('dataCollection.disaggregation', next)
+                        }}
+                      />
+                      {option}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>
