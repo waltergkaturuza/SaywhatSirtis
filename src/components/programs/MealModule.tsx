@@ -83,12 +83,13 @@ function FormsStub() {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([])
   const [projects, setProjects] = useState<any[]>([])
   const [selected, setSelected] = useState<any | null>(null)
-  const [fieldType, setFieldType] = useState<'text'|'shorttext'|'longtext'|'number'|'decimal'|'currency'|'date'|'time'|'datetime'|'select'|'radio'|'checkbox'|'gps'|'file'|'photo'|'video'>('text')
+  const [fieldType, setFieldType] = useState<'text'|'shorttext'|'longtext'|'number'|'decimal'|'currency'|'date'|'time'|'datetime'|'select'|'radio'|'checkbox'|'gps'|'file'|'photo'|'video'|'title'|'heading'|'description'|'divider'>('text')
   const [fieldLabel, setFieldLabel] = useState("")
   const [fieldKey, setFieldKey] = useState("")
   const [fieldRequired, setFieldRequired] = useState(false)
   const [fieldOptions, setFieldOptions] = useState("")
   const [fieldMultiple, setFieldMultiple] = useState(false)
+  const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null)
   
   // Conditional Logic State
   const [showConditionalLogic, setShowConditionalLogic] = useState(false)
@@ -264,6 +265,12 @@ function FormsStub() {
     const opts = (fieldType==='select'||fieldType==='radio'||fieldType==='checkbox') ? fieldOptions.split(',').map(s=>s.trim()).filter(Boolean) : undefined
     const accept = fieldType==='photo' ? 'image/*' : fieldType==='video' ? 'video/*' : fieldType==='file' ? '*/*' : undefined
     const f:any = { key: fieldKey || fieldLabel.toLowerCase().replace(/\s+/g,'_'), type: fieldType, label: fieldLabel, required: fieldRequired }
+    if (['title','heading','description','divider'].includes(fieldType as any)) {
+      f.style = { align: 'left', bold: false, italic: false }
+      if (fieldType === 'heading') f.level = 1
+      f.required = false
+      f.isDisplay = true
+    }
     if (opts) f.options = opts
     if (accept) f.accept = accept
     if (['file','photo','video'].includes(fieldType)) f.multiple = fieldMultiple
@@ -271,7 +278,18 @@ function FormsStub() {
     next.schema = next.schema || { fields: [] }
     next.schema.fields = Array.isArray(next.schema.fields) ? next.schema.fields.concat([f]) : [f]
     setSelected(next)
-    setFieldLabel(""); setFieldKey(""); setFieldRequired(false); setFieldOptions(""); setFieldMultiple(false)
+    setFieldLabel(""); setFieldKey(""); setFieldRequired(false); setFieldOptions(""); setFieldMultiple(false); setSelectedFieldIndex((next.schema.fields as any[]).length - 1)
+  }
+
+  const addDisplayField = (variant: 'title'|'heading'|'description'|'divider') => {
+    if (!selected) return
+    const f:any = { key: variant + '_' + Math.random().toString(36).slice(2,8), type: variant, label: variant==='divider' ? 'Divider' : variant.charAt(0).toUpperCase()+variant.slice(1), required: false, style: { align: 'left', bold: false, italic: false }, isDisplay: true }
+    if (variant === 'heading') f.level = 1
+    const next = { ...selected }
+    next.schema = next.schema || { fields: [] }
+    next.schema.fields = Array.isArray(next.schema.fields) ? next.schema.fields.concat([f]) : [f]
+    setSelected(next)
+    setSelectedFieldIndex((next.schema.fields as any[]).length - 1)
   }
 
   return (
@@ -433,22 +451,30 @@ function FormsStub() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <select value={fieldType} onChange={e=>setFieldType(e.target.value as any)} className="px-2 py-2 border rounded-md">
-                      <option value="text">Text</option>
-                      <option value="shorttext">Short Text</option>
-                      <option value="longtext">Long Text</option>
-                      <option value="number">Number (Integer)</option>
-                      <option value="decimal">Decimal</option>
-                      <option value="currency">Currency</option>
-                      <option value="date">Date</option>
-                      <option value="time">Time</option>
-                      <option value="datetime">Date & Time</option>
-                      <option value="select">Select (Dropdown)</option>
-                      <option value="radio">Radio</option>
-                      <option value="checkbox">Checkbox (Multi)</option>
-                      <option value="gps">GPS Location</option>
-                      <option value="file">File</option>
-                      <option value="photo">Photo</option>
-                      <option value="video">Video</option>
+                      <optgroup label="Display">
+                        <option value="title">Title</option>
+                        <option value="heading">Heading</option>
+                        <option value="description">Description</option>
+                        <option value="divider">Divider</option>
+                      </optgroup>
+                      <optgroup label="Questions">
+                        <option value="text">Text</option>
+                        <option value="shorttext">Short Text</option>
+                        <option value="longtext">Long Text</option>
+                        <option value="number">Number (Integer)</option>
+                        <option value="decimal">Decimal</option>
+                        <option value="currency">Currency</option>
+                        <option value="date">Date</option>
+                        <option value="time">Time</option>
+                        <option value="datetime">Date & Time</option>
+                        <option value="select">Select (Dropdown)</option>
+                        <option value="radio">Radio</option>
+                        <option value="checkbox">Checkbox (Multi)</option>
+                        <option value="gps">GPS Location</option>
+                        <option value="file">File</option>
+                        <option value="photo">Photo</option>
+                        <option value="video">Video</option>
+                      </optgroup>
                     </select>
                     <input value={fieldLabel} onChange={e=>setFieldLabel(e.target.value)} placeholder="Label" className="px-2 py-2 border rounded-md" />
                     <input value={fieldKey} onChange={e=>setFieldKey(e.target.value)} placeholder="Key (optional)" className="px-2 py-2 border rounded-md" />
@@ -460,13 +486,33 @@ function FormsStub() {
                       <label className="flex items-center gap-2 text-sm col-span-2"><input type="checkbox" checked={fieldMultiple} onChange={e=>setFieldMultiple(e.target.checked)} /> Allow multiple files</label>
                     )}
                     <button onClick={addField} className="px-3 py-2 border rounded-md col-span-2">Add Field</button>
+                    <div className="col-span-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                      <span>Quick add:</span>
+                      <button type="button" onClick={()=>addDisplayField('title')} className="px-2 py-1 border rounded">Title</button>
+                      <button type="button" onClick={()=>addDisplayField('heading')} className="px-2 py-1 border rounded">Heading</button>
+                      <button type="button" onClick={()=>addDisplayField('description')} className="px-2 py-1 border rounded">Description</button>
+                      <button type="button" onClick={()=>addDisplayField('divider')} className="px-2 py-1 border rounded">Divider</button>
+                    </div>
                   </div>
                   <div className="mt-3">
                     <div className="text-sm text-gray-600 mb-2">Fields</div>
                     <ul className="text-sm space-y-1">
                       {(selected.schema?.fields||[]).map((f:any,idx:number)=>(
-                        <li key={idx} className="flex justify-between border rounded-md p-2">
-                          <span>{f.label} <span className="text-gray-500">({f.type})</span></span>
+                        <li key={idx} className={"flex justify-between items-center gap-2 border rounded-md p-2 cursor-pointer " + (selectedFieldIndex===idx? 'ring-2 ring-orange-500':'')} onClick={()=>setSelectedFieldIndex(idx)}>
+                          {selectedFieldIndex===idx ? (
+                            <input
+                              className="flex-1 px-2 py-1 border rounded"
+                              value={f.label || ''}
+                              onChange={e=>{
+                                const next={...selected};
+                                next.schema.fields[idx].label = e.target.value;
+                                setSelected(next);
+                              }}
+                              placeholder="Field text / label"
+                            />
+                          ) : (
+                            <span className="flex-1">{f.label} <span className="text-gray-500">({f.type})</span></span>
+                          )}
                           <button onClick={()=>{
                             const next={...selected}; next.schema.fields.splice(idx,1); setSelected(next)
                           }} className="text-red-600">Remove</button>
@@ -476,6 +522,55 @@ function FormsStub() {
                         <li className="text-gray-500">No fields yet</li>
                       )}
                     </ul>
+                  </div>
+                  {/* Text Settings Section */}
+                  <div className="mt-6 border-t pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="text-sm font-semibold text-gray-700">🅣 Text Settings</h5>
+                    </div>
+                    {selectedFieldIndex===null || !selected?.schema?.fields?.[selectedFieldIndex] || !['title','heading','description'].includes(selected.schema.fields[selectedFieldIndex].type) ? (
+                      <div className="text-xs text-gray-500">Select a Title, Heading, or Description field to edit text styles.</div>
+                    ) : (
+                      <div className="space-y-3 text-xs">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <label className="flex items-center gap-2">
+                            <input type="checkbox" checked={Boolean(selected.schema.fields[selectedFieldIndex].style?.bold)} onChange={e=>{
+                              const next={...selected}; const f=next.schema.fields[selectedFieldIndex]; f.style = Object.assign({}, f.style, { bold: e.target.checked }); setSelected(next)
+                            }} />
+                            <span>Bold</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <input type="checkbox" checked={Boolean(selected.schema.fields[selectedFieldIndex].style?.italic)} onChange={e=>{
+                              const next={...selected}; const f=next.schema.fields[selectedFieldIndex]; f.style = Object.assign({}, f.style, { italic: e.target.checked }); setSelected(next)
+                            }} />
+                            <span>Italic</span>
+                          </label>
+                          <span>Align</span>
+                          <select className="px-2 py-1 border rounded" value={selected.schema.fields[selectedFieldIndex].style?.align||'left'} onChange={e=>{
+                            const next={...selected}; const f=next.schema.fields[selectedFieldIndex]; f.style = Object.assign({}, f.style, { align: e.target.value }); setSelected(next)
+                          }}>
+                            <option value="left">Left</option>
+                            <option value="center">Center</option>
+                            <option value="right">Right</option>
+                          </select>
+                          <input className="px-2 py-1 border rounded" placeholder="Font family (e.g., Inter)" value={selected.schema.fields[selectedFieldIndex].style?.fontFamily||''} onChange={e=>{
+                            const next={...selected}; const f=next.schema.fields[selectedFieldIndex]; f.style = Object.assign({}, f.style, { fontFamily: e.target.value }); setSelected(next)
+                          }} />
+                        </div>
+                        {selected.schema.fields[selectedFieldIndex].type==='heading' && (
+                          <div className="flex items-center gap-2">
+                            <span>Heading Level</span>
+                            <select className="px-2 py-1 border rounded" value={selected.schema.fields[selectedFieldIndex].level||1} onChange={e=>{
+                              const next={...selected}; const f=next.schema.fields[selectedFieldIndex]; f.level = Number(e.target.value); setSelected(next)
+                            }}>
+                              <option value={1}>H1</option>
+                              <option value={2}>H2</option>
+                              <option value={3}>H3</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Conditional Logic Section */}
@@ -1043,6 +1138,7 @@ function SubmissionsStub() {
 
   // Smart Data Validation
   const validateField = (field: any, value: any) => {
+    if (['title','heading','description','divider'].includes(field.type)) return null
     if (field.required && (!value || value.toString().trim() === '')) {
       return `${field.label} is required`
     }
@@ -1133,6 +1229,25 @@ function SubmissionsStub() {
     console.log(`Field: ${f.label} (${f.key}) - DateTime: ${isDateTimeField}, GPS: ${isGpsField}`)
 
     switch(f.type) {
+      case 'title': {
+        const style = f.style || {}
+        const cls = `${style.bold ? 'font-bold ' : ''}${style.italic ? 'italic ' : ''}${style.align ? 'text-' + style.align : ''}`.trim()
+        return <h1 style={{ fontFamily: style.fontFamily }} className={`text-2xl ${cls}`}>{f.label}</h1>
+      }
+      case 'heading': {
+        const style = f.style || {}
+        const level = f.level || 1
+        const base = level === 1 ? 'text-xl' : level === 2 ? 'text-lg' : 'text-base'
+        const cls = `${base} font-semibold ${style.bold ? 'font-bold ' : ''}${style.italic ? 'italic ' : ''}${style.align ? 'text-' + style.align : ''}`.trim()
+        return <div style={{ fontFamily: style.fontFamily }} className={cls}>{f.label}</div>
+      }
+      case 'description': {
+        const style = f.style || {}
+        const cls = `text-gray-600 ${style.bold ? 'font-bold ' : ''}${style.italic ? 'italic ' : ''}${style.align ? 'text-' + style.align : ''}`.trim()
+        return <p style={{ fontFamily: style.fontFamily }} className={cls}>{f.label}</p>
+      }
+      case 'divider':
+        return <hr className="my-4" />
       case 'number': 
         return (
           <div className="space-y-1">
@@ -1337,11 +1452,17 @@ function SubmissionsStub() {
             
             return (
               <div key={f.key} className="space-y-2">
-                <div className="text-sm font-medium text-gray-700">
-                  {f.label}
-                  {(f.required || logic.required) && <span className="text-red-600 ml-1">*</span>}
-                </div>
-                {renderField(f)}
+                {(f.isDisplay || ['title','heading','description','divider'].includes(f.type)) ? (
+                  renderField(f)
+                ) : (
+                  <>
+                    <div className="text-sm font-medium text-gray-700">
+                      {f.label}
+                      {(f.required || logic.required) && <span className="text-red-600 ml-1">*</span>}
+                    </div>
+                    {renderField(f)}
+                  </>
+                )}
               </div>
             )
           })}
