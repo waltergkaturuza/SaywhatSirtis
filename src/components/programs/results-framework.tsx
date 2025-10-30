@@ -395,7 +395,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
 
   const renderIndicatorForm = (
     indicator: Indicator, 
-    updateFn: (field: string, value: string) => void,
+    updateFn: (field: string, value: any) => void,
     title: string
   ) => (
     <div className="bg-gray-50 p-4 rounded-lg space-y-4">
