@@ -630,6 +630,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <button
+                      type="button"
                       onClick={() => toggleExpanded(objective.id)}
                       className="p-1 hover:bg-blue-100 rounded"
                     >
@@ -711,6 +712,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                               <button
+                                type="button"
                                 onClick={() => toggleExpanded(outcome.id)}
                                 className="p-1 hover:bg-green-100 rounded"
                               >
@@ -839,6 +841,7 @@ export function ResultsFramework({ data, onChange, readonly = false }: ResultsFr
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center space-x-3">
                                         <button
+                                          type="button"
                                           onClick={() => toggleExpanded(output.id)}
                                           className="p-1 hover:bg-purple-100 rounded"
                                         >
