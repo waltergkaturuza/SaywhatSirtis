@@ -1,4 +1,5 @@
 import React, { useState } from "react"
+import { useRouter } from "next/navigation"
 import { 
   CheckIcon, 
   ChevronUpIcon, 
@@ -34,6 +35,7 @@ const ListView: React.FC<ListViewProps> = ({
   permissions,
   isLoading
 }) => {
+  const router = useRouter()
   const [viewPopupOpen, setViewPopupOpen] = useState(false)
   const [editPopupOpen, setEditPopupOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
@@ -59,8 +61,7 @@ const ListView: React.FC<ListViewProps> = ({
   }
 
   const handleEditProject = (projectId: string) => {
-    setSelectedProjectId(projectId)
-    setEditPopupOpen(true)
+    router.push(`/programs/projects/${projectId}/edit`)
   }
 
   const handleClosePopups = () => {
