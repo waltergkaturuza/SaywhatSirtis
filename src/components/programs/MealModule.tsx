@@ -1452,7 +1452,7 @@ function SubmissionsStub() {
             
             return (
               <div key={f.key} className="space-y-2">
-                {(f.isDisplay || ['title','heading','description','divider'].includes(f.type)) ? (
+                {(['title','heading','description','divider'].includes(f.type)) ? (
                   renderField(f)
                 ) : (
                   <>
