@@ -20,7 +20,7 @@ interface Document {
   id: string;
   originalName: string;
   fileName: string;
-  size: string;
+  size: string | number;
   mimeType: string;
   uploadedBy: string;
   uploadDate: string;
@@ -50,7 +50,18 @@ interface Document {
       height: number;
     };
   };
+  uploadedByUser?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null;
+  createdAt?: string;
+  updatedAt?: string;
+  url?: string | null;
+  path?: string | null;
 }
+
+type PreviewType = 'inline' | 'office' | 'unsupported';
 
 interface DocumentViewModalProps {
   isOpen: boolean;
@@ -62,6 +73,8 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<PreviewType>('unsupported');
 
   // Helper function to format dates safely
   const formatDate = (dateString: string) => {
@@ -108,7 +121,27 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
       
       if (response.ok) {
         const data = await response.json();
-        setDocument(data);
+        const transformed: Document = {
+          id: data.id,
+          originalName: data.originalName || data.filename || data.fileName || 'Document',
+          fileName: data.filename || data.fileName || data.originalName || 'unknown',
+          size: data.size,
+          mimeType: data.mimeType || 'application/octet-stream',
+          uploadedBy: data.uploadedBy,
+          uploadDate: data.uploadDate || data.createdAt || '',
+          category: data.category || 'Unknown',
+          classification: data.classification || 'PUBLIC',
+          description: data.description,
+          department: data.department,
+          keywords: Array.isArray(data.tags) ? data.tags.join(', ') : data.tags,
+          customMetadata: data.customMetadata,
+          uploadedByUser: data.uploadedByUser || null,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+          url: data.url || null,
+          path: data.path || null
+        };
+        setDocument(transformed);
       } else {
         setError('Failed to load document details');
       }
@@ -120,20 +153,76 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
     }
   };
 
+  useEffect(() => {
+    if (!document || typeof window === 'undefined') {
+      setPreviewUrl(null);
+      setPreviewType('unsupported');
+      return;
+    }
+
+    const buildPreviewConfig = (doc: Document): { url: string | null; type: PreviewType } => {
+      const origin = window.location.origin;
+      const baseFileUrl = `${origin}/api/documents/${doc.id}/view`;
+      const extension = doc.originalName?.split('.').pop()?.toLowerCase() || '';
+      const mimeType = doc.mimeType?.toLowerCase() || '';
+
+      const isPdf =
+        mimeType.includes('pdf') ||
+        ['pdf'].includes(extension);
+
+      const isImage = mimeType.startsWith('image/');
+      const isText = mimeType.startsWith('text/') || ['txt', 'csv', 'json', 'md'].includes(extension);
+      const officeExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+      const isOffice =
+        officeExtensions.includes(extension) ||
+        mimeType.includes('word') ||
+        mimeType.includes('excel') ||
+        mimeType.includes('powerpoint') ||
+        mimeType.includes('officedocument');
+
+      if (isPdf || isImage || isText) {
+        return { url: baseFileUrl, type: 'inline' };
+      }
+
+      if (isOffice) {
+        const encodedUrl = encodeURIComponent(baseFileUrl);
+        // Use Microsoft Office viewer for better compatibility with Word/Excel/PowerPoint files
+        return {
+          url: `https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`,
+          type: 'office'
+        };
+      }
+
+      return { url: null, type: 'unsupported' };
+    };
+
+    const config = buildPreviewConfig(document);
+    setPreviewUrl(config.url);
+    setPreviewType(config.type);
+  }, [document]);
+
   const handleDownload = () => {
     if (document) {
       window.open(`/api/documents/${document.id}/download`, '_blank');
     }
   };
 
-  const canPreviewFile = (mimeType: string) => {
-    return mimeType?.includes('pdf') || 
-           mimeType?.startsWith('image/') || 
-           mimeType?.startsWith('text/') ||
-           mimeType?.includes('office') ||
-           mimeType?.includes('word') ||
-           mimeType?.includes('excel') ||
-           mimeType?.includes('powerpoint');
+  const formatFileSize = (size: string | number) => {
+    const numericSize = typeof size === 'string' ? parseFloat(size) : size;
+    if (!numericSize || Number.isNaN(numericSize)) return 'Not available';
+    if (numericSize < 1024) return `${numericSize} B`;
+    if (numericSize < 1024 * 1024) return `${(numericSize / 1024).toFixed(1)} KB`;
+    if (numericSize < 1024 * 1024 * 1024) return `${(numericSize / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(numericSize / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
+
+  const getUploadedByLabel = (doc: Document) => {
+    if (doc.uploadedByUser) {
+      const { firstName, lastName, email } = doc.uploadedByUser;
+      const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+      return fullName || email || doc.uploadedBy || 'Unknown';
+    }
+    return doc.uploadedBy || 'Unknown';
   };
 
   const getClassificationColor = (classification: string) => {
@@ -225,7 +314,7 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                             <UserIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                             <div>
                               <p className="text-sm font-medium text-gray-900">Uploaded By</p>
-                              <p className="text-sm text-gray-600">{document.uploadedBy}</p>
+                              <p className="text-sm text-gray-600">{getUploadedByLabel(document)}</p>
                             </div>
                           </div>
 
@@ -271,7 +360,7 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                             <DocumentIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                             <div>
                               <p className="text-sm font-medium text-gray-900">File Size</p>
-                              <p className="text-sm text-gray-600">{document.size}</p>
+                              <p className="text-sm text-gray-600">{formatFileSize(document.size)}</p>
                             </div>
                           </div>
 
@@ -319,15 +408,41 @@ export default function DocumentViewModal({ isOpen, onClose, documentId }: Docum
                       </div>
                       
                       <div className="flex-1 p-6">
-                        {canPreviewFile(document.mimeType) ? (
-                          <div className="w-full h-full bg-white rounded-lg shadow-sm border border-gray-200">
+                        {previewType === 'inline' && previewUrl ? (
+                          <div className="w-full h-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative">
                             <iframe
-                              src={`/api/documents/${document.id}/view`}
+                              src={previewUrl}
                               className="w-full h-full rounded-lg"
                               title={document.originalName}
                               allow="fullscreen"
-                              sandbox="allow-same-origin allow-scripts"
                             />
+                            <div className="absolute bottom-4 right-4">
+                              <button
+                                onClick={() => window.open(previewUrl, '_blank', 'noopener')}
+                                className="px-3 py-2 text-xs font-medium text-white bg-saywhat-orange rounded-md shadow hover:bg-orange-600 transition-colors"
+                              >
+                                Open Preview in New Tab
+                              </button>
+                            </div>
+                          </div>
+                        ) : previewType === 'office' && previewUrl ? (
+                          <div className="w-full h-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative">
+                            <iframe
+                              src={previewUrl}
+                              className="w-full h-full rounded-lg"
+                              title={document.originalName}
+                              allow="fullscreen"
+                              // Office viewer requires broader sandbox permissions
+                              sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
+                            />
+                            <div className="absolute bottom-4 right-4">
+                              <button
+                                onClick={() => window.open(previewUrl, '_blank', 'noopener')}
+                                className="px-3 py-2 text-xs font-medium text-white bg-saywhat-orange rounded-md shadow hover:bg-orange-600 transition-colors"
+                              >
+                                Open in New Tab
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center h-full bg-white rounded-lg shadow-sm border border-gray-200">

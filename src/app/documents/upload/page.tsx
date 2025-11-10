@@ -81,6 +81,54 @@ const documentCategories = [
   "Workplans & Activity Schedules"
 ];
 
+const categorizedFolders: Record<string, { categoryEnum: string; displayName: string }> = {
+  'General Document': { categoryEnum: 'OTHER', displayName: 'General Document' },
+  'Activity Reports': { categoryEnum: 'REPORT', displayName: 'Activity Reports' },
+  'Approval Documents': { categoryEnum: 'OTHER', displayName: 'Approval Documents' },
+  'Assessment Reports': { categoryEnum: 'REPORT', displayName: 'Assessment Reports' },
+  'Audit Documents': { categoryEnum: 'REPORT', displayName: 'Audit Documents' },
+  'Board Meeting Minutes': { categoryEnum: 'REPORT', displayName: 'Board Meeting Minutes' },
+  'Budget & Financial Documents': { categoryEnum: 'INVOICE', displayName: 'Budget & Financial Documents' },
+  'Certificates & Credentials': { categoryEnum: 'FORM', displayName: 'Certificates & Credentials' },
+  'Communication & Correspondence': { categoryEnum: 'OTHER', displayName: 'Communication & Correspondence' },
+  'Compliance Documents': { categoryEnum: 'OTHER', displayName: 'Compliance Documents' },
+  'Contracts & Agreements': { categoryEnum: 'CONTRACT', displayName: 'Contracts & Agreements' },
+  'Data Collection & Analysis': { categoryEnum: 'SPREADSHEET', displayName: 'Data Collection & Analysis' },
+  'Employee Documents': { categoryEnum: 'FORM', displayName: 'Employee Documents' },
+  'Event Planning & Reports': { categoryEnum: 'REPORT', displayName: 'Event Planning & Reports' },
+  'External Communication': { categoryEnum: 'OTHER', displayName: 'External Communication' },
+  'Feasibility Studies': { categoryEnum: 'REPORT', displayName: 'Feasibility Studies' },
+  'Financial Statements': { categoryEnum: 'REPORT', displayName: 'Financial Statements' },
+  'Grant Applications & Reports': { categoryEnum: 'REPORT', displayName: 'Grant Applications & Reports' },
+  'HR Policies & Procedures': { categoryEnum: 'POLICY', displayName: 'HR Policies & Procedures' },
+  'Impact Assessment': { categoryEnum: 'REPORT', displayName: 'Impact Assessment' },
+  'Internal Policies': { categoryEnum: 'POLICY', displayName: 'Internal Policies' },
+  'Invoices & Receipts': { categoryEnum: 'INVOICE', displayName: 'Invoices & Receipts' },
+  'Job Descriptions': { categoryEnum: 'FORM', displayName: 'Job Descriptions' },
+  'Legal Documents': { categoryEnum: 'CONTRACT', displayName: 'Legal Documents' },
+  'Meeting Minutes': { categoryEnum: 'REPORT', displayName: 'Meeting Minutes' },
+  'Monitoring & Evaluation': { categoryEnum: 'REPORT', displayName: 'Monitoring & Evaluation' },
+  'Partnership Agreements': { categoryEnum: 'CONTRACT', displayName: 'Partnership Agreements' },
+  'Performance Reviews': { categoryEnum: 'REPORT', displayName: 'Performance Reviews' },
+  'Project Documentation': { categoryEnum: 'REPORT', displayName: 'Project Documentation' },
+  'Project Plans & Proposals': { categoryEnum: 'REPORT', displayName: 'Project Plans & Proposals' },
+  'Procurement Documents': { categoryEnum: 'OTHER', displayName: 'Procurement Documents' },
+  'Progress Reports': { categoryEnum: 'REPORT', displayName: 'Progress Reports' },
+  'Quality Assurance': { categoryEnum: 'REPORT', displayName: 'Quality Assurance' },
+  'Research & Studies': { categoryEnum: 'REPORT', displayName: 'Research & Studies' },
+  'Risk Management': { categoryEnum: 'OTHER', displayName: 'Risk Management' },
+  'SOPs (Standard Operating Procedures)': { categoryEnum: 'PROCEDURE', displayName: 'SOPs' },
+  'Strategic Plans': { categoryEnum: 'REPORT', displayName: 'Strategic Plans' },
+  'Tender Documents': { categoryEnum: 'OTHER', displayName: 'Tender Documents' },
+  'Training Materials': { categoryEnum: 'OTHER', displayName: 'Training Materials' },
+  'User Manuals & Guides': { categoryEnum: 'OTHER', displayName: 'User Manuals & Guides' },
+  'Vendor & Supplier Records': { categoryEnum: 'OTHER', displayName: 'Vendor & Supplier Records' },
+  'Volunteer Management Records': { categoryEnum: 'OTHER', displayName: 'Volunteer Management Records' },
+  'Waste Management Plans': { categoryEnum: 'OTHER', displayName: 'Waste Management Plans' },
+  'Workshop & Conference Materials': { categoryEnum: 'REPORT', displayName: 'Workshop & Conference Materials' },
+  'Workplans & Activity Schedules': { categoryEnum: 'REPORT', displayName: 'Workplans & Activity Schedules' }
+};
+
 // Security classifications - Updated for internal/confidential focus with SAYWHAT colors
 const securityClassifications = {
   "PUBLIC": {
@@ -137,6 +185,29 @@ const workflowTypes = [
   { value: "board", label: "Board Approval", description: "Board of directors approval" }
 ];
 
+const sanitizeFolderSegment = (value: string) => {
+  if (!value) return '';
+  return value
+    .trim()
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[\\/]+/g, '-');
+};
+
+const buildFolderPath = (department: string, category: string) => {
+  const departmentSegment = sanitizeFolderSegment(department) || 'General';
+  const categorySegment = sanitizeFolderSegment(category) || 'General Document';
+  return `${departmentSegment}/${categorySegment}`;
+};
+
+const resolveCategoryInfo = (category: string) => {
+  const mapped = categorizedFolders[category] || categorizedFolders['General Document'];
+  return {
+    name: category,
+    enum: mapped.categoryEnum,
+    display: mapped.displayName,
+  };
+};
+
 export default function DocumentUploadPage() {
   const { data: session, status } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -159,17 +230,30 @@ export default function DocumentUploadPage() {
   // Form data - Enhanced with auto-captured user info
   const [formData, setFormData] = useState({
     title: "",
-    category: "",
+    category: "General Document",
+    categoryEnum: categorizedFolders['General Document'].categoryEnum,
+    categoryDisplay: categorizedFolders['General Document'].displayName,
     classification: "PUBLIC",
     accessLevel: "organization",
-    folder: "/",
+    folder: "General/General Document",
     keywords: "",
     customMetadata: {} as Record<string, string>,
     // Auto-captured fields (read-only)
     uploadedBy: "",
-    department: "",
+    department: "General",
     status: "draft" // draft, pending, published
   });
+  const [folderManuallyEdited, setFolderManuallyEdited] = useState(false);
+
+  const setCategorySelection = (categoryName: string) => {
+    const { name, enum: categoryEnum, display } = resolveCategoryInfo(categoryName);
+    setFormData(prev => ({
+      ...prev,
+      category: name,
+      categoryEnum,
+      categoryDisplay: display,
+    }));
+  };
 
   const [aiAnalysis, setAiAnalysis] = useState<{
     summary?: string;
@@ -194,6 +278,7 @@ export default function DocumentUploadPage() {
       setFormData(prev => ({
         ...prev,
         uploadedBy: currentUserName,
+        department: prev.department || 'General',
         status: isPersonalRepo ? 'draft' : 'pending'
       }));
       
@@ -201,6 +286,14 @@ export default function DocumentUploadPage() {
       loadUserDepartment();
     }
   }, [session, isPersonalRepo]);
+
+  useEffect(() => {
+    if (folderManuallyEdited) return;
+    const departmentValue = formData.department || userDepartment || 'General';
+    const categoryValue = formData.categoryDisplay || formData.category || 'General Document';
+    const computedPath = buildFolderPath(departmentValue, categoryValue);
+    setFormData(prev => (prev.folder === computedPath ? prev : { ...prev, folder: computedPath }));
+  }, [formData.department, formData.categoryDisplay, formData.category, userDepartment, folderManuallyEdited]);
 
   // Load user's department information
   const loadUserDepartment = async () => {
@@ -499,10 +592,7 @@ export default function DocumentUploadPage() {
 
   const applySuggestedCategory = () => {
     if (aiAnalysis?.suggestedCategory && documentCategories.includes(aiAnalysis.suggestedCategory)) {
-      setFormData(prev => ({
-        ...prev,
-        category: aiAnalysis.suggestedCategory!
-      }));
+      setCategorySelection(aiAnalysis.suggestedCategory);
     }
   };
 
@@ -557,6 +647,17 @@ export default function DocumentUploadPage() {
         uploadFormData.append('department', formData.department);
         uploadFormData.append('status', formData.status);
         uploadFormData.append('isPersonalRepo', isPersonalRepo.toString());
+        uploadFormData.append('categoryEnum', formData.categoryEnum);
+        uploadFormData.append('categoryDisplay', formData.categoryDisplay);
+
+        const rawFolderPath = formData.folder || '';
+        const normalizedFolderPath = rawFolderPath
+          .trim()
+          .replace(/^\/+|\/+$/g, '')
+          .replace(/^uploads\//i, '');
+        if (normalizedFolderPath) {
+          uploadFormData.append('folderPath', normalizedFolderPath);
+        }
         
         // Add access level specific selections
         if (formData.accessLevel === 'individual') {
@@ -592,19 +693,22 @@ export default function DocumentUploadPage() {
         setSelectedFiles([]);
         setFormData({
           title: "",
-          category: "",
+          category: "General Document",
+          categoryEnum: categorizedFolders['General Document'].categoryEnum,
+          categoryDisplay: categorizedFolders['General Document'].displayName,
           classification: "PUBLIC",
           accessLevel: "organization",
-          folder: "/",
+          folder: buildFolderPath(formData.department || 'General', categorizedFolders['General Document'].displayName),
           keywords: "",
           customMetadata: {},
-          uploadedBy: userName,
-          department: userDepartment,
-          status: "draft"
+          uploadedBy: formData.uploadedBy,
+          department: formData.department,
+          status: isPersonalRepo ? 'draft' : 'pending'
         });
+        setFolderManuallyEdited(false);
         setAiAnalysis(null);
         setUploadProgress(0);
-      }, 2000);
+      }, 1500);
       
     } catch (error) {
       console.error('Upload error:', error);
@@ -681,16 +785,19 @@ export default function DocumentUploadPage() {
                   setSelectedFiles([]);
                   setFormData({
                     title: "",
-                    category: "",
+                    category: "General Document",
+                    categoryEnum: categorizedFolders['General Document'].categoryEnum,
+                    categoryDisplay: categorizedFolders['General Document'].displayName,
                     classification: "PUBLIC",
                     accessLevel: "organization",
-                    folder: "/",
+                    folder: "General/General Document",
                     keywords: "",
                     customMetadata: {},
                     uploadedBy: userName,
                     department: userDepartment,
                     status: "draft"
                   });
+                  setFolderManuallyEdited(false);
                   setAiAnalysis(null);
                   setUploadProgress(0);
                 }}
@@ -871,7 +978,10 @@ export default function DocumentUploadPage() {
                     <select
                       required
                       value={formData.category}
-                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                      onChange={(e) => {
+                        setCategorySelection(e.target.value);
+                        setFolderManuallyEdited(false);
+                      }}
                       className="block w-full border-2 border-blue-200 rounded-2xl shadow-lg px-6 py-4 text-base focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200"
                     >
                       <option value="">Select a category...</option>
@@ -972,11 +1082,27 @@ export default function DocumentUploadPage() {
                       <input
                         type="text"
                         value={formData.folder}
-                        onChange={(e) => setFormData(prev => ({ ...prev, folder: e.target.value }))}
+                        onChange={(e) => {
+                          setFolderManuallyEdited(true);
+                          setFormData(prev => ({ ...prev, folder: e.target.value }));
+                        }}
                         className="flex-1 block w-full border-2 border-l-0 border-blue-200 px-6 py-4 text-base focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white/80 backdrop-blur-sm placeholder-gray-400 transition-all duration-200"
-                        placeholder="/Activity Reports/2025/"
+                        placeholder="Department/Category"
                       />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFolderManuallyEdited(false);
+                        const departmentValue = formData.department || userDepartment || 'General';
+                        const categoryValue = formData.category || 'General Document';
+                        const computed = buildFolderPath(departmentValue, categoryValue);
+                        setFormData(prev => ({ ...prev, folder: computed }));
+                      }}
+                      className="mt-3 inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-800"
+                    >
+                      Reset to default path
+                    </button>
                   </div>
 
                   <div>

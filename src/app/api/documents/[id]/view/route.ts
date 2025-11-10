@@ -20,6 +20,7 @@ export async function GET(
         mimeType: true,
         size: true,
         path: true,
+        url: true,
         classification: true,
         isPublic: true
       }
@@ -32,47 +33,78 @@ export async function GET(
       );
     }
 
-    // Check if file exists on disk
-    const filePath = path.join(process.cwd(), 'public', document.path);
-    
-    try {
-      await fs.access(filePath);
-    } catch (error) {
-      console.error('File not found on disk:', filePath, error);
-      
-      // Return detailed error information for better debugging
-      return NextResponse.json({
-        error: 'File not found on disk',
-        details: {
-          documentId: document.id,
-          filename: document.filename,
-          originalName: document.originalName,
-          expectedPath: filePath,
-          databasePath: document.path,
-          suggestion: 'The file may have been moved, deleted, or the path in the database is incorrect.'
+    const respondWithBuffer = (buffer: Uint8Array, contentType?: string) => {
+      const headers = new Headers();
+      headers.set('Content-Type', contentType || document.mimeType || 'application/octet-stream');
+      headers.set('Content-Length', buffer.length.toString());
+      headers.set('Content-Disposition', `inline; filename="${document.originalName}"`);
+      headers.set('Cache-Control', 'public, max-age=31536000');
+      headers.set('Access-Control-Allow-Origin', '*');
+      headers.set('Access-Control-Allow-Methods', 'GET');
+
+      return new NextResponse(buffer, {
+        status: 200,
+        headers
+      });
+    };
+
+    const fetchRemoteFile = async (url: string) => {
+      try {
+        const remoteResponse = await fetch(url);
+        if (!remoteResponse.ok) {
+          throw new Error(`Remote view fetch failed with status ${remoteResponse.status}`);
         }
-      }, { status: 404 });
+        const arrayBuffer = await remoteResponse.arrayBuffer();
+        const contentType = remoteResponse.headers.get('content-type') ?? document.mimeType ?? 'application/octet-stream';
+        return respondWithBuffer(new Uint8Array(arrayBuffer), contentType);
+      } catch (remoteError) {
+        console.error('Remote document view fetch failed:', remoteError);
+        return null;
+      }
+    };
+
+    if (document.path) {
+      const normalizedPath = document.path.startsWith('uploads')
+        ? document.path
+        : `uploads/${document.path.replace(/^\/+/, '')}`;
+      const filePath = path.join(process.cwd(), 'public', normalizedPath);
+
+      try {
+        await fs.access(filePath);
+        const fileBuffer = await fs.readFile(filePath);
+        return respondWithBuffer(new Uint8Array(fileBuffer));
+      } catch (error) {
+        console.warn('File not found on disk for view, attempting remote fallback if available:', {
+          filePath,
+          error: String(error)
+        });
+      }
     }
 
-    // Read the file
-    const fileBuffer = await fs.readFile(filePath);
+    if (document.url) {
+      const remoteResponse = await fetchRemoteFile(document.url);
+      if (remoteResponse) {
+        return remoteResponse;
+      }
+      try {
+        const redirectResponse = NextResponse.redirect(document.url, 302);
+        redirectResponse.headers.set('Cache-Control', 'no-cache');
+        return redirectResponse;
+      } catch (redirectError) {
+        console.error('Remote document redirect failed (view):', redirectError);
+      }
+    }
 
-    // Create proper headers for inline viewing
-    const headers = new Headers();
-    headers.set('Content-Type', document.mimeType || 'application/octet-stream');
-    headers.set('Content-Length', fileBuffer.length.toString());
-    headers.set('Content-Disposition', `inline; filename="${document.originalName}"`);
-    headers.set('Cache-Control', 'public, max-age=31536000');
-    
-    // Add CORS headers for cross-origin requests
-    headers.set('Access-Control-Allow-Origin', '*');
-    headers.set('Access-Control-Allow-Methods', 'GET');
-
-    // Return the file as a response for viewing
-    return new NextResponse(new Uint8Array(fileBuffer), {
-      status: 200,
-      headers
-    });
+    return NextResponse.json({
+      error: 'File not found',
+      details: {
+        documentId: document.id,
+        filename: document.filename,
+        originalName: document.originalName,
+        expectedPath: document.path || null,
+        suggestion: 'The file may have been moved or deleted. Please re-upload or contact an administrator.'
+      }
+    }, { status: 404 });
 
   } catch (error) {
     console.error('❌ Document view error:', error);

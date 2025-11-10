@@ -9,6 +9,28 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({
 
 const gemini = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null
 
+const AI_COOLDOWN_MS = 15 * 60 * 1000 // 15 minutes
+let openAICooldownUntil = 0
+let geminiCooldownUntil = 0
+let openAIQuotaExceeded = false
+let geminiQuotaExceeded = false
+
+const now = () => Date.now()
+
+const isRateLimitOrQuotaError = (error: any) => {
+  if (!error) return false
+  if (error.status === 429 || error?.response?.status === 429) return true
+  if (typeof error.code === 'string' && error.code.toLowerCase().includes('quota')) return true
+  if (typeof error.message === 'string' && error.message.toLowerCase().includes('quota')) return true
+  if (Array.isArray(error?.errorDetails)) {
+    return error.errorDetails.some((detail: any) => 
+      detail?.reason === 'RATE_LIMIT_EXCEEDED' || detail?.metadata?.quota_limit
+    )
+  }
+  if (error?.error?.type === 'insufficient_quota') return true
+  return false
+}
+
 // Document analysis utilities
 const analyzeFileType = (file: File) => {
   const { type, name } = file
@@ -279,6 +301,14 @@ const getGPTAnalysis = async (filename: string, category: string, title: string,
     return null
   }
 
+  if (now() < openAICooldownUntil) {
+    openAIQuotaExceeded = true
+    const remainingMs = openAICooldownUntil - now()
+    const remainingMinutes = Math.max(1, Math.ceil(remainingMs / 60000))
+    console.warn(`⚠️ Skipping GPT analysis due to cooldown (${remainingMinutes} minute(s) remaining)`)
+    return null
+  }
+
   try {
     const prompt = `Analyze this document for a professional organization:
     
@@ -335,8 +365,14 @@ Focus on organizational context - this is for SAYWHAT organization document mana
     const validatedAnalysis = validateAISuggestions(gptAnalysis)
     return validatedAnalysis
 
-  } catch (error) {
-    console.error('❌ GPT Analysis error:', error)
+  } catch (error: any) {
+    if (isRateLimitOrQuotaError(error)) {
+      openAIQuotaExceeded = true
+      openAICooldownUntil = now() + AI_COOLDOWN_MS
+      console.error('⏳ GPT quota exceeded, applying cooldown fallback', error)
+    } else {
+      console.error('❌ GPT Analysis error:', error)
+    }
     return null
   }
 }
@@ -345,6 +381,14 @@ Focus on organizational context - this is for SAYWHAT organization document mana
 const getGeminiAnalysis = async (filename: string, category: string, title: string, fileType: string) => {
   if (!gemini) {
     console.log('⚠️ Gemini not configured')
+    return null
+  }
+
+  if (now() < geminiCooldownUntil) {
+    geminiQuotaExceeded = true
+    const remainingMs = geminiCooldownUntil - now()
+    const remainingMinutes = Math.max(1, Math.ceil(remainingMs / 60000))
+    console.warn(`⚠️ Skipping Gemini analysis due to cooldown (${remainingMinutes} minute(s) remaining)`)
     return null
   }
 
@@ -425,8 +469,14 @@ Consider organizational context - this is for a professional NGO/organization. F
     const validatedAnalysis = validateAISuggestions(geminiAnalysis)
     return validatedAnalysis
 
-  } catch (error) {
-    console.error('❌ Gemini Analysis error:', error)
+  } catch (error: any) {
+    if (isRateLimitOrQuotaError(error)) {
+      geminiQuotaExceeded = true
+      geminiCooldownUntil = now() + AI_COOLDOWN_MS
+      console.error('⏳ Gemini quota exceeded, applying cooldown fallback', error)
+    } else {
+      console.error('❌ Gemini Analysis error:', error)
+    }
     return null
   }
 }
@@ -437,14 +487,8 @@ const getHybridAIAnalysis = async (filename: string, category: string, title: st
   
   // Run both analyses in parallel for speed, with proper error handling
   const [gptAnalysis, geminiAnalysis] = await Promise.allSettled([
-    openai ? getGPTAnalysis(filename, category, title, fileType).catch(err => {
-      console.log('❌ GPT Analysis error:', err.message)
-      return null
-    }) : Promise.resolve(null),
-    gemini ? getGeminiAnalysis(filename, category, title, fileType).catch(err => {
-      console.log('❌ Gemini Analysis error:', err)
-      return null
-    }) : Promise.resolve(null)
+    openai ? getGPTAnalysis(filename, category, title, fileType) : Promise.resolve(null),
+    gemini ? getGeminiAnalysis(filename, category, title, fileType) : Promise.resolve(null)
   ])
 
   const resolvedGptAnalysis = gptAnalysis.status === 'fulfilled' ? gptAnalysis.value : null
@@ -570,6 +614,22 @@ export async function POST(request: NextRequest) {
     if (openai || gemini) {
       hybridAnalysis = await getHybridAIAnalysis(file.name, category, title, fileTypeAnalysis.type)
     }
+
+    const warnings: string[] = []
+
+    if (!openai && !gemini) {
+      warnings.push('AI providers are not configured; using rule-based analysis.')
+    }
+
+    if (openAIQuotaExceeded) {
+      warnings.push('OpenAI quota exceeded; GPT analysis temporarily disabled. Falling back to rule-based insights.')
+      openAIQuotaExceeded = false
+    }
+
+    if (geminiQuotaExceeded) {
+      warnings.push('Google Gemini quota exceeded; hybrid analysis partially unavailable.')
+      geminiQuotaExceeded = false
+    }
     
     // Generate intelligent tags (use Hybrid AI tags if available, fallback to rule-based)
     const suggestedTags = hybridAnalysis?.suggestedTags || [
@@ -619,7 +679,8 @@ export async function POST(request: NextRequest) {
       analysisTimestamp: new Date().toISOString(),
       analysisMethod: hybridAnalysis?.analysisMethod || 'Rule-Based Intelligence',
       aiProviders: (hybridAnalysis as any)?.aiProviders || [],
-      hybridAnalysisUsed: !!hybridAnalysis
+      hybridAnalysisUsed: !!hybridAnalysis,
+      warnings
     }
     
     console.log(`✅ AI Analysis complete:`, analysisResult)

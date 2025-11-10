@@ -20,6 +20,7 @@ export async function GET(
         mimeType: true,
         size: true,
         path: true,
+        url: true,
         classification: true,
         isPublic: true
       }
@@ -32,44 +33,88 @@ export async function GET(
       );
     }
 
-    // Check if file exists on disk
-    const filePath = path.join(process.cwd(), 'public', document.path);
-    
-    try {
-      await fs.access(filePath);
-    } catch (error) {
-      console.error('File not found on disk:', filePath, error);
-      
-      // Return helpful error message with file info
-      return NextResponse.json(
-        { 
-          error: 'File not found on disk',
-          details: {
-            documentId: document.id,
-            filename: document.originalName,
-            expectedPath: document.path,
-            message: 'The file may have been moved or deleted, or was uploaded before file storage was properly implemented.'
-          }
-        },
-        { status: 404 }
-      );
+    const respondWithFile = (buffer: Uint8Array) => {
+      const headers = new Headers();
+      headers.set('Content-Type', document.mimeType || 'application/octet-stream');
+      headers.set('Content-Length', buffer.length.toString());
+      headers.set('Content-Disposition', `attachment; filename="${document.originalName}"`);
+      headers.set('Cache-Control', 'no-cache');
+
+      return new NextResponse(buffer, {
+        status: 200,
+        headers
+      });
+    };
+
+    // Helper: fetch remote file (e.g., legacy uploads stored externally)
+    const fetchRemoteFile = async (url: string) => {
+      try {
+        const remoteResponse = await fetch(url);
+        if (!remoteResponse.ok) {
+          throw new Error(`Remote fetch failed with status ${remoteResponse.status}`);
+        }
+        const arrayBuffer = await remoteResponse.arrayBuffer();
+        const headers = new Headers();
+        headers.set('Content-Type', remoteResponse.headers.get('content-type') ?? document.mimeType ?? 'application/octet-stream');
+        headers.set('Content-Length', arrayBuffer.byteLength.toString());
+        headers.set('Content-Disposition', `attachment; filename="${document.originalName}"`);
+        headers.set('Cache-Control', 'no-cache');
+
+        return new NextResponse(new Uint8Array(arrayBuffer), {
+          status: 200,
+          headers
+        });
+      } catch (remoteError) {
+        console.error('Remote document download failed:', remoteError);
+        return null;
+      }
+    };
+
+    if (document.path) {
+      const normalizedPath = document.path.startsWith('uploads')
+        ? document.path
+        : `uploads/${document.path.replace(/^\/+/, '')}`;
+      const filePath = path.join(process.cwd(), 'public', normalizedPath);
+
+      try {
+        await fs.access(filePath);
+        const fileBuffer = await fs.readFile(filePath);
+        return respondWithFile(new Uint8Array(fileBuffer));
+      } catch (error) {
+        console.warn('File not found on disk, attempting remote fetch if available:', {
+          filePath,
+          error: String(error)
+        });
+      }
     }
 
-    // Read the file
-    const fileBuffer = await fs.readFile(filePath);
+    if (document.url) {
+      const remoteResponse = await fetchRemoteFile(document.url);
+      if (remoteResponse) {
+        return remoteResponse;
+      }
+      // Fallback to redirect so the browser can try to download directly
+      try {
+        const redirectResponse = NextResponse.redirect(document.url, 302);
+        redirectResponse.headers.set('Cache-Control', 'no-cache');
+        return redirectResponse;
+      } catch (redirectError) {
+        console.error('Remote document redirect failed:', redirectError);
+      }
+    }
 
-    // Create proper headers for file download
-    const headers = new Headers();
-    headers.set('Content-Type', document.mimeType || 'application/octet-stream');
-    headers.set('Content-Length', fileBuffer.length.toString());
-    headers.set('Content-Disposition', `attachment; filename="${document.originalName}"`);
-    headers.set('Cache-Control', 'no-cache');
-
-    // Return the file as a response
-    return new NextResponse(new Uint8Array(fileBuffer), {
-      status: 200,
-      headers
-    });
+    return NextResponse.json(
+      { 
+        error: 'File not found',
+        details: {
+          documentId: document.id,
+          filename: document.originalName,
+          expectedPath: document.path,
+          message: 'The file may have been moved or deleted. Please re-upload the document.'
+        }
+      },
+      { status: 404 }
+    );
 
   } catch (error) {
     console.error('❌ Document download error:', error);

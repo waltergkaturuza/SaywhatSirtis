@@ -34,8 +34,7 @@ export async function GET(request: NextRequest) {
 
     // Build filter
     const where: any = {
-      isPersonalRepo: false,  // Only show published documents, not personal drafts
-      isDeleted: false       // Don't show deleted documents
+      isDeleted: false
     }
 
     if (category) {
@@ -95,11 +94,15 @@ export async function GET(request: NextRequest) {
         size: true,
         category: true,
         accessLevel: true,
+        classification: true,
         tags: true,
         url: true,
         uploadedBy: true,
         createdAt: true,
-        updatedAt: true
+        updatedAt: true,
+        customMetadata: true,
+        department: true,
+        folderPath: true
       }
     }).catch((error) => {
       console.error('Database query error:', error)
@@ -130,18 +133,81 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        const inferExtension = () => {
+          const fromOriginal = doc.originalName?.split('.').pop()
+          const fromFilename = doc.filename?.split('.').pop()
+          const fromMime = doc.mimeType?.split('/').pop()
+
+          return (fromOriginal || fromFilename || fromMime || 'file').toLowerCase()
+        }
+
+        const formatFileSize = (sizeValue: number | bigint | null | undefined) => {
+          if (sizeValue === null || sizeValue === undefined) return '0 B'
+          const sizeNumber = typeof sizeValue === 'bigint' ? Number(sizeValue) : Number(sizeValue)
+          if (!Number.isFinite(sizeNumber) || sizeNumber <= 0) return '0 B'
+          const megabytes = sizeNumber / (1024 * 1024)
+          if (megabytes >= 1) return `${megabytes.toFixed(1)} MB`
+          const kilobytes = sizeNumber / 1024
+          if (kilobytes >= 1) return `${kilobytes.toFixed(1)} KB`
+          return `${sizeNumber} B`
+        }
+
+        const uploadDateIso = doc.createdAt.toISOString()
+        const uploadedByDisplay = uploaderInfo?.name?.trim() || (typeof doc.uploadedBy === 'string' ? doc.uploadedBy : 'Unknown')
+        const extension = inferExtension()
+
+        let resolvedDepartment = doc.department || doc.customMetadata?.department || null
+        let resolvedCategory = doc.category || doc.customMetadata?.category || ''
+        let resolvedSubunit = doc.customMetadata?.subunit || null
+
+        if (doc.folderPath) {
+          const pathSegments = doc.folderPath.split('/').filter(Boolean)
+          if (!resolvedDepartment && pathSegments.length > 0) {
+            resolvedDepartment = pathSegments[0]
+          }
+          if (!resolvedCategory && pathSegments.length > 0) {
+            resolvedCategory = pathSegments[pathSegments.length - 1]
+          }
+          if (!resolvedSubunit && pathSegments.length > 2) {
+            resolvedSubunit = pathSegments.slice(1, pathSegments.length - 1).join('/')
+          } else if (!resolvedSubunit && pathSegments.length === 2) {
+            const possibleSubunit = pathSegments[1]
+            if (possibleSubunit !== resolvedDepartment) {
+              resolvedSubunit = possibleSubunit
+            }
+          }
+        }
+
+        if (!resolvedDepartment && resolvedCategory) {
+          resolvedDepartment = 'General'
+        }
+
+        if (!resolvedDepartment && doc.mimeType) {
+          const mimeRoot = doc.mimeType.split('/')[0]
+          resolvedDepartment = mimeRoot.charAt(0).toUpperCase() + mimeRoot.slice(1)
+        }
+
+        if (!resolvedCategory) {
+          resolvedCategory = 'General'
+        }
+
         return {
           id: doc.id,
           title: doc.originalName,
           fileName: doc.filename,
           description: doc.description,
           classification: doc.accessLevel?.toUpperCase() || 'INTERNAL',
-          category: doc.category,
-          type: doc.mimeType?.split('/')[1]?.toUpperCase() || 'FILE',
-          size: `${(doc.size / 1024 / 1024).toFixed(1)} MB`,
-          uploadDate: doc.createdAt.toISOString().split('T')[0],
-          uploadedBy: uploaderInfo?.name || 'Unknown',
+          category: resolvedCategory,
+          type: extension,
+          mimeType: doc.mimeType,
+          size: formatFileSize(doc.size),
+          uploadDate: uploadDateIso,
+          uploadedBy: uploadedByDisplay,
+          uploadedByEmail: uploaderInfo?.email || null,
           url: doc.url,
+          department: resolvedDepartment,
+          folderPath: doc.folderPath || (resolvedDepartment && resolvedCategory ? `${resolvedDepartment}/${resolvedCategory}` : null),
+          customMetadata: doc.customMetadata,
           tags: doc.tags,
           canEdit: doc.uploadedBy === session.user?.id,
           canDelete: doc.uploadedBy === session.user?.id || session.user?.roles?.includes('admin')

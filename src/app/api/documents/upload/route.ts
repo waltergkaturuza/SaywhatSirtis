@@ -6,6 +6,14 @@ import { randomUUID } from 'crypto'
 import { promises as fs } from 'fs'
 import path from 'path'
 
+const sanitizeFolderSegment = (value: string | null | undefined) => {
+  if (!value) return ''
+  return value
+    .trim()
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/[\\/]+/g, '-')
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -45,8 +53,10 @@ export async function POST(request: NextRequest) {
     // Personal repository fields
     const uploadedBy = formData.get('uploadedBy') as string
     const department = formData.get('department') as string
-    const isPersonalRepo = formData.get('isPersonalRepo') === 'true'
     const status = formData.get('status') as string
+    const isPersonalRepo = formData.get('isPersonalRepo') === 'true'
+    const categoryDisplayOverride = formData.get('categoryDisplay') as string | null
+    const categoryEnumOverride = formData.get('categoryEnum') as string | null
 
     // Additional metadata
     const customMetadata = formData.get('customMetadata') ? 
@@ -153,12 +163,15 @@ export async function POST(request: NextRequest) {
     // Create folder structure: use custom folderPath if provided, otherwise use default
     let folderPath: string
     if (customFolderPath) {
-      folderPath = `uploads/${customFolderPath}`
+      folderPath = `uploads/${sanitizeFolderSegment(customFolderPath)}`
     } else {
       // Default folder structure: uploads/department/category/
       const departmentFolder = department || 'General'
-      const categoryFolder = categoryMap[category] || 'OTHER'
-      folderPath = `uploads/${departmentFolder}/${categoryFolder}`
+      const mappedCategoryEnum = categoryEnumOverride || categoryMap[category] || 'OTHER'
+      const mappedCategoryDisplay = categoryDisplayOverride ||
+        (Object.entries(categoryMap).find(([key]) => key.toLowerCase() === (category?.toLowerCase() || ''))?.[0] ?? 'General Document')
+      folderPath = `uploads/${sanitizeFolderSegment(departmentFolder)}/${sanitizeFolderSegment(mappedCategoryDisplay)}`
+      category = mappedCategoryEnum
     }
     
     const filePath = `${folderPath}/${filename}`
@@ -259,7 +272,7 @@ export async function POST(request: NextRequest) {
         isPublic: classification === 'PUBLIC',
         uploadedBy: extractedMetadata.author || uploadedBy || session.user?.name || session.user?.email || 'Unknown User',
         department: department || 'Unknown Department',
-        folderPath: customFolderPath || `${department || 'Unknown Department'}/${mappedCategory}`,
+        folderPath: sanitizeFolderSegment(customFolderPath) || `${sanitizeFolderSegment(department || 'Unknown Department')}/${sanitizeFolderSegment(mappedCategory)}`,
         isPersonalRepo: isPersonalRepo,
         approvalStatus: status === 'APPROVED' ? 'APPROVED' : (isPersonalRepo ? 'DRAFT' : 'PENDING_REVIEW'),
         reviewStatus: status === 'APPROVED' ? 'APPROVED' : 'PENDING',

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ModulePage } from "@/components/layout/enhanced-layout";
 import EditDocumentModal from "@/components/modals/EditDocumentModal";
 import DocumentViewModal from "@/components/modals/DocumentViewModal";
@@ -64,7 +64,8 @@ import {
   Bars3Icon,
   XMarkIcon,
   PencilIcon,
-  ArrowUpTrayIcon
+  ArrowUpTrayIcon,
+  UserIcon
 } from "@heroicons/react/24/outline";
 
 // Document categories from upload form - Updated comprehensive list
@@ -325,17 +326,49 @@ interface Document {
   description?: string;
   classification: string;
   category?: string;
+  categoryDisplay?: string;
   type: string;
-  size: string;
+  size: string | number;
   uploadDate: string;
+  uploadedByEmail?: string | null;
+  createdAt?: string;
   uploadedBy: string;
   department?: string;
+  subunit?: string | null;
+  folderPath?: string | null;
   modifiedAt: string;
   modifiedBy: string;
   url?: string;
   mimeType?: string;
   accessLevel?: string;
   permissions?: string[];
+}
+
+interface DepartmentSubunitNode {
+  id: string;
+  name: string;
+  parentName: string;
+}
+
+interface DepartmentHierarchyNode {
+  id: string;
+  name: string;
+  code?: string;
+  subunits?: DepartmentSubunitNode[];
+}
+
+type DepartmentLookup = Record<string, { type: 'main' | 'subunit'; parentName?: string }>;
+
+interface FolderNode {
+  id: string;
+  name: string;
+  icon: any;
+  type: 'category' | 'subunit';
+  department?: string;
+  subunit?: string | null;
+  category?: string | null;
+  documentCount: number;
+  children?: FolderNode[];
 }
 
 // Helper function to get security classification info
@@ -397,15 +430,35 @@ interface DashboardStats {
   sharedWithMe: number;
 }
 
+const CATEGORY_DISPLAY_MAP: Record<string, string> = {
+  POLICY: "Policies & Procedures",
+  PROCEDURE: "Policies & Procedures",
+  FORM: "Forms & Templates",
+  REPORT: "Reports",
+  CONTRACT: "Contracts & Agreements",
+  INVOICE: "Budget & Financial Documents",
+  PRESENTATION: "Presentations",
+  SPREADSHEET: "Data Collection & Analysis",
+  IMAGE: "Media & Creative Assets",
+  VIDEO: "Media & Creative Assets",
+  AUDIO: "Media & Creative Assets",
+  ARCHIVE: "Archived Records",
+  OTHER: "General Document"
+};
+
 export default function DocumentRepositoryPage() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState('my-documents');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [rawDocuments, setRawDocuments] = useState<Document[]>([]);
   const [personalDocuments, setPersonalDocuments] = useState<Document[]>([]);
+  const [rawPersonalDocuments, setRawPersonalDocuments] = useState<Document[]>([]);
   const [fileTypes, setFileTypes] = useState<FileTypeStats[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentHierarchy, setDepartmentHierarchy] = useState<DepartmentHierarchyNode[]>([]);
+  const [departmentLookup, setDepartmentLookup] = useState<DepartmentLookup>({});
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
     totalDocuments: 0,
     storageUsed: '0 MB',
@@ -426,162 +479,141 @@ export default function DocumentRepositoryPage() {
   const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: string; name: string } | null>(null);
+  const hasReconciledRef = useRef(false);
+  const normalizedRoles = [
+    ...(Array.isArray(session?.user?.roles) ? session?.user?.roles : []),
+  ]
+    .filter(Boolean)
+    .map((role) => String(role).toUpperCase());
+  const normalizedPermissions = Array.isArray(session?.user?.permissions)
+    ? session?.user?.permissions.map((perm) => String(perm).toLowerCase())
+    : [];
+  const adminRoleSet = new Set([
+    'ADMIN',
+    'SUPER_ADMIN',
+    'ADMINISTRATOR',
+    'SYSTEM_ADMINISTRATOR',
+    'SUPERUSER',
+  ]);
+  const isAdmin = normalizedRoles.some((role) => adminRoleSet.has(role)) ||
+    normalizedPermissions.includes('documents.admin') ||
+    normalizedPermissions.includes('documents.full_access');
 
   // Generate dynamic folder structure based on departments and categories
   const generateFolderStructure = () => {
-    if (!departments || departments.length === 0) {
-      // Create a fallback structure based on actual documents if we have them
-      if (documents && documents.length > 0) {
-        // Group documents by department or category
-        const departmentGroups = new Map();
-        const categoryGroups = new Map();
-        
-        documents.forEach(doc => {
-          // Group by department if available
-          if (doc.department) {
-            if (!departmentGroups.has(doc.department)) {
-              departmentGroups.set(doc.department, []);
-            }
-            departmentGroups.get(doc.department).push(doc);
-          }
-          
-          // Group by category if available
-          if (doc.category) {
-            if (!categoryGroups.has(doc.category)) {
-              categoryGroups.set(doc.category, []);
-            }
-            categoryGroups.get(doc.category).push(doc);
-          }
-        });
-        
-        // Create folders from document departments or categories
-        if (departmentGroups.size > 0) {
-          return Array.from(departmentGroups.entries()).map(([deptName, docs]: [string, Document[]]) => {
-            // Group docs in this department by category
-            const categories = new Map<string, number>();
-            docs.forEach((doc: Document) => {
-              const category = doc.category || 'General';
-              if (!categories.has(category)) {
-                categories.set(category, 0);
-              }
-              categories.set(category, categories.get(category)! + 1);
-            });
-            
-            const categoryFolders = Array.from(categories.entries()).map(([category, count]) => ({
-              id: `${deptName.replace(/\s+/g, '-')}-${category.toLowerCase().replace(/\s+/g, '-')}`,
-              name: category,
-              icon: FolderIcon,
-              documentCount: count,
-              path: `${deptName}/${category}`,
-              department: deptName,
-              category: category
-            }));
-            
-            return {
-              id: deptName.replace(/\s+/g, '-'),
-              name: deptName,
-              icon: BuildingOfficeIcon,
-              children: categoryFolders,
-              totalDocuments: docs.length
-            };
-          });
-        } else if (categoryGroups.size > 0) {
-          // If no departments, group by categories only
-          return Array.from(categoryGroups.entries()).map(([category, docs]) => ({
-            id: category.replace(/\s+/g, '-'),
-            name: category,
-            icon: FolderIcon,
-            children: [],
-            totalDocuments: docs.length
-          }));
-        }
+    const departmentDocMap = new Map<string, { categories: Map<string, number>; subunits: Map<string, Map<string, number>> }>();
+
+    documents.forEach((doc) => {
+      const departmentName = doc.department || 'General';
+      const subunitName = doc.subunit || null;
+      const categoryName = doc.categoryDisplay || CATEGORY_DISPLAY_MAP[doc.category || 'OTHER'] || doc.category || 'General Document';
+
+      if (!departmentDocMap.has(departmentName)) {
+        departmentDocMap.set(departmentName, { categories: new Map(), subunits: new Map() });
       }
-      
-      // Final fallback - show loading
-      return [{
-        id: 'loading',
-        name: 'Loading departments...',
-        icon: BuildingOfficeIcon,
-        children: [],
-        totalDocuments: 0
-      }];
-    }
 
-    return departments.map(dept => {
-      // Count documents for each category within this department
-      const categoryStats = new Map();
-      documents.forEach(doc => {
-        if (doc.department === dept.name && doc.category) {
-          categoryStats.set(doc.category, (categoryStats.get(doc.category) || 0) + 1);
+      const departmentEntry = departmentDocMap.get(departmentName)!;
+
+      if (subunitName) {
+        if (!departmentEntry.subunits.has(subunitName)) {
+          departmentEntry.subunits.set(subunitName, new Map());
         }
-      });
-
-      // Create category folders for this department
-      const categoryFolders = Array.from(categoryStats.entries()).map(([category, count]) => ({
-        id: `${dept.id}-${category.toLowerCase().replace(/\s+/g, '-')}`,
-        name: category,
-        icon: FolderIcon,
-        documentCount: count,
-        path: `${dept.name}/${category}`,
-        department: dept.name,
-        category: category
-      }));
-
-      return {
-        id: dept.id,
-        name: dept.name,
-        icon: BuildingOfficeIcon,
-        children: categoryFolders,
-        totalDocuments: dept.fileCount || categoryFolders.reduce((sum, folder) => sum + folder.documentCount, 0)
-      };
+        const subunitEntry = departmentEntry.subunits.get(subunitName)!;
+        subunitEntry.set(categoryName, (subunitEntry.get(categoryName) || 0) + 1);
+      } else {
+        departmentEntry.categories.set(categoryName, (departmentEntry.categories.get(categoryName) || 0) + 1);
+      }
     });
-  };
 
-  // Function to automatically create folder path for a document
-  const createDocumentFolderPath = (department: string, category: string) => {
-    if (!department || !category) return null;
-    
-    // Generate standardized folder path: Department/Category
-    const folderPath = `${department}/${category}`;
-    return {
-      path: folderPath,
-      department: department,
-      category: category,
-      created: new Date().toISOString()
-    };
-  };
+    const nodes: FolderNode[] = [];
 
-  // Function to ensure folder structure exists for document
-  const ensureFolderStructure = async (document: any) => {
-    if (!document.department || !document.category) return null;
+    if (departmentHierarchy.length > 0) {
+      departmentHierarchy.forEach((dept) => {
+        const departmentEntry = departmentDocMap.get(dept.name) || { categories: new Map(), subunits: new Map() };
 
-    const folderInfo = createDocumentFolderPath(document.department, document.category);
-    if (!folderInfo) return null;
-    
-    try {
-      // Check if folder structure already exists in database
-      const response = await fetch('/api/documents/folders/ensure', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          path: folderInfo.path,
-          department: folderInfo.department,
-          category: folderInfo.category,
-          documentId: document.id
-        })
+        const subunitChildren: FolderNode[] = [...departmentEntry.subunits.entries()].map(([subunitName, categoryEntries]) => {
+          const categoryChildren: FolderNode[] = [...categoryEntries.entries()].map(([categoryName, count]) => ({
+            id: `${slugify(subunitName)}-${slugify(categoryName)}`,
+            name: categoryName,
+            icon: FolderIcon,
+            type: 'category',
+            department: dept.name,
+            subunit: subunitName,
+            category: categoryName,
+            documentCount: count
+          }));
+
+          const total = categoryChildren.reduce((sum, child) => sum + child.documentCount, 0);
+
+          return {
+            id: `subunit-${slugify(subunitName)}`,
+            name: subunitName,
+            icon: FolderIcon,
+            type: 'subunit',
+            department: dept.name,
+            subunit: subunitName,
+            category: null,
+            documentCount: total,
+            children: categoryChildren
+          } as FolderNode;
+        });
+
+        const departmentCategoryChildren: FolderNode[] = [...departmentEntry.categories.entries()].map(([categoryName, count]) => ({
+          id: `${slugify(dept.id || dept.name)}-${slugify(categoryName)}`,
+          name: categoryName,
+          icon: FolderIcon,
+          type: 'category',
+          department: dept.name,
+          subunit: null,
+          category: categoryName,
+          documentCount: count
+        }));
+
+        const departmentTotal = subunitChildren.reduce((sum, child) => sum + child.documentCount, 0) +
+          departmentCategoryChildren.reduce((sum, child) => sum + child.documentCount, 0);
+
+        nodes.push({
+          id: dept.id || slugify(dept.name),
+          name: dept.name,
+          icon: BuildingOfficeIcon,
+          type: 'category',
+          department: dept.name,
+          subunit: null,
+          category: null,
+          documentCount: departmentTotal,
+          children: [...subunitChildren, ...departmentCategoryChildren]
+        });
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        return result.folderPath;
-      }
-    } catch (error) {
-      console.error('Error ensuring folder structure:', error);
     }
-    
-    return folderInfo.path;
+
+    if (departmentDocMap.has('General') || nodes.length === 0) {
+      const generalEntry = departmentDocMap.get('General') || { categories: new Map(), subunits: new Map() };
+      const generalChildren: FolderNode[] = [...generalEntry.categories.entries()].map(([categoryName, count]) => ({
+        id: `general-${slugify(categoryName)}`,
+        name: categoryName,
+        icon: FolderIcon,
+        type: 'category',
+        department: 'General',
+        subunit: null,
+        category: categoryName,
+        documentCount: count
+      }));
+      const generalTotal = generalChildren.reduce((sum, child) => sum + child.documentCount, 0);
+      nodes.push({
+        id: 'general',
+        name: 'General',
+        icon: BuildingOfficeIcon,
+        type: 'category',
+        department: 'General',
+        subunit: null,
+        category: null,
+        documentCount: generalTotal,
+        children: generalChildren
+      });
+    }
+
+    return nodes;
   };
 
   // Dynamic folder structure - updates when departments or documents change
@@ -641,10 +673,26 @@ export default function DocumentRepositoryPage() {
     }
     setExpandedFolders(newExpanded);
   };
-  
-  const isAdmin = session?.user?.roles?.includes('admin') || 
-                 session?.user?.permissions?.includes('documents.admin');
 
+  useEffect(() => {
+    if (documents.length > 0) {
+      const normalized = documents[0]?.department
+        ? documents[0].department.replace(/\s+/g, '-')
+        : null;
+      if (normalized && !expandedFolders.has(normalized)) {
+        const newExpanded = new Set(expandedFolders);
+        newExpanded.add(normalized);
+        documents
+          .filter(doc => doc.department === documents[0].department && doc.categoryDisplay)
+          .forEach(doc => {
+            const subId = `${normalized}-${slugify(doc.categoryDisplay || doc.category || 'general')}`;
+            newExpanded.add(subId);
+          });
+        setExpandedFolders(newExpanded);
+      }
+    }
+  }, [documents.length]);
+  
   // Close hamburger menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -666,6 +714,31 @@ export default function DocumentRepositoryPage() {
     };
   }, [showHamburgerMenu, showSecurityLevels]);
 
+  const reconcileDocuments = async (dryRun = false) => {
+    try {
+      const response = await fetch('/api/documents/reconcile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ dryRun })
+      });
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        console.error('Failed to reconcile documents', errorPayload);
+        return null;
+      }
+
+      const payload = await response.json();
+      console.info('Document reconciliation result:', payload);
+      return payload;
+    } catch (error) {
+      console.error('Error reconciling documents:', error);
+      return null;
+    }
+  };
+
   // Load documents and statistics from API
   const loadDocuments = async () => {
     try {
@@ -676,13 +749,11 @@ export default function DocumentRepositoryPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setDocuments(Array.isArray(data) ? data : []);
-        
-        // Calculate file type statistics from loaded documents
-        const typeStats = calculateFileTypeStats(Array.isArray(data) ? data : []);
-        setFileTypes(typeStats);
+        const rawData: Document[] = Array.isArray(data) ? data : [];
+        setRawDocuments(rawData);
       } else {
         console.warn('Failed to fetch documents, using empty list');
+        setRawDocuments([]);
         setDocuments([]);
         setFileTypes([]);
       }
@@ -691,6 +762,7 @@ export default function DocumentRepositoryPage() {
       console.error('Error loading documents:', err);
       setError('Unable to load documents at this time');
       setDocuments([]);
+      setRawDocuments([]);
       setFileTypes([]);
     } finally {
       setLoading(false);
@@ -705,14 +777,19 @@ export default function DocumentRepositoryPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setPersonalDocuments(data.documents || []);
+        const rawData: Document[] = Array.isArray(data.documents) ? data.documents : [];
+        setRawPersonalDocuments(rawData);
+        const normalizedPersonalDocs: Document[] = normalizeDocumentRecords(rawData, departmentLookup);
+        setPersonalDocuments(normalizedPersonalDocs);
       } else {
         console.warn('Failed to fetch personal documents');
         setPersonalDocuments([]);
+        setRawPersonalDocuments([]);
       }
     } catch (err) {
       console.error('Error loading personal documents:', err);
       setPersonalDocuments([]);
+      setRawPersonalDocuments([]);
     } finally {
       setPersonalLoading(false);
     }
@@ -802,36 +879,57 @@ export default function DocumentRepositoryPage() {
 
   const loadDepartments = async () => {
     try {
-      const response = await fetch('/api/hr/departments');
+      const response = await fetch('/api/hr/departments/hierarchy');
       
       if (response.ok) {
-        const depts = await response.json();
+        const payload = await response.json();
+        const hierarchical: DepartmentHierarchyNode[] = payload?.data?.hierarchical || [];
+        const flat = payload?.data?.flat || [];
         
-        // Calculate file counts for each department from documents
-        const deptFileCount = new Map();
+        const lookup: DepartmentLookup = {};
+        hierarchical.forEach((dept) => {
+          if (dept?.name) {
+            lookup[normalizeString(dept.name)] = { type: 'main' };
+          }
+          dept.subunits?.forEach((subunit) => {
+            lookup[normalizeString(subunit.name)] = { type: 'subunit', parentName: dept.name };
+          });
+        });
+        
+        setDepartmentHierarchy(hierarchical);
+        setDepartmentLookup(lookup);
+        
+        const deptFileCount = new Map<string, number>();
         documents.forEach(doc => {
           if (doc.department) {
             deptFileCount.set(doc.department, (deptFileCount.get(doc.department) || 0) + 1);
           }
+          if (doc.subunit) {
+            deptFileCount.set(doc.subunit, (deptFileCount.get(doc.subunit) || 0) + 1);
+          }
         });
-
-        const departmentStats = (Array.isArray(depts) ? depts : []).map((dept: any) => ({
+        
+        const departmentStats = (Array.isArray(flat) ? flat : []).map((dept: any) => ({
           id: dept.id || dept.name,
           name: dept.name || 'Unknown Department',
           code: dept.code || (dept.name ? dept.name.substring(0, 3).toUpperCase() : 'UNK'),
           fileCount: deptFileCount.get(dept.name) || 0
         }));
-
+        
         setDepartments(departmentStats);
       } else {
-        console.warn('Failed to fetch departments');
+        console.warn('Failed to fetch departments hierarchy');
         setDepartments([]);
+        setDepartmentHierarchy([]);
+        setDepartmentLookup({});
       }
       
     } catch (err) {
       console.error('Error loading departments:', err);
       // Fallback to empty array if departments API fails
       setDepartments([]);
+      setDepartmentHierarchy([]);
+      setDepartmentLookup({});
     }
   };
 
@@ -966,11 +1064,54 @@ export default function DocumentRepositoryPage() {
 
   // Load data on component mount
   useEffect(() => {
-    if (session) {
-      loadDocuments();
-      loadDepartments(); // Always load departments
+    if (!session) {
+      return;
     }
-  }, [session]);
+
+    let cancelled = false;
+
+    const initialize = async () => {
+      if (isAdmin && !hasReconciledRef.current) {
+        hasReconciledRef.current = true;
+        await reconcileDocuments();
+      }
+
+      if (!cancelled) {
+        await loadDocuments();
+      }
+
+      if (!cancelled) {
+        await loadDepartments();
+      }
+    };
+
+    initialize();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, isAdmin]);
+
+  useEffect(() => {
+    if (!rawDocuments || rawDocuments.length === 0) {
+      setDocuments([]);
+      setFileTypes([]);
+      return;
+    }
+    
+    const normalized = normalizeDocumentRecords(rawDocuments, departmentLookup);
+    setDocuments(normalized);
+    setFileTypes(calculateFileTypeStats(normalized));
+  }, [rawDocuments, departmentLookup]);
+
+  useEffect(() => {
+    if (!rawPersonalDocuments || rawPersonalDocuments.length === 0) {
+      setPersonalDocuments([]);
+      return;
+    }
+    const normalizedPersonalDocs = normalizeDocumentRecords(rawPersonalDocuments, departmentLookup);
+    setPersonalDocuments(normalizedPersonalDocs);
+  }, [rawPersonalDocuments, departmentLookup]);
 
   // Load personal documents when My Documents tab is active
   useEffect(() => {
@@ -998,6 +1139,46 @@ export default function DocumentRepositoryPage() {
     }
   }, [session, activeTab]);
 
+  useEffect(() => {
+    if (departmentHierarchy.length > 0) {
+      const mainStats: Department[] = departmentHierarchy.map((dept) => ({
+        id: dept.id || slugify(dept.name),
+        name: dept.name,
+        code: dept.code || dept.name.substring(0, Math.min(3, dept.name.length)).toUpperCase(),
+        fileCount: documents.filter(doc => doc.department === dept.name).length
+      }));
+
+      const subunitStats: Department[] = departmentHierarchy.flatMap((dept) =>
+        (dept.subunits || []).map((subunit) => ({
+          id: subunit.id || slugify(`${dept.name}-${subunit.name}`),
+          name: subunit.name,
+          code: subunit.name.substring(0, Math.min(3, subunit.name.length)).toUpperCase(),
+          fileCount: documents.filter(doc => doc.department === dept.name && doc.subunit === subunit.name).length
+        }))
+      );
+
+      const generalCount = documents.filter(doc => doc.department === 'General').length;
+      const combined = [...mainStats, ...subunitStats];
+      if (generalCount > 0) {
+        combined.push({ id: 'general', name: 'General', code: 'GEN', fileCount: generalCount });
+      }
+      setDepartments(combined);
+    } else if (documents.length > 0) {
+      const counts = new Map<string, number>();
+      documents.forEach(doc => {
+        const key = doc.department || 'General';
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+      const fallback = Array.from(counts.entries()).map(([name, count]) => ({
+        id: slugify(name),
+        name,
+        code: name.substring(0, Math.min(3, name.length)).toUpperCase(),
+        fileCount: count
+      }));
+      setDepartments(fallback);
+    }
+  }, [departmentHierarchy, documents]);
+
   const visibleTabs = documentTabs.filter(tab => 
     !tab.adminOnly || isAdmin
   );
@@ -1006,25 +1187,51 @@ export default function DocumentRepositoryPage() {
   const secondaryTabs = visibleTabs.filter(tab => !tab.primary && !tab.adminOnly);
   const adminTabs = visibleTabs.filter(tab => tab.adminOnly);
 
-  const getFileIcon = (type: string) => {
-    const iconMap: { [key: string]: any } = {
+  const getFileIcon = (rawType?: string, fileName?: string, mimeType?: string) => {
+    const normalize = (value?: string | null) => value ? value.toLowerCase() : '';
+    const extension =
+      normalize(rawType) ||
+      normalize(fileName?.split('.').pop()) ||
+      normalize(mimeType?.split('/').pop());
+
+    const iconMap: Record<string, any> = {
       pdf: DocumentTextIcon,
       doc: DocumentTextIcon,
       docx: DocumentTextIcon,
+      odt: DocumentTextIcon,
+      txt: DocumentTextIcon,
+      rtf: DocumentTextIcon,
       xls: TableCellsIcon,
       xlsx: TableCellsIcon,
       csv: TableCellsIcon,
+      ods: TableCellsIcon,
       ppt: PresentationChartBarIcon,
       pptx: PresentationChartBarIcon,
+      odp: PresentationChartBarIcon,
       jpg: PhotoIcon,
       jpeg: PhotoIcon,
       png: PhotoIcon,
       gif: PhotoIcon,
+      bmp: PhotoIcon,
+      svg: PhotoIcon,
+      heic: PhotoIcon,
       mp4: FilmIcon,
       avi: FilmIcon,
-      mov: FilmIcon
+      mov: FilmIcon,
+      mkv: FilmIcon,
+      webm: FilmIcon,
+      mp3: DocumentTextIcon,
+      wav: DocumentTextIcon,
+      ogg: DocumentTextIcon,
+      zip: DocumentIcon,
+      rar: DocumentIcon,
+      '7z': DocumentIcon,
+      gz: DocumentIcon,
+      json: DocumentTextIcon,
+      xml: DocumentTextIcon
     };
-    return iconMap[type] || DocumentIcon;
+
+    return iconMap[extension] || DocumentIcon;
   };
 
   const getClassificationColor = (classification: string) => {
@@ -1034,6 +1241,112 @@ export default function DocumentRepositoryPage() {
       RESTRICTED: 'bg-red-100 text-red-800'
     };
     return colorMap[classification] || 'bg-gray-100 text-gray-800';
+  };
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return 'Not available';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return 'Not available';
+    return parsed.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatFileSizeDisplay = (value?: string | number | null) => {
+    if (value === null || value === undefined) return '0 B';
+    if (typeof value === 'number') {
+      const megabytes = value / (1024 * 1024);
+      if (megabytes >= 1) return `${megabytes.toFixed(1)} MB`;
+      const kilobytes = value / 1024;
+      if (kilobytes >= 1) return `${kilobytes.toFixed(1)} KB`;
+      return `${value} B`;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) return '0 B';
+
+    const numeric = Number(trimmed);
+    if (!Number.isNaN(numeric)) {
+      return formatFileSizeDisplay(numeric);
+    }
+
+    return trimmed;
+  };
+
+  function slugify(value: string) {
+    if (!value) return 'item';
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
+  }
+
+  const normalizeDocumentRecord = (docParam: any, lookup: DepartmentLookup): Document => {
+    const doc = { ...docParam } as Document & { customMetadata?: any };
+    const folderSegments = doc.folderPath ? doc.folderPath.split('/').filter(Boolean) : [];
+    
+    let department = doc.department || docParam?.customMetadata?.department || (folderSegments.length > 0 ? folderSegments[0] : null);
+    let category = doc.category && doc.category !== 'Uncategorized' ? doc.category : (docParam?.customMetadata?.category as string | undefined) || null;
+    let subunit = doc.subunit || docParam?.customMetadata?.subunit || null;
+    
+    if (!category && folderSegments.length > 0) {
+      category = folderSegments[folderSegments.length - 1];
+    }
+    
+    if (!subunit && folderSegments.length > 2) {
+      subunit = folderSegments.slice(1, folderSegments.length - 1).join('/');
+    } else if (!subunit && folderSegments.length === 2) {
+      const possibleSubunit = folderSegments[1];
+      if (possibleSubunit !== department) {
+        subunit = possibleSubunit;
+      }
+    }
+    
+    if (department) {
+      const normalizedDeptName = normalizeString(department);
+      const lookupEntry = lookup[normalizedDeptName];
+      if (lookupEntry?.type === 'subunit') {
+        subunit = lookupEntry.parentName ? department : subunit || department;
+        department = lookupEntry.parentName || department;
+      }
+    }
+    
+    if (!department) {
+      department = 'General';
+    }
+    
+    if (!category) {
+      category = 'OTHER';
+    }
+    
+    const categoryDisplay = docParam?.customMetadata?.categoryDisplay || CATEGORY_DISPLAY_MAP[category] || category || CATEGORY_DISPLAY_MAP.OTHER;
+    
+    const pathSegments = [department];
+    if (subunit) pathSegments.push(subunit);
+    if (categoryDisplay) pathSegments.push(categoryDisplay);
+    const folderPath = pathSegments.join('/');
+    
+    const typeExtension = doc.type?.toLowerCase() || doc.mimeType?.split('/')[1]?.toLowerCase() || doc.fileName?.split('.').pop()?.toLowerCase() || 'file';
+    
+    return {
+      ...doc,
+      department,
+      subunit,
+      category,
+      categoryDisplay,
+      folderPath,
+      type: typeExtension,
+      uploadDate: doc.uploadDate || doc.createdAt || new Date().toISOString(),
+    };
+  };
+
+  const normalizeDocumentRecords = (docs: any[], lookup: DepartmentLookup): Document[] => {
+    return (docs || []).map(doc => normalizeDocumentRecord(doc, lookup));
   };
 
   const renderTabContent = () => {
@@ -1205,10 +1518,14 @@ export default function DocumentRepositoryPage() {
             </div>
           ) : (
             documents.slice(0, 5).map((doc, index) => {
-              const FileIcon = getFileIcon(doc.type);
+              const FileIcon = getFileIcon(doc.type, doc.fileName, doc.mimeType);
               const securityInfo = getSecurityInfo(doc.classification);
               const SecurityIcon = securityInfo.icon;
               const hasAccess = canUserAccessDocument(doc, session?.user?.roles?.[0], session?.user?.permissions);
+              const uploadedByDisplay = doc.uploadedBy && doc.uploadedBy !== 'Unknown'
+                ? doc.uploadedBy
+                : (doc.uploadedByEmail || 'Not specified');
+              const formattedUploadDate = formatDateTime(doc.uploadDate || doc.createdAt);
               
               return (
                 <div key={doc.id} className={`px-6 py-5 hover:bg-gradient-to-r hover:from-gray-50 hover:to-orange-50 transition-all duration-300 group ${!hasAccess ? 'opacity-60' : ''} ${index === 0 ? 'bg-gradient-to-r from-blue-50/30 to-transparent' : ''}`}>
@@ -1241,7 +1558,7 @@ export default function DocumentRepositoryPage() {
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
                           <span className="flex items-center">
                             <DocumentIcon className="h-4 w-4 mr-1" />
-                            {doc.size}
+                            {formatFileSizeDisplay(doc.size)}
                           </span>
                           {doc.department && (
                             <span className="flex items-center">
@@ -1251,11 +1568,11 @@ export default function DocumentRepositoryPage() {
                           )}
                           <span className="flex items-center">
                             <UserGroupIcon className="h-4 w-4 mr-1" />
-                            {doc.uploadedBy}
+                            {uploadedByDisplay}
                           </span>
                           <span className="flex items-center">
                             <CalendarIcon className="h-4 w-4 mr-1" />
-                            {doc.uploadDate}
+                            {formattedUploadDate}
                           </span>
                         </div>
                       </div>
@@ -1364,9 +1681,10 @@ export default function DocumentRepositoryPage() {
             </div>
           ) : (
             personalDocuments.map((doc) => {
-              const FileIcon = getFileIcon(doc.type || 'pdf');
+              const FileIcon = getFileIcon(doc.type, doc.fileName, doc.mimeType);
               const securityInfo = getSecurityInfo(doc.classification);
               const SecurityIcon = securityInfo.icon;
+              const formattedUploadDate = formatDateTime(doc.uploadDate || doc.createdAt);
               
               return (
                 <div key={doc.id} className="px-6 py-4 hover:bg-gray-50 transition-colors duration-200">
@@ -1395,7 +1713,7 @@ export default function DocumentRepositoryPage() {
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
                           <span className="flex items-center">
                             <FolderIcon className="h-4 w-4 mr-1" />
-                            {doc.category}
+                            {doc.categoryDisplay || doc.category || 'General Document'}
                           </span>
                           {doc.department && (
                             <span className="flex items-center">
@@ -1405,11 +1723,11 @@ export default function DocumentRepositoryPage() {
                           )}
                           <span className="flex items-center">
                             <DocumentIcon className="h-4 w-4 mr-1" />
-                            {doc.size}
+                            {formatFileSizeDisplay(doc.size)}
                           </span>
                           <span className="flex items-center">
                             <CalendarIcon className="h-4 w-4 mr-1" />
-                            {new Date(doc.uploadDate).toLocaleDateString()}
+                            {formattedUploadDate}
                           </span>
                         </div>
                       </div>
@@ -1458,6 +1776,126 @@ export default function DocumentRepositoryPage() {
       </div>
     </div>
   );
+  
+  const renderDocumentRow = (doc: Document) => {
+    const FileIcon = getFileIcon(doc.type, doc.fileName, doc.mimeType);
+    return (
+      <div 
+        key={doc.id} 
+        className="flex items-center space-x-2 p-2 rounded-md hover:bg-blue-50 cursor-pointer transition-colors group"
+        onClick={() => handleDocumentClick(doc)}
+      >
+        <FileIcon className="h-4 w-4 text-gray-500" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-gray-700 truncate group-hover:text-blue-600">
+            {doc.title || doc.fileName}
+          </p>
+          <p className="text-xs text-gray-500">
+            {formatFileSizeDisplay(doc.size)} • {formatDateTime(doc.uploadDate || doc.createdAt)}
+          </p>
+        </div>
+        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDocumentView(doc.id);
+            }}
+            className="p-1 rounded hover:bg-blue-100 transition-colors"
+            title="View"
+          >
+            <EyeIcon className="h-3 w-3 text-blue-600" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownload(doc.id, doc.fileName);
+            }}
+            className="p-1 rounded hover:bg-green-100 transition-colors"
+            title="Download"
+          >
+            <ArrowDownTrayIcon className="h-3 w-3 text-green-600" />
+          </button>
+          {isAdmin && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                confirmDocumentDelete(doc.id, doc.title || doc.fileName);
+              }}
+              className="p-1 rounded hover:bg-red-100 transition-colors"
+              title="Delete"
+            >
+              <TrashIcon className="h-3 w-3 text-red-600" />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderCategoryNode = (node: FolderNode) => {
+    const categoryDocs = documents.filter(doc =>
+      doc.department === node.department &&
+      (node.subunit ? doc.subunit === node.subunit : !doc.subunit) &&
+      (doc.categoryDisplay || doc.category || 'General Document') === node.name
+    );
+
+    return (
+      <div key={node.id} className="space-y-1">
+        <div className="flex items-center space-x-2 p-2 rounded-md bg-gray-50">
+          <FolderIcon className="h-4 w-4 text-orange-400" />
+          <span className="text-sm text-gray-700">{node.name}</span>
+          <span className="text-xs text-gray-500">
+            ({categoryDocs.length} document{categoryDocs.length === 1 ? '' : 's'})
+          </span>
+        </div>
+        {categoryDocs.length > 0 ? (
+          <div className="ml-6 space-y-1">
+            {categoryDocs.slice(0, 10).map((doc) => renderDocumentRow(doc))}
+            {categoryDocs.length > 10 && (
+              <div className="text-xs text-gray-500 p-2">
+                ...and {categoryDocs.length - 10} more document{categoryDocs.length - 10 === 1 ? '' : 's'}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="ml-6 text-xs text-gray-400 italic px-2">No documents yet</div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSubunitNode = (node: FolderNode) => {
+    const isExpanded = expandedFolders.has(node.id);
+    return (
+      <div key={node.id} className="space-y-1">
+        <div
+          className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
+          onClick={() => toggleFolder(node.id)}
+        >
+          {node.children && node.children.length > 0 ? (
+            isExpanded ? (
+              <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+            )
+          ) : null}
+          <FolderIcon className="h-4 w-4 text-orange-500" />
+          <span className="text-sm text-gray-700">{node.name}</span>
+          <span className="text-xs text-gray-500">
+            ({node.documentCount} document{node.documentCount === 1 ? '' : 's'})
+          </span>
+        </div>
+        {isExpanded && node.children && node.children.length > 0 && (
+          <div className="ml-6 space-y-2">
+            {node.children.map((categoryNode) => renderCategoryNode(categoryNode))}
+          </div>
+        )}
+        {isExpanded && (!node.children || node.children.length === 0) && (
+          <div className="ml-6 text-xs text-gray-400 italic px-2">No categories configured</div>
+        )}
+      </div>
+    );
+  };
 
   const renderBrowse = () => (
     <div className="bg-white shadow rounded-lg">
@@ -1472,155 +1910,53 @@ export default function DocumentRepositoryPage() {
         </button>
       </div>
       <div className="divide-y divide-gray-200">
-        {/* Folder Tree Structure */}
         <div className="p-4">
-          {folderStructure.map((folder) => {
-            const FolderMainIcon = folder.icon;
-            const isExpanded = expandedFolders.has(folder.id);
-            const totalDocs = folder.children.reduce((sum, child) => sum + child.documentCount, 0);
-            
-            return (
-              <div key={folder.id} className="mb-4">
-                {/* Main Folder */}
-                <div 
-                  className="flex items-center space-x-2 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => toggleFolder(folder.id)}
-                >
-                  <div className="flex items-center space-x-2">
-                    {isExpanded ? (
-                      <ChevronDownIcon className="h-5 w-5 text-gray-500" />
-                    ) : (
-                      <ChevronRightIcon className="h-5 w-5 text-gray-500" />
-                    )}
-                    <FolderMainIcon className="h-6 w-6 text-saywhat-orange" />
-                    <span className="font-medium text-gray-900">{folder.name}</span>
-                    <span className="text-sm text-gray-500">({totalDocs} documents)</span>
+          {folderStructure.length === 0 ? (
+            <div className="text-sm text-gray-500 italic">No folders available yet.</div>
+          ) : (
+            folderStructure.map((folder) => {
+              const FolderMainIcon = folder.icon;
+              const isExpanded = expandedFolders.has(folder.id);
+              
+              return (
+                <div key={folder.id} className="mb-4">
+                  <div
+                    className="flex items-center space-x-2 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => toggleFolder(folder.id)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      {isExpanded ? (
+                        <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                      ) : (
+                        <ChevronRightIcon className="h-5 w-5 text-gray-500" />
+                      )}
+                      <FolderMainIcon className="h-6 w-6 text-saywhat-orange" />
+                      <span className="font-medium text-gray-900">{folder.name}</span>
+                      <span className="text-sm text-gray-500">({folder.documentCount} document{folder.documentCount === 1 ? '' : 's'})</span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Subfolders and Documents */}
-                {isExpanded && (
-                  <div className="ml-8 mt-2 space-y-1">
-                    {folder.children && folder.children.map((subfolder) => {
-                      const SubfolderIcon = subfolder.icon;
-                      const subfolderExpanded = expandedFolders.has(subfolder.id);
-                      
-                      // Get documents for this subfolder
-                      const subfolderDocs = documents.filter(doc => 
-                        doc.department === subfolder.department && doc.category === subfolder.category
-                      );
-                      
-                      return (
-                        <div key={subfolder.id} className="space-y-1">
-                          {/* Subfolder Header */}
-                          <div 
-                            className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
-                            onClick={() => toggleFolder(subfolder.id)}
-                          >
-                            {subfolderDocs.length > 0 && (
-                              subfolderExpanded ? (
-                                <ChevronDownIcon className="h-4 w-4 text-gray-400" />
-                              ) : (
-                                <ChevronRightIcon className="h-4 w-4 text-gray-400" />
-                              )
-                            )}
-                            <SubfolderIcon className="h-5 w-5 text-orange-400" />
-                            <span className="text-sm text-gray-700">{subfolder.name}</span>
-                            <span className="text-xs text-gray-500">({subfolder.documentCount})</span>
-                          </div>
-                          
-                          {/* Documents in Subfolder */}
-                          {subfolderExpanded && subfolderDocs.length > 0 && (
-                            <div className="ml-6 space-y-1">
-                              {subfolderDocs.slice(0, 10).map((doc) => { // Show max 10 documents
-                                const FileIcon = getFileIcon(doc.mimeType || doc.type || 'unknown');
-                                return (
-                                  <div 
-                                    key={doc.id} 
-                                    className="flex items-center space-x-2 p-2 rounded-md hover:bg-blue-50 cursor-pointer transition-colors group"
-                                    onClick={() => handleDocumentClick(doc)}
-                                  >
-                                    <FileIcon className="h-4 w-4 text-gray-500" />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm text-gray-700 truncate group-hover:text-blue-600">
-                                        {doc.title || doc.fileName}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        {doc.size} • {new Date(doc.uploadDate).toLocaleDateString()}
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDocumentView(doc.id);
-                                        }}
-                                        className="p-1 rounded hover:bg-blue-100 transition-colors"
-                                        title="View"
-                                      >
-                                        <EyeIcon className="h-3 w-3 text-blue-600" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDownload(doc.id, doc.fileName);
-                                        }}
-                                        className="p-1 rounded hover:bg-green-100 transition-colors"
-                                        title="Download"
-                                      >
-                                        <ArrowDownTrayIcon className="h-3 w-3 text-green-600" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                              {subfolderDocs.length > 10 && (
-                                <div className="text-xs text-gray-500 p-2">
-                                  ...and {subfolderDocs.length - 10} more documents
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    
-                    {/* Documents directly in main folder (no category) */}
-                    {(() => {
-                      const mainFolderDocs = documents.filter(doc => 
-                        doc.department === folder.name && (!doc.category || !folder.children.some(child => child.category === doc.category))
-                      );
-                      return mainFolderDocs.length > 0 && (
-                        <div className="space-y-1 pt-2 border-t border-gray-100">
-                          <div className="text-xs text-gray-500 px-2">Other Documents:</div>
-                          {mainFolderDocs.slice(0, 5).map((doc) => {
-                            const FileIcon = getFileIcon(doc.mimeType || doc.type || 'unknown');
-                            return (
-                              <div 
-                                key={doc.id} 
-                                className="flex items-center space-x-2 p-2 rounded-md hover:bg-blue-50 cursor-pointer transition-colors group"
-                                onClick={() => handleDocumentClick(doc)}
-                              >
-                                <FileIcon className="h-4 w-4 text-gray-500" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-gray-700 truncate group-hover:text-blue-600">
-                                    {doc.title || doc.fileName}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {doc.size} • {new Date(doc.uploadDate).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                  {isExpanded && (
+                    <div className="ml-8 mt-2 space-y-2">
+                      {folder.children && folder.children.length > 0 ? (
+                        folder.children.map((child) => {
+                          if (child.type === 'subunit') {
+                            return renderSubunitNode(child);
+                          }
+                          if (child.type === 'category') {
+                            return renderCategoryNode(child);
+                          }
+                          return null;
+                        })
+                      ) : (
+                        <div className="text-xs text-gray-400 italic px-2">No categories available</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
@@ -1726,44 +2062,47 @@ export default function DocumentRepositoryPage() {
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {documents.map((doc) => (
-                <div key={doc.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className="bg-gray-100 p-2 rounded-lg">
-                        <DocumentIcon className="h-5 w-5 text-gray-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">{doc.title}</p>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <span>{doc.size}</span>
-                          {doc.department && <span>{doc.department}</span>}
-                          <span>{doc.uploadDate}</span>
+              {documents.map((doc) => {
+                const FileIcon = getFileIcon(doc.type, doc.fileName, doc.mimeType);
+                return (
+                  <div key={doc.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <div className="bg-gray-100 p-2 rounded-lg">
+                          <FileIcon className="h-5 w-5 text-gray-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">{doc.title}</p>
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
+                            <span>{formatFileSizeDisplay(doc.size)}</span>
+                            {doc.department && <span>{doc.department}</span>}
+                            <span>{formatDateTime(doc.uploadDate || doc.createdAt)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-1 ml-3">
-                      <button 
-                        onClick={() => {
-                          setViewingDocumentId(doc.id);
-                          setShowViewModal(true);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
-                        title="View"
-                      >
-                        <EyeIcon className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDownload(doc.id, doc.title)}
-                        className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
-                        title="Download"
-                      >
-                        <ArrowDownTrayIcon className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center space-x-1 ml-3">
+                        <button 
+                          onClick={() => {
+                            setViewingDocumentId(doc.id);
+                            setShowViewModal(true);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
+                          title="View"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDownload(doc.id, doc.title)}
+                          className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
+                          title="Download"
+                        >
+                          <ArrowDownTrayIcon className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -1992,6 +2331,31 @@ export default function DocumentRepositoryPage() {
       )}
     </div>
   );
+
+  const confirmDocumentDelete = (id: string, name: string) => {
+    setDeleteConfirmation({ id, name });
+  };
+
+  const handleDocumentDelete = async () => {
+    if (!deleteConfirmation) return;
+
+    try {
+      const response = await fetch(`/api/documents/${deleteConfirmation.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        console.error('Failed to delete document');
+        return;
+      }
+
+      setDocuments((prev) => prev.filter((doc) => doc.id !== deleteConfirmation.id));
+      setRawDocuments((prev) => prev.filter((doc) => doc.id !== deleteConfirmation.id));
+      setDeleteConfirmation(null);
+    } catch (error) {
+      console.error('Error deleting document:', error);
+    }
+  };
 
   return (
     <ModulePage
@@ -2379,7 +2743,45 @@ export default function DocumentRepositoryPage() {
             documentId={viewingDocumentId}
           />
         )}
+
+        {showViewModal && viewingDocumentId && (
+          <DocumentViewModal
+            documentId={viewingDocumentId}
+            isOpen={showViewModal}
+            onClose={() => {
+              setShowViewModal(false);
+              setViewingDocumentId(null);
+            }}
+          />
+        )}
+
+        {deleteConfirmation && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+              <h3 className="text-lg font-semibold text-gray-900">Delete Document</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Are you sure you want to delete "{deleteConfirmation.name}"? This action cannot be undone.
+              </p>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={() => setDeleteConfirmation(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDocumentDelete}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ModulePage>
   );
 }
+
+const normalizeString = (value?: string | null) => (value ? value.trim().toLowerCase() : "");
