@@ -15,6 +15,179 @@ import {
 } from "@heroicons/react/24/outline"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
+const extractYearNumber = (label: string): number => {
+  if (!label) return 0
+  const match = label.match(/\d+/)
+  return match ? parseInt(match[0], 10) : 0
+}
+
+const parseNumericValue = (value: any): number => {
+  if (value === null || value === undefined) return 0
+  const numeric = parseFloat(String(value).replace(/[^0-9.-]/g, ''))
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
+const getTargetsArray = (targets: any): { label: string; value: number }[] => {
+  if (!targets || typeof targets !== 'object') return []
+
+  return Object.entries(targets)
+    .filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .map(([label, value]) => ({
+      label,
+      value: parseNumericValue(value)
+    }))
+    .sort((a, b) => extractYearNumber(a.label) - extractYearNumber(b.label))
+}
+
+const getTotalTargetValue = (targets: any): number => {
+  return getTargetsArray(targets).reduce((sum, target) => sum + target.value, 0)
+}
+
+const getProjectYearGroups = (
+  targetCount: number,
+  project: { startDate?: string | null; endDate?: string | null } | null
+): { start: Date; end: Date }[] => {
+  if (!project || targetCount <= 0) return []
+
+  const parseDate = (value?: string | null) => {
+    if (!value) return null
+    const parsed = new Date(value)
+    return isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const start = parseDate(project.startDate)
+  let end = parseDate(project.endDate)
+
+  if (!start) return []
+
+  if (!end || end <= start) {
+    end = new Date(start)
+    end.setFullYear(end.getFullYear() + targetCount)
+    end.setDate(end.getDate() - 1)
+  }
+
+  const periods: { start: Date; end: Date }[] = []
+  let currentYear = start.getFullYear()
+  const endYear = end.getFullYear()
+
+  for (let year = currentYear; year <= endYear; year++) {
+    const periodStart = year === start.getFullYear()
+      ? new Date(start)
+      : new Date(year, 0, 1)
+
+    const periodEnd = year === end.getFullYear()
+      ? new Date(end)
+      : new Date(year, 11, 31, 23, 59, 59, 999)
+
+    periods.push({ start: periodStart, end: periodEnd })
+  }
+
+  if (periods.length === 0) return []
+
+  let groups = periods.map(period => [period])
+
+  while (groups.length > targetCount && groups.length > 1) {
+    const first = groups.shift() || []
+    const second = groups.shift() || []
+    groups.unshift([...first, ...second])
+  }
+
+  if (groups.length === 0) return []
+
+  if (groups.length < targetCount) {
+    const lastGroup = groups[groups.length - 1]
+    while (groups.length < targetCount) {
+      groups.push(lastGroup)
+    }
+  }
+
+  return groups.map(group => {
+    const first = group[0]
+    const last = group[group.length - 1]
+    return {
+      start: new Date(first.start),
+      end: new Date(last.end)
+    }
+  })
+}
+
+const getCurrentProjectYearInfo = (
+  targetsByYear: { label: string; value: number }[] | undefined,
+  project: { startDate?: string | null; endDate?: string | null } | null,
+  frameworkDuration?: number
+) => {
+  if (!targetsByYear || targetsByYear.length === 0) {
+    return {
+      index: 0,
+      label: 'Year 1',
+      value: 0
+    }
+  }
+
+  const now = new Date()
+  const startDate = project?.startDate ? new Date(project.startDate) : null
+  const endDate = project?.endDate ? new Date(project.endDate) : null
+  const targetCount = targetsByYear.length
+
+  const groups = getProjectYearGroups(
+    targetCount,
+    project
+  )
+
+  if (groups.length === targetCount && groups.length > 0) {
+    let yearIndex = groups.findIndex(period => {
+      return now >= period.start && now <= period.end
+    })
+
+    if (yearIndex === -1) {
+      if (now < groups[0].start) {
+        yearIndex = 0
+      } else {
+        yearIndex = groups.length - 1
+      }
+    }
+
+    const targetInfo = targetsByYear[yearIndex] || targetsByYear[0]
+
+    return {
+      index: yearIndex,
+      label: targetInfo.label,
+      value: targetInfo.value
+    }
+  }
+
+  let yearIndex = 0
+  if (startDate && !isNaN(startDate.getTime())) {
+    if (now <= startDate) {
+      yearIndex = 0
+    } else {
+      const monthsDiff = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth())
+      yearIndex = Math.floor(monthsDiff / 12)
+    }
+  }
+
+  // Clamp using framework duration if provided
+  let maxIndex = targetsByYear.length - 1
+  if (typeof frameworkDuration === 'number' && frameworkDuration > 0) {
+    maxIndex = Math.min(maxIndex, frameworkDuration - 1)
+  }
+
+  if (endDate && !isNaN(endDate.getTime())) {
+    if (now > endDate) {
+      yearIndex = maxIndex
+    }
+  }
+
+  yearIndex = Math.max(0, Math.min(yearIndex, maxIndex))
+  const targetInfo = targetsByYear[yearIndex] || targetsByYear[0]
+
+  return {
+    index: yearIndex,
+    label: targetInfo.label,
+    value: targetInfo.value
+  }
+}
+
 interface Project {
   id: string
   name: string
@@ -48,6 +221,10 @@ interface ProjectIndicator {
   name: string
   description: string
   target: number
+  totalTarget?: number
+  targetsByYear?: { label: string; value: number }[]
+  currentYearLabel?: string
+  currentYearIndex?: number
   current: number
   unit: string
   frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually'
@@ -73,6 +250,7 @@ interface ProjectIndicator {
   lastUpdatedAt?: string
   notes?: string
   updateHistory?: UpdateHistory[]
+  pendingIncrement?: number
 }
 
 interface ProjectIndicatorsProps {
@@ -300,6 +478,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         console.log('Type of resultsFramework:', typeof data.data.resultsFramework)
         
         let framework = data.data.resultsFramework
+        const projectRecord = data.data
         
         // Prisma should return resultsFramework as an object (Json type auto-parses)
         // But handle string case for backwards compatibility
@@ -318,7 +497,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           console.log('Full framework structure:', JSON.stringify(framework, null, 2))
           setResultsFramework(framework)
           // Extract indicators from Results Framework
-          extractIndicatorsFromFramework(framework, projectId)
+          extractIndicatorsFromFramework(framework, projectRecord)
         } else {
           console.log('❌ No Results Framework or no objectives found for this project')
           console.log('Framework value:', framework)
@@ -336,9 +515,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     }
   }
 
-  const extractIndicatorsFromFramework = (framework: any, projectId: string) => {
+  const extractIndicatorsFromFramework = (framework: any, project: any) => {
     console.log('Extracting indicators from framework:', framework)
     const extractedIndicators: ProjectIndicator[] = []
+    const projectId = project?.id
     
     if (framework.objectives && Array.isArray(framework.objectives)) {
       console.log('Found objectives:', framework.objectives.length)
@@ -347,14 +527,24 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           objective.outcomes.forEach((outcome: any) => {
             // Extract outcome indicators
             if (outcome.indicators && Array.isArray(outcome.indicators)) {
-              outcome.indicators.forEach((indicator: any) => {
+              outcome.indicators.forEach((indicator: any, indicatorIndex: number) => {
+                const frameworkIndicatorId = indicator.id || `auto-${outcome.id}-${indicatorIndex}`
+                if (!indicator.id) {
+                  indicator.id = frameworkIndicatorId
+                }
+                const targetsByYear = getTargetsArray(indicator.targets)
+                const currentYearInfo = getCurrentProjectYearInfo(targetsByYear, project, framework.projectDuration)
                 extractedIndicators.push({
-                  id: `outcome-${outcome.id}-${indicator.id || Math.random()}`,
+                  id: `outcome-${outcome.id}-${frameworkIndicatorId}`,
                   projectId,
                   name: indicator.description || 'Outcome Indicator',
                   description: `Objective: ${objective.title} → Outcome: ${outcome.title}`,
-                  target: parseFloat(indicator.targets?.Year1 || '0') || 0,
-                  current: indicator.current || 0, // Use saved value or default to 0
+                  target: currentYearInfo.value,
+                  totalTarget: getTotalTargetValue(indicator.targets),
+                  targetsByYear,
+                  currentYearLabel: currentYearInfo.label,
+                  currentYearIndex: currentYearInfo.index,
+                  current: parseNumericValue(indicator.current), // Use saved value or default to 0
                   unit: indicator.targetUnit || 'units',
                   frequency: 'monthly' as const,
                   status: 'on-track' as const,
@@ -381,14 +571,24 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             if (outcome.outputs && Array.isArray(outcome.outputs)) {
               outcome.outputs.forEach((output: any) => {
                 if (output.indicators && Array.isArray(output.indicators)) {
-                  output.indicators.forEach((indicator: any) => {
+                  output.indicators.forEach((indicator: any, indicatorIndex: number) => {
+                    const frameworkIndicatorId = indicator.id || `auto-${output.id}-${indicatorIndex}`
+                    if (!indicator.id) {
+                      indicator.id = frameworkIndicatorId
+                    }
+                        const targetsByYear = getTargetsArray(indicator.targets)
+                      const currentYearInfo = getCurrentProjectYearInfo(targetsByYear, project, framework.projectDuration)
                     extractedIndicators.push({
-                      id: `output-${output.id}-${indicator.id || Math.random()}`,
+                      id: `output-${output.id}-${frameworkIndicatorId}`,
                       projectId,
                       name: indicator.description || 'Output Indicator',
                       description: `Objective: ${objective.title} → Outcome: ${outcome.title} → Output: ${output.title}`,
-                      target: parseFloat(indicator.targets?.Year1 || '0') || 0,
-                      current: indicator.current || 0, // Use saved value or default to 0
+                        target: currentYearInfo.value,
+                          totalTarget: getTotalTargetValue(indicator.targets),
+                          targetsByYear,
+                        currentYearLabel: currentYearInfo.label,
+                        currentYearIndex: currentYearInfo.index,
+                      current: parseNumericValue(indicator.current), // Use saved value or default to 0
                       unit: indicator.targetUnit || 'units',
                       frequency: 'monthly' as const,
                       status: 'on-track' as const,
@@ -437,15 +637,29 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       console.log('Bulk updating indicators:', selectedIndicators, 'with details:', selectedIndicatorDetails)
       console.log('Update notes:', updateNotes)
       
+      const hasIncrements = selectedIndicatorDetails.some(detail => (detail.pendingIncrement ?? 0) !== 0)
+      if (!hasIncrements) {
+        console.log('No increments provided, skipping bulk update')
+        setShowBulkUpdate(false)
+        setSelectedIndicators([])
+        setSelectedIndicatorDetails([])
+        setUpdateNotes('')
+        return
+      }
+
       // Update the project's resultsFramework with all indicator updates
       if (selectedProjectId && resultsFramework) {
         let updatedFramework = JSON.parse(JSON.stringify(resultsFramework)) // Deep clone once
         
         // Update each selected indicator in the framework (cumulative updates)
         selectedIndicatorDetails.forEach((indicator) => {
-          // The value in indicator.current is the INCREMENT, not the new total
-          console.log(`Updating indicator ${indicator.id} with increment ${indicator.current} and notes: "${updateNotes}"`)
-          updatedFramework = updateIndicatorInFramework(updatedFramework, indicator.id, indicator.current, updateNotes)
+          const incrementValue = indicator.pendingIncrement ?? 0
+          if (!incrementValue) {
+            console.log(`Skipping indicator ${indicator.id} because increment is zero or undefined`)
+            return
+          }
+          console.log(`Updating indicator ${indicator.id} with increment ${incrementValue} and notes: "${updateNotes}"`)
+          updatedFramework = updateIndicatorInFramework(updatedFramework, indicator.id, incrementValue, updateNotes)
         })
         
         // Save the updated framework to the project
@@ -460,7 +674,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         })
 
         if (response.ok) {
-          console.log(`Successfully updated ${selectedIndicatorDetails.length} indicators in project framework`)
+          const appliedIndicators = selectedIndicatorDetails.filter(detail => (detail.pendingIncrement ?? 0) !== 0)
+          console.log(`Successfully updated ${appliedIndicators.length} indicators in project framework`)
           // Refresh the indicators from the updated framework
           fetchResultsFramework(selectedProjectId)
         } else {
@@ -469,14 +684,17 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       }
 
       // Set success message and audit trail
-      setUpdateResults({
-        successCount: selectedIndicatorDetails.length,
-        totalCount: selectedIndicators.length,
-        updatedBy: currentUser,
-        timestamp: new Date().toLocaleString(),
-        notes: updateNotes
-      } as any)
-      setShowSuccessMessage(true)
+      const appliedIndicators = selectedIndicatorDetails.filter(detail => (detail.pendingIncrement ?? 0) !== 0)
+      if (appliedIndicators.length > 0) {
+        setUpdateResults({
+          successCount: appliedIndicators.length,
+          totalCount: selectedIndicators.length,
+          updatedBy: currentUser,
+          timestamp: new Date().toLocaleString(),
+          notes: updateNotes
+        } as any)
+        setShowSuccessMessage(true)
+      }
       
       // Reset form and refresh data
       setShowBulkUpdate(false)
@@ -503,7 +721,15 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   }
 
   const updateSelectedIndicatorDetails = (indicatorIds: string[]) => {
-    const details = filteredIndicators.filter(indicator => indicatorIds.includes(indicator.id))
+    const details = filteredIndicators
+      .filter(indicator => indicatorIds.includes(indicator.id))
+      .map(indicator => {
+        const existing = selectedIndicatorDetails.find(detail => detail.id === indicator.id)
+        return {
+          ...indicator,
+          pendingIncrement: existing?.pendingIncrement ?? 0
+        }
+      })
     setSelectedIndicatorDetails(details)
   }
 
@@ -531,6 +757,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           // Update outcome indicators
           if (outcome.indicators) {
             outcome.indicators.forEach((indicator: any, index: number) => {
+              if (!indicator.id) {
+                indicator.id = `auto-${outcome.id}-${index}`
+              }
               if (indicator.id === actualIndicatorId) {
                 const previousValue = indicator.current || 0
                 const newValue = previousValue + incrementValue
@@ -566,6 +795,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           outcome.outputs.forEach((output: any) => {
             if (output.id === parentId && output.indicators) {
               output.indicators.forEach((indicator: any, index: number) => {
+                if (!indicator.id) {
+                  indicator.id = `auto-${output.id}-${index}`
+                }
                 if (indicator.id === actualIndicatorId) {
                   const previousValue = indicator.current || 0
                   const newValue = previousValue + incrementValue
@@ -738,6 +970,21 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     target: indicator.target,
     progress: getProgressPercentage(indicator.current, indicator.target)
   }))
+
+  const totalSelectedCurrentYearTarget = selectedIndicatorDetails.reduce((sum, indicator) => {
+    return sum + (indicator.target || 0)
+  }, 0)
+
+  const totalSelectedAllYearsTarget = selectedIndicatorDetails.reduce((sum, indicator) => {
+    return sum + (indicator.totalTarget || indicator.target || 0)
+  }, 0)
+
+  const totalSelectedPendingIncrement = selectedIndicatorDetails.reduce((sum, indicator) => {
+    return sum + (indicator.pendingIncrement || 0)
+  }, 0)
+
+  const bulkUnitsSet = new Set(selectedIndicatorDetails.map(indicator => indicator.unit).filter(Boolean))
+  const bulkUnitsLabel = bulkUnitsSet.size === 1 ? Array.from(bulkUnitsSet)[0] : (bulkUnitsSet.size > 1 ? 'mixed units' : '')
   
   // Legend mapping for indicators with full hierarchy
   const indicatorLegend = filteredIndicators.map((indicator, index) => {
@@ -1191,11 +1438,35 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {indicator.target} {indicator.unit}
+                      <div className="text-sm text-gray-900 font-semibold">
+                        Current Year Target
+                        {indicator.currentYearLabel ? ` (${indicator.currentYearLabel})` : ''}: {indicator.target} {indicator.unit}
                       </div>
+                      {indicator.totalTarget !== undefined && indicator.targetsByYear && indicator.targetsByYear.length > 1 && (
+                        <div className="text-xs text-gray-600 mt-1">
+                          Total Across Years: <span className="font-semibold text-gray-800">{indicator.totalTarget} {indicator.unit}</span>
+                        </div>
+                      )}
+                      {indicator.targetsByYear && indicator.targetsByYear.length > 0 && (
+                        <div className="mt-2 space-y-1 text-xs text-gray-600 bg-gray-50 rounded-md border border-gray-200 p-2">
+                          {indicator.targetsByYear.map(({ label, value }, index) => {
+                            const isCurrent = indicator.currentYearIndex === index
+                            return (
+                              <div
+                                key={label}
+                                className={`flex justify-between ${isCurrent ? 'text-gray-900 font-semibold' : ''}`}
+                              >
+                                <span>{label}</span>
+                                <span className={`${isCurrent ? 'text-gray-900' : 'text-gray-700'} font-medium`}>
+                                  {value} {indicator.unit}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                       {indicator.baseline && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 mt-2">
                           Baseline: {indicator.baseline} {indicator.baselineUnit}
                         </div>
                       )}
@@ -1475,9 +1746,37 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                                 {indicator.category.toUpperCase()}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {indicator.current} / {indicator.target} {indicator.unit}
-                            </p>
+                            <div className="text-xs text-gray-600 mt-2 space-y-1">
+                              <div>
+                                <span className="font-medium text-gray-700">Current:</span> {indicator.current} {indicator.unit}
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">
+                                  Current Year Target{indicator.currentYearLabel ? ` (${indicator.currentYearLabel})` : ''}:
+                                </span> {indicator.target} {indicator.unit}
+                              </div>
+                              {typeof indicator.totalTarget === 'number' && indicator.totalTarget > indicator.target && (
+                                <div>
+                                  <span className="font-medium text-gray-700">All Years Target:</span> {indicator.totalTarget} {indicator.unit}
+                                </div>
+                              )}
+                              {indicator.targetsByYear && indicator.targetsByYear.length > 0 && (
+                                <div className="pt-1">
+                                  <div className="font-medium text-gray-700">Yearly Breakdown:</div>
+                                  <div className="grid grid-cols-2 gap-1 mt-1">
+                                    {indicator.targetsByYear.map(({ label, value }, index) => {
+                                      const isCurrent = indicator.currentYearIndex === index
+                                      return (
+                                        <div key={label} className={`flex justify-between ${isCurrent ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>
+                                          <span>{label}</span>
+                                          <span>{value}</span>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                             {indicator.baseline && (
                               <p className="text-xs text-gray-400">
                                 Baseline: {indicator.baseline} {indicator.baselineUnit}
@@ -1512,6 +1811,20 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                             </div>
                           ))}
                         </div>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-blue-900">
+                          <div className="bg-white border border-blue-200 rounded-md p-3 shadow-sm">
+                            <div className="font-semibold text-blue-900">Current Year Target Total</div>
+                            <div className="text-base font-bold">{totalSelectedCurrentYearTarget.toLocaleString()} {bulkUnitsLabel}</div>
+                          </div>
+                          <div className="bg-white border border-blue-200 rounded-md p-3 shadow-sm">
+                            <div className="font-semibold text-blue-900">All Years Target Total</div>
+                            <div className="text-base font-bold">{totalSelectedAllYearsTarget.toLocaleString()} {bulkUnitsLabel}</div>
+                          </div>
+                          <div className="bg-white border border-blue-200 rounded-md p-3 shadow-sm">
+                            <div className="font-semibold text-blue-900">Pending Increment Total</div>
+                            <div className="text-base font-bold">{totalSelectedPendingIncrement.toLocaleString()} {bulkUnitsLabel}</div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -1539,6 +1852,31 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                                   Current: {indicator.current} {indicator.unit}
                                 </span>
                               </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-3">
+                                  <div className="font-semibold text-gray-800 mb-1">Targets</div>
+                                  <div>Current Year Target{indicator.currentYearLabel ? ` (${indicator.currentYearLabel})` : ''}: <span className="font-medium text-gray-900">{indicator.target} {indicator.unit}</span></div>
+                                  {typeof indicator.totalTarget === 'number' && indicator.totalTarget > indicator.target && (
+                                    <div>Total Across Years: <span className="font-medium text-gray-900">{indicator.totalTarget} {indicator.unit}</span></div>
+                                  )}
+                                </div>
+                                {indicator.targetsByYear && indicator.targetsByYear.length > 0 && (
+                                  <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-3">
+                                    <div className="font-semibold text-gray-800 mb-1">Yearly Breakdown</div>
+                                    <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                                      {indicator.targetsByYear.map(({ label, value }, index) => {
+                                        const isCurrent = indicator.currentYearIndex === index
+                                        return (
+                                          <div key={label} className={`flex justify-between ${isCurrent ? 'text-gray-900 font-semibold' : ''}`}>
+                                            <span>{label}</span>
+                                            <span className={`${isCurrent ? 'text-gray-900' : 'text-gray-700'} font-medium`}>{value} {indicator.unit}</span>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                               <div className="flex items-center space-x-2">
                                 <input
                                   type="number"
@@ -1546,14 +1884,16 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                                   placeholder={`Enter increment in ${indicator.unit} (e.g., +5)`}
                                   onChange={(e) => {
-                                    // Update the indicator's value in the details array
-                                    const updatedDetails = selectedIndicatorDetails.map(detail => 
-                                      detail.id === indicator.id 
-                                        ? { ...detail, current: parseFloat(e.target.value) || 0 }
+                                    const value = parseFloat(e.target.value)
+                                    const incrementValue = Number.isFinite(value) ? value : 0
+                                    const updatedDetails = selectedIndicatorDetails.map(detail =>
+                                      detail.id === indicator.id
+                                        ? { ...detail, pendingIncrement: incrementValue }
                                         : detail
                                     )
                                     setSelectedIndicatorDetails(updatedDetails)
                                   }}
+                                  value={indicator.pendingIncrement ?? ''}
                                 />
                                 <span className="text-sm text-gray-600 px-3 py-2 bg-gray-100 rounded font-medium">
                                   {indicator.unit}
