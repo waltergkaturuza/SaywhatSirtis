@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && next build && node scripts/copy-static.js",
+    "build": "npx prisma generate && npx next build && node scripts/copy-static.js",
     "start": "next start",
     "lint": "next lint",
     "test": "echo 'No tests specified. Running lint and build checks...' && npm run lint && npm run build",
