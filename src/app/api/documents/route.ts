@@ -156,9 +156,13 @@ export async function GET(request: NextRequest) {
         const uploadedByDisplay = uploaderInfo?.name?.trim() || (typeof doc.uploadedBy === 'string' ? doc.uploadedBy : 'Unknown')
         const extension = inferExtension()
 
-        let resolvedDepartment = doc.department || doc.customMetadata?.department || null
-        let resolvedCategory = doc.category || doc.customMetadata?.category || ''
-        let resolvedSubunit = doc.customMetadata?.subunit || null
+        const customMetadata = (doc.customMetadata && typeof doc.customMetadata === 'object' && !Array.isArray(doc.customMetadata)
+          ? doc.customMetadata as Record<string, any>
+          : {})
+
+        let resolvedDepartment = doc.department || customMetadata.department || null
+        let resolvedCategory = doc.category || customMetadata.category || ''
+        let resolvedSubunit = customMetadata.subunit || null
 
         if (doc.folderPath) {
           const pathSegments = doc.folderPath.split('/').filter(Boolean)

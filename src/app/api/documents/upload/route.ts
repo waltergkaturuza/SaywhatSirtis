@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const title = formData.get('title') as string
-    const category = formData.get('category') as string
+    const categoryLabel = formData.get('category') as string
     const classification = formData.get('classification') as string
     const accessLevel = formData.get('accessLevel') as string
     const eventId = formData.get('eventId') as string
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    if (!title || !category) {
+    if (!title || !categoryLabel) {
       return NextResponse.json({ 
         success: false, 
         error: "Title and category are required" 
@@ -162,16 +162,16 @@ export async function POST(request: NextRequest) {
     
     // Create folder structure: use custom folderPath if provided, otherwise use default
     let folderPath: string
+    const categoryEnumFromMap = categoryMap[categoryLabel] || 'OTHER'
+    const finalCategoryEnum = categoryEnumOverride || categoryEnumFromMap
+    const finalCategoryDisplay = categoryDisplayOverride || categoryLabel || 'General Document'
+
     if (customFolderPath) {
       folderPath = `uploads/${sanitizeFolderSegment(customFolderPath)}`
     } else {
       // Default folder structure: uploads/department/category/
       const departmentFolder = department || 'General'
-      const mappedCategoryEnum = categoryEnumOverride || categoryMap[category] || 'OTHER'
-      const mappedCategoryDisplay = categoryDisplayOverride ||
-        (Object.entries(categoryMap).find(([key]) => key.toLowerCase() === (category?.toLowerCase() || ''))?.[0] ?? 'General Document')
-      folderPath = `uploads/${sanitizeFolderSegment(departmentFolder)}/${sanitizeFolderSegment(mappedCategoryDisplay)}`
-      category = mappedCategoryEnum
+      folderPath = `uploads/${sanitizeFolderSegment(departmentFolder)}/${sanitizeFolderSegment(finalCategoryDisplay)}`
     }
     
     const filePath = `${folderPath}/${filename}`
@@ -248,10 +248,10 @@ export async function POST(request: NextRequest) {
     }
     
     // Get mapped values with error handling
-    const mappedCategory = categoryMap[category] || 'OTHER';
+    const mappedCategory = finalCategoryEnum;
     const mappedClassification = classificationMap[classification] || 'PUBLIC';
     
-    console.log(`📁 Mapping category "${category}" to "${mappedCategory}"`);
+    console.log(`📁 Mapping category "${categoryLabel}" to "${mappedCategory}"`);
     console.log(`🔒 Mapping classification "${classification}" to "${mappedClassification}"`);
     
     // Save document metadata to database
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
         isPublic: classification === 'PUBLIC',
         uploadedBy: extractedMetadata.author || uploadedBy || session.user?.name || session.user?.email || 'Unknown User',
         department: department || 'Unknown Department',
-        folderPath: sanitizeFolderSegment(customFolderPath) || `${sanitizeFolderSegment(department || 'Unknown Department')}/${sanitizeFolderSegment(mappedCategory)}`,
+        folderPath: sanitizeFolderSegment(customFolderPath) || `${sanitizeFolderSegment(department || 'Unknown Department')}/${sanitizeFolderSegment(finalCategoryDisplay)}`,
         isPersonalRepo: isPersonalRepo,
         approvalStatus: status === 'APPROVED' ? 'APPROVED' : (isPersonalRepo ? 'DRAFT' : 'PENDING_REVIEW'),
         reviewStatus: status === 'APPROVED' ? 'APPROVED' : 'PENDING',

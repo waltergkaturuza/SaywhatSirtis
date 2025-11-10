@@ -19,6 +19,8 @@ const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   OTHER: 'General Document',
 };
 
+const GENERAL_DEPARTMENT = 'General';
+
 const normalize = (value?: string | null) => (value ? value.trim().toLowerCase() : '');
 
 const toMetadataObject = (value: Prisma.JsonValue | null | undefined): Record<string, any> => {
@@ -37,9 +39,7 @@ async function main() {
       include: {
         document_audit_logs: {
           where: {
-            action: {
-              in: ['CREATED', 'UPLOADED'],
-            },
+            action: 'CREATED',
           },
           orderBy: {
             timestamp: 'asc',
@@ -75,9 +75,7 @@ async function main() {
     }),
     prisma.document_audit_logs.findMany({
       where: {
-        action: {
-          in: ['CREATED', 'UPLOADED'],
-        },
+        action: 'CREATED',
       },
       select: {
         documentId: true,

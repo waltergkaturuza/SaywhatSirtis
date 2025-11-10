@@ -44,8 +44,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const roles = Array.isArray(session.user.roles) ? session.user.roles : [];
-    const isAdmin = roles.includes('admin') || session.user.role === 'admin';
+    const normalizedRoles = Array.isArray(session.user.roles)
+      ? session.user.roles.map((role) => String(role).toUpperCase())
+      : [];
+    const normalizedPermissions = Array.isArray(session.user.permissions)
+      ? session.user.permissions.map((perm) => String(perm).toLowerCase())
+      : [];
+    const adminRoleSet = new Set([
+      'ADMIN',
+      'SUPER_ADMIN',
+      'ADMINISTRATOR',
+      'SYSTEM_ADMINISTRATOR',
+      'SUPERUSER',
+    ]);
+    const isAdmin = normalizedRoles.some((role) => adminRoleSet.has(role)) ||
+      normalizedPermissions.includes('documents.admin') ||
+      normalizedPermissions.includes('documents.full_access');
     if (!isAdmin) {
       return NextResponse.json({ error: 'Admin permissions required' }, { status: 403 });
     }
@@ -76,7 +90,7 @@ export async function POST(request: NextRequest) {
       }),
       prisma.document_audit_logs.findMany({
         where: {
-          action: { in: ['CREATED', 'UPLOADED'] as any }
+          action: 'CREATED'
         },
         select: {
           documentId: true,
