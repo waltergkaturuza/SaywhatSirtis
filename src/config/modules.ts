@@ -634,6 +634,14 @@ export const modulesConfig: ModuleConfig[] = [
         requiredPermissions: ["documents.security"]
       },
       {
+        id: "version-history",
+        name: "Version History",
+        href: "/documents/version-history",
+        icon: ClockIcon,
+        description: "Track document changes and versions",
+        requiredPermissions: []
+      },
+      {
         id: "analytics",
         name: "Analytics Dashboard",
         href: "/documents/analytics",

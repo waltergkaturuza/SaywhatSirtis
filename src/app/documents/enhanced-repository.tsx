@@ -1871,6 +1871,16 @@ export default function DocumentRepositoryPage() {
           >
             <ArrowDownTrayIcon className="h-3 w-3 text-green-600" />
           </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              window.location.href = `/documents/version-history?id=${doc.id}`;
+            }}
+            className="p-1 rounded hover:bg-purple-100 transition-colors"
+            title="Version History"
+          >
+            <ClockIcon className="h-3 w-3 text-purple-600" />
+          </button>
           {isAdmin && (
             <button
               onClick={(e) => {
@@ -2716,7 +2726,10 @@ export default function DocumentRepositoryPage() {
                   </button>
                   
                   {/* Version History */}
-                  <button className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                  <a
+                    href="/documents/version-history"
+                    className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group cursor-pointer"
+                  >
                     <div className="bg-gray-600 p-2 rounded-md mr-3 group-hover:bg-gray-700 transition-colors">
                       <ClockIcon className="h-4 w-4 text-white" />
                     </div>
@@ -2724,7 +2737,7 @@ export default function DocumentRepositoryPage() {
                       <div className="text-sm font-medium text-gray-900">Version History</div>
                       <div className="text-xs text-gray-500">Track changes</div>
                     </div>
-                  </button>
+                  </a>
                 </div>
               </div>
 
