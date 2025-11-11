@@ -635,11 +635,19 @@ export const modulesConfig: ModuleConfig[] = [
       },
       {
         id: "analytics",
-        name: "Usage Analytics",
+        name: "Analytics Dashboard",
         href: "/documents/analytics",
         icon: ChartPieIcon,
-        description: "Document access and usage analytics",
-        requiredPermissions: ["documents.analytics"]
+        description: "Comprehensive document analytics and insights",
+        requiredPermissions: []
+      },
+      {
+        id: "reports",
+        name: "Generate Reports",
+        href: "/documents/reports",
+        icon: DocumentChartBarIcon,
+        description: "Create custom document reports",
+        requiredPermissions: []
       },
       {
         id: "audit",
