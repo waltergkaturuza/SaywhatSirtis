@@ -125,15 +125,18 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [callVolumeData, setCallVolumeData] = useState<any[]>([])
   const [totalCallsSinceInception, setTotalCallsSinceInception] = useState(0)
+  const [programDistributionData, setProgramDistributionData] = useState<any[]>([])
+  const [programTimelineData, setProgramTimelineData] = useState<any[]>([])
 
   // Fetch dashboard metrics
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const [metricsResponse, callAnalyticsResponse, totalCallsResponse] = await Promise.all([
+        const [metricsResponse, callAnalyticsResponse, totalCallsResponse, programAnalyticsResponse] = await Promise.all([
           fetch('/api/dashboard/metrics'),
           fetch('/api/call-centre/analytics'),
-          fetch('/api/call-centre/stats?period=all')
+          fetch('/api/call-centre/stats?period=all'),
+          fetch('/api/programs/analytics')
         ])
         
         if (metricsResponse.ok) {
@@ -153,6 +156,33 @@ export default function DashboardPage() {
         if (totalCallsResponse.ok) {
           const totalData = await totalCallsResponse.json()
           setTotalCallsSinceInception(totalData.totalCalls || 0)
+        }
+
+        if (programAnalyticsResponse.ok) {
+          const programData = await programAnalyticsResponse.json()
+          console.log('✅ Program analytics response:', programData)
+          console.log('Category distribution:', programData.categoryDistribution)
+          console.log('Status timeline:', programData.statusTimeline)
+          
+          if (programData.categoryDistribution && programData.categoryDistribution.length > 0) {
+            console.log(`Setting ${programData.categoryDistribution.length} categories`)
+            setProgramDistributionData(programData.categoryDistribution)
+          } else {
+            console.warn('No category distribution data available')
+            setProgramDistributionData([])
+          }
+          
+          if (programData.statusTimeline && programData.statusTimeline.length > 0) {
+            console.log(`Setting ${programData.statusTimeline.length} timeline entries`)
+            setProgramTimelineData(programData.statusTimeline)
+          } else {
+            console.warn('No status timeline data available')
+            setProgramTimelineData([])
+          }
+        } else {
+          console.error('❌ Failed to fetch program analytics:', programAnalyticsResponse.status)
+          const errorText = await programAnalyticsResponse.text()
+          console.error('Error response:', errorText)
         }
       } catch (error) {
         console.error('Failed to fetch dashboard metrics:', error)
@@ -625,29 +655,39 @@ export default function DashboardPage() {
                     <CardTitle className="text-saywhat-dark">Call Performance Metrics</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <ComposedChart data={callVolumeData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis dataKey="month" stroke={SAYWHAT_COLORS.grey} />
-                        <YAxis stroke={SAYWHAT_COLORS.grey} />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'white',
-                            border: `1px solid ${SAYWHAT_COLORS.grey}`,
-                            borderRadius: '8px'
-                          }}
-                        />
-                        <Legend />
-                        <Bar dataKey="calls" fill={SAYWHAT_COLORS.orange} name="Total Calls Received" />
-                        <Line 
-                          type="monotone" 
-                          dataKey="resolved" 
-                          stroke="#10b981" 
-                          strokeWidth={3}
-                          name="Completed/Closed Calls"
-                        />
-                      </ComposedChart>
-                    </ResponsiveContainer>
+                    {callVolumeData.length === 0 ? (
+                      <div className="h-[300px] flex items-center justify-center text-saywhat-grey">
+                        <div className="text-center">
+                          <Phone className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.red }} />
+                          <p className="text-sm font-medium">No call data available</p>
+                          <p className="text-xs mt-1">Call history will appear here once calls are logged</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <ComposedChart data={callVolumeData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis dataKey="month" stroke={SAYWHAT_COLORS.grey} />
+                          <YAxis stroke={SAYWHAT_COLORS.grey} />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'white',
+                              border: `1px solid ${SAYWHAT_COLORS.grey}`,
+                              borderRadius: '8px'
+                            }}
+                          />
+                          <Legend />
+                          <Bar dataKey="calls" fill={SAYWHAT_COLORS.orange} name="Total Calls Received" />
+                          <Line 
+                            type="monotone" 
+                            dataKey="resolved" 
+                            stroke="#10b981" 
+                            strokeWidth={3}
+                            name="Completed/Closed Calls"
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -693,18 +733,109 @@ export default function DashboardPage() {
                 {/* Program Distribution */}
                 <Card className="border-saywhat-grey">
                   <CardHeader>
-                    <CardTitle className="text-saywhat-dark">Program Distribution</CardTitle>
+                    <CardTitle className="text-saywhat-dark">Program Distribution by Status</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64 flex items-center justify-center text-saywhat-grey">
-                      <div className="text-center">
-                        <Target className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.grey }} />                        
-                        <p className="text-sm">Connected to program management data</p>
+                    {programDistributionData.length === 0 ? (
+                      <div className="h-[300px] flex items-center justify-center text-saywhat-grey">
+                        <div className="text-center">
+                          <Target className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.grey }} />
+                          <p className="text-sm font-medium">No program data available</p>
+                          <p className="text-xs mt-1">Programs will appear here once created</p>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={programDistributionData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, value }) => `${name}: ${value}`}
+                            outerRadius={90}
+                            fill="#8884d8"
+                            dataKey="count"
+                          >
+                            {programDistributionData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={['#ff6b35', '#dc2626', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'][index % 6]} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'white',
+                              border: `1px solid ${SAYWHAT_COLORS.grey}`,
+                              borderRadius: '8px'
+                            }}
+                          />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Program Status Timeline */}
+              <Card className="border-saywhat-grey">
+                <CardHeader>
+                  <CardTitle className="text-saywhat-dark">Program Status Timeline</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {programTimelineData.length === 0 ? (
+                    <div className="h-[350px] flex items-center justify-center text-saywhat-grey">
+                      <div className="text-center">
+                        <Activity className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.grey }} />
+                        <p className="text-sm font-medium">No timeline data available</p>
+                        <p className="text-xs mt-1">Program status history will appear here</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={350}>
+                      <AreaChart data={programTimelineData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="month" stroke={SAYWHAT_COLORS.grey} />
+                        <YAxis stroke={SAYWHAT_COLORS.grey} />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'white',
+                            border: `1px solid ${SAYWHAT_COLORS.grey}`,
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Legend />
+                        <Area 
+                          type="monotone" 
+                          dataKey="active" 
+                          stackId="1" 
+                          stroke={SAYWHAT_COLORS.orange} 
+                          fill={SAYWHAT_COLORS.orange} 
+                          fillOpacity={0.6}
+                          name="Active Projects"
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="completed" 
+                          stackId="1" 
+                          stroke="#10b981" 
+                          fill="#10b981" 
+                          fillOpacity={0.6}
+                          name="Completed Projects"
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="pending" 
+                          stackId="1" 
+                          stroke="#f59e0b" 
+                          fill="#f59e0b" 
+                          fillOpacity={0.6}
+                          name="Pending Projects"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
 
