@@ -21,9 +21,17 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return NextResponse.json({ 
-        error: 'New password must be at least 6 characters long' 
+        error: 'New password must be at least 8 characters long' 
+      }, { status: 400 });
+    }
+
+    // Password strength validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+    if (!passwordRegex.test(newPassword)) {
+      return NextResponse.json({
+        error: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
       }, { status: 400 });
     }
 
@@ -64,6 +72,30 @@ export async function PUT(request: NextRequest) {
         updatedAt: new Date()
       }
     });
+
+    // Create audit log for password change
+    try {
+      await prisma.audit_logs.create({
+        data: {
+          id: crypto.randomUUID(),
+          userId: user.id,
+          action: 'UPDATE',
+          resource: 'User',
+          resourceId: user.id,
+          details: {
+            module: 'Employee Profile Password Change',
+            action: 'Password updated by user',
+            email: user.email
+          },
+          ipAddress: request.headers.get('x-forwarded-for') || 
+                    request.headers.get('x-real-ip') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown'
+        }
+      });
+    } catch (auditError) {
+      console.warn('Failed to create audit log for password change:', auditError);
+      // Continue anyway - password change was successful
+    }
 
     return NextResponse.json({ 
       success: true,
