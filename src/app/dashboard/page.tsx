@@ -123,15 +123,36 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [loading, setLoading] = useState(true)
+  const [callVolumeData, setCallVolumeData] = useState<any[]>([])
+  const [totalCallsSinceInception, setTotalCallsSinceInception] = useState(0)
 
   // Fetch dashboard metrics
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const response = await fetch('/api/dashboard/metrics')
-        if (response.ok) {
-          const data = await response.json()
+        const [metricsResponse, callAnalyticsResponse, totalCallsResponse] = await Promise.all([
+          fetch('/api/dashboard/metrics'),
+          fetch('/api/call-centre/analytics'),
+          fetch('/api/call-centre/stats?period=all')
+        ])
+        
+        if (metricsResponse.ok) {
+          const data = await metricsResponse.json()
           setMetrics(data)
+        }
+
+        if (callAnalyticsResponse.ok) {
+          const callData = await callAnalyticsResponse.json()
+          // Handle both direct response and wrapped response
+          const analyticsData = callData.data || callData
+          if (analyticsData.monthlyVolume) {
+            setCallVolumeData(analyticsData.monthlyVolume)
+          }
+        }
+
+        if (totalCallsResponse.ok) {
+          const totalData = await totalCallsResponse.json()
+          setTotalCallsSinceInception(totalData.totalCalls || 0)
         }
       } catch (error) {
         console.error('Failed to fetch dashboard metrics:', error)
@@ -561,6 +582,15 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border-2 border-orange-200">
+                        <div>
+                          <span className="text-sm font-medium text-orange-900 block">Total Calls (All Time)</span>
+                          <span className="text-xs text-orange-700">Since inception</span>
+                        </div>
+                        <span className="text-3xl font-bold text-orange-600">
+                          {totalCallsSinceInception.toLocaleString()}
+                        </span>
+                      </div>
                       <div className="flex justify-between items-center">
                         <span className="text-saywhat-grey">Calls Today</span>
                         <span className="text-2xl font-bold text-saywhat-dark">
@@ -595,13 +625,29 @@ export default function DashboardPage() {
                     <CardTitle className="text-saywhat-dark">Call Performance Metrics</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64 flex items-center justify-center text-saywhat-grey">
-                      <div className="text-center">
-                        <Phone className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.red }} />
-                        <p>Call performance charts will be displayed here</p>
-                        <p className="text-sm">Connected to call centre data</p>
-                      </div>
-                    </div>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <ComposedChart data={callVolumeData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="month" stroke={SAYWHAT_COLORS.grey} />
+                        <YAxis stroke={SAYWHAT_COLORS.grey} />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'white',
+                            border: `1px solid ${SAYWHAT_COLORS.grey}`,
+                            borderRadius: '8px'
+                          }}
+                        />
+                        <Legend />
+                        <Bar dataKey="calls" fill={SAYWHAT_COLORS.orange} name="Total Calls" />
+                        <Line 
+                          type="monotone" 
+                          dataKey="resolved" 
+                          stroke={SAYWHAT_COLORS.red} 
+                          strokeWidth={2}
+                          name="Resolved Calls"
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
                   </CardContent>
                 </Card>
               </div>

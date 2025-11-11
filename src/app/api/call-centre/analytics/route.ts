@@ -233,6 +233,43 @@ export async function GET(request: NextRequest) {
       percentage: Math.round(((type._count.id / Math.max(1, totalCallsCount)) * 100) * 10) / 10
     }))
 
+    // Generate monthly volume data for charts (last 12 months)
+    const monthlyVolume = [];
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date();
+      monthDate.setMonth(monthDate.getMonth() - i);
+      monthDate.setDate(1);
+      monthDate.setHours(0, 0, 0, 0);
+      
+      const nextMonth = new Date(monthDate);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+      const monthCalls = await prisma.call_records.count({
+        where: {
+          createdAt: {
+            gte: monthDate,
+            lt: nextMonth
+          }
+        }
+      });
+
+      const monthResolved = await prisma.call_records.count({
+        where: {
+          createdAt: {
+            gte: monthDate,
+            lt: nextMonth
+          },
+          OR: [{ status: 'CLOSED' }, { status: 'RESOLVED' }]
+        }
+      });
+
+      monthlyVolume.push({
+        month: monthDate.toLocaleString('default', { month: 'short', year: '2-digit' }),
+        calls: monthCalls,
+        resolved: monthResolved
+      });
+    }
+
     // Prepare comprehensive analytics data
     const analytics = {
       // Main metrics matching frontend structure
@@ -249,6 +286,9 @@ export async function GET(request: NextRequest) {
 
       // Trends data
       callTrends: dailyTrends,
+
+      // Monthly volume for charts
+      monthlyVolume: monthlyVolume,
 
       // Call types distribution
       callTypes: callTypesData,
