@@ -62,10 +62,19 @@ function getUserPermissions(role: string, department: string): string[] {
   const rolePermissions = {
     'BASIC_USER_1': [
       ...basePermissions,
+      // Call Centre - Full data capture permissions
       'call_center_view',
+      'call_center_full',
       'calls.view',
+      'calls.create',
+      'calls.edit',
       'callcentre.access',
       'callcentre.view',
+      'callcentre.officer',
+      'callcentre.data_entry',
+      'callcentre.cases',
+      'callcentre.create',
+      // Documents
       'documents_view',
       'documents.view'
     ],
