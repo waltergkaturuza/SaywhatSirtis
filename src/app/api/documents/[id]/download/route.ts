@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { randomUUID } from 'crypto';
 
 export async function GET(
   request: NextRequest,
@@ -9,6 +12,17 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    const session = await getServerSession(authOptions).catch(() => null);
+    const userId = session?.user?.id || session?.user?.email || 'anonymous';
+    const userEmail = session?.user?.email || null;
+    const userAgent = request.headers.get('user-agent') || undefined;
+    const ipAddress =
+      request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      // @ts-expect-error: ip is available in Node runtime
+      request.ip ||
+      'unknown';
 
     // Get document from database
     const document = await prisma.documents.findUnique({

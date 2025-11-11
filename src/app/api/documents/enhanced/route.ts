@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     switch (action) {
       case 'dashboard':
-        return getDashboardData(userId)
+        return getDashboardData(session.user)
       case 'browse':
         return getBrowseData(request, userId)
       case 'search':
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       case 'admin':
         return getAdminData(session)
       default:
-        return getDashboardData(userId)
+        return getDashboardData(session.user)
     }
 
   } catch (error) {
@@ -148,8 +148,15 @@ export async function DELETE(request: NextRequest) {
 }
 
 // Dashboard data aggregation
-async function getDashboardData(userId: string) {
+async function getDashboardData(user: { id?: string; email?: string }) {
   try {
+    const userId = user?.id || null
+    const userEmail = user?.email || null
+
+    const startOfMonth = new Date()
+    startOfMonth.setUTCHours(0, 0, 0, 0)
+    startOfMonth.setUTCDate(1)
+
     // Get actual document stats from database, excluding personal repository documents
     const totalDocuments = await prisma.documents.count({
       where: {
@@ -157,7 +164,7 @@ async function getDashboardData(userId: string) {
         isDeleted: false
       }
     }).catch(() => 0)
-    
+
     const totalSize = await prisma.documents.aggregate({
       where: {
         isPersonalRepo: false,  // Only count published documents
@@ -167,14 +174,130 @@ async function getDashboardData(userId: string) {
         size: true
       }
     }).catch(() => ({ _sum: { size: 0 } }))
-    
+
     const storageUsed = totalSize._sum.size ? (totalSize._sum.size / 1024 / 1024 / 1024).toFixed(1) : '0'
+
+    const viewsThisMonth = await prisma.document_audit_logs.count({
+      where: {
+        action: 'VIEWED',
+        timestamp: {
+          gte: startOfMonth
+        },
+        documents: {
+          isDeleted: false,
+          isPersonalRepo: false
+        }
+      }
+    }).catch(() => 0)
+
+    const sharedDocIds = new Set<string>()
+
+    const permissionFilters: any[] = []
+    if (userId) {
+      permissionFilters.push({ userId })
+    }
+    if (userEmail) {
+      permissionFilters.push({ userEmail })
+    }
+
+    if (permissionFilters.length > 0) {
+      const permissionDocs = await prisma.document_permissions.findMany({
+        where: {
+          documentId: { not: null },
+          OR: permissionFilters,
+          documents: {
+            isDeleted: false,
+            isPersonalRepo: false
+          }
+        },
+        select: {
+          documentId: true
+        }
+      }).catch(() => [])
+
+      permissionDocs.forEach((entry) => {
+        if (entry.documentId) {
+          sharedDocIds.add(entry.documentId)
+        }
+      })
+    }
+
+    const shareFilters: any[] = []
+    if (userId) {
+      shareFilters.push({ sharedWith: userId })
+    }
+    if (userEmail) {
+      shareFilters.push({ sharedWithEmail: userEmail })
+    }
+
+    if (shareFilters.length > 0) {
+      const shareDocs = await prisma.document_shares.findMany({
+        where: {
+          isActive: true,
+          OR: shareFilters,
+          documents: {
+            isDeleted: false,
+            isPersonalRepo: false
+          }
+        },
+        select: {
+          documentId: true
+        }
+      }).catch(() => [])
+
+      shareDocs.forEach((entry) => {
+        sharedDocIds.add(entry.documentId)
+      })
+    }
+
+    if (userId) {
+      const individualShares = await prisma.documents.findMany({
+        where: {
+          isDeleted: false,
+          isPersonalRepo: false,
+          customMetadata: {
+            path: ['selectedIndividuals'],
+            array_contains: userId
+          }
+        },
+        select: { id: true }
+      }).catch(() => [])
+
+      individualShares.forEach((doc) => sharedDocIds.add(doc.id))
+    }
+
+    let userDepartment: string | null = null
+    if (userId) {
+      const employeeRecord = await prisma.employees.findUnique({
+        where: { userId },
+        select: { department: true }
+      }).catch(() => null)
+      userDepartment = employeeRecord?.department ?? null
+    }
+
+    if (userDepartment) {
+      const departmentShares = await prisma.documents.findMany({
+        where: {
+          isDeleted: false,
+          isPersonalRepo: false,
+          customMetadata: {
+            path: ['selectedDepartments'],
+            array_contains: userDepartment
+          }
+        },
+        select: { id: true }
+      }).catch(() => [])
+
+      departmentShares.forEach((doc) => sharedDocIds.add(doc.id))
+    }
+
+    const sharedWithMe = sharedDocIds.size
 
     const stats = {
       totalDocuments,
       storageUsed: `${storageUsed} GB`,
-      viewsThisMonth: 0, // Could be implemented with view tracking
-      downloadsThisMonth: 0 // Could be implemented with download tracking
+      viewsThisMonth,
+      sharedWithMe
     }
 
     // Get recent files from database, excluding personal repository documents
@@ -254,7 +377,7 @@ async function getDashboardData(userId: string) {
           totalDocuments: 0,
           storageUsed: '0 GB',
           viewsThisMonth: 0,
-          downloadsThisMonth: 0
+          sharedWithMe: 0
         },
         recentFiles: [],
         myTasks: []
