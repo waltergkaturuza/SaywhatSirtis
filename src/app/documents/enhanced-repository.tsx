@@ -342,6 +342,7 @@ interface Document {
   mimeType?: string;
   accessLevel?: string;
   permissions?: string[];
+  isFavorite?: boolean;
 }
 
 interface DepartmentSubunitNode {
@@ -745,12 +746,27 @@ export default function DocumentRepositoryPage() {
       setLoading(true);
       setError('');
       
-      const response = await fetch('/api/documents');
+      const [docsResponse, favoritesResponse] = await Promise.all([
+        fetch('/api/documents'),
+        session?.user ? fetch('/api/documents/favorites') : Promise.resolve(null)
+      ]);
       
-      if (response.ok) {
-        const data = await response.json();
+      let favoriteIds = new Set<string>();
+      if (favoritesResponse?.ok) {
+        const favData = await favoritesResponse.json();
+        if (favData.success && Array.isArray(favData.favorites)) {
+          favData.favorites.forEach((fav: any) => favoriteIds.add(fav.id));
+        }
+      }
+
+      if (docsResponse.ok) {
+        const data = await docsResponse.json();
         const rawData: Document[] = Array.isArray(data) ? data : [];
-        setRawDocuments(rawData);
+        const enriched = rawData.map(doc => ({
+          ...doc,
+          isFavorite: favoriteIds.has(doc.id)
+        }));
+        setRawDocuments(enriched);
       } else {
         console.warn('Failed to fetch documents, using empty list');
         setRawDocuments([]);
@@ -1001,6 +1017,32 @@ export default function DocumentRepositoryPage() {
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'svg', 'webp'].includes(lowerType)) return { id: 'images', name: 'Images' };
     if (['mp4', 'avi', 'mov', 'wmv', 'mkv', 'flv', 'webm'].includes(lowerType)) return { id: 'videos', name: 'Videos' };
     return { id: 'documents', name: 'Documents' }; // Default to documents instead of other
+  };
+
+  const toggleFavorite = async (docId: string) => {
+    try {
+      const doc = documents.find(d => d.id === docId);
+      const newFavoriteState = !doc?.isFavorite;
+
+      const response = await fetch('/api/documents/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: docId, isFavorite: newFavoriteState })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle favorite');
+      }
+
+      setDocuments(prev => prev.map(d => 
+        d.id === docId ? { ...d, isFavorite: newFavoriteState } : d
+      ));
+      setRawDocuments(prev => prev.map(d => 
+        d.id === docId ? { ...d, isFavorite: newFavoriteState } : d
+      ));
+    } catch (err) {
+      console.error('Favorite toggle error:', err);
+    }
   };
 
   const handleDownload = async (docId: string, filename: string) => {
@@ -1798,6 +1840,20 @@ export default function DocumentRepositoryPage() {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              toggleFavorite(doc.id);
+            }}
+            className="p-1 rounded hover:bg-yellow-100 transition-colors"
+            title={doc.isFavorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            {doc.isFavorite ? (
+              <StarIcon className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+            ) : (
+              <StarIcon className="h-3 w-3 text-gray-400" />
+            )}
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               handleDocumentView(doc.id);
             }}
             className="p-1 rounded hover:bg-blue-100 transition-colors"
@@ -1962,153 +2018,184 @@ export default function DocumentRepositoryPage() {
     </div>
   );
 
-  const renderSearch = () => (
-    <div className="space-y-4">
-      {/* Compact Search Section */}
-      <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center space-x-2">
-            <div className="bg-gradient-to-br from-saywhat-orange to-orange-600 p-1.5 rounded-lg">
-              <MagnifyingGlassIcon className="h-4 w-4 text-white" />
+  const renderSearch = () => {
+    const filteredResults = documents.filter(doc => {
+      const queryLower = searchQuery.toLowerCase();
+      const matchesQuery = !searchQuery || 
+        doc.title?.toLowerCase().includes(queryLower) ||
+        doc.fileName?.toLowerCase().includes(queryLower) ||
+        doc.description?.toLowerCase().includes(queryLower) ||
+        doc.department?.toLowerCase().includes(queryLower) ||
+        doc.category?.toLowerCase().includes(queryLower);
+      return matchesQuery;
+    });
+
+    return (
+      <div className="space-y-4">
+        {/* Compact Search Section */}
+        <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center space-x-2">
+              <div className="bg-gradient-to-br from-saywhat-orange to-orange-600 p-1.5 rounded-lg">
+                <MagnifyingGlassIcon className="h-4 w-4 text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Advanced Search</h3>
             </div>
-            <h3 className="text-lg font-bold text-gray-900">Advanced Search</h3>
+          </div>
+          <div className="p-4">
+            <div className="space-y-4">
+              {/* Main Search Input - Compact */}
+              <div>
+                <input
+                  type="text"
+                  placeholder="Search documents, content, and metadata..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-200"
+                />
+              </div>
+
+              {/* Search Filters - Compact Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">File Type</label>
+                  <select 
+                    value={selectedFilter}
+                    onChange={(e) => setSelectedFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
+                  >
+                    <option value="all">All File Types</option>
+                    {fileTypes.map(type => (
+                      <option key={type.id} value={type.id}>{type.name} ({type.count})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Department</label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
+                    <option>All Departments</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.id}>{dept.name} ({dept.fileCount})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Time Range</label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
+                    <option>All Time</option>
+                    <option>Last 7 days</option>
+                    <option>Last 30 days</option>
+                    <option>Last 90 days</option>
+                    <option>Last 6 months</option>
+                    <option>Last year</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 transition-all duration-200"
+                  >
+                    <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="p-4">
-          <div className="space-y-4">
-            {/* Main Search Input - Compact */}
+
+        {/* Compact Search Results */}
+        <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
             <div>
-              <input
-                type="text"
-                placeholder="Search documents, content, and metadata..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-200"
-              />
+              <h4 className="text-lg font-semibold text-gray-900">Search Results</h4>
+              <p className="text-xs text-gray-500">Found {filteredResults.length} document{filteredResults.length === 1 ? '' : 's'}</p>
             </div>
-
-            {/* Search Filters - Compact Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">File Type</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
-                  <option>All File Types</option>
-                  {fileTypes.map(type => (
-                    <option key={type.id} value={type.id}>{type.name} ({type.count})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Department</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
-                  <option>All Departments</option>
-                  {departments.map(dept => (
-                    <option key={dept.id} value={dept.id}>{dept.name} ({dept.fileCount})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Time Range</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
-                  <option>All Time</option>
-                  <option>Last 7 days</option>
-                  <option>Last 30 days</option>
-                  <option>Last 90 days</option>
-                  <option>Last 6 months</option>
-                  <option>Last year</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 transition-all duration-200">
-                  <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
-                  Search
-                </button>
-              </div>
-            </div>
-
-            {/* Clear Filters - Compact */}
-            <div className="flex justify-start">
-              <button className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
-                Clear All Filters
-              </button>
+            <div className="flex items-center space-x-2 text-xs text-gray-500">
+              <span>Sort by:</span>
+              <select className="border border-gray-300 rounded px-2 py-1 text-xs">
+                <option>Relevance</option>
+                <option>Date Modified</option>
+                <option>Name</option>
+                <option>Size</option>
+              </select>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Compact Search Results */}
-      <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <div>
-            <h4 className="text-lg font-semibold text-gray-900">Search Results</h4>
-            <p className="text-xs text-gray-500">Found {documents.length} documents</p>
-          </div>
-          <div className="flex items-center space-x-2 text-xs text-gray-500">
-            <span>Sort by:</span>
-            <select className="border border-gray-300 rounded px-2 py-1 text-xs">
-              <option>Relevance</option>
-              <option>Date Modified</option>
-              <option>Name</option>
-              <option>Size</option>
-            </select>
-          </div>
-        </div>
-        <div className="max-h-96 overflow-y-auto">
-          {documents.length === 0 ? (
-            <div className="text-center py-8">
-              <MagnifyingGlassIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <h3 className="text-base font-semibold text-gray-900 mb-1">No search results</h3>
-              <p className="text-sm text-gray-500">Try adjusting your search terms or filters</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {documents.map((doc) => {
-                const FileIcon = getFileIcon(doc.type, doc.fileName, doc.mimeType);
-                return (
-                  <div key={doc.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        <div className="bg-gray-100 p-2 rounded-lg">
-                          <FileIcon className="h-5 w-5 text-gray-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 text-sm truncate">{doc.title}</p>
-                          <div className="flex items-center space-x-4 text-xs text-gray-500">
-                            <span>{formatFileSizeDisplay(doc.size)}</span>
-                            {doc.department && <span>{doc.department}</span>}
-                            <span>{formatDateTime(doc.uploadDate || doc.createdAt)}</span>
+          <div className="max-h-96 overflow-y-auto">
+            {filteredResults.length === 0 ? (
+              <div className="text-center py-8">
+                <MagnifyingGlassIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <h3 className="text-base font-semibold text-gray-900 mb-1">No search results</h3>
+                <p className="text-sm text-gray-500">Try adjusting your search terms or filters</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {filteredResults.map((doc) => {
+                  const FileIcon = getFileIcon(doc.type, doc.fileName, doc.mimeType);
+                  return (
+                    <div key={doc.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          <div className="bg-gray-100 p-2 rounded-lg">
+                            <FileIcon className="h-5 w-5 text-gray-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 text-sm truncate">{doc.title}</p>
+                            <div className="flex items-center space-x-4 text-xs text-gray-500">
+                              <span>{formatFileSizeDisplay(doc.size)}</span>
+                              {doc.department && <span>{doc.department}</span>}
+                              <span>{formatDateTime(doc.uploadDate || doc.createdAt)}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-1 ml-3">
-                        <button 
-                          onClick={() => {
-                            setViewingDocumentId(doc.id);
-                            setShowViewModal(true);
-                          }}
-                          className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
-                          title="View"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDownload(doc.id, doc.title)}
-                          className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
-                          title="Download"
-                        >
-                          <ArrowDownTrayIcon className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center space-x-1 ml-3">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(doc.id);
+                            }}
+                            className="p-1.5 rounded hover:bg-yellow-100 transition-colors"
+                            title={doc.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                          >
+                            {doc.isFavorite ? (
+                              <StarIcon className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                            ) : (
+                              <StarIcon className="h-4 w-4 text-gray-400" />
+                            )}
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingDocumentId(doc.id);
+                              setShowViewModal(true);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
+                            title="View"
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(doc.id, doc.title);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-saywhat-orange rounded-md transition-colors"
+                            title="Download"
+                          >
+                            <ArrowDownTrayIcon className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderByType = () => (
     <div className="space-y-6">
@@ -2193,16 +2280,86 @@ export default function DocumentRepositoryPage() {
     </div>
   );
 
-  const renderFavorites = () => (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900">Favorites</h3>
+  const renderFavorites = () => {
+    const favoriteDocuments = documents.filter(doc => doc.isFavorite);
+
+    return (
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">Favorites</h3>
+            <p className="text-sm text-gray-500">{favoriteDocuments.length} bookmarked document{favoriteDocuments.length === 1 ? '' : 's'}</p>
+          </div>
+        </div>
+        <div className="p-6">
+          {favoriteDocuments.length === 0 ? (
+            <div className="text-center py-12">
+              <StarIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg font-medium mb-2">No favorites yet</p>
+              <p className="text-gray-400 text-sm">Click the star icon on any document to add it to favorites</p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {favoriteDocuments.map(doc => {
+                const FileIcon = getFileIcon(doc.type, doc.fileName, doc.mimeType);
+                return (
+                  <div 
+                    key={doc.id} 
+                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-yellow-50 cursor-pointer transition-colors group border border-transparent hover:border-yellow-200"
+                    onClick={() => handleDocumentClick(doc)}
+                  >
+                    <FileIcon className="h-5 w-5 text-gray-500" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate group-hover:text-yellow-700">
+                        {doc.title || doc.fileName}
+                      </p>
+                      <div className="flex items-center space-x-3 text-xs text-gray-500">
+                        <span>{formatFileSizeDisplay(doc.size)}</span>
+                        {doc.department && <span>• {doc.department}</span>}
+                        <span>• {formatDateTime(doc.uploadDate || doc.createdAt)}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(doc.id);
+                        }}
+                        className="p-1.5 rounded hover:bg-red-100 transition-colors"
+                        title="Remove from favorites"
+                      >
+                        <StarIcon className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDocumentView(doc.id);
+                        }}
+                        className="p-1.5 rounded hover:bg-blue-100 transition-colors"
+                        title="View"
+                      >
+                        <EyeIcon className="h-4 w-4 text-blue-600" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(doc.id, doc.fileName);
+                        }}
+                        className="p-1.5 rounded hover:bg-green-100 transition-colors"
+                        title="Download"
+                      >
+                        <ArrowDownTrayIcon className="h-4 w-4 text-green-600" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="p-6">
-        <p className="text-gray-500">Your bookmarked files will be displayed here.</p>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderTasks = () => (
     <div className="bg-white shadow rounded-lg">
