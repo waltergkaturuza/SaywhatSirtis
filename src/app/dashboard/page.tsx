@@ -638,13 +638,13 @@ export default function DashboardPage() {
                           }}
                         />
                         <Legend />
-                        <Bar dataKey="calls" fill={SAYWHAT_COLORS.orange} name="Total Calls" />
+                        <Bar dataKey="calls" fill={SAYWHAT_COLORS.orange} name="Total Calls Received" />
                         <Line 
                           type="monotone" 
                           dataKey="resolved" 
-                          stroke={SAYWHAT_COLORS.red} 
-                          strokeWidth={2}
-                          name="Resolved Calls"
+                          stroke="#10b981" 
+                          strokeWidth={3}
+                          name="Completed/Closed Calls"
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
