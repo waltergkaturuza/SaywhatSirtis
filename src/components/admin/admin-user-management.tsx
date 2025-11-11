@@ -809,7 +809,7 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[9999] bg-white/95 backdrop-blur-sm shadow-2xl border-2">
                     <SelectItem value="BASIC_USER_1">Basic User 1 - Call Center View, Documents View</SelectItem>
                     <SelectItem value="BASIC_USER_2">Basic User 2 - Programs View, Inventory View</SelectItem>
                     <SelectItem value="ADVANCE_USER_1">Advanced User 1 - Call Center Full, Programs Edit, Risks Edit</SelectItem>
