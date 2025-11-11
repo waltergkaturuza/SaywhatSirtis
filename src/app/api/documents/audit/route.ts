@@ -14,8 +14,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is admin
-    const isAdmin = session.user?.roles?.includes('admin') || 
-                   session.user?.permissions?.includes('documents.admin');
+    const normalizedRoles = (session.user?.roles || []).map((r: any) => String(r).toUpperCase());
+    const adminRoles = ['ADMIN', 'SUPER_ADMIN', 'ADMINISTRATOR', 'SYSTEM_ADMINISTRATOR', 'SUPERUSER'];
+    const isAdmin = normalizedRoles.some((role: string) => adminRoles.includes(role)) ||
+                   session.user?.permissions?.includes('documents.admin') ||
+                   session.user?.permissions?.includes('documents.full_access');
 
     if (!isAdmin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
@@ -103,8 +106,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin
-    const isAdmin = session.user?.roles?.includes('admin') || 
-                   session.user?.permissions?.includes('documents.admin');
+    const normalizedRoles = (session.user?.roles || []).map((r: any) => String(r).toUpperCase());
+    const adminRoles = ['ADMIN', 'SUPER_ADMIN', 'ADMINISTRATOR', 'SYSTEM_ADMINISTRATOR', 'SUPERUSER'];
+    const isAdmin = normalizedRoles.some((role: string) => adminRoles.includes(role)) ||
+                   session.user?.permissions?.includes('documents.admin') ||
+                   session.user?.permissions?.includes('documents.full_access');
 
     if (!isAdmin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });

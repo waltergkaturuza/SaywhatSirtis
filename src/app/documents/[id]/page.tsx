@@ -71,15 +71,18 @@ export default function DocumentViewPage() {
     }
   };
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = (bytes: number | undefined | null) => {
+    if (!bytes || bytes === 0 || isNaN(bytes)) return '0 Bytes';
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    if (bytes === 0) return '0 Bytes';
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+  const formatDate = (dateString: string | undefined | null) => {
+    if (!dateString) return 'Not available';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid date';
+    return date.toLocaleString();
   };
 
   const getSecurityBadgeColor = (classification: string) => {
@@ -158,9 +161,9 @@ export default function DocumentViewPage() {
               <div className="flex items-center space-x-4">
                 <DocumentIcon className="h-8 w-8 text-white" />
                 <div>
-                  <h1 className="text-xl font-bold text-white">{document.originalName}</h1>
+                  <h1 className="text-xl font-bold text-white">{document.originalName || document.filename || 'Untitled Document'}</h1>
                   <p className="text-orange-100">
-                    {document.mimeType} • {formatFileSize(document.size)}
+                    {document.mimeType || 'Unknown type'} • {formatFileSize(document.size)}
                   </p>
                 </div>
               </div>
@@ -196,7 +199,7 @@ export default function DocumentViewPage() {
                     <p className="text-sm text-gray-600">
                       {document.uploadedByUser 
                         ? `${document.uploadedByUser.firstName} ${document.uploadedByUser.lastName}`
-                        : 'Unknown User'
+                        : document.uploadedBy || 'Unknown User'
                       }
                       {document.uploadedByUser?.email && (
                         <span className="block text-xs text-gray-500">
@@ -227,7 +230,7 @@ export default function DocumentViewPage() {
                   <FolderIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">Category</p>
-                    <p className="text-sm text-gray-600">{document.category}</p>
+                    <p className="text-sm text-gray-600">{document.category || 'Uncategorized'}</p>
                   </div>
                 </div>
 
@@ -241,7 +244,7 @@ export default function DocumentViewPage() {
                   </div>
                 )}
 
-                {document.tags.length > 0 && (
+                {document.tags && document.tags.length > 0 && (
                   <div className="flex items-start space-x-3">
                     <TagIcon className="h-5 w-5 text-gray-400 mt-0.5" />
                     <div>

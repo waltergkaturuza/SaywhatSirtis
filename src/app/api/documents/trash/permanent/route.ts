@@ -15,11 +15,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check admin permission
-    const isAdmin = session.user.roles?.includes('admin') ||
-                    session.user.roles?.includes('ADMIN') ||
-                    session.user.roles?.includes('ADMINISTRATOR') ||
-                    session.user.permissions?.includes('documents.admin') ||
-                    session.user.permissions?.includes('documents.full_access');
+    const normalizedRoles = (session.user?.roles || []).map((r: any) => String(r).toUpperCase());
+    const adminRoles = ['ADMIN', 'SUPER_ADMIN', 'ADMINISTRATOR', 'SYSTEM_ADMINISTRATOR', 'SUPERUSER'];
+    const isAdmin = normalizedRoles.some((role: string) => adminRoles.includes(role)) ||
+                   session.user?.permissions?.includes('documents.admin') ||
+                   session.user?.permissions?.includes('documents.full_access');
 
     if (!isAdmin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
