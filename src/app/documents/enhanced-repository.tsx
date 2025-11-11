@@ -5,6 +5,9 @@ import { useState, useEffect, useRef } from "react";
 import { ModulePage } from "@/components/layout/enhanced-layout";
 import EditDocumentModal from "@/components/modals/EditDocumentModal";
 import DocumentViewModal from "@/components/modals/DocumentViewModal";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   DocumentIcon,
   DocumentTextIcon,
@@ -65,7 +68,9 @@ import {
   XMarkIcon,
   PencilIcon,
   ArrowUpTrayIcon,
-  UserIcon
+  UserIcon,
+  InformationCircleIcon,
+  ArrowUturnLeftIcon
 } from "@heroicons/react/24/outline";
 
 // Document categories from upload form - Updated comprehensive list
@@ -481,6 +486,8 @@ export default function DocumentRepositoryPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: string; name: string } | null>(null);
+  const [deletedDocs, setDeletedDocs] = useState<Document[]>([]);
+  const [loadingTrash, setLoadingTrash] = useState(false);
   const hasReconciledRef = useRef(false);
   const normalizedRoles = [
     ...(Array.isArray(session?.user?.roles) ? session?.user?.roles : []),
@@ -1045,6 +1052,64 @@ export default function DocumentRepositoryPage() {
     }
   };
 
+  const fetchDeletedDocuments = async () => {
+    try {
+      setLoadingTrash(true);
+      const response = await fetch('/api/documents/trash');
+      if (response.ok) {
+        const data = await response.json();
+        setDeletedDocs(data.documents || []);
+      }
+    } catch (err) {
+      console.error('Error loading trash:', err);
+    } finally {
+      setLoadingTrash(false);
+    }
+  };
+
+  const handleRestore = async (docId: string) => {
+    try {
+      const response = await fetch('/api/documents/trash/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: docId })
+      });
+
+      if (response.ok) {
+        await fetchDeletedDocuments();
+        await loadDocuments();
+        alert('Document restored successfully!');
+      } else {
+        alert('Failed to restore document');
+      }
+    } catch (err) {
+      console.error('Restore error:', err);
+      alert('Failed to restore document');
+    }
+  };
+
+  const handlePermanentDelete = async (docId: string, docName: string) => {
+    if (!confirm(`Are you sure you want to permanently delete "${docName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/documents/trash/permanent?id=${docId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        await fetchDeletedDocuments();
+        alert('Document permanently deleted');
+      } else {
+        alert('Failed to delete document');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Failed to delete document');
+    }
+  };
+
   const handleDownload = async (docId: string, filename: string) => {
     try {
       const response = await fetch(`/api/documents/${docId}/download`);
@@ -1159,6 +1224,13 @@ export default function DocumentRepositoryPage() {
   useEffect(() => {
     if (session && activeTab === 'my-documents') {
       loadPersonalDocuments();
+    }
+  }, [session, activeTab]);
+
+  // Load trash when Trash tab is active
+  useEffect(() => {
+    if (session && activeTab === 'trash') {
+      fetchDeletedDocuments();
     }
   }, [session, activeTab]);
 
@@ -2371,67 +2443,419 @@ export default function DocumentRepositoryPage() {
     );
   };
 
-  const renderTasks = () => (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900">Tasks & Approvals</h3>
-      </div>
-      <div className="p-6">
-        <p className="text-gray-500">Workflow tasks and document approvals will be displayed here.</p>
-      </div>
-    </div>
-  );
+  const renderTasks = () => {
+    const pendingApprovals = documents.filter(doc => 
+      doc.classification === 'PENDING_REVIEW' || 
+      doc.classification === 'PENDING_APPROVAL'
+    );
 
-  const renderTrash = () => (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900">Trash</h3>
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center">
+                <CheckCircleIcon className="h-6 w-6 mr-2 text-saywhat-orange" />
+                Tasks & Approvals
+              </CardTitle>
+              <Badge className="bg-orange-100 text-orange-800">
+                {pendingApprovals.length} pending
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {pendingApprovals.length === 0 ? (
+              <div className="text-center py-12">
+                <CheckCircleIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Pending Tasks</h3>
+                <p className="text-gray-500">All documents have been reviewed and approved.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingApprovals.map(doc => {
+                  const FileIcon = getFileIcon(doc.type, doc.fileName, doc.mimeType);
+                  return (
+                    <div key={doc.id} className="border border-orange-200 rounded-lg p-4 bg-orange-50 hover:bg-orange-100 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-3 flex-1">
+                          <FileIcon className="h-6 w-6 text-orange-600 mt-1" />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-1">{doc.title || doc.fileName}</h4>
+                            <div className="flex items-center space-x-3 text-xs text-gray-600 mb-2">
+                              <span>Uploaded by: {doc.uploadedBy}</span>
+                              <span>•</span>
+                              <span>{formatDateTime(doc.uploadDate || doc.createdAt)}</span>
+                            </div>
+                            {doc.description && (
+                              <p className="text-sm text-gray-700 mb-2">{doc.description}</p>
+                            )}
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline">{doc.category || 'N/A'}</Badge>
+                              <Badge className="bg-orange-500 text-white">Pending Review</Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col space-y-2 ml-4">
+                          <Button
+                            onClick={() => handleDocumentView(doc.id)}
+                            size="sm"
+                            variant="outline"
+                            className="whitespace-nowrap"
+                          >
+                            <EyeIcon className="h-4 w-4 mr-1" />
+                            Review
+                          </Button>
+                          <Button
+                            onClick={() => alert('Approval workflow coming soon')}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white whitespace-nowrap"
+                          >
+                            <CheckCircleIcon className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-      <div className="p-6">
-        <p className="text-gray-500">Deleted files will be displayed here with restore options.</p>
-      </div>
-    </div>
-  );
+    );
+  };
 
-  const renderAdminConsole = () => (
-    <div className="space-y-6 relative">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-6">
-            <div className="flex items-center">
-              <UserGroupIcon className="h-8 w-8 text-saywhat-orange" />
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">User Management</h3>
-                <p className="text-sm text-gray-500">Manage users and permissions</p>
+  const renderTrash = () => {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center">
+                <TrashIcon className="h-6 w-6 mr-2 text-red-600" />
+                Trash
+              </CardTitle>
+              <div className="flex items-center space-x-2">
+                <Badge className="bg-red-100 text-red-800">
+                  {deletedDocs.length} item{deletedDocs.length === 1 ? '' : 's'}
+                </Badge>
+                <Button onClick={fetchDeletedDocuments} variant="outline" size="sm">
+                  <ArrowPathIcon className="h-4 w-4 mr-1" />
+                  Refresh
+                </Button>
               </div>
             </div>
-          </div>
-        </div>
+          </CardHeader>
+          <CardContent>
+            {loadingTrash ? (
+              <div className="text-center py-8">
+                <ArrowPathIcon className="h-8 w-8 text-gray-400 animate-spin mx-auto mb-2" />
+                <p className="text-gray-500">Loading deleted documents...</p>
+              </div>
+            ) : deletedDocs.length === 0 ? (
+              <div className="text-center py-12">
+                <TrashIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Trash is Empty</h3>
+                <p className="text-gray-500">No deleted documents to display.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {deletedDocs.map(doc => {
+                  const FileIcon = getFileIcon(doc.type, doc.fileName, doc.mimeType);
+                  return (
+                    <div key={doc.id} className="border border-red-200 rounded-lg p-4 bg-red-50 hover:bg-red-100 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-3 flex-1">
+                          <FileIcon className="h-6 w-6 text-red-600 mt-1" />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-1">{doc.title || doc.fileName}</h4>
+                            <div className="flex items-center space-x-3 text-xs text-gray-600 mb-2">
+                              <span>{formatFileSizeDisplay(doc.size)}</span>
+                              <span>•</span>
+                              <span>Deleted: {formatDateTime(doc.modifiedAt)}</span>
+                            </div>
+                            {doc.department && (
+                              <Badge variant="outline" className="text-xs">{doc.department}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col space-y-2 ml-4">
+                          <Button
+                            onClick={() => handleRestore(doc.id)}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white whitespace-nowrap"
+                          >
+                            <ArrowPathIcon className="h-4 w-4 mr-1" />
+                            Restore
+                          </Button>
+                          <Button
+                            onClick={() => handlePermanentDelete(doc.id, doc.title || doc.fileName)}
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300 whitespace-nowrap"
+                          >
+                            <TrashIcon className="h-4 w-4 mr-1" />
+                            Delete Forever
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-6">
-            <div className="flex items-center">
-              <ChartPieIcon className="h-8 w-8 text-saywhat-orange" />
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Analytics</h3>
-                <p className="text-sm text-gray-500">Storage and usage analytics</p>
+        {/* Trash Info */}
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="pt-6">
+            <div className="flex items-start space-x-3">
+              <InformationCircleIcon className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-yellow-900">
+                <p className="font-semibold mb-1">About Trash</p>
+                <ul className="list-disc list-inside space-y-1 text-yellow-800">
+                  <li>Deleted documents are kept for 30 days before permanent deletion</li>
+                  <li>You can restore documents at any time during this period</li>
+                  <li>Permanent deletion removes all versions and cannot be undone</li>
+                </ul>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-6">
-            <div className="flex items-center">
-              <ShieldCheckIcon className="h-8 w-8 text-saywhat-orange" />
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Security</h3>
-                <p className="text-sm text-gray-500">Audit logs and security settings</p>
-              </div>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
+    );
+  };
+
+  const renderAdminConsole = () => {
+    const totalStorage = documents.reduce((sum, doc) => {
+      const size = typeof doc.size === 'number' ? doc.size : parseInt(String(doc.size)) || 0;
+      return sum + size;
+    }, 0);
+    const storageGB = (totalStorage / 1024 / 1024 / 1024).toFixed(2);
+
+    const publicDocs = documents.filter(doc => doc.classification === 'PUBLIC').length;
+    const confidentialDocs = documents.filter(doc => doc.classification === 'CONFIDENTIAL').length;
+    const secretDocs = documents.filter(doc => doc.classification === 'SECRET').length;
+
+    const uniqueUploaders = new Set(documents.map(doc => doc.uploadedBy)).size;
+
+    return (
+      <div className="space-y-6 relative">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Total Documents</p>
+                  <p className="text-3xl font-bold text-blue-900 mt-1">{documents.length}</p>
+                </div>
+                <DocumentIcon className="h-12 w-12 text-blue-600 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-900">Total Storage</p>
+                  <p className="text-3xl font-bold text-green-900 mt-1">{storageGB} GB</p>
+                </div>
+                <CloudIcon className="h-12 w-12 text-green-600 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-900">Active Users</p>
+                  <p className="text-3xl font-bold text-purple-900 mt-1">{uniqueUploaders}</p>
+                </div>
+                <UserGroupIcon className="h-12 w-12 text-purple-600 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-900">Departments</p>
+                  <p className="text-3xl font-bold text-orange-900 mt-1">{departments.length}</p>
+                </div>
+                <BuildingOfficeIcon className="h-12 w-12 text-orange-600 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Admin Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="hover:shadow-xl transition-shadow cursor-pointer group" onClick={() => window.location.href = '/admin/users'}>
+            <CardContent className="pt-6">
+              <div className="flex items-start space-x-4">
+                <div className="bg-gradient-to-br from-saywhat-orange to-orange-600 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                  <UserGroupIcon className="h-8 w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-saywhat-orange transition-colors">User Management</h3>
+                  <p className="text-sm text-gray-600 mb-3">Manage users and permissions</p>
+                  <div className="flex items-center text-sm text-saywhat-orange">
+                    <span>Manage users</span>
+                    <ChevronRightIcon className="h-4 w-4 ml-1" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-xl transition-shadow cursor-pointer group" onClick={() => window.location.href = '/documents/analytics'}>
+            <CardContent className="pt-6">
+              <div className="flex items-start space-x-4">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                  <ChartPieIcon className="h-8 w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">Analytics Dashboard</h3>
+                  <p className="text-sm text-gray-600 mb-3">Storage and usage analytics</p>
+                  <div className="flex items-center text-sm text-blue-600">
+                    <span>View analytics</span>
+                    <ChevronRightIcon className="h-4 w-4 ml-1" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-xl transition-shadow cursor-pointer group" onClick={() => setActiveTab('trash')}>
+            <CardContent className="pt-6">
+              <div className="flex items-start space-x-4">
+                <div className="bg-gradient-to-br from-red-500 to-red-600 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                  <TrashIcon className="h-8 w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-red-600 transition-colors">Trash Management</h3>
+                  <p className="text-sm text-gray-600 mb-3">Manage deleted documents</p>
+                  <div className="flex items-center text-sm text-red-600">
+                    <span>View trash</span>
+                    <ChevronRightIcon className="h-4 w-4 ml-1" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-xl transition-shadow cursor-pointer group" onClick={() => window.location.href = '/documents/audit'}>
+            <CardContent className="pt-6">
+              <div className="flex items-start space-x-4">
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                  <ShieldCheckIcon className="h-8 w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">Security & Audit</h3>
+                  <p className="text-sm text-gray-600 mb-3">Audit logs and security settings</p>
+                  <div className="flex items-center text-sm text-purple-600">
+                    <span>View audit logs</span>
+                    <ChevronRightIcon className="h-4 w-4 ml-1" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-xl transition-shadow cursor-pointer group" onClick={() => window.location.href = '/documents/reports'}>
+            <CardContent className="pt-6">
+              <div className="flex items-start space-x-4">
+                <div className="bg-gradient-to-br from-green-500 to-green-600 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                  <DocumentTextIcon className="h-8 w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-green-600 transition-colors">Generate Reports</h3>
+                  <p className="text-sm text-gray-600 mb-3">Create custom document reports</p>
+                  <div className="flex items-center text-sm text-green-600">
+                    <span>Create reports</span>
+                    <ChevronRightIcon className="h-4 w-4 ml-1" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-xl transition-shadow cursor-pointer group" onClick={() => window.location.href = '/documents/version-history'}>
+            <CardContent className="pt-6">
+              <div className="flex items-start space-x-4">
+                <div className="bg-gradient-to-br from-gray-500 to-gray-600 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                  <ClockIcon className="h-8 w-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 group-hover:text-gray-600 transition-colors">Version History</h3>
+                  <p className="text-sm text-gray-600 mb-3">Track document changes</p>
+                  <div className="flex items-center text-sm text-gray-600">
+                    <span>View versions</span>
+                    <ChevronRightIcon className="h-4 w-4 ml-1" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Security Classification Overview */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <ShieldCheckIcon className="h-6 w-6 mr-2 text-saywhat-orange" />
+              Security Classification Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-900">Public</p>
+                    <p className="text-2xl font-bold text-green-900 mt-1">{publicDocs}</p>
+                  </div>
+                  <ShareIcon className="h-10 w-10 text-green-600 opacity-50" />
+                </div>
+                <p className="text-xs text-green-700 mt-2">
+                  {documents.length > 0 ? ((publicDocs / documents.length) * 100).toFixed(1) : 0}% of total
+                </p>
+              </div>
+
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-orange-900">Confidential</p>
+                    <p className="text-2xl font-bold text-orange-900 mt-1">{confidentialDocs}</p>
+                  </div>
+                  <LockClosedIcon className="h-10 w-10 text-orange-600 opacity-50" />
+                </div>
+                <p className="text-xs text-orange-700 mt-2">
+                  {documents.length > 0 ? ((confidentialDocs / documents.length) * 100).toFixed(1) : 0}% of total
+                </p>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-900">Secret</p>
+                    <p className="text-2xl font-bold text-red-900 mt-1">{secretDocs}</p>
+                  </div>
+                  <ExclamationTriangleIcon className="h-10 w-10 text-red-600 opacity-50" />
+                </div>
+                <p className="text-xs text-red-700 mt-2">
+                  {documents.length > 0 ? ((secretDocs / documents.length) * 100).toFixed(1) : 0}% of total
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
       {/* Floating Security Levels Button */}
       <div className="fixed bottom-6 right-6 z-50">
@@ -2496,8 +2920,9 @@ export default function DocumentRepositoryPage() {
           </div>
         </div>
       )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   const confirmDocumentDelete = (id: string, name: string) => {
     setDeleteConfirmation({ id, name });
