@@ -179,12 +179,15 @@ function EnhancedProgramsContent() {
           <p className="text-gray-600 mb-4">
             You don't have permission to access the Programs and Projects module.
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 mb-6">
             Contact your administrator to request access.
           </p>
-          <div className="mt-4 text-xs text-gray-400">
-            Debug: User: {session?.user?.email}, Roles: {JSON.stringify(session?.user?.roles)}, Permissions: {JSON.stringify(session?.user?.permissions)}
-          </div>
+          <button
+            onClick={() => window.location.href = '/dashboard'}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Dashboard
+          </button>
         </div>
       </div>
     )
