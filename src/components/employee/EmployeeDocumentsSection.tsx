@@ -11,6 +11,7 @@ import {
   CloudArrowUpIcon,
   FolderIcon,
 } from "@heroicons/react/24/outline";
+import { resolveCategoryInfo, buildFolderPath } from "@/lib/documents/category-utils";
 
 interface Document {
   id: string;
@@ -156,6 +157,20 @@ export default function EmployeeDocumentsSection({
       formData.append("classification", "CONFIDENTIAL"); // Employee documents are confidential
       formData.append("accessLevel", "individual"); // Only accessible to employee and HR
 
+      const departmentName = "Human Resource Management";
+      const subunitName = "Employee Documents";
+      const categoryInfo = resolveCategoryInfo(uploadForm.category);
+      const folderPath = buildFolderPath({
+        department: departmentName,
+        subunit: subunitName,
+        categoryDisplay: categoryInfo.display,
+      });
+
+      formData.append("department", departmentName);
+      formData.append("subunit", subunitName);
+      formData.append("categoryEnum", categoryInfo.enumValue);
+      formData.append("categoryDisplay", categoryInfo.display);
+
       // Add description if provided
       if (uploadForm.description.trim()) {
         formData.append("description", uploadForm.description.trim());
@@ -166,13 +181,14 @@ export default function EmployeeDocumentsSection({
         relatedEmployeeId: employeeId,
         documentType: uploadForm.documentType || uploadForm.category,
         category: uploadForm.category,
+        categoryDisplay: categoryInfo.display,
         uploadedBy: "employee",
         securityClassification: "CONFIDENTIAL",
       };
       formData.append("customMetadata", JSON.stringify(customMetadata));
 
       // Add folder path for organization
-      formData.append("folderPath", `employee-documents/${employeeId}/${uploadForm.category}`);
+      formData.append("folderPath", folderPath);
 
       // Upload document
       const response = await fetch("/api/documents/upload", {

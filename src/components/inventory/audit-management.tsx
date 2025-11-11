@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Asset, InventoryPermissions } from '@/types/inventory'
+import { resolveCategoryInfo, buildFolderPath, sanitizeFolderSegment } from '@/lib/documents/category-utils'
 
 interface AuditManagementProps {
   assets: Asset[]
@@ -1046,16 +1047,32 @@ export const AuditManagement: React.FC<AuditManagementProps> = ({
                   
                   if (findingsData.documents.length > 0) {
                     for (const document of findingsData.documents) {
-                      const formData = new FormData()
-                      formData.append('file', document)
-                      formData.append('title', `${selectedAudit.name} - Evidence - ${document.name}`)
-                      formData.append('category', 'AUDIT_EVIDENCE')
-                      formData.append('classification', 'INTERNAL')
-                      formData.append('auditId', selectedAudit.id)
+                      const uploadFormData = new FormData()
+                      const departmentName = 'Finance and Administration'
+                      const subunitName = 'Inventory Audits'
+                      const categoryInfo = resolveCategoryInfo('AUDIT_EVIDENCE')
+                      const baseFolderPath = buildFolderPath({
+                        department: departmentName,
+                        subunit: subunitName,
+                        categoryDisplay: categoryInfo.display,
+                      })
+                      const auditSegment = sanitizeFolderSegment(selectedAudit.name || selectedAudit.id)
+                      const folderPath = auditSegment ? `${baseFolderPath}/${auditSegment}` : baseFolderPath
+
+                      uploadFormData.append('file', document)
+                      uploadFormData.append('title', `${selectedAudit.name} - Evidence - ${document.name}`)
+                      uploadFormData.append('category', categoryInfo.label)
+                      uploadFormData.append('classification', 'INTERNAL')
+                      uploadFormData.append('department', departmentName)
+                      uploadFormData.append('subunit', subunitName)
+                      uploadFormData.append('categoryEnum', categoryInfo.enumValue)
+                      uploadFormData.append('categoryDisplay', categoryInfo.display)
+                      uploadFormData.append('folderPath', folderPath)
+                      uploadFormData.append('auditId', selectedAudit.id)
                       
                       const uploadResponse = await fetch('/api/documents/upload', {
                         method: 'POST',
-                        body: formData
+                        body: uploadFormData
                       })
                       
                       if (uploadResponse.ok) {

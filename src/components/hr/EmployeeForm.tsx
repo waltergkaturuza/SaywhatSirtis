@@ -7,7 +7,33 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { UserRole, Department, getDefaultRoleForDepartment, getRoleDisplayName, ROLE_DEFINITIONS } from "@/types/roles"
-import { UserIcon, EnvelopeIcon, PhoneIcon, IdentificationIcon, BriefcaseIcon, AcademicCapIcon, KeyIcon, DocumentTextIcon, BuildingOfficeIcon, ExclamationTriangleIcon, ShieldCheckIcon } from "@heroicons/react/24/outline"
+import {
+  UserIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  IdentificationIcon,
+  BriefcaseIcon,
+  AcademicCapIcon,
+  KeyIcon,
+  DocumentTextIcon,
+  BuildingOfficeIcon,
+  ExclamationTriangleIcon,
+  ShieldCheckIcon,
+  HeartIcon,
+  UsersIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  DocumentArrowDownIcon,
+  InformationCircleIcon,
+  UserPlusIcon,
+  CheckCircleIcon,
+  CloudArrowUpIcon,
+  XMarkIcon,
+  FolderIcon,
+  ArrowDownTrayIcon,
+  EyeIcon
+} from "@heroicons/react/24/outline"
+import { resolveCategoryInfo, buildFolderPath, sanitizeFolderSegment } from "@/lib/documents/category-utils"
 
 interface RolePermissions {
   callCenter: 'none' | 'view' | 'edit' | 'full'
@@ -579,21 +605,30 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
       for (const document of formData.uploadedDocuments) {
         if (!document.file) continue // Skip if no actual file
 
-        // Create folder structure: HR/Employee Profiles/[Category]/[Employee Name or ID]/[Document Name]
-        const sanitizedEmployeeName = employeeName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')
-        const documentCategory = document.category.charAt(0).toUpperCase() + document.category.slice(1).toLowerCase()
-        const folderPath = `HR/Employee_Profiles/${documentCategory}_Files/${sanitizedEmployeeName}_${employeeId}`
+        const departmentName = 'Human Resource Management'
+        const subunitName = 'Employee Profiles'
+        const categoryInfo = resolveCategoryInfo(document.category)
+        const baseFolderPath = buildFolderPath({
+          department: departmentName,
+          subunit: subunitName,
+          categoryDisplay: categoryInfo.display,
+        })
+        const employeeSegment = sanitizeFolderSegment(`${employeeName} ${employeeId}`)
+        const folderPath = employeeSegment ? `${baseFolderPath}/${employeeSegment}` : baseFolderPath
 
         const uploadFormData = new FormData()
         uploadFormData.append('file', document.file)
-        uploadFormData.append('title', `${employeeName} - ${document.category.toUpperCase()} - ${document.name}`)
+        uploadFormData.append('title', `${employeeName} - ${categoryInfo.display.toUpperCase()} - ${document.name}`)
         uploadFormData.append('description', `Employee ${document.category} document for ${employeeName} (ID: ${employeeId})`)
         
         // Document Repository required fields
-        uploadFormData.append('category', 'Employee Documents') // Use proper category
+        uploadFormData.append('category', categoryInfo.label)
         uploadFormData.append('classification', 'CONFIDENTIAL') // Employee docs are confidential
         uploadFormData.append('accessLevel', 'department') // HR department access
-        uploadFormData.append('department', 'Human Resource Management')
+        uploadFormData.append('department', departmentName)
+        uploadFormData.append('subunit', subunitName)
+        uploadFormData.append('categoryEnum', categoryInfo.enumValue)
+        uploadFormData.append('categoryDisplay', categoryInfo.display)
         uploadFormData.append('uploadedBy', employeeName)
         uploadFormData.append('isPersonalRepo', 'false') // Main repository, not personal
         uploadFormData.append('status', 'APPROVED') // HR documents are pre-approved
@@ -608,9 +643,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         uploadFormData.append('tags', JSON.stringify([
           'employee-document',
           `employee-${employeeId}`,
-          `category-${document.category}`,
+          `category-${categoryInfo.key}`,
           'hr-document',
-          employeeName.toLowerCase().replace(/\s+/g, '-')
+          employeeSegment.toLowerCase()
         ]))
 
         // Custom metadata for tracking
@@ -618,6 +653,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
           relatedEmployeeId: employeeId,
           employeeName: employeeName,
           documentCategory: document.category,
+          categoryDisplay: categoryInfo.display,
           uploadContext: 'employee-form'
         }
         uploadFormData.append('customMetadata', JSON.stringify(customMetadata))

@@ -15,6 +15,7 @@ import {
   ExclamationTriangleIcon,
   CloudArrowUpIcon
 } from "@heroicons/react/24/outline"
+import { resolveCategoryInfo, buildFolderPath, sanitizeFolderSegment } from '@/lib/documents/category-utils'
 
 interface RolePermissions {
   callCenter: 'none' | 'view' | 'edit' | 'full'
@@ -595,10 +596,18 @@ export default function AddEmployeePage() {
   const saveEmployeeDocumentsToRepository = async () => {
     try {
       const employeeId = formData.employeeId || `EMP_${Date.now()}`
+      const departmentName = 'Human Resource Management'
+      const subunitName = 'Employee Particulars'
       
       for (const document of formData.uploadedDocuments) {
-        // Create the folder structure: HR/Employee_Particulars/EmployeeID/DocumentKind
-        const folderPath = `HR/Employee_Particulars/${employeeId}/${getCategoryDisplayName(document.category)}`
+        const categoryInfo = resolveCategoryInfo(document.category)
+        const baseFolderPath = buildFolderPath({
+          department: departmentName,
+          subunit: subunitName,
+          categoryDisplay: categoryInfo.display,
+        })
+        const employeeSegment = sanitizeFolderSegment(employeeId)
+        const folderPath = employeeSegment ? `${baseFolderPath}/${employeeSegment}` : baseFolderPath
         
         // Ensure the folder structure exists
         await fetch('/api/documents/folders/ensure', {
@@ -608,8 +617,8 @@ export default function AddEmployeePage() {
           },
           body: JSON.stringify({
             path: folderPath,
-            department: 'HR',
-            category: 'Employee_Particulars'
+            department: departmentName,
+            category: categoryInfo.display
           })
         })
         
@@ -622,10 +631,13 @@ export default function AddEmployeePage() {
         
         uploadFormData.append('file', file)
         uploadFormData.append('title', `${document.name} - ${formData.firstName} ${formData.lastName}`)
-        uploadFormData.append('category', 'Employee_Particulars')
+        uploadFormData.append('category', categoryInfo.label)
         uploadFormData.append('classification', 'CONFIDENTIAL') // HR documents are confidential
         uploadFormData.append('accessLevel', 'hr_only')
-        uploadFormData.append('department', 'HR')
+        uploadFormData.append('department', departmentName)
+        uploadFormData.append('subunit', subunitName)
+        uploadFormData.append('categoryEnum', categoryInfo.enumValue)
+        uploadFormData.append('categoryDisplay', categoryInfo.display)
         uploadFormData.append('folderPath', folderPath)
         uploadFormData.append('employeeId', employeeId)
         uploadFormData.append('documentType', document.category)

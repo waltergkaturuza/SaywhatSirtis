@@ -1,6 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Combobox } from '@headlessui/react'
+import { CheckIcon, ChevronUpDownIcon, DocumentArrowUpIcon, FolderOpenIcon, TrashIcon, PlusIcon, XMarkIcon, DocumentTextIcon, BanknotesIcon, ChartBarIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { useRouter } from 'next/navigation'
+import { apiClient } from '@/lib/api-client'
+import { resolveCategoryInfo, buildFolderPath, sanitizeFolderSegment } from '@/lib/documents/category-utils'
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,16 +14,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 // Removed unused Select imports
 import { ResultsFramework, ResultsFrameworkData } from "./results-framework"
-import { 
-  DocumentTextIcon,
-  PlusIcon,
-  XMarkIcon,
-  DocumentArrowUpIcon,
-  BanknotesIcon,
-  ChartBarIcon,
-  ExclamationTriangleIcon,
-  TrashIcon
-} from "@heroicons/react/24/outline"
 
 interface NewProjectFormProps {
   onCancel: () => void
@@ -290,11 +285,30 @@ export function NewProjectForm({ onCancel, onSuccess }: NewProjectFormProps) {
         }
         
         // Upload to document repository
+        const departmentName = 'Programs'
+        const subunitName = 'Projects'
+        const categoryInfo = resolveCategoryInfo('PROJECT_DOCUMENT')
+        const baseFolderPath = buildFolderPath({
+          department: departmentName,
+          subunit: subunitName,
+          categoryDisplay: categoryInfo.display,
+        })
+        const projectSegment = projectCode ? sanitizeFolderSegment(projectCode) : ''
+        const folderPath = projectSegment ? `${baseFolderPath}/${projectSegment}` : baseFolderPath
+
         const formData = new FormData()
         formData.append('file', file)
         formData.append('title', `Project Document: ${file.name}`)
-        formData.append('category', 'PROJECT_DOCUMENT')
+        formData.append('category', categoryInfo.label)
         formData.append('classification', 'CONFIDENTIAL')
+        formData.append('department', departmentName)
+        formData.append('subunit', subunitName)
+        formData.append('categoryEnum', categoryInfo.enumValue)
+        formData.append('categoryDisplay', categoryInfo.display)
+        formData.append('folderPath', folderPath)
+        if (projectCode) {
+          formData.append('projectCode', projectCode)
+        }
         
         const response = await fetch('/api/documents/upload', {
           method: 'POST',

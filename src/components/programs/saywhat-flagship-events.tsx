@@ -1,18 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import {
-  TrophyIcon,
-  CalendarDaysIcon,
-  MapPinIcon,
-  UsersIcon,
-  PlusIcon,
-  EyeIcon,
-  PencilIcon,
-  TrashIcon,
-  FunnelIcon,
-  PrinterIcon
-} from "@heroicons/react/24/outline"
+import React, { useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { Combobox } from '@headlessui/react'
+import clsx from 'clsx'
+import { PlusIcon, TrophyIcon, CalendarDaysIcon, EyeIcon, PrinterIcon, PencilIcon, TrashIcon, MapPinIcon, UsersIcon } from '@heroicons/react/24/outline'
+import { resolveCategoryInfo, buildFolderPath, sanitizeFolderSegment } from '@/lib/documents/category-utils'
 
 interface FlagshipEvent {
   id: string
@@ -189,18 +182,34 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
 
   const saveEventDocuments = async (eventId: string, documents: any[]) => {
     try {
+      const departmentName = 'Programs'
+      const subunitName = 'Events'
       for (const doc of documents) {
-        const formData = new FormData()
+        const uploadFormData = new FormData()
         if (doc.file) {
-          formData.append('file', doc.file)
-          formData.append('title', `${doc.type.toUpperCase()}: ${doc.name}`)
-          formData.append('category', doc.type.toUpperCase())
-          formData.append('classification', 'CONFIDENTIAL')
-          formData.append('eventId', eventId) // Link document to event
+          const categoryInfo = resolveCategoryInfo(doc.type)
+          const baseFolderPath = buildFolderPath({
+            department: departmentName,
+            subunit: subunitName,
+            categoryDisplay: categoryInfo.display,
+          })
+          const eventSegment = sanitizeFolderSegment(eventId || formData.name || '')
+          const folderPath = eventSegment ? `${baseFolderPath}/${eventSegment}` : baseFolderPath
+
+          uploadFormData.append('file', doc.file)
+          uploadFormData.append('title', `${categoryInfo.display}: ${doc.name}`)
+          uploadFormData.append('category', categoryInfo.label)
+          uploadFormData.append('classification', 'CONFIDENTIAL')
+          uploadFormData.append('department', departmentName)
+          uploadFormData.append('subunit', subunitName)
+          uploadFormData.append('categoryEnum', categoryInfo.enumValue)
+          uploadFormData.append('categoryDisplay', categoryInfo.display)
+          uploadFormData.append('folderPath', folderPath)
+          uploadFormData.append('eventId', eventId) // Link document to event
 
           const docResponse = await fetch('/api/documents/upload', {
             method: 'POST',
-            body: formData,
+            body: uploadFormData,
           })
 
           if (!docResponse.ok) {

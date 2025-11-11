@@ -5,14 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { randomUUID } from 'crypto'
 import { promises as fs } from 'fs'
 import path from 'path'
-
-const sanitizeFolderSegment = (value: string | null | undefined) => {
-  if (!value) return ''
-  return value
-    .trim()
-    .replace(/^\/+|\/+$/g, '')
-    .replace(/[\\/]+/g, '-')
-}
+import { sanitizeFolderPath, sanitizeFolderSegment, resolveCategoryInfo, buildFolderPath } from '@/lib/documents/category-utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,11 +37,12 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const title = formData.get('title') as string
-    const categoryLabel = formData.get('category') as string
+    const categoryLabelRaw = formData.get('category') as string
     const classification = formData.get('classification') as string
     const accessLevel = formData.get('accessLevel') as string
     const eventId = formData.get('eventId') as string
     const customFolderPath = formData.get('folderPath') as string
+    const subunit = formData.get('subunit') as string | null
     
     // Personal repository fields
     const uploadedBy = formData.get('uploadedBy') as string
@@ -77,7 +71,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    if (!title || !categoryLabel) {
+    if (!title || !categoryLabelRaw) {
       return NextResponse.json({ 
         success: false, 
         error: "Title and category are required" 
@@ -161,17 +155,35 @@ export async function POST(request: NextRequest) {
     const filename = `${documentId}_${file.name}`
     
     // Create folder structure: use custom folderPath if provided, otherwise use default
+    const baseCategoryInfo = resolveCategoryInfo(categoryLabelRaw)
+    const categoryLabel = categoryLabelRaw || baseCategoryInfo.label
+    const finalCategoryEnum = categoryEnumOverride || baseCategoryInfo.enumValue
+    const finalCategoryDisplay = categoryDisplayOverride || baseCategoryInfo.display
+    const departmentFolder = department || 'General'
+
     let folderPath: string
-    const categoryEnumFromMap = categoryMap[categoryLabel] || 'OTHER'
-    const finalCategoryEnum = categoryEnumOverride || categoryEnumFromMap
-    const finalCategoryDisplay = categoryDisplayOverride || categoryLabel || 'General Document'
+    let documentFolderPath: string
 
     if (customFolderPath) {
-      folderPath = `uploads/${sanitizeFolderSegment(customFolderPath)}`
+      const sanitizedCustom = sanitizeFolderPath(customFolderPath)
+      if (sanitizedCustom) {
+        documentFolderPath = sanitizedCustom
+        folderPath = `uploads/${sanitizedCustom}`
+      } else {
+        documentFolderPath = buildFolderPath({
+          department: departmentFolder,
+          subunit,
+          categoryDisplay: finalCategoryDisplay,
+        })
+        folderPath = `uploads/${documentFolderPath}`
+      }
     } else {
-      // Default folder structure: uploads/department/category/
-      const departmentFolder = department || 'General'
-      folderPath = `uploads/${sanitizeFolderSegment(departmentFolder)}/${sanitizeFolderSegment(finalCategoryDisplay)}`
+      documentFolderPath = buildFolderPath({
+        department: departmentFolder,
+        subunit,
+        categoryDisplay: finalCategoryDisplay,
+      })
+      folderPath = `uploads/${documentFolderPath}`
     }
     
     const filePath = `${folderPath}/${filename}`
@@ -251,7 +263,7 @@ export async function POST(request: NextRequest) {
     const mappedCategory = finalCategoryEnum;
     const mappedClassification = classificationMap[classification] || 'PUBLIC';
     
-    console.log(`📁 Mapping category "${categoryLabel}" to "${mappedCategory}"`);
+    console.log(`📁 Mapping category "${categoryLabelRaw}" to "${mappedCategory}"`);
     console.log(`🔒 Mapping classification "${classification}" to "${mappedClassification}"`);
     
     // Save document metadata to database
@@ -272,7 +284,7 @@ export async function POST(request: NextRequest) {
         isPublic: classification === 'PUBLIC',
         uploadedBy: extractedMetadata.author || uploadedBy || session.user?.name || session.user?.email || 'Unknown User',
         department: department || 'Unknown Department',
-        folderPath: sanitizeFolderSegment(customFolderPath) || `${sanitizeFolderSegment(department || 'Unknown Department')}/${sanitizeFolderSegment(finalCategoryDisplay)}`,
+        folderPath: documentFolderPath,
         isPersonalRepo: isPersonalRepo,
         approvalStatus: status === 'APPROVED' ? 'APPROVED' : (isPersonalRepo ? 'DRAFT' : 'PENDING_REVIEW'),
         reviewStatus: status === 'APPROVED' ? 'APPROVED' : 'PENDING',
@@ -282,6 +294,8 @@ export async function POST(request: NextRequest) {
           ...(selectedDepartments.length > 0 ? { selectedDepartments } : {}),
           ...(selectedTeams.length > 0 ? { selectedTeams } : {}),
           accessLevel: accessLevel || 'organization',
+          categoryDisplay: finalCategoryDisplay,
+          categoryLabel,
           // Add extracted metadata
           ...extractedMetadata,
           extractedKeywords,
@@ -315,7 +329,7 @@ export async function POST(request: NextRequest) {
         id: document.id,
         title: document.description,
         fileName: document.originalName,
-        category: document.category,
+        category: mappedCategory,
         classification: document.classification,
         uploadedBy: uploaderName,
         uploadedAt: document.createdAt,
