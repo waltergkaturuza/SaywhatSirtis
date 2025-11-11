@@ -80,9 +80,23 @@ function getUserPermissions(role: string, department: string): string[] {
     ],
     'BASIC_USER_2': [
       ...basePermissions,
+      // Programs - Full data capture permissions
       'programs_view',
+      'programs.view',
+      'programs.create',
+      'programs.edit',
+      'programs_edit',
+      'programs.upload',
+      'programs.documents',
+      'programs.progress',
+      'programs.indicators',
+      'programs.data_entry',
+      // Inventory
       'inventory_view',
-      'documents.view'
+      'inventory.view',
+      // Documents
+      'documents.view',
+      'documents_view'
     ],
     'ADVANCE_USER_1': [
       ...basePermissions,
