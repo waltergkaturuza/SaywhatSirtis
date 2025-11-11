@@ -2630,6 +2630,29 @@ export default function DocumentRepositoryPage() {
   };
 
   const renderAdminConsole = () => {
+    // Check if user is admin
+    if (!isAdmin) {
+      return (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <ShieldCheckIcon className="h-16 w-16 text-red-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h3>
+              <p className="text-gray-600 mb-4">
+                Admin console is only accessible to administrators.
+              </p>
+              <Button 
+                onClick={() => setActiveTab('dashboard')}
+                className="bg-saywhat-orange hover:bg-orange-600"
+              >
+                Go to Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
     const totalStorage = documents.reduce((sum, doc) => {
       const size = typeof doc.size === 'number' ? doc.size : parseInt(String(doc.size)) || 0;
       return sum + size;
@@ -3036,21 +3059,23 @@ export default function DocumentRepositoryPage() {
                       <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Quick Actions</p>
                     </div>
                     
-                    <button
-                      onClick={() => {
-                        setActiveTab('admin');
-                        setShowHamburgerMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-saywhat-orange transition-all duration-200 flex items-center group"
-                    >
-                      <div className="bg-gray-100 p-2 rounded-lg mr-3 group-hover:bg-saywhat-orange group-hover:text-white transition-all duration-200">
-                        <Cog6ToothIcon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="font-medium">Admin Console</div>
-                        <div className="text-xs text-gray-500">Manage settings</div>
-                      </div>
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setActiveTab('admin');
+                          setShowHamburgerMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-orange-50 hover:text-saywhat-orange transition-all duration-200 flex items-center group"
+                      >
+                        <div className="bg-gray-100 p-2 rounded-lg mr-3 group-hover:bg-saywhat-orange group-hover:text-white transition-all duration-200">
+                          <Cog6ToothIcon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="font-medium">Admin Console</div>
+                          <div className="text-xs text-gray-500">Manage settings</div>
+                        </div>
+                      </button>
+                    )}
                     
                     <button
                       onClick={() => {
