@@ -2737,7 +2737,10 @@ export default function DocumentRepositoryPage() {
                 
                 <div className="space-y-2">
                   {/* Analytics Dashboard */}
-                  <button className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                  <a 
+                    href="/documents/analytics"
+                    className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group cursor-pointer"
+                  >
                     <div className="bg-saywhat-orange p-2 rounded-md mr-3 group-hover:bg-orange-600 transition-colors">
                       <ChartBarIcon className="h-4 w-4 text-white" />
                     </div>
@@ -2745,10 +2748,13 @@ export default function DocumentRepositoryPage() {
                       <div className="text-sm font-medium text-gray-900">Analytics Dashboard</div>
                       <div className="text-xs text-gray-500">View insights</div>
                     </div>
-                  </button>
+                  </a>
                   
                   {/* Generate Reports */}
-                  <button className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group">
+                  <a 
+                    href="/documents/reports"
+                    className="w-full flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors group cursor-pointer"
+                  >
                     <div className="bg-green-600 p-2 rounded-md mr-3 group-hover:bg-green-700 transition-colors">
                       <DocumentTextIcon className="h-4 w-4 text-white" />
                     </div>
@@ -2756,7 +2762,7 @@ export default function DocumentRepositoryPage() {
                       <div className="text-sm font-medium text-gray-900">Generate Reports</div>
                       <div className="text-xs text-gray-500">Create reports</div>
                     </div>
-                  </button>
+                  </a>
                 </div>
               </div>
 
