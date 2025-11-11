@@ -3,177 +3,10 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import * as bcrypt from 'bcryptjs'
 
-// Development users (in production, this would come from database)
-const developmentUsers = [
-  {
-    id: "1",
-    email: "admin@saywhat.org",
-    password: "admin123",
-    name: "System Administrator",
-    department: "HR",
-    position: "System Administrator",
-    roles: ["SYSTEM_ADMINISTRATOR"],
-    permissions: [
-      // HR Module - Full Access
-      "hr.full_access", "hr.view", "hr.create", "hr.edit", "hr.delete", 
-      "hr.notifications", "hr.performance", "hr.training", "hr.employees",
-      // Programs Module - Full Access  
-      "programs.full_access", "programs.view", "programs.create", "programs.edit", "programs.delete",
-      "programs.me_access", "programs.upload", "programs.documents", "programs.progress", 
-      "programs.indicators", "programs.analysis", "programs.head", "programs.kobo",
-      // Call Centre Module - Full Access
-      "callcentre.access", "callcentre.officer", "callcentre.admin", "callcentre.reports", 
-      "callcentre.management", "callcentre.cases", "callcentre.data_entry", "callcentre.view",
-      "callcentre.create", "callcentre.edit", "callcentre.delete",
-      // Inventory Module - Full Access
-      "inventory.full_access", "inventory.view", "inventory.create", "inventory.edit", "inventory.delete",
-      "inventory.rfid", "inventory.tracking", "inventory.reports",
-      // Documents Module - Full Access
-      "documents.full_access", "documents.view", "documents.create", "documents.edit", "documents.delete",
-      "documents.ai", "documents.search", "documents.upload", "documents.download", "documents.share",
-      "documents.workflow", "documents.approve", "documents.security", "documents.classify", 
-      "documents.analytics", "documents.audit", "documents.version", "documents.metadata",
-      "documents.microsoft365", "documents.sharepoint", "documents.teams", "documents.onedrive",
-      // Analytics & Dashboard - Full Access
-      "analytics.full_access", "analytics.view", "analytics.create", "analytics.reports",
-      "dashboard.full_access", "dashboard.view", "dashboard.widgets",
-      // System Administration - Full Access
-      "admin.access", "admin.users", "admin.roles", "admin.settings", "admin.audit", "admin.apikeys", 
-      "admin.database", "admin.server", "system.admin", "system.settings", "system.users", 
-      "system.permissions", "system.audit"
-    ]
-  },
-  {
-    id: "2", 
-    email: "hr@saywhat.org",
-    password: "hr123",
-    name: "HR Manager",
-    department: "Human Resources",
-    position: "HR Manager", 
-    roles: ["hr_manager"],
-    permissions: ["hr.full_access", "hr.notifications"]
-  },
-  {
-    id: "3",
-    email: "supervisor@saywhat.org", 
-    password: "supervisor123",
-    name: "Department Supervisor",
-    department: "Operations",
-    position: "Supervisor",
-    roles: ["supervisor"],
-    permissions: ["hr.view", "programs.view", "programs.head", "callcentre.access"]
-  },
-  {
-    id: "4",
-    email: "employee@saywhat.org",
-    password: "employee123", 
-    name: "Employee User",
-    department: "Operations",
-    position: "Field Officer",
-    roles: ["employee"],
-    permissions: ["hr.view", "programs.view"]
-  },
-  {
-    id: "5",
-    email: "me@saywhat.org",
-    password: "me123",
-    name: "M&E Officer",
-    department: "Programs",
-    position: "M&E Officer",
-    roles: ["me_officer"],
-    permissions: ["programs.me_access", "programs.create", "programs.edit", "programs.delete", "programs.indicators"]
-  },
-  {
-    id: "6",
-    email: "cam@saywhat.org",
-    password: "cam123",
-    name: "CAM Officer",
-    department: "Programs",
-    position: "CAM Officer",
-    roles: ["cam_officer"],
-    permissions: ["programs.view", "programs.upload", "programs.documents", "programs.progress"]
-  },
-  {
-    id: "7",
-    email: "research@saywhat.org",
-    password: "research123",
-    name: "Research Officer",
-    department: "Programs",
-    position: "Research Officer",
-    roles: ["research_officer"],
-    permissions: ["programs.view", "programs.upload", "programs.documents", "programs.progress", "programs.analysis"]
-  },
-  {
-    id: "8",
-    email: "programs@saywhat.org",
-    password: "programs123",
-    name: "Programs Officer",
-    department: "Programs",
-    position: "Programs Officer",
-    roles: ["programs_officer"],
-    permissions: ["programs.view", "programs.upload", "programs.documents", "programs.progress"]
-  },
-  {
-    id: "9",
-    email: "callcentre.head@saywhat.org",
-    password: "callcentre123",
-    name: "Call Centre Head",
-    department: "Call Centre",
-    position: "Call Centre Head",
-    roles: ["callcentre_head"],
-    permissions: ["callcentre.access", "callcentre.officer", "callcentre.admin", "callcentre.reports", "callcentre.management"]
-  },
-  {
-    id: "10",
-    email: "mary.chikuni@saywhat.org",
-    password: "officer123",
-    name: "Mary Chikuni",
-    department: "Call Centre",
-    position: "Call Centre Officer",
-    roles: ["callcentre_officer"],
-    permissions: ["callcentre.access", "callcentre.officer", "callcentre.cases", "callcentre.data_entry"]
-  },
-  {
-    id: "11",
-    email: "david.nyathi@saywhat.org",
-    password: "officer123",
-    name: "David Nyathi",
-    department: "Call Centre",
-    position: "Call Centre Officer",
-    roles: ["callcentre_officer"],
-    permissions: ["callcentre.access", "callcentre.officer", "callcentre.cases", "callcentre.data_entry"]
-  },
-  {
-    id: "12",
-    email: "alice.mandaza@saywhat.org",
-    password: "officer123",
-    name: "Alice Mandaza",
-    department: "Call Centre",
-    position: "Call Centre Officer",
-    roles: ["callcentre_officer"],
-    permissions: ["callcentre.access", "callcentre.officer", "callcentre.cases", "callcentre.data_entry"]
-  },
-  {
-    id: "13",
-    email: "peter.masvingo@saywhat.org",
-    password: "officer123",
-    name: "Peter Masvingo",
-    department: "Call Centre",
-    position: "Call Centre Officer",
-    roles: ["callcentre_officer"],
-    permissions: ["callcentre.access", "callcentre.officer", "callcentre.cases", "callcentre.data_entry"]
-  },
-  {
-    id: "14",
-    email: "callcentre@saywhat.org",
-    password: "call123",
-    name: "Call Centre Test User",
-    department: "Call Centre",
-    position: "Call Centre Officer",
-    roles: ["callcentre_officer"],
-    permissions: ["callcentre.access", "callcentre.officer", "callcentre.cases", "callcentre.data_entry", "callcentre.view"]
-  }
-]
+// Development users REMOVED for security
+// All authentication now uses database only with proper password hashing
+// Users must be created through the admin panel or database migrations
+const developmentUsers: any[] = []
 
 // Helper function to normalize role names to handle different formats
 function normalizeRoleName(role: string): string {
@@ -521,29 +354,50 @@ export const authOptions: NextAuthOptions = {
           // Continue to development users fallback
         }
 
-        // Fallback to development users for development/testing
-        console.log('🔄 Falling back to development users...')
-        const user = developmentUsers.find(u => u.email === credentials.email)
+        // Fallback to development users ONLY if user doesn't exist in database
+        // This prevents old hardcoded passwords from working after password change
+        const devUser = developmentUsers.find(u => u.email === credentials.email)
         
-        if (!user || user.password !== credentials.password) {
+        if (devUser) {
+          // Check if this user exists in database
+          try {
+            const existsInDb = await prisma.users.findUnique({
+              where: { email: devUser.email },
+              select: { id: true, passwordHash: true }
+            })
+            
+            if (existsInDb && existsInDb.passwordHash) {
+              // User exists in database with a password hash - DO NOT use dev password
+              console.log('❌ User exists in database, dev password disabled for security')
+              return null
+            }
+          } catch (err) {
+            console.error('Error checking database for dev user:', err)
+          }
+        }
+
+        // Only use dev users if they don't exist in database
+        console.log('🔄 Falling back to development users...')
+        
+        if (!devUser || devUser.password !== credentials.password) {
           console.log('❌ User not found in development users or password mismatch')
           return null
         }
 
-        console.log('✅ Development user authenticated:', user.email)
+        console.log('✅ Development user authenticated (not in database):', devUser.email)
         
         // Try to update lastLogin for development user if they exist in database
         try {
           const dbUserForUpdate = await prisma.users.findUnique({
-            where: { email: user.email }
+            where: { email: devUser.email }
           })
           
           if (dbUserForUpdate) {
             await prisma.users.update({
-              where: { email: user.email },
+              where: { email: devUser.email },
               data: { lastLogin: new Date() }
             })
-            console.log('✅ Updated lastLogin for development user in database:', user.email)
+            console.log('✅ Updated lastLogin for development user in database:', devUser.email)
           } else {
             console.log('⚠️ Development user not found in database, cannot update lastLogin')
           }
@@ -552,14 +406,14 @@ export const authOptions: NextAuthOptions = {
         }
         
         return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          department: user.department,
-          position: user.position,
-          roles: user.roles,
+          id: devUser.id,
+          email: devUser.email,
+          name: devUser.name,
+          department: devUser.department,
+          position: devUser.position,
+          roles: devUser.roles,
           // Use union for dev users too
-          permissions: getPermissionsForRoles(user.roles, user.department || '')
+          permissions: getPermissionsForRoles(devUser.roles, devUser.department || '')
         }
       }
     })
