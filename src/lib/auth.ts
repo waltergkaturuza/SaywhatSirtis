@@ -63,6 +63,9 @@ function getUserPermissions(role: string, department: string): string[] {
     'BASIC_USER_1': [
       ...basePermissions,
       'call_center_view',
+      'calls.view',
+      'callcentre.access',
+      'callcentre.view',
       'documents_view',
       'documents.view'
     ],
