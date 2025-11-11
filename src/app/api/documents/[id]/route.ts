@@ -201,3 +201,48 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id: documentId } = await params;
+
+    const existingDocument = await withRetry(async () => {
+      return await prisma.documents.findUnique({
+        where: { id: documentId },
+      });
+    });
+
+    if (!existingDocument) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    }
+
+    const canDelete =
+      existingDocument.uploadedBy === session.user?.id ||
+      session.user?.roles?.includes('admin') ||
+      session.user?.permissions?.includes('documents.full_access');
+
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    await withRetry(async () => {
+      await prisma.documents.delete({
+        where: { id: documentId },
+      });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 });
+  }
+}
