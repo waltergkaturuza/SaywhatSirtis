@@ -68,6 +68,7 @@ interface CategoryData {
   size: number
   percentage: number
   avgSize: number
+  [key: string]: any
 }
 
 interface DepartmentData {
@@ -77,6 +78,7 @@ interface DepartmentData {
   views: number
   downloads: number
   activeUsers: number
+  [key: string]: any
 }
 
 interface TimeSeriesData {
@@ -85,6 +87,7 @@ interface TimeSeriesData {
   views: number
   downloads: number
   shares: number
+  [key: string]: any
 }
 
 interface SecurityData {
@@ -92,6 +95,7 @@ interface SecurityData {
   count: number
   percentage: number
   color: string
+  [key: string]: any
 }
 
 interface UserActivityData {
@@ -100,6 +104,7 @@ interface UserActivityData {
   views: number
   downloads: number
   shares: number
+  [key: string]: any
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7300', '#A28CFF', '#FF6B9D']

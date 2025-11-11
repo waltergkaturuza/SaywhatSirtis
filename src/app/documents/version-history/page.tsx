@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import { ModulePage } from "@/components/layout/enhanced-layout"
@@ -56,7 +56,7 @@ interface ComparisonData {
   changed: boolean
 }
 
-export default function VersionHistoryPage() {
+function VersionHistoryContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const documentId = searchParams.get('id')
@@ -652,6 +652,21 @@ export default function VersionHistoryPage() {
         />
       )}
     </ModulePage>
+  )
+}
+
+export default function VersionHistoryPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-saywhat-orange mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading version history...</p>
+        </div>
+      </div>
+    }>
+      <VersionHistoryContent />
+    </Suspense>
   )
 }
 

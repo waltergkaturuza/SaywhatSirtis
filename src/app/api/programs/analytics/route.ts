@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
 
       // Count by status for projects created in this month or active during this month
       const activeInMonth = allProjects.filter(p => {
+        if (!p.startDate) return false;
         const start = new Date(p.startDate);
         const end = p.endDate ? new Date(p.endDate) : new Date();
         return start <= nextMonth && end >= monthDate && 
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest) {
       }).length;
 
       const pendingInMonth = allProjects.filter(p => {
+        if (!p.startDate) return false;
         const start = new Date(p.startDate);
         return start >= monthDate && start < nextMonth && p.status === 'PENDING';
       }).length;
