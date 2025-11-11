@@ -70,7 +70,8 @@ import {
   ArrowUpTrayIcon,
   UserIcon,
   InformationCircleIcon,
-  ArrowUturnLeftIcon
+  ArrowUturnLeftIcon,
+  ArrowPathIcon
 } from "@heroicons/react/24/outline";
 
 // Document categories from upload form - Updated comprehensive list
