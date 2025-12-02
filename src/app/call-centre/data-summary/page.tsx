@@ -672,7 +672,7 @@ export default function CallCentreDataSummaryPage() {
         </div>
 
         {/* Analytics Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           {/* Cases by Purpose */}
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
             <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Cases by Purpose</h3>
@@ -738,81 +738,123 @@ export default function CallCentreDataSummaryPage() {
             </div>
           </div>
 
-          {/* Calls by Province */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls by Province</h3>
-            <div className="space-y-2">
-              {callsByProvince.length > 0 ? (
-                callsByProvince.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
-                    <div className="text-sm font-medium text-black">{item.province}</div>
-                    <div className="text-sm text-gray-600">
-                      <span className="text-green-600 font-semibold">{item.validCalls}</span> / <span className="text-gray-800">{item.calls}</span>
+          {/* Right column: Province + Demographics stacked */}
+          <div className="space-y-6">
+            {/* Calls by Province (compact) */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+              <h3 className="text-base font-semibold text-black mb-3 border-b border-gray-200 pb-2 flex items-center justify-between">
+                <span>Calls by Province</span>
+                <span className="text-xs text-gray-400">Valid / Total</span>
+              </h3>
+              <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+                {callsByProvince.length > 0 ? (
+                  callsByProvince.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0 text-xs md:text-sm"
+                    >
+                      <div className="font-medium text-black truncate mr-2">
+                        {item.province}
+                      </div>
+                      <div className="text-gray-600 whitespace-nowrap">
+                        <span className="text-green-600 font-semibold">
+                          {item.validCalls}
+                        </span>{" "}
+                        /{" "}
+                        <span className="text-gray-800">{item.calls}</span>
+                      </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6">
+                    <ChartBarIcon className="mx-auto h-10 w-10 text-gray-400 mb-3" />
+                    <h3 className="text-sm font-medium text-gray-900 mb-1">
+                      No Province Data
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Call distribution by province will appear here when
+                      available.
+                    </p>
                   </div>
-                ))
+                )}
+              </div>
+            </div>
+
+            {/* Demographic Analytics: Calls by Age Group */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">
+                Calls Distribution by Age Group
+              </h3>
+              {callsByAgeGroup.length > 0 ? (
+                <div className="space-y-3">
+                  {callsByAgeGroup.map((item, index) => (
+                    <div key={index} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              index === 0
+                                ? "bg-blue-500"
+                                : index === 1
+                                ? "bg-green-500"
+                                : index === 2
+                                ? "bg-orange-500"
+                                : index === 3
+                                ? "bg-purple-500"
+                                : index === 4
+                                ? "bg-red-500"
+                                : "bg-gray-500"
+                            }`}
+                          ></div>
+                          <span className="text-sm font-medium text-black">
+                            {item.ageGroup}
+                          </span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="font-semibold text-gray-900">
+                            {item.count}
+                          </span>
+                          <span className="text-gray-500 ml-2">
+                            ({item.percentage}%)
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full ${
+                            index === 0
+                              ? "bg-blue-500"
+                              : index === 1
+                              ? "bg-green-500"
+                              : index === 2
+                              ? "bg-orange-500"
+                              : index === 3
+                              ? "bg-purple-500"
+                              : index === 4
+                              ? "bg-red-500"
+                              : "bg-gray-500"
+                          }`}
+                          style={{ width: `${item.percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="text-center py-8">
-                  <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">No Province Data</h3>
-                  <p className="text-sm text-gray-500">Call distribution by province will appear here when available.</p>
+                  <UserIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">
+                    No Age Data
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Age distribution will appear here when available.
+                  </p>
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* Demographic Analytics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Calls by Age Group */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls Distribution by Age Group</h3>
-            {callsByAgeGroup.length > 0 ? (
-              <div className="space-y-3">
-                {callsByAgeGroup.map((item, index) => (
-                  <div key={index} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          index === 0 ? 'bg-blue-500' : 
-                          index === 1 ? 'bg-green-500' : 
-                          index === 2 ? 'bg-orange-500' : 
-                          index === 3 ? 'bg-purple-500' : 
-                          index === 4 ? 'bg-red-500' : 'bg-gray-500'
-                        }`}></div>
-                        <span className="text-sm font-medium text-black">{item.ageGroup}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-semibold text-gray-900">{item.count}</span>
-                        <span className="text-gray-500 ml-2">({item.percentage}%)</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className={`h-2.5 rounded-full ${
-                          index === 0 ? 'bg-blue-500' : 
-                          index === 1 ? 'bg-green-500' : 
-                          index === 2 ? 'bg-orange-500' : 
-                          index === 3 ? 'bg-purple-500' : 
-                          index === 4 ? 'bg-red-500' : 'bg-gray-500'
-                        }`}
-                        style={{ width: `${item.percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <UserIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-sm font-medium text-gray-900 mb-2">No Age Data</h3>
-                <p className="text-sm text-gray-500">Age distribution will appear here when available.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Calls by Gender */}
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            {/* Calls by Gender */}
+            <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
             <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls Distribution by Gender</h3>
             {callsByGender.length > 0 ? (
               <div className="space-y-4">
