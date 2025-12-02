@@ -136,88 +136,10 @@ export default function CallCentreDataSummaryPage() {
     document.body.removeChild(link)
   }
 
-  const exportToPDF = () => {
-    // Create printable version
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Call Centre Data Summary Report</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              h1 { color: #1f2937; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
-              h2 { color: #374151; margin-top: 30px; }
-              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-              th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
-              th { background-color: #f3f4f6; font-weight: bold; }
-              .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 20px 0; }
-              .stat-card { border: 1px solid #d1d5db; padding: 15px; border-radius: 8px; }
-              .stat-value { font-size: 24px; font-weight: bold; color: #1f2937; }
-              .stat-label { color: #6b7280; font-size: 14px; }
-            </style>
-          </head>
-          <body>
-            <h1>Call Centre Data Summary Report</h1>
-            <p>Generated on: ${new Date().toLocaleDateString()}</p>
-            
-            <h2>Summary Statistics</h2>
-            <div class="stats-grid">
-              <div class="stat-card">
-                <div class="stat-value">${summaryStats.totalCalls}</div>
-                <div class="stat-label">Total Calls</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value">${summaryStats.validCalls}</div>
-                <div class="stat-label">Valid Calls</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value">${summaryStats.totalCases}</div>
-                <div class="stat-label">Total Cases</div>
-              </div>
-            </div>
-            
-            <h2>Officer Performance</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>Officer Name</th>
-                  <th>Total Calls</th>
-                  <th>Valid Calls</th>
-                  <th>Cases</th>
-                  <th>Pending</th>
-                  <th>Closed</th>
-                  <th>Overdue</th>
-                  <th>Avg Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${officerPerformance.map(officer => `
-                  <tr>
-                    <td>${officer.name}</td>
-                    <td>${officer.totalCalls}</td>
-                    <td>${officer.validCalls}</td>
-                    <td>${officer.cases}</td>
-                    <td>${officer.pendingCases}</td>
-                    <td>${officer.closedCases}</td>
-                    <td>${officer.overdueCases}</td>
-                    <td>${officer.avgCallDuration}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </body>
-        </html>
-      `)
-      printWindow.document.close()
-      setTimeout(() => {
-        printWindow.print()
-      }, 250)
-    }
-  }
-
+  // NOTE: PDF export temporarily disabled due to build issues with nested template literals.
+  // You can re-enable with a safer implementation later if needed.
   const handlePrint = () => {
-    exportToPDF()
+    window.print()
   }
 
   // Check user permissions after all hooks
@@ -367,13 +289,8 @@ export default function CallCentreDataSummaryPage() {
   )
 
   return (
-    <ModulePage
-      metadata={metadata}
-      actions={actions}
-      sidebar={sidebar}
-    >
-      <div className="space-y-6">
-        {/* Search and Filter Panel */}
+    <ModulePage metadata={metadata} actions={actions} sidebar={sidebar}>
+      {/* Search and Filter Panel */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <h2 className="text-xl font-semibold text-black mb-6 border-b border-gray-200 pb-3">Search Parameters</h2>
           
@@ -921,29 +838,44 @@ export default function CallCentreDataSummaryPage() {
 
         {/* Case Management Overview */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Case Management Overview</h3>
-          
+          <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">
+            Case Management Overview
+          </h3>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-gray-50 p-4 rounded-lg text-center border border-gray-200">
-              <div className="text-2xl font-bold text-black">{summaryStats.totalCases}</div>
+              <div className="text-2xl font-bold text-black">
+                {summaryStats.totalCases}
+              </div>
               <div className="text-sm text-gray-600 font-medium">Total Cases</div>
             </div>
             <div className="bg-orange-50 p-4 rounded-lg text-center border border-orange-200">
-              <div className="text-2xl font-bold text-orange-600">{summaryStats.pendingCases}</div>
-              <div className="text-sm text-orange-700 font-medium">Pending Cases</div>
+              <div className="text-2xl font-bold text-orange-600">
+                {summaryStats.pendingCases}
+              </div>
+              <div className="text-sm text-orange-700 font-medium">
+                Pending Cases
+              </div>
             </div>
             <div className="bg-green-50 p-4 rounded-lg text-center border border-green-200">
-              <div className="text-2xl font-bold text-green-600">{summaryStats.closedCases}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {summaryStats.closedCases}
+              </div>
               <div className="text-sm text-green-700 font-medium">Closed Cases</div>
             </div>
             <div className="bg-red-50 p-4 rounded-lg text-center border border-red-200">
-              <div className="text-2xl font-bold text-red-600">{summaryStats.overdueCases}</div>
+              <div className="text-2xl font-bold text-red-600">
+                {summaryStats.overdueCases}
+              </div>
               <div className="text-sm text-red-700 font-medium">Overdue Cases</div>
             </div>
           </div>
 
           <div className="text-sm text-gray-600">
-            <p>Cases are automatically tracked from call entry to closure. Officers can monitor progress and ensure timely resolution of client issues.</p>
+            <p>
+              Cases are automatically tracked from call entry to closure. Officers
+              can monitor progress and ensure timely resolution of client issues.
+            </p>
           </div>
         </div>
       </div>
