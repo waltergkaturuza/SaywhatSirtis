@@ -41,6 +41,7 @@ interface FlagshipEvent {
 
 interface SaywhatEventsProps {
   permissions: any
+  autoOpenForm?: boolean
 }
 
 // Helper function to get organizer name
@@ -79,11 +80,12 @@ const transformApiEvent = (apiEvent: any): FlagshipEvent => ({
   updatedAt: apiEvent.updatedAt
 });
 
-export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
+export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: SaywhatEventsProps) {
   const [events, setEvents] = useState<FlagshipEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showNewEventForm, setShowNewEventForm] = useState(false)
+  const [showPartnerForm, setShowPartnerForm] = useState(false)
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid')
@@ -122,6 +124,17 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
     uploadDate: string;
     file?: File;
   }>>([]);
+  const [partnerFormData, setPartnerFormData] = useState({
+    name: '',
+    organization: '',
+    contactPerson: '',
+    email: '',
+    phone: '',
+    address: '',
+    partnershipType: '',
+    description: '',
+    website: ''
+  });
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -293,6 +306,42 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
     } catch (error) {
       console.error('Event deletion error:', error)
       setError(error instanceof Error ? error.message : 'Failed to delete event')
+    }
+  }
+
+  const handleCreatePartner = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const response = await fetch('/api/programs/implementation-partners', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(partnerFormData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create implementation partner')
+      }
+
+      const newPartner = await response.json()
+      setShowPartnerForm(false)
+      setPartnerFormData({
+        name: '',
+        organization: '',
+        contactPerson: '',
+        email: '',
+        phone: '',
+        address: '',
+        partnershipType: '',
+        description: '',
+        website: ''
+      })
+      // Refresh events to show updated partner data if needed
+      fetchEvents()
+    } catch (error) {
+      console.error('Partner creation error:', error)
+      setError(error instanceof Error ? error.message : 'Failed to create implementation partner')
     }
   }
 
@@ -482,6 +531,12 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
     fetchEvents()
   }, [selectedStatus, selectedCategory])
 
+  useEffect(() => {
+    if (autoOpenForm) {
+      setShowNewEventForm(true)
+    }
+  }, [autoOpenForm])
+
   const getStatusColor = (status: string | undefined) => {
     if (!status) return 'text-gray-600 bg-gray-100'
     const statusLower = status.toLowerCase()
@@ -587,13 +642,22 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
             </>
           )}
           {permissions?.canCreate && (
-            <button
-              onClick={() => setShowNewEventForm(true)}
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors flex items-center"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Add Event
-            </button>
+            <>
+              <button
+                onClick={() => setShowPartnerForm(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center"
+              >
+                <UsersIcon className="h-4 w-4 mr-2" />
+                Add Partner
+              </button>
+              <button
+                onClick={() => setShowNewEventForm(true)}
+                className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors flex items-center"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Event
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -1850,6 +1914,210 @@ export function SaywhatFlagshipEvents({ permissions }: SaywhatEventsProps) {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Implementation Partner Form Modal */}
+      {showPartnerForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <UsersIcon className="h-5 w-5 text-green-600" />
+                  </div>
+                  Add Implementation Partner
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPartnerForm(false);
+                    setPartnerFormData({
+                      name: '',
+                      organization: '',
+                      contactPerson: '',
+                      email: '',
+                      phone: '',
+                      address: '',
+                      partnershipType: '',
+                      description: '',
+                      website: ''
+                    });
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <form className="p-6" onSubmit={handleCreatePartner}>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Partner Name *
+                    </label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="Enter partner name"
+                      value={partnerFormData.name} 
+                      onChange={e => setPartnerFormData({ ...partnerFormData, name: e.target.value })} 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Organization *
+                    </label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="Enter organization name"
+                      value={partnerFormData.organization} 
+                      onChange={e => setPartnerFormData({ ...partnerFormData, organization: e.target.value })} 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Contact Person *
+                    </label>
+                    <input 
+                      type="text" 
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="Enter contact person name"
+                      value={partnerFormData.contactPerson} 
+                      onChange={e => setPartnerFormData({ ...partnerFormData, contactPerson: e.target.value })} 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email *
+                    </label>
+                    <input 
+                      type="email" 
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="Enter email address"
+                      value={partnerFormData.email} 
+                      onChange={e => setPartnerFormData({ ...partnerFormData, email: e.target.value })} 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone *
+                    </label>
+                    <input 
+                      type="tel" 
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      placeholder="Enter phone number"
+                      value={partnerFormData.phone} 
+                      onChange={e => setPartnerFormData({ ...partnerFormData, phone: e.target.value })} 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Partnership Type *
+                    </label>
+                    <select 
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                      value={partnerFormData.partnershipType} 
+                      onChange={e => setPartnerFormData({ ...partnerFormData, partnershipType: e.target.value })} 
+                      required
+                    >
+                      <option value="">Select partnership type</option>
+                      <option value="implementation">Implementation Partner</option>
+                      <option value="funding">Funding Partner</option>
+                      <option value="technical">Technical Partner</option>
+                      <option value="strategic">Strategic Partner</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Address
+                  </label>
+                  <textarea 
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    placeholder="Enter address"
+                    value={partnerFormData.address} 
+                    onChange={e => setPartnerFormData({ ...partnerFormData, address: e.target.value })} 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Website
+                  </label>
+                  <input 
+                    type="url" 
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    placeholder="https://example.com"
+                    value={partnerFormData.website} 
+                    onChange={e => setPartnerFormData({ ...partnerFormData, website: e.target.value })} 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea 
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                    placeholder="Describe the partnership and collaboration details"
+                    value={partnerFormData.description} 
+                    onChange={e => setPartnerFormData({ ...partnerFormData, description: e.target.value })} 
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPartnerForm(false);
+                    setPartnerFormData({
+                      name: '',
+                      organization: '',
+                      contactPerson: '',
+                      email: '',
+                      phone: '',
+                      address: '',
+                      partnershipType: '',
+                      description: '',
+                      website: ''
+                    });
+                  }}
+                  className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Add Partner
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

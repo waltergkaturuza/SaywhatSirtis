@@ -390,7 +390,7 @@ export function ProjectCalendar({ permissions, onItemSelect }: ProjectCalendarPr
 
           {permissions?.canCreate && (
             <Link 
-              href="/programs/flagship-events"
+              href="/programs?tab=saywhat-events&action=new-event"
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
             >
               <PlusIcon className="h-4 w-4 mr-2" />

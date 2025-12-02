@@ -155,6 +155,12 @@ function EnhancedProgramsContent() {
       // Auto-hide after 5 seconds
       setTimeout(() => setShowSuccessMessage(false), 5000)
     }
+    
+    // Handle tab switching from query params
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['dashboard', 'calendar', 'projects', 'project-indicators', 'meal', 'saywhat-events', 'reports'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
   }, [searchParams])
 
   // Loading state
@@ -286,7 +292,14 @@ function EnhancedProgramsContent() {
 
       {permissions.canCreate && (
         <button 
-          onClick={() => router.push('/programs/new')}
+          onClick={() => {
+            if (activeTab === "calendar") {
+              // Navigate to SAYWHAT Flagship Events tab and open form
+              router.push('/programs?tab=saywhat-events&action=new-event')
+            } else {
+              router.push('/programs/new')
+            }
+          }}
           className="flex items-center px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-sm font-semibold hover:from-orange-600 hover:to-orange-700 shadow-lg transition-all transform hover:scale-105"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
@@ -342,6 +355,7 @@ function EnhancedProgramsContent() {
         return (
           <SaywhatFlagshipEvents 
             permissions={permissions as unknown as Record<string, boolean>}
+            autoOpenForm={searchParams.get('action') === 'new-event'}
           />
         )
       case "reports":
