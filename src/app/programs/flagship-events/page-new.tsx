@@ -70,7 +70,19 @@ export default function FlagshipEventsPage() {
   }, [filterEvents])
 
   // Check access control - Programs module access required
-  if (!session?.user?.permissions?.includes('programs.access')) {
+  const userPermissions = session?.user?.permissions || []
+  const userRoles = session?.user?.roles || []
+  const hasProgramsAccess =
+    userPermissions.includes('programs.access') ||
+    userPermissions.includes('programs.full_access') ||
+    userPermissions.includes('admin.access') ||
+    userRoles.some((role: string) =>
+      ['admin', 'system_administrator', 'superuser', 'super_admin'].includes(
+        role.toLowerCase()
+      )
+    )
+
+  if (!hasProgramsAccess) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
