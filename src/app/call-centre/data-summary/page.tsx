@@ -76,6 +76,8 @@ export default function CallCentreDataSummaryPage() {
   // State for chart data - will be populated from API
   const [casesByPurpose, setCasesByPurpose] = useState<Array<{purpose: string, count: number, percentage: number}>>([])
   const [callsByProvince, setCallsByProvince] = useState<Array<{province: string, calls: number, validCalls: number}>>([])
+  const [callsByAgeGroup, setCallsByAgeGroup] = useState<Array<{ageGroup: string, count: number, percentage: number}>>([])
+  const [callsByGender, setCallsByGender] = useState<Array<{gender: string, count: number, percentage: number}>>([])
 
   useEffect(() => {
     fetchSummaryData()
@@ -92,6 +94,8 @@ export default function CallCentreDataSummaryPage() {
       setOfficerPerformance(data.officers || [])
       setCasesByPurpose(data.casesByPurpose || [])
       setCallsByProvince(data.callsByProvince || [])
+      setCallsByAgeGroup(data.callsByAgeGroup || [])
+      setCallsByGender(data.callsByGender || [])
     } catch (error) {
       console.error('Error fetching summary data:', error)
       setError('Failed to load summary data')
@@ -690,6 +694,121 @@ export default function CallCentreDataSummaryPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Demographic Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Calls by Age Group */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls Distribution by Age Group</h3>
+            {callsByAgeGroup.length > 0 ? (
+              <div className="space-y-3">
+                {callsByAgeGroup.map((item, index) => (
+                  <div key={index} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${
+                          index === 0 ? 'bg-blue-500' : 
+                          index === 1 ? 'bg-green-500' : 
+                          index === 2 ? 'bg-orange-500' : 
+                          index === 3 ? 'bg-purple-500' : 
+                          index === 4 ? 'bg-red-500' : 'bg-gray-500'
+                        }`}></div>
+                        <span className="text-sm font-medium text-black">{item.ageGroup}</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="font-semibold text-gray-900">{item.count}</span>
+                        <span className="text-gray-500 ml-2">({item.percentage}%)</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className={`h-2.5 rounded-full ${
+                          index === 0 ? 'bg-blue-500' : 
+                          index === 1 ? 'bg-green-500' : 
+                          index === 2 ? 'bg-orange-500' : 
+                          index === 3 ? 'bg-purple-500' : 
+                          index === 4 ? 'bg-red-500' : 'bg-gray-500'
+                        }`}
+                        style={{ width: `${item.percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <UserIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-sm font-medium text-gray-900 mb-2">No Age Data</h3>
+                <p className="text-sm text-gray-500">Age distribution will appear here when available.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Calls by Gender */}
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls Distribution by Gender</h3>
+            {callsByGender.length > 0 ? (
+              <div className="space-y-4">
+                {callsByGender.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        item.gender === 'Male' ? 'bg-blue-100' :
+                        item.gender === 'Female' ? 'bg-pink-100' :
+                        'bg-purple-100'
+                      }`}>
+                        <span className={`text-2xl ${
+                          item.gender === 'Male' ? 'text-blue-600' :
+                          item.gender === 'Female' ? 'text-pink-600' :
+                          'text-purple-600'
+                        }`}>
+                          {item.gender === 'Male' ? '♂' : item.gender === 'Female' ? '♀' : '⚥'}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900">{item.gender}</div>
+                        <div className="text-xs text-gray-500">{item.percentage}% of total</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-2xl font-bold ${
+                        item.gender === 'Male' ? 'text-blue-600' :
+                        item.gender === 'Female' ? 'text-pink-600' :
+                        'text-purple-600'
+                      }`}>{item.count}</div>
+                      <div className="text-xs text-gray-500">calls</div>
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Visual percentage bar */}
+                <div className="mt-4">
+                  <div className="flex h-8 rounded-lg overflow-hidden border border-gray-300">
+                    {callsByGender.map((item, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center justify-center text-xs font-medium text-white ${
+                          item.gender === 'Male' ? 'bg-blue-500' :
+                          item.gender === 'Female' ? 'bg-pink-500' :
+                          'bg-purple-500'
+                        }`}
+                        style={{ width: `${item.percentage}%` }}
+                      >
+                        {item.percentage > 10 && `${item.percentage}%`}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <UserIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-sm font-medium text-gray-900 mb-2">No Gender Data</h3>
+                <p className="text-sm text-gray-500">Gender distribution will appear here when available.</p>
+              </div>
+            )}
           </div>
         </div>
 

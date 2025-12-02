@@ -230,6 +230,68 @@ export async function GET(request: NextRequest) {
       })
     )
 
+    // Get calls by age group
+    const ageStats = await prisma.call_records.groupBy({
+      by: ['callerAge'],
+      where: {
+        ...dateFilter,
+        callerAge: {
+          not: null
+        }
+      },
+      _count: {
+        id: true
+      }
+    })
+
+    // Categorize into age groups
+    const ageGroups = {
+      '0-17': 0,
+      '18-24': 0,
+      '25-34': 0,
+      '35-44': 0,
+      '45-54': 0,
+      '55+': 0
+    }
+
+    ageStats.forEach(stat => {
+      const age = parseInt(stat.callerAge || '0')
+      if (age <= 17) ageGroups['0-17'] += stat._count.id
+      else if (age <= 24) ageGroups['18-24'] += stat._count.id
+      else if (age <= 34) ageGroups['25-34'] += stat._count.id
+      else if (age <= 44) ageGroups['35-44'] += stat._count.id
+      else if (age <= 54) ageGroups['45-54'] += stat._count.id
+      else ageGroups['55+'] += stat._count.id
+    })
+
+    const totalWithAge = Object.values(ageGroups).reduce((sum, count) => sum + count, 0)
+    const callsByAgeGroup = Object.entries(ageGroups).map(([ageGroup, count]) => ({
+      ageGroup,
+      count,
+      percentage: totalWithAge > 0 ? Math.round((count / totalWithAge) * 100) : 0
+    })).filter(item => item.count > 0)
+
+    // Get calls by gender
+    const genderStats = await prisma.call_records.groupBy({
+      by: ['callerGender'],
+      where: {
+        ...dateFilter,
+        callerGender: {
+          not: null
+        }
+      },
+      _count: {
+        id: true
+      }
+    })
+
+    const totalWithGender = genderStats.reduce((sum, stat) => sum + stat._count.id, 0)
+    const callsByGender = genderStats.map(stat => ({
+      gender: stat.callerGender || 'Unknown',
+      count: stat._count.id,
+      percentage: totalWithGender > 0 ? Math.round((stat._count.id / totalWithGender) * 100) : 0
+    })).sort((a, b) => b.count - a.count)
+
     // Return data in the format expected by the frontend
     const response = {
       stats: {
@@ -245,7 +307,9 @@ export async function GET(request: NextRequest) {
       },
       officers,
       casesByPurpose,
-      callsByProvince
+      callsByProvince,
+      callsByAgeGroup,
+      callsByGender
     }
 
     return NextResponse.json(response)
@@ -269,6 +333,8 @@ export async function GET(request: NextRequest) {
       officers: [],
       casesByPurpose: [],
       callsByProvince: [],
+      callsByAgeGroup: [],
+      callsByGender: [],
       error: 'Failed to fetch data'
     }, { status: 500 })
   }
