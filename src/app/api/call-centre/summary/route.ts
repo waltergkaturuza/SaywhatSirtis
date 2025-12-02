@@ -131,7 +131,9 @@ export async function GET(request: NextRequest) {
             callValidity: true,
             isCase: true,
             status: true,
-            followUpDate: true
+            followUpDate: true,
+            callStartTime: true,
+            callEndTime: true
           }
         })
 
@@ -146,6 +148,22 @@ export async function GET(request: NextRequest) {
           new Date(c.followUpDate) < new Date()
         ).length
 
+        // Calculate actual average call duration for this officer
+        const callsWithDuration = officerCalls.filter(c => c.callStartTime && c.callEndTime);
+        let avgDurationMinutes = 0;
+        
+        if (callsWithDuration.length > 0) {
+          const totalDurationMs = callsWithDuration.reduce((sum, call) => {
+            const start = new Date(call.callStartTime!).getTime();
+            const end = new Date(call.callEndTime!).getTime();
+            return sum + (end - start);
+          }, 0);
+          
+          avgDurationMinutes = Math.round(totalDurationMs / callsWithDuration.length / 1000 / 60);
+        }
+
+        const avgCallDuration = avgDurationMinutes > 0 ? `${avgDurationMinutes} min` : 'N/A';
+
         return {
           name: officer.officerName || 'Unknown',
           totalCalls: officer._count.id,
@@ -154,7 +172,7 @@ export async function GET(request: NextRequest) {
           pendingCases: pendingCasesCount,
           closedCases: closedCasesCount,
           overdueCases: overdueCasesCount,
-          avgCallDuration: "15 min" // Mock data for now
+          avgCallDuration
         }
       })
     )
