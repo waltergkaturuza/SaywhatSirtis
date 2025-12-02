@@ -75,9 +75,11 @@ export default function CallCentreDataSummaryPage() {
   
   // State for chart data - will be populated from API
   const [casesByPurpose, setCasesByPurpose] = useState<Array<{purpose: string, count: number, percentage: number}>>([])
+  const [purposeByTimeframe, setPurposeByTimeframe] = useState<Array<{purpose: string, today: number, week: number, month: number, year: number, total: number}>>([])
   const [callsByProvince, setCallsByProvince] = useState<Array<{province: string, calls: number, validCalls: number}>>([])
   const [callsByAgeGroup, setCallsByAgeGroup] = useState<Array<{ageGroup: string, count: number, percentage: number}>>([])
   const [callsByGender, setCallsByGender] = useState<Array<{gender: string, count: number, percentage: number}>>([])
+  const [callsByTimeframe, setCallsByTimeframe] = useState<{today: number, week: number, month: number, year: number}>({today: 0, week: 0, month: 0, year: 0})
 
   useEffect(() => {
     fetchSummaryData()
@@ -93,9 +95,11 @@ export default function CallCentreDataSummaryPage() {
       setSummaryStats(data.stats || summaryStats)
       setOfficerPerformance(data.officers || [])
       setCasesByPurpose(data.casesByPurpose || [])
+      setPurposeByTimeframe(data.purposeByTimeframe || [])
       setCallsByProvince(data.callsByProvince || [])
       setCallsByAgeGroup(data.callsByAgeGroup || [])
       setCallsByGender(data.callsByGender || [])
+      setCallsByTimeframe(data.callsByTimeframe || {today: 0, week: 0, month: 0, year: 0})
     } catch (error) {
       console.error('Error fetching summary data:', error)
       setError('Failed to load summary data')
@@ -640,11 +644,72 @@ export default function CallCentreDataSummaryPage() {
           </div>
         </div>
 
+        {/* Time Distribution */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls by Timeframe</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border-2 border-blue-200">
+              <div className="text-sm text-blue-700 font-medium mb-1">Today</div>
+              <div className="text-3xl font-bold text-blue-900">{callsByTimeframe.today}</div>
+              <div className="text-xs text-blue-600 mt-1">Last 24 hours</div>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border-2 border-green-200">
+              <div className="text-sm text-green-700 font-medium mb-1">This Week</div>
+              <div className="text-3xl font-bold text-green-900">{callsByTimeframe.week}</div>
+              <div className="text-xs text-green-600 mt-1">Last 7 days</div>
+            </div>
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border-2 border-orange-200">
+              <div className="text-sm text-orange-700 font-medium mb-1">This Month</div>
+              <div className="text-3xl font-bold text-orange-900">{callsByTimeframe.month}</div>
+              <div className="text-xs text-orange-600 mt-1">Last 30 days</div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-200">
+              <div className="text-sm text-purple-700 font-medium mb-1">This Year</div>
+              <div className="text-3xl font-bold text-purple-900">{callsByTimeframe.year}</div>
+              <div className="text-xs text-purple-600 mt-1">Year to date</div>
+            </div>
+          </div>
+        </div>
+
         {/* Analytics Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cases by Purpose */}
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
             <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Cases by Purpose</h3>
+            
+            {/* Purpose Distribution by Timeframe Table */}
+            {purposeByTimeframe.length > 0 ? (
+              <div className="overflow-x-auto mb-6">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200">
+                      <th className="text-left py-3 px-2 font-semibold text-black">Purpose</th>
+                      <th className="text-center py-3 px-2 font-semibold text-blue-700">Today</th>
+                      <th className="text-center py-3 px-2 font-semibold text-green-700">This Week</th>
+                      <th className="text-center py-3 px-2 font-semibold text-orange-700">This Month</th>
+                      <th className="text-center py-3 px-2 font-semibold text-purple-700">This Year</th>
+                      <th className="text-center py-3 px-2 font-semibold text-gray-700">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {purposeByTimeframe
+                      .sort((a, b) => b.total - a.total)
+                      .map((item, index) => (
+                        <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-2 font-medium text-black">{item.purpose}</td>
+                          <td className="py-3 px-2 text-center text-blue-600 font-semibold">{item.today}</td>
+                          <td className="py-3 px-2 text-center text-green-600 font-semibold">{item.week}</td>
+                          <td className="py-3 px-2 text-center text-orange-600 font-semibold">{item.month}</td>
+                          <td className="py-3 px-2 text-center text-purple-600 font-semibold">{item.year}</td>
+                          <td className="py-3 px-2 text-center text-gray-800 font-bold">{item.total}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            {/* Overall Purpose Distribution (Progress Bars) */}
             <div className="space-y-3">
               {casesByPurpose.length > 0 ? (
                 casesByPurpose.map((item, index) => (
@@ -678,7 +743,7 @@ export default function CallCentreDataSummaryPage() {
             <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls by Province</h3>
             <div className="space-y-2">
               {callsByProvince.length > 0 ? (
-                callsByProvince.slice(0, 6).map((item, index) => (
+                callsByProvince.map((item, index) => (
                   <div key={index} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0">
                     <div className="text-sm font-medium text-black">{item.province}</div>
                     <div className="text-sm text-gray-600">

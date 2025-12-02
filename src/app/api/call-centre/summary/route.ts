@@ -177,6 +177,13 @@ export async function GET(request: NextRequest) {
       })
     )
 
+    // Calculate timeframe dates (used for both calls and purpose)
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const yearStart = new Date(now.getFullYear(), 0, 1)
+
     // Get cases by purpose
     const purposeStats = await prisma.call_records.groupBy({
       by: ['purpose'],
@@ -198,6 +205,56 @@ export async function GET(request: NextRequest) {
       percentage: totalCases > 0 ? Math.round((stat._count.id / totalCases) * 100) : 0
     }))
 
+    // Get purpose distribution by timeframe
+
+    // Get all unique purposes
+    const allPurposes = [...new Set(purposeStats.map(s => s.purpose || 'Unknown'))]
+
+    const purposeByTimeframe = await Promise.all(
+      allPurposes.map(async (purpose) => {
+        const today = await prisma.call_records.count({
+          where: {
+            isCase: 'YES',
+            purpose: purpose,
+            createdAt: { gte: todayStart }
+          }
+        })
+
+        const week = await prisma.call_records.count({
+          where: {
+            isCase: 'YES',
+            purpose: purpose,
+            createdAt: { gte: weekStart }
+          }
+        })
+
+        const month = await prisma.call_records.count({
+          where: {
+            isCase: 'YES',
+            purpose: purpose,
+            createdAt: { gte: monthStart }
+          }
+        })
+
+        const year = await prisma.call_records.count({
+          where: {
+            isCase: 'YES',
+            purpose: purpose,
+            createdAt: { gte: yearStart }
+          }
+        })
+
+        return {
+          purpose,
+          today,
+          week,
+          month,
+          year,
+          total: purposeStats.find(s => s.purpose === purpose)?._count.id || 0
+        }
+      })
+    )
+
     // Get calls by province
     const provinceStats = await prisma.call_records.groupBy({
       by: ['callerProvince'],
@@ -212,19 +269,40 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // All Zimbabwe provinces - ensure all are shown even with 0 calls
+    const allProvinces = [
+      'Harare', 'Bulawayo', 'Manicaland', 'Mashonaland Central', 
+      'Mashonaland East', 'Mashonaland West', 'Masvingo', 
+      'Matabeleland North', 'Matabeleland South', 'Midlands'
+    ]
+
     const callsByProvince = await Promise.all(
-      provinceStats.map(async (province) => {
-        const validCallsInProvince = await prisma.call_records.count({
-          where: {
-            ...dateFilter,
-            callerProvince: province.callerProvince,
-            callValidity: 'valid'
-          }
-        })
+      allProvinces.map(async (provinceName) => {
+        const provinceData = provinceStats.find(p => 
+          p.callerProvince?.toLowerCase() === provinceName.toLowerCase()
+        )
+
+        const totalCalls = provinceData?._count.id || 0
+
+        // Find matching province name (case-insensitive) from stats
+        const matchingProvince = provinceStats.find(p => 
+          p.callerProvince?.toLowerCase() === provinceName.toLowerCase()
+        )
+        
+        // Count valid calls for this province
+        const validCallsInProvince = matchingProvince 
+          ? await prisma.call_records.count({
+              where: {
+                ...dateFilter,
+                callerProvince: matchingProvince.callerProvince,
+                callValidity: 'valid'
+              }
+            })
+          : 0
 
         return {
-          province: province.callerProvince || 'Unknown',
-          calls: province._count.id,
+          province: provinceName,
+          calls: totalCalls,
           validCalls: validCallsInProvince
         }
       })
@@ -292,6 +370,53 @@ export async function GET(request: NextRequest) {
       percentage: totalWithGender > 0 ? Math.round((stat._count.id / totalWithGender) * 100) : 0
     })).sort((a, b) => b.count - a.count)
 
+    // Calculate calls by timeframe (using dates calculated above)
+    const callsToday = await prisma.call_records.count({
+      where: {
+        createdAt: {
+          gte: todayStart
+        }
+      }
+    })
+
+    const callsThisWeek = await prisma.call_records.count({
+      where: {
+        createdAt: {
+          gte: weekStart
+        }
+      }
+    })
+
+    const callsThisMonth = await prisma.call_records.count({
+      where: {
+        createdAt: {
+          gte: monthStart
+        }
+      }
+    })
+
+    const callsThisYear = await prisma.call_records.count({
+      where: {
+        createdAt: {
+          gte: yearStart
+        }
+      }
+    })
+
+    const callsByTimeframe = {
+      today: callsToday,
+      week: callsThisWeek,
+      month: callsThisMonth,
+      year: callsThisYear
+    }
+
+    // Sort provinces by call count (descending) to show most active first, but keep 0-call provinces at the end
+    const sortedCallsByProvince = callsByProvince.sort((a, b) => {
+      if (a.calls === 0 && b.calls > 0) return 1
+      if (b.calls === 0 && a.calls > 0) return -1
+      return b.calls - a.calls
+    })
+
     // Return data in the format expected by the frontend
     const response = {
       stats: {
@@ -307,9 +432,11 @@ export async function GET(request: NextRequest) {
       },
       officers,
       casesByPurpose,
-      callsByProvince,
+      purposeByTimeframe,
+      callsByProvince: sortedCallsByProvince,
       callsByAgeGroup,
-      callsByGender
+      callsByGender,
+      callsByTimeframe
     }
 
     return NextResponse.json(response)
@@ -332,9 +459,11 @@ export async function GET(request: NextRequest) {
       },
       officers: [],
       casesByPurpose: [],
+      purposeByTimeframe: [],
       callsByProvince: [],
       callsByAgeGroup: [],
       callsByGender: [],
+      callsByTimeframe: {today: 0, week: 0, month: 0, year: 0},
       error: 'Failed to fetch data'
     }, { status: 500 })
   }
