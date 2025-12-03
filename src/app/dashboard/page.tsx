@@ -127,16 +127,22 @@ export default function DashboardPage() {
   const [totalCallsSinceInception, setTotalCallsSinceInception] = useState(0)
   const [programDistributionData, setProgramDistributionData] = useState<any[]>([])
   const [programTimelineData, setProgramTimelineData] = useState<any[]>([])
+  const [callsByProvince, setCallsByProvince] = useState<Array<{province: string, calls: number, validCalls: number}>>([])
+  const [callsByAgeGroup, setCallsByAgeGroup] = useState<Array<{ageGroup: string, count: number, percentage: number}>>([])
+  const [callsByGender, setCallsByGender] = useState<Array<{gender: string, count: number, percentage: number}>>([])
+  const [totalCases, setTotalCases] = useState(0)
+  const [newCasesThisMonth, setNewCasesThisMonth] = useState(0)
 
   // Fetch dashboard metrics
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const [metricsResponse, callAnalyticsResponse, totalCallsResponse, programAnalyticsResponse] = await Promise.all([
+        const [metricsResponse, callAnalyticsResponse, totalCallsResponse, programAnalyticsResponse, callSummaryResponse] = await Promise.all([
           fetch('/api/dashboard/metrics'),
           fetch('/api/call-centre/analytics'),
           fetch('/api/call-centre/stats?period=all'),
-          fetch('/api/programs/analytics')
+          fetch('/api/programs/analytics'),
+          fetch('/api/call-centre/summary')
         ])
         
         if (metricsResponse.ok) {
@@ -183,6 +189,20 @@ export default function DashboardPage() {
           console.error('❌ Failed to fetch program analytics:', programAnalyticsResponse.status)
           const errorText = await programAnalyticsResponse.text()
           console.error('Error response:', errorText)
+        }
+
+        if (callSummaryResponse.ok) {
+          const summaryData = await callSummaryResponse.json()
+          setCallsByProvince(summaryData.callsByProvince || [])
+          setCallsByAgeGroup(summaryData.callsByAgeGroup || [])
+          setCallsByGender(summaryData.callsByGender || [])
+          setTotalCases(summaryData.stats?.totalCases || 0)
+          
+          // Calculate new cases this month from purposeByTimeframe
+          if (summaryData.purposeByTimeframe && summaryData.purposeByTimeframe.length > 0) {
+            const totalNewCases = summaryData.purposeByTimeframe.reduce((sum: number, item: any) => sum + (item.month || 0), 0)
+            setNewCasesThisMonth(totalNewCases)
+          }
         }
       } catch (error) {
         console.error('Failed to fetch dashboard metrics:', error)
@@ -355,20 +375,20 @@ export default function DashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-saywhat-grey">Total Users</p>
+                    <p className="text-sm font-medium text-saywhat-grey">Total Cases</p>
                     <p className="text-2xl font-bold text-saywhat-dark">
-                      {metrics ? metrics.totalMembers.toLocaleString() : '---'}
+                      {totalCases.toLocaleString()}
                     </p>
                     <p className="text-xs flex items-center mt-1" style={{ color: SAYWHAT_COLORS.orange }}>
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      +{metrics ? metrics.newMembersThisMonth : 0} this month
+                      +{newCasesThisMonth} this month
                     </p>
                   </div>
                   <div 
                     className="h-12 w-12 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: `${SAYWHAT_COLORS.orange}20` }}
                   >
-                    <Users className="h-6 w-6" style={{ color: SAYWHAT_COLORS.orange }} />
+                    <FileText className="h-6 w-6" style={{ color: SAYWHAT_COLORS.orange }} />
                   </div>
                 </div>
               </CardContent>
@@ -502,102 +522,184 @@ export default function DashboardPage() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Member Growth Chart */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Calls by Province */}
                 <Card className="border-saywhat-grey">
                   <CardHeader>
-                    <CardTitle className="text-saywhat-dark">User Growth Trends</CardTitle>
+                    <CardTitle className="text-saywhat-dark">Calls by Province</CardTitle>
+                    <p className="text-xs text-saywhat-grey mt-1">Valid / Total</p>
                   </CardHeader>
                   <CardContent>
-                    {metrics ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <AreaChart
-                          data={generateMemberGrowthData(metrics.totalMembers)}
-                          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                        >
-                          <defs>
-                            <linearGradient id="memberGrowth" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={SAYWHAT_COLORS.orange} stopOpacity={0.8}/>
-                              <stop offset="95%" stopColor={SAYWHAT_COLORS.orange} stopOpacity={0.1}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                          <XAxis 
-                            dataKey="month" 
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fontSize: 12, fill: SAYWHAT_COLORS.grey }}
-                          />
-                          <YAxis 
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fontSize: 12, fill: SAYWHAT_COLORS.grey }}
-                          />
-                          <Tooltip 
-                            contentStyle={{
-                              backgroundColor: 'white',
-                              border: `1px solid ${SAYWHAT_COLORS.orange}`,
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}
-                            formatter={(value: any) => [`${value} users`, 'Total Users']}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="members"
-                            stroke={SAYWHAT_COLORS.orange}
-                            strokeWidth={3}
-                            fillOpacity={1}
-                            fill="url(#memberGrowth)"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                    {callsByProvince.length > 0 ? (
+                      <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
+                        {callsByProvince.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0 text-sm"
+                          >
+                            <div className="font-medium text-saywhat-dark truncate mr-2">
+                              {item.province}
+                            </div>
+                            <div className="text-saywhat-grey whitespace-nowrap">
+                              <span className="text-green-600 font-semibold">
+                                {item.validCalls}
+                              </span>{" "}
+                              /{" "}
+                              <span className="text-saywhat-dark">{item.calls}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <div className="h-64 flex items-center justify-center text-saywhat-grey">
                         <div className="text-center">
-                          <Users className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.orange }} />
-                          <p>Loading user growth data...</p>
+                          <ChartBarIcon className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.orange }} />
+                          <p>No province data available</p>
                         </div>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Member Activity */}
+                {/* Calls Distribution by Age Group */}
                 <Card className="border-saywhat-grey">
                   <CardHeader>
-                    <CardTitle className="text-saywhat-dark">User Activity Status</CardTitle>
+                    <CardTitle className="text-saywhat-dark">Calls Distribution by Age Group</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: `${SAYWHAT_COLORS.orange}20` }}>
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: SAYWHAT_COLORS.orange }}></div>
-                          <span className="font-medium text-saywhat-dark">Active Users</span>
-                        </div>
-                        <span className="font-bold text-saywhat-dark">
-                          {metrics ? metrics.activeMembers : '---'}
-                        </span>
+                    {callsByAgeGroup.length > 0 ? (
+                      <div className="space-y-3">
+                        {callsByAgeGroup.map((item, index) => (
+                          <div key={index} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <div
+                                  className={`w-3 h-3 rounded-full ${
+                                    index === 0
+                                      ? "bg-blue-500"
+                                      : index === 1
+                                      ? "bg-green-500"
+                                      : index === 2
+                                      ? "bg-orange-500"
+                                      : index === 3
+                                      ? "bg-purple-500"
+                                      : index === 4
+                                      ? "bg-red-500"
+                                      : "bg-gray-500"
+                                  }`}
+                                ></div>
+                                <span className="text-sm font-medium text-saywhat-dark">
+                                  {item.ageGroup}
+                                </span>
+                              </div>
+                              <div className="text-sm">
+                                <span className="font-semibold text-saywhat-dark">
+                                  {item.count}
+                                </span>
+                                <span className="text-saywhat-grey ml-2">
+                                  ({item.percentage}%)
+                                </span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                              <div
+                                className={`h-2.5 rounded-full ${
+                                  index === 0
+                                    ? "bg-blue-500"
+                                    : index === 1
+                                    ? "bg-green-500"
+                                    : index === 2
+                                    ? "bg-orange-500"
+                                    : index === 3
+                                    ? "bg-purple-500"
+                                    : index === 4
+                                    ? "bg-red-500"
+                                    : "bg-gray-500"
+                                }`}
+                                style={{ width: `${item.percentage}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: `${SAYWHAT_COLORS.grey}20` }}>
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: SAYWHAT_COLORS.grey }}></div>
-                          <span className="font-medium text-saywhat-dark">Total Users</span>
+                    ) : (
+                      <div className="h-64 flex items-center justify-center text-saywhat-grey">
+                        <div className="text-center">
+                          <Users className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.orange }} />
+                          <p>No age data available</p>
                         </div>
-                        <span className="font-bold text-saywhat-dark">
-                          {metrics ? metrics.totalMembers : '---'}
-                        </span>
                       </div>
-                      <div className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: `${SAYWHAT_COLORS.red}20` }}>
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: SAYWHAT_COLORS.red }}></div>
-                          <span className="font-medium text-saywhat-dark">New This Month</span>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Calls Distribution by Gender */}
+                <Card className="border-saywhat-grey">
+                  <CardHeader>
+                    <CardTitle className="text-saywhat-dark">Calls Distribution by Gender</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {callsByGender.length > 0 ? (
+                      <div className="space-y-4">
+                        {callsByGender.map((item, index) => (
+                          <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                item.gender === 'Male' ? 'bg-blue-100' :
+                                item.gender === 'Female' ? 'bg-pink-100' :
+                                'bg-purple-100'
+                              }`}>
+                                <span className={`text-2xl ${
+                                  item.gender === 'Male' ? 'text-blue-600' :
+                                  item.gender === 'Female' ? 'text-pink-600' :
+                                  'text-purple-600'
+                                }`}>
+                                  {item.gender === 'Male' ? '♂' : item.gender === 'Female' ? '♀' : '⚥'}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold text-saywhat-dark">{item.gender}</div>
+                                <div className="text-xs text-saywhat-grey">{item.percentage}% of total</div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className={`text-2xl font-bold ${
+                                item.gender === 'Male' ? 'text-blue-600' :
+                                item.gender === 'Female' ? 'text-pink-600' :
+                                'text-purple-600'
+                              }`}>{item.count}</div>
+                              <div className="text-xs text-saywhat-grey">calls</div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Visual percentage bar */}
+                        <div className="mt-4">
+                          <div className="flex h-8 rounded-lg overflow-hidden border border-gray-300">
+                            {callsByGender.map((item, index) => (
+                              <div
+                                key={index}
+                                className={`flex items-center justify-center text-xs font-medium text-white ${
+                                  item.gender === 'Male' ? 'bg-blue-500' :
+                                  item.gender === 'Female' ? 'bg-pink-500' :
+                                  'bg-purple-500'
+                                }`}
+                                style={{ width: `${item.percentage}%` }}
+                              >
+                                {item.percentage > 10 && `${item.percentage}%`}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <span className="font-bold text-saywhat-dark">
-                          {metrics ? metrics.newMembersThisMonth : '---'}
-                        </span>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="h-64 flex items-center justify-center text-saywhat-grey">
+                        <div className="text-center">
+                          <Users className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.orange }} />
+                          <p>No gender data available</p>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
