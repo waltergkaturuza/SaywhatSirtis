@@ -337,7 +337,7 @@ export default function DashboardPage() {
                   </div>
                   {metrics && (
                     <div>
-                      <span className="block text-orange-100">Active Members</span>
+                      <span className="block text-orange-100">Active Users</span>
                       <span className="font-semibold">{metrics.activeMembers}</span>
                     </div>
                   )}
@@ -355,7 +355,7 @@ export default function DashboardPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-saywhat-grey">Total Members</p>
+                    <p className="text-sm font-medium text-saywhat-grey">Total Users</p>
                     <p className="text-2xl font-bold text-saywhat-dark">
                       {metrics ? metrics.totalMembers.toLocaleString() : '---'}
                     </p>
@@ -459,7 +459,7 @@ export default function DashboardPage() {
                 <div>
                   <h3 className="text-lg font-semibold">Program Management Active</h3>
                   <p className="text-red-100">
-                    Member engagement tracking • Program performance analytics • Real-time member insights
+                    User engagement tracking • Program performance analytics • Real-time user insights
                   </p>
                 </div>
               </div>
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                 value="overview" 
                 className="data-[state=active]:bg-saywhat-orange data-[state=active]:text-white"
               >
-                Member Overview
+                User Overview
               </TabsTrigger>
               <TabsTrigger 
                 value="calls"
@@ -506,7 +506,7 @@ export default function DashboardPage() {
                 {/* Member Growth Chart */}
                 <Card className="border-saywhat-grey">
                   <CardHeader>
-                    <CardTitle className="text-saywhat-dark">Member Growth Trends</CardTitle>
+                    <CardTitle className="text-saywhat-dark">User Growth Trends</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {metrics ? (
@@ -540,7 +540,7 @@ export default function DashboardPage() {
                               borderRadius: '8px',
                               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                             }}
-                            formatter={(value: any) => [`${value} members`, 'Total Members']}
+                            formatter={(value: any) => [`${value} users`, 'Total Users']}
                           />
                           <Area
                             type="monotone"
@@ -556,7 +556,7 @@ export default function DashboardPage() {
                       <div className="h-64 flex items-center justify-center text-saywhat-grey">
                         <div className="text-center">
                           <Users className="h-12 w-12 mx-auto mb-4" style={{ color: SAYWHAT_COLORS.orange }} />
-                          <p>Loading member growth data...</p>
+                          <p>Loading user growth data...</p>
                         </div>
                       </div>
                     )}
@@ -566,14 +566,14 @@ export default function DashboardPage() {
                 {/* Member Activity */}
                 <Card className="border-saywhat-grey">
                   <CardHeader>
-                    <CardTitle className="text-saywhat-dark">Member Activity Status</CardTitle>
+                    <CardTitle className="text-saywhat-dark">User Activity Status</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: `${SAYWHAT_COLORS.orange}20` }}>
                         <div className="flex items-center">
                           <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: SAYWHAT_COLORS.orange }}></div>
-                          <span className="font-medium text-saywhat-dark">Active Members</span>
+                          <span className="font-medium text-saywhat-dark">Active Users</span>
                         </div>
                         <span className="font-bold text-saywhat-dark">
                           {metrics ? metrics.activeMembers : '---'}
@@ -582,7 +582,7 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: `${SAYWHAT_COLORS.grey}20` }}>
                         <div className="flex items-center">
                           <div className="w-3 h-3 rounded-full mr-3" style={{ backgroundColor: SAYWHAT_COLORS.grey }}></div>
-                          <span className="font-medium text-saywhat-dark">Total Members</span>
+                          <span className="font-medium text-saywhat-dark">Total Users</span>
                         </div>
                         <span className="font-bold text-saywhat-dark">
                           {metrics ? metrics.totalMembers : '---'}
@@ -903,7 +903,7 @@ export default function DashboardPage() {
                     onClick={() => window.location.href = '/hr'}
                   >
                     <Users className="h-6 w-6" />
-                    <span className="text-xs">Member Management</span>
+                    <span className="text-xs">User Management</span>
                   </Button>
                 )}
                 {(session?.user?.permissions?.includes("analytics.view") || session?.user?.permissions?.includes("analytics.full_access")) && (
