@@ -56,49 +56,98 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Transform drafts to match project format
-    const draftProjects = drafts.map(draft => ({
-      id: draft.id,
-      name: draft.projectTitle || draft.projectCode || 'Untitled Draft',
-      description: draft.description || '',
-      projectGoal: draft.projectGoal || '',
-      status: 'DRAFT',
-      priority: 'MEDIUM',
-      progress: 0,
-      startDate: draft.startDate ? new Date(draft.startDate).toISOString() : null,
-      endDate: draft.endDate ? new Date(draft.endDate).toISOString() : null,
-      budget: draft.totalBudget ? parseFloat(draft.totalBudget.toString()) : null,
-      actualSpent: 0,
-      country: draft.selectedCountries && draft.selectedCountries.length > 0 ? draft.selectedCountries[0] : null,
-      province: draft.selectedProvinces && Object.keys(draft.selectedProvinces).length > 0 
-        ? Object.values(draft.selectedProvinces)[0]?.join(', ') || null 
-        : null,
-      objectives: JSON.stringify({
-        categories: draft.selectedCategories || [],
-        projectLead: draft.projectLead || null,
-        projectTeam: draft.projectTeam || [],
-        implementingOrganizations: draft.implementingOrganizations || [],
-        evaluationFrequency: draft.selectedFrequencies || [],
-        frequencyDates: draft.frequencyDates || {},
-        methodologies: draft.selectedMethodologies || [],
-        fundingSource: draft.fundingSource || null,
-        resultsFramework: draft.resultsFramework || { objectives: [], projectDuration: 3 },
-        countries: draft.selectedCountries || [],
-        provinces: draft.selectedProvinces || {},
-        uploadedDocuments: draft.uploadedDocuments || []
-      }),
-      createdAt: draft.createdAt,
-      updatedAt: draft.updatedAt,
-      creatorId: draft.userId,
-      managerId: null,
-      isDraft: true, // Flag to identify drafts
-      draftId: draft.id,
-      users_projects_creatorIdTousers: null,
-      users_projects_managerIdTousers: null,
-      _count: {
-        activities: 0
+    // Helper function to safely parse JSON fields
+    const safeParseArray = (value: any, defaultValue: any[] = []): any[] => {
+      if (Array.isArray(value)) return value
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value)
+          return Array.isArray(parsed) ? parsed : defaultValue
+        } catch {
+          return defaultValue
+        }
       }
-    }))
+      return defaultValue
+    }
+
+    const safeParseObject = (value: any, defaultValue: any = {}): any => {
+      if (value && typeof value === 'object' && !Array.isArray(value)) return value
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value)
+          return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : defaultValue
+        } catch {
+          return defaultValue
+        }
+      }
+      return defaultValue
+    }
+
+    // Transform drafts to match project format
+    const draftProjects = drafts.map(draft => {
+      // Safely parse JSON fields
+      const selectedCountries = safeParseArray(draft.selectedCountries, [])
+      const selectedProvinces = safeParseObject(draft.selectedProvinces, {})
+      const selectedCategories = safeParseArray(draft.selectedCategories, [])
+      const projectTeam = safeParseArray(draft.projectTeam, [])
+      const implementingOrganizations = safeParseArray(draft.implementingOrganizations, [])
+      const selectedFrequencies = safeParseArray(draft.selectedFrequencies, [])
+      const frequencyDates = safeParseObject(draft.frequencyDates, {})
+      const selectedMethodologies = safeParseArray(draft.selectedMethodologies, [])
+      const resultsFramework = safeParseObject(draft.resultsFramework, { objectives: [], projectDuration: 3 })
+      const uploadedDocuments = safeParseArray(draft.uploadedDocuments, [])
+
+      return {
+        id: draft.id,
+        name: draft.projectTitle || draft.projectCode || 'Untitled Draft',
+        description: draft.description || '',
+        projectGoal: draft.projectGoal || '',
+        status: 'DRAFT',
+        priority: 'MEDIUM',
+        progress: 0,
+        startDate: draft.startDate ? new Date(draft.startDate).toISOString() : null,
+        endDate: draft.endDate ? new Date(draft.endDate).toISOString() : null,
+        budget: draft.totalBudget ? parseFloat(draft.totalBudget.toString()) : null,
+        actualSpent: 0,
+        country: selectedCountries.length > 0 ? selectedCountries[0] : null,
+        province: (() => {
+          const provinceKeys = Object.keys(selectedProvinces)
+          if (provinceKeys.length > 0) {
+            const firstProvinceValue = selectedProvinces[provinceKeys[0]]
+            if (Array.isArray(firstProvinceValue)) {
+              return firstProvinceValue.join(', ')
+            }
+            return String(firstProvinceValue || '')
+          }
+          return null
+        })(),
+        objectives: JSON.stringify({
+          categories: selectedCategories,
+          projectLead: draft.projectLead || null,
+          projectTeam: projectTeam,
+          implementingOrganizations: implementingOrganizations,
+          evaluationFrequency: selectedFrequencies,
+          frequencyDates: frequencyDates,
+          methodologies: selectedMethodologies,
+          fundingSource: draft.fundingSource || null,
+          resultsFramework: resultsFramework,
+          countries: selectedCountries,
+          provinces: selectedProvinces,
+          uploadedDocuments: uploadedDocuments
+        }),
+        createdAt: draft.createdAt,
+        updatedAt: draft.updatedAt,
+        creatorId: draft.userId,
+        managerId: null,
+        isDraft: true, // Flag to identify drafts
+        draftId: draft.id,
+        users_projects_creatorIdTousers: null,
+        users_projects_managerIdTousers: null,
+        _count: {
+          activities: 0
+        }
+      }
+    })
 
     // Combine projects and drafts, with drafts appearing first
     const allProjects = [...draftProjects, ...projects]
