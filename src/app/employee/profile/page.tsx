@@ -60,6 +60,11 @@ export default function EmployeeProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [quickStats, setQuickStats] = useState({
+    yearsOfService: 0,
+    performanceScore: null as number | null,
+    completedTrainings: 0
+  });
   
   // Password change state
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -90,13 +95,17 @@ export default function EmployeeProfilePage() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/employee/profile');
+      // Load profile and stats in parallel
+      const [profileResponse, statsResponse] = await Promise.all([
+        fetch('/api/employee/profile'),
+        fetch('/api/employee/dashboard-stats')
+      ]);
       
-      if (!response.ok) {
+      if (!profileResponse.ok) {
         throw new Error('Failed to fetch profile');
       }
       
-      const data = await response.json();
+      const data = await profileResponse.json();
       setProfile(data);
       setFormData({
         phoneNumber: data.phoneNumber || '',
@@ -110,6 +119,16 @@ export default function EmployeeProfilePage() {
         emergencyContactRelationship: data.emergencyContactRelationship || '',
         profilePicture: data.profilePicture || ''
       });
+
+      // Load quick stats
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setQuickStats({
+          yearsOfService: statsData.yearsOfService || 0,
+          performanceScore: statsData.performanceScore || null,
+          completedTrainings: statsData.completedTrainings || 0
+        });
+      }
     } catch (err) {
       console.error('Error loading profile:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -831,15 +850,21 @@ export default function EmployeeProfilePage() {
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="text-center p-3 bg-gradient-to-br from-saywhat-orange/20 to-saywhat-orange/5 rounded-lg">
-                      <div className="text-2xl font-bold text-saywhat-orange">5</div>
+                      <div className="text-2xl font-bold text-saywhat-orange">
+                        {loading ? '...' : Math.floor(quickStats.yearsOfService)}
+                      </div>
                       <div className="text-xs font-medium text-gray-600">Years of Service</div>
                     </div>
                     <div className="text-center p-3 bg-gradient-to-br from-green-100 to-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">95%</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {loading ? '...' : quickStats.performanceScore !== null ? `${quickStats.performanceScore}%` : 'N/A'}
+                      </div>
                       <div className="text-xs font-medium text-gray-600">Performance Score</div>
                     </div>
                     <div className="text-center p-3 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">12</div>
+                      <div className="text-2xl font-bold text-blue-600">
+                        {loading ? '...' : quickStats.completedTrainings}
+                      </div>
                       <div className="text-xs font-medium text-gray-600">Trainings Completed</div>
                     </div>
                   </div>
