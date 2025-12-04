@@ -46,10 +46,68 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Fetch draft projects and convert them to project-like format
+    const drafts = await prisma.projectDraft.findMany({
+      where: {
+        userId: session.user.id // Only show drafts for the current user
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
+    })
+
+    // Transform drafts to match project format
+    const draftProjects = drafts.map(draft => ({
+      id: draft.id,
+      name: draft.projectTitle || draft.projectCode || 'Untitled Draft',
+      description: draft.description || '',
+      projectGoal: draft.projectGoal || '',
+      status: 'DRAFT',
+      priority: 'MEDIUM',
+      progress: 0,
+      startDate: draft.startDate ? new Date(draft.startDate).toISOString() : null,
+      endDate: draft.endDate ? new Date(draft.endDate).toISOString() : null,
+      budget: draft.totalBudget ? parseFloat(draft.totalBudget.toString()) : null,
+      actualSpent: 0,
+      country: draft.selectedCountries && draft.selectedCountries.length > 0 ? draft.selectedCountries[0] : null,
+      province: draft.selectedProvinces && Object.keys(draft.selectedProvinces).length > 0 
+        ? Object.values(draft.selectedProvinces)[0]?.join(', ') || null 
+        : null,
+      objectives: JSON.stringify({
+        categories: draft.selectedCategories || [],
+        projectLead: draft.projectLead || null,
+        projectTeam: draft.projectTeam || [],
+        implementingOrganizations: draft.implementingOrganizations || [],
+        evaluationFrequency: draft.selectedFrequencies || [],
+        frequencyDates: draft.frequencyDates || {},
+        methodologies: draft.selectedMethodologies || [],
+        fundingSource: draft.fundingSource || null,
+        resultsFramework: draft.resultsFramework || { objectives: [], projectDuration: 3 },
+        countries: draft.selectedCountries || [],
+        provinces: draft.selectedProvinces || {},
+        uploadedDocuments: draft.uploadedDocuments || []
+      }),
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
+      creatorId: draft.userId,
+      managerId: null,
+      isDraft: true, // Flag to identify drafts
+      draftId: draft.id,
+      users_projects_creatorIdTousers: null,
+      users_projects_managerIdTousers: null,
+      _count: {
+        activities: 0
+      }
+    }))
+
+    // Combine projects and drafts, with drafts appearing first
+    const allProjects = [...draftProjects, ...projects]
+
     return NextResponse.json({ 
       success: true,
-      data: projects,
-      count: projects.length
+      data: allProjects,
+      count: allProjects.length,
+      draftsCount: drafts.length
     })
 
   } catch (error) {

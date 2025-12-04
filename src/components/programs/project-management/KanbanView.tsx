@@ -27,6 +27,7 @@ const KanbanView: React.FC<KanbanViewProps> = ({
 
   // Group projects by status
   const statusColumns = [
+    { id: 'draft', name: 'Draft', color: 'bg-purple-100 border-purple-200' },
     { id: 'planning', name: 'Planning', color: 'bg-blue-100 border-blue-200' },
     { id: 'active', name: 'Active', color: 'bg-green-100 border-green-200' },
     { id: 'on-hold', name: 'On Hold', color: 'bg-yellow-100 border-yellow-200' },

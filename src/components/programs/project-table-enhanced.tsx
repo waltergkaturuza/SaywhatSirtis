@@ -40,7 +40,7 @@ interface Project {
   name: string
   projectGoal?: string
   description: string
-  status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED'
+  status: 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED' | 'DRAFT'
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
   progress: number
   startDate: string
@@ -445,6 +445,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
       case 'ON_HOLD': return 'bg-yellow-100 text-yellow-800'
       case 'COMPLETED': return 'bg-green-100 text-green-800'
       case 'CANCELLED': return 'bg-red-100 text-red-800'
+      case 'DRAFT': return 'bg-purple-100 text-purple-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }

@@ -25,7 +25,7 @@ interface ProjectManagementProps {
 
 export type ViewMode = 'list' | 'kanban' | 'timeline'
 
-export type ProjectStatus = 'planning' | 'active' | 'on-hold' | 'completed' | 'cancelled'
+export type ProjectStatus = 'planning' | 'active' | 'on-hold' | 'completed' | 'cancelled' | 'draft'
 
 export type ProjectPriority = 'low' | 'medium' | 'high' | 'critical'
 
@@ -168,6 +168,7 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
       case 'ON_HOLD': return 'on-hold'
       case 'COMPLETED': return 'completed'
       case 'CANCELLED': return 'cancelled'
+      case 'DRAFT': return 'draft'
       default: return 'planning'
     }
   }
