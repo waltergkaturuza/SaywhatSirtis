@@ -47,14 +47,26 @@ export async function GET(request: NextRequest) {
     })
 
     // Fetch draft projects and convert them to project-like format
-    const drafts = await prisma.projectDraft.findMany({
-      where: {
-        userId: session.user.id // Only show drafts for the current user
-      },
-      orderBy: {
-        updatedAt: 'desc'
+    // Wrap in try-catch in case ProjectDraft table doesn't exist
+    let drafts: any[] = []
+    try {
+      drafts = await prisma.projectDraft.findMany({
+        where: {
+          userId: session.user.id // Only show drafts for the current user
+        },
+        orderBy: {
+          updatedAt: 'desc'
+        }
+      })
+    } catch (error: any) {
+      // If table doesn't exist (P2021) or any other error, just skip drafts
+      if (error?.code === 'P2021') {
+        console.log('ProjectDraft table does not exist, skipping draft projects')
+      } else {
+        console.error('Error fetching draft projects:', error)
       }
-    })
+      drafts = []
+    }
 
     // Helper function to safely parse JSON fields
     const safeParseArray = (value: any, defaultValue: any[] = []): any[] => {

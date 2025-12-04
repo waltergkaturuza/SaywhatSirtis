@@ -14,39 +14,51 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const body = await req.json()
     const { id } = await params
 
-    const draft = await prisma.projectDraft.update({
-      where: {
-        id: id,
-        userId: session.user.id // Ensure user can only update their own drafts
-      },
-      data: {
-        projectCode: body.projectCode,
-        projectTitle: body.projectTitle,
-        projectGoal: body.projectGoal,
-        description: body.description,
-        projectLead: body.projectLead,
-        projectTeam: body.projectTeam,
-        selectedCategories: body.selectedCategories,
-        startDate: body.startDate,
-        endDate: body.endDate,
-        selectedCountries: body.selectedCountries,
-        selectedProvinces: body.selectedProvinces,
-        uploadedDocuments: body.uploadedDocuments,
-        implementingOrganizations: body.implementingOrganizations,
-        selectedFrequencies: body.selectedFrequencies,
-        frequencyDates: body.frequencyDates,
-        selectedMethodologies: body.selectedMethodologies,
-        totalBudget: body.totalBudget,
-        fundingSource: body.fundingSource,
-        resultsFramework: body.resultsFramework,
-        currentStep: body.currentStep || 1
-      }
-    })
+    try {
+      const draft = await prisma.projectDraft.update({
+        where: {
+          id: id,
+          userId: session.user.id // Ensure user can only update their own drafts
+        },
+        data: {
+          projectCode: body.projectCode,
+          projectTitle: body.projectTitle,
+          projectGoal: body.projectGoal,
+          description: body.description,
+          projectLead: body.projectLead,
+          projectTeam: body.projectTeam,
+          selectedCategories: body.selectedCategories,
+          startDate: body.startDate,
+          endDate: body.endDate,
+          selectedCountries: body.selectedCountries,
+          selectedProvinces: body.selectedProvinces,
+          uploadedDocuments: body.uploadedDocuments,
+          implementingOrganizations: body.implementingOrganizations,
+          selectedFrequencies: body.selectedFrequencies,
+          frequencyDates: body.frequencyDates,
+          selectedMethodologies: body.selectedMethodologies,
+          totalBudget: body.totalBudget,
+          fundingSource: body.fundingSource,
+          resultsFramework: body.resultsFramework,
+          currentStep: body.currentStep || 1
+        }
+      })
 
-    return NextResponse.json({ 
-      success: true, 
-      data: draft 
-    })
+      return NextResponse.json({ 
+        success: true, 
+        data: draft 
+      })
+    } catch (error: any) {
+      // If table doesn't exist (P2021), return a graceful error
+      if (error?.code === 'P2021') {
+        console.log('ProjectDraft table does not exist')
+        return NextResponse.json({ 
+          success: false, 
+          error: "Draft functionality is not available. The ProjectDraft table does not exist in the database." 
+        }, { status: 503 })
+      }
+      throw error // Re-throw other errors
+    }
   } catch (error) {
     console.error("Draft update error:", error)
     return NextResponse.json({ 
@@ -66,16 +78,27 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { id } = await params
 
-    await prisma.projectDraft.delete({
-      where: {
-        id: id,
-        userId: session.user.id // Ensure user can only delete their own drafts
-      }
-    })
+    try {
+      await prisma.projectDraft.delete({
+        where: {
+          id: id,
+          userId: session.user.id // Ensure user can only delete their own drafts
+        }
+      })
 
-    return NextResponse.json({ 
-      success: true 
-    })
+      return NextResponse.json({ 
+        success: true 
+      })
+    } catch (error: any) {
+      // If table doesn't exist (P2021), return success anyway (nothing to delete)
+      if (error?.code === 'P2021') {
+        console.log('ProjectDraft table does not exist, nothing to delete')
+        return NextResponse.json({ 
+          success: true 
+        })
+      }
+      throw error // Re-throw other errors
+    }
   } catch (error) {
     console.error("Draft deletion error:", error)
     return NextResponse.json({ 
