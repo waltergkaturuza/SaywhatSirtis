@@ -3,16 +3,23 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection';
 
+// In-memory cache with TTL (5 minutes)
+let cache: {
+  data: any;
+  timestamp: number;
+} | null = null;
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export async function GET(request: NextRequest) {
   try {
-    // Check database connection first
-    const isConnected = await checkDatabaseConnection();
-    if (!isConnected) {
-      console.error('Database connection failed in call centre filter options API');
-      return NextResponse.json(
-        { error: 'Database connection unavailable', code: 'DB_CONNECTION_FAILED' },
-        { status: 503 }
-      );
+    // Check cache first - return immediately if cached (no DB query needed)
+    if (cache && Date.now() - cache.timestamp < CACHE_TTL) {
+      return NextResponse.json({
+        success: true,
+        filterOptions: cache.data,
+        cached: true,
+      });
     }
 
     const session = await getServerSession(authOptions);
@@ -34,7 +41,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Fetch distinct values from call_records for filter options
+    // Removed checkDatabaseConnection() - it adds an extra query and connection overhead
+    // The raw SQL queries will fail gracefully if DB is unavailable
+
+    // Use optimized raw SQL queries with DISTINCT - much faster than Prisma's distinct
+    // These queries use indexes and are optimized by the database
     const [
       officersResult,
       provincesResult,
@@ -42,125 +53,110 @@ export async function GET(request: NextRequest) {
       validityResult,
       communicationModesResult,
     ] = await Promise.all([
-      // Get distinct officers from call_records
-      prisma.call_records.findMany({
-        where: {
-          officerName: {
-            not: null,
-          },
-        },
-        select: {
-          officerName: true,
-        },
-        distinct: ['officerName'],
-        orderBy: {
-          officerName: 'asc',
-        },
-      }),
+      // Get distinct officers using raw SQL (faster)
+      prisma.$queryRaw<Array<{ officerName: string }>>`
+        SELECT DISTINCT "officerName" as "officerName"
+        FROM call_records
+        WHERE "officerName" IS NOT NULL 
+          AND "officerName" != 'N/A'
+        ORDER BY "officerName" ASC
+        LIMIT 100
+      `,
 
-      // Get distinct provinces from call_records
-      prisma.call_records.findMany({
-        where: {
-          callerProvince: {
-            not: null,
-          },
-        },
-        select: {
-          callerProvince: true,
-        },
-        distinct: ['callerProvince'],
-        orderBy: {
-          callerProvince: 'asc',
-        },
-      }),
+      // Get distinct provinces using raw SQL
+      prisma.$queryRaw<Array<{ callerProvince: string }>>`
+        SELECT DISTINCT "callerProvince" as "callerProvince"
+        FROM call_records
+        WHERE "callerProvince" IS NOT NULL 
+          AND "callerProvince" != 'N/A'
+        ORDER BY "callerProvince" ASC
+        LIMIT 50
+      `,
 
-      // Get distinct statuses from call_records
-      prisma.call_records.findMany({
-        where: {
-          status: {
-            not: null,
-          },
-        },
-        select: {
-          status: true,
-        },
-        distinct: ['status'],
-        orderBy: {
-          status: 'asc',
-        },
-      }),
+      // Get distinct statuses using raw SQL
+      prisma.$queryRaw<Array<{ status: string }>>`
+        SELECT DISTINCT status
+        FROM call_records
+        WHERE status IS NOT NULL
+        ORDER BY status ASC
+        LIMIT 20
+      `,
 
-      // Get distinct validity values from call_records
-      prisma.call_records.findMany({
-        where: {
-          callValidity: {
-            not: null,
-          },
-        },
-        select: {
-          callValidity: true,
-        },
-        distinct: ['callValidity'],
-        orderBy: {
-          callValidity: 'asc',
-        },
-      }),
+      // Get distinct validity values using raw SQL
+      prisma.$queryRaw<Array<{ callValidity: string }>>`
+        SELECT DISTINCT "callValidity" as "callValidity"
+        FROM call_records
+        WHERE "callValidity" IS NOT NULL 
+          AND "callValidity" != 'N/A'
+        ORDER BY "callValidity" ASC
+        LIMIT 10
+      `,
 
-      // Get distinct communication modes from call_records
-      prisma.call_records.findMany({
-        where: {
-          modeOfCommunication: {
-            not: null,
-          },
-        },
-        select: {
-          modeOfCommunication: true,
-        },
-        distinct: ['modeOfCommunication'],
-        orderBy: {
-          modeOfCommunication: 'asc',
-        },
-      }),
+      // Get distinct communication modes using raw SQL
+      prisma.$queryRaw<Array<{ modeOfCommunication: string }>>`
+        SELECT DISTINCT "modeOfCommunication" as "modeOfCommunication"
+        FROM call_records
+        WHERE "modeOfCommunication" IS NOT NULL 
+          AND "modeOfCommunication" != 'N/A'
+        ORDER BY "modeOfCommunication" ASC
+        LIMIT 20
+      `,
     ]);
 
     // Transform the results into arrays of strings
     const officers = officersResult
       .map((r) => r.officerName)
-      .filter((name): name is string => name !== null && name !== 'N/A')
-      .sort();
+      .filter((name): name is string => name !== null && name !== 'N/A');
 
     const provinces = provincesResult
       .map((r) => r.callerProvince)
-      .filter((province): province is string => province !== null && province !== 'N/A')
-      .sort();
+      .filter((province): province is string => province !== null && province !== 'N/A');
 
     const statuses = statusesResult
       .map((r) => r.status)
-      .filter((status): status is string => status !== null)
-      .sort();
+      .filter((status): status is string => status !== null);
 
     const validityOptions = validityResult
       .map((r) => r.callValidity)
-      .filter((validity): validity is string => validity !== null && validity !== 'N/A')
-      .sort();
+      .filter((validity): validity is string => validity !== null && validity !== 'N/A');
 
     const communicationModes = communicationModesResult
       .map((r) => r.modeOfCommunication)
-      .filter((mode): mode is string => mode !== null && mode !== 'N/A')
-      .sort();
+      .filter((mode): mode is string => mode !== null && mode !== 'N/A');
+
+    const filterOptions = {
+      officers,
+      provinces,
+      statuses,
+      validity: validityOptions,
+      communicationModes,
+    };
+
+    // Update cache
+    cache = {
+      data: filterOptions,
+      timestamp: Date.now(),
+    };
 
     return NextResponse.json({
       success: true,
-      filterOptions: {
-        officers,
-        provinces,
-        statuses,
-        validity: validityOptions,
-        communicationModes,
-      },
+      filterOptions,
+      cached: false,
     });
   } catch (error) {
     console.error('Error fetching filter options:', error);
+    
+    // Return cached data if available, even if expired, as fallback
+    if (cache) {
+      console.warn('Returning stale cache due to error');
+      return NextResponse.json({
+        success: true,
+        filterOptions: cache.data,
+        cached: true,
+        warning: 'Using cached data due to query error',
+      });
+    }
+
     return NextResponse.json(
       {
         success: false,

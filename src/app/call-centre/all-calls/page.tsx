@@ -121,7 +121,8 @@ export default function AllCallsPage() {
 
   const fetchCalls = async () => {
     try {
-      const response = await fetch('/api/call-centre/calls');
+      // Fetch calls with pagination - get first 1000 records (reasonable limit)
+      const response = await fetch('/api/call-centre/calls?limit=1000&page=1');
       if (!response.ok) {
         throw new Error('Failed to fetch calls');
       }

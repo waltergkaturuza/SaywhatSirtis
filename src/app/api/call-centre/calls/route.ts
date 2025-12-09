@@ -28,12 +28,76 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Get all calls without pagination for now
-    const calls = await prisma.call_records.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
+    // Get query parameters for pagination
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = Math.min(parseInt(searchParams.get('limit') || '500'), 1000) // Max 1000 records
+    const skip = (page - 1) * limit
+
+    // Optimized query with pagination and selective fields
+    const [calls, totalCount] = await Promise.all([
+      prisma.call_records.findMany({
+        select: {
+          id: true,
+          callNumber: true,
+          caseNumber: true,
+          officerName: true,
+          assignedOfficer: true,
+          modeOfCommunication: true,
+          callValidity: true,
+          createdAt: true,
+          callStartTime: true,
+          callEndTime: true,
+          voucherIssued: true,
+          referral: true,
+          callerName: true,
+          callerPhone: true,
+          callerAge: true,
+          callerGender: true,
+          callerKeyPopulation: true,
+          callerProvince: true,
+          callerAddress: true,
+          callType: true,
+          howDidYouHearAboutUs: true,
+          newOrRepeatCall: true,
+          language: true,
+          callDescription: true,
+          purpose: true,
+          isCase: true,
+          clientName: true,
+          clientAge: true,
+          clientSex: true,
+          clientAddress: true,
+          clientProvince: true,
+          perpetrator: true,
+          servicesRecommended: true,
+          voucherValue: true,
+          comment: true,
+          category: true,
+          priority: true,
+          status: true,
+          subject: true,
+          description: true,
+          summary: true,
+          notes: true,
+          resolution: true,
+          satisfactionRating: true,
+          resolvedAt: true,
+          district: true,
+          ward: true,
+          followUpRequired: true,
+          followUpDate: true,
+          updatedAt: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        skip,
+        take: limit
+      }),
+      // Get total count efficiently
+      prisma.call_records.count()
+    ])
 
     // Transform the data to match the frontend interface
     const transformedCalls = calls.map(call => ({
@@ -103,7 +167,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       calls: transformedCalls,
-      total: transformedCalls.length
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit)
     })
   } catch (error) {
     console.error('Error fetching calls:', error)
