@@ -648,46 +648,46 @@ export default function AllCallsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 table-fixed">
               <thead className="bg-gradient-to-r from-saywhat-light-grey to-gray-50">
                 <tr>
-                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                  <th className="w-[14%] px-3 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-saywhat-orange rounded-full"></div>
                       Call Details
                     </div>
                   </th>
-                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                  <th className="w-[18%] px-3 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                       Caller Information
                     </div>
                   </th>
-                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                  <th className="w-[14%] px-3 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-saywhat-orange rounded-full"></div>
                       Client Information
                     </div>
                   </th>
-                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                  <th className="w-[18%] px-3 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                       Communication
                     </div>
                   </th>
-                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                  <th className="w-[10%] px-2 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-saywhat-grey rounded-full"></div>
                       Status
                     </div>
                   </th>
-                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                  <th className="w-[16%] px-3 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-saywhat-grey rounded-full"></div>
                       Officer
                     </div>
                   </th>
-                  <th className="px-4 py-4 text-right text-xs font-bold text-saywhat-dark uppercase tracking-wider">
+                  <th className="w-[10%] px-2 py-4 text-right text-xs font-bold text-saywhat-dark uppercase tracking-wider">
                     <div className="flex items-center justify-end gap-2">
                       <div className="w-1.5 h-1.5 bg-saywhat-orange rounded-full"></div>
                       Actions
@@ -755,7 +755,7 @@ export default function AllCallsPage() {
                         className="group hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-white transition-all duration-200 border-b border-gray-100"
                       >
                         {/* Call Details */}
-                        <td className="px-4 py-4 align-top">
+                        <td className="w-[14%] px-3 py-4 align-top">
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-2">
                               <div className="w-1 h-6 bg-gradient-to-b from-saywhat-orange to-orange-600 rounded-full"></div>
@@ -778,13 +778,13 @@ export default function AllCallsPage() {
                         </td>
 
                         {/* Caller Information */}
-                        <td className="px-4 py-4 align-top">
+                        <td className="w-[18%] px-3 py-4 align-top">
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                              <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                 {call.callerName ? call.callerName.charAt(0).toUpperCase() : '?'}
                               </div>
-                              <div className="font-semibold text-saywhat-dark text-sm truncate max-w-[120px]" title={call.callerName || 'Unknown'}>
+                              <div className="font-semibold text-saywhat-dark text-sm truncate min-w-0" title={call.callerName || 'Unknown'}>
                                 {call.callerName || 'Unknown'}
                               </div>
                             </div>
@@ -810,15 +810,15 @@ export default function AllCallsPage() {
                         </td>
 
                         {/* Client Information */}
-                        <td className="px-4 py-4 align-top">
+                        <td className="w-[14%] px-3 py-4 align-top">
                           <div className="space-y-1.5">
                             {call.clientName ? (
                               <>
                                 <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 bg-gradient-to-br from-saywhat-orange to-orange-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                  <div className="w-6 h-6 bg-gradient-to-br from-saywhat-orange to-orange-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                                     {call.clientName.charAt(0).toUpperCase()}
                                   </div>
-                                  <div className="font-semibold text-saywhat-dark text-sm truncate max-w-[120px]" title={call.clientName}>
+                                  <div className="font-semibold text-saywhat-dark text-sm truncate min-w-0" title={call.clientName}>
                                     {call.clientName}
                                   </div>
                                 </div>
@@ -844,7 +844,7 @@ export default function AllCallsPage() {
                         </td>
 
                         {/* Communication */}
-                        <td className="px-4 py-4 align-top">
+                        <td className="w-[18%] px-3 py-4 align-top">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               <div className={`p-1.5 rounded-lg ${commIcon.color.includes('blue') ? 'bg-blue-50' : commIcon.color.includes('green') ? 'bg-green-50' : 'bg-gray-50'}`}>
@@ -871,20 +871,20 @@ export default function AllCallsPage() {
                         </td>
 
                         {/* Status */}
-                        <td className="px-4 py-4 align-top">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <div className={`p-1.5 rounded-lg ${statusInfo.color.includes('blue') ? 'bg-blue-50' : statusInfo.color.includes('yellow') ? 'bg-yellow-50' : statusInfo.color.includes('green') ? 'bg-green-50' : 'bg-gray-50'}`}>
-                                <statusInfo.icon className={`h-4 w-4 ${statusInfo.color.includes('blue') ? 'text-blue-600' : statusInfo.color.includes('yellow') ? 'text-yellow-600' : statusInfo.color.includes('green') ? 'text-green-600' : 'text-gray-600'}`} />
+                        <td className="w-[10%] px-2 py-4 align-top">
+                          <div className="flex flex-col items-start gap-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <div className={`p-1 rounded-lg flex-shrink-0 ${statusInfo.color.includes('blue') ? 'bg-blue-50' : statusInfo.color.includes('yellow') ? 'bg-yellow-50' : statusInfo.color.includes('green') ? 'bg-green-50' : 'bg-gray-50'}`}>
+                                <statusInfo.icon className={`h-3.5 w-3.5 ${statusInfo.color.includes('blue') ? 'text-blue-600' : statusInfo.color.includes('yellow') ? 'text-yellow-600' : statusInfo.color.includes('green') ? 'text-green-600' : 'text-gray-600'}`} />
                               </div>
-                              <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-lg ${statusInfo.color} border border-current/20`}>
+                              <span className={`inline-flex px-2 py-0.5 text-xs font-bold rounded ${statusInfo.color} border border-current/20 whitespace-nowrap`}>
                                 {call.status}
                               </span>
                             </div>
                             {call.referredTo && call.referredTo !== "N/A" && (
-                              <div className="pl-10 mt-2 p-2 bg-blue-50 rounded-lg border-l-2 border-blue-400">
-                                <div className="text-xs font-semibold text-blue-700 mb-1">→ Referred to:</div>
-                                <div className="text-xs text-blue-600 line-clamp-2" title={call.referredTo}>
+                              <div className="w-full mt-1 p-1.5 bg-blue-50 rounded border-l-2 border-blue-400">
+                                <div className="text-[10px] font-semibold text-blue-700 mb-0.5">→ Referred:</div>
+                                <div className="text-[10px] text-blue-600 line-clamp-1 truncate" title={call.referredTo}>
                                   {call.referredTo}
                                 </div>
                               </div>
@@ -893,19 +893,19 @@ export default function AllCallsPage() {
                         </td>
 
                         {/* Officer */}
-                        <td className="px-4 py-4 align-top">
+                        <td className="w-[16%] px-3 py-4 align-top">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-gradient-to-br from-saywhat-grey to-gray-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            <div className="w-7 h-7 bg-gradient-to-br from-saywhat-grey to-gray-600 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                               {call.officer ? call.officer.charAt(0).toUpperCase() : '?'}
                             </div>
-                            <span className="text-sm font-medium text-saywhat-dark truncate max-w-[100px]" title={call.officer}>
+                            <span className="text-sm font-medium text-saywhat-dark truncate min-w-0" title={call.officer}>
                               {call.officer}
                             </span>
                           </div>
                         </td>
 
                         {/* Actions */}
-                        <td className="px-4 py-4 align-top">
+                        <td className="w-[10%] px-2 py-4 align-top">
                           <div className="flex items-center justify-end gap-1">
                             <button 
                               onClick={() => {
