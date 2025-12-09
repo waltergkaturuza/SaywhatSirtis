@@ -84,7 +84,40 @@ export default function AllCallsPage() {
 
   useEffect(() => {
     fetchCalls();
+    fetchFilterOptions();
   }, []);
+
+  const fetchFilterOptions = async () => {
+    try {
+      setFilterOptionsLoading(true);
+      const response = await fetch('/api/call-centre/filter-options');
+      if (!response.ok) {
+        throw new Error('Failed to fetch filter options');
+      }
+      const data = await response.json();
+      if (data.success && data.filterOptions) {
+        setFilterOptions({
+          officers: data.filterOptions.officers || [],
+          provinces: data.filterOptions.provinces || [],
+          statuses: data.filterOptions.statuses || [],
+          validity: data.filterOptions.validity || [],
+          communicationModes: data.filterOptions.communicationModes || [],
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching filter options:', error);
+      // Set empty arrays on error - filters will just be empty
+      setFilterOptions({
+        officers: [],
+        provinces: [],
+        statuses: [],
+        validity: [],
+        communicationModes: [],
+      });
+    } finally {
+      setFilterOptionsLoading(false);
+    }
+  };
 
   const fetchCalls = async () => {
     try {
@@ -120,6 +153,16 @@ export default function AllCallsPage() {
     dateTo: ""
   });
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Filter options state
+  const [filterOptions, setFilterOptions] = useState({
+    officers: [] as string[],
+    provinces: [] as string[],
+    statuses: [] as string[],
+    validity: [] as string[],
+    communicationModes: [] as string[],
+  });
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
 
   // Check permissions
   const hasAccess = session?.user?.permissions?.includes("callcentre.access");
@@ -230,6 +273,10 @@ export default function AllCallsPage() {
     setSearchTerm("");
   };
 
+  // Count active filters
+  const activeFiltersCount = Object.values(filters).filter(value => value !== "").length;
+  const hasActiveFilters = activeFiltersCount > 0 || searchTerm !== "";
+
   return (
     <ModulePage
       metadata={{
@@ -242,152 +289,334 @@ export default function AllCallsPage() {
       }}
     >
       <div className="space-y-6">
-        {/* Search and Filters */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            {/* Search */}
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search calls..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
+        {/* Search and Filters - World Class Design */}
+        <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
+          {/* Header Section with Gradient */}
+          <div className="bg-gradient-to-r from-saywhat-dark via-gray-800 to-saywhat-dark px-6 py-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              {/* Search - Enhanced Design */}
+              <div className="flex-1 max-w-2xl">
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-saywhat-orange/20 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-saywhat-grey group-focus-within:text-saywhat-orange transition-colors duration-200" />
+                  <input
+                    type="text"
+                    placeholder="Search calls by name, phone, call number, or purpose..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="relative block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg leading-5 bg-white placeholder-saywhat-grey text-saywhat-dark focus:outline-none focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 transition-all duration-200 shadow-sm hover:border-gray-300"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-saywhat-grey hover:text-saywhat-orange transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Filter Toggle */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <FunnelIcon className="-ml-1 mr-2 h-5 w-5" />
-              Filters
-            </button>
+              {/* Filter Toggle - Enhanced Button */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`inline-flex items-center px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 ${
+                  showFilters
+                    ? "bg-gradient-to-r from-saywhat-orange to-orange-600 text-white"
+                    : "bg-white text-saywhat-dark border-2 border-saywhat-orange hover:bg-saywhat-orange hover:text-white"
+                }`}
+              >
+                <FunnelIcon className="mr-2 h-5 w-5" />
+                Filters
+                {activeFiltersCount > 0 && (
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                    showFilters ? "bg-white/30 text-white" : "bg-saywhat-orange text-white"
+                  }`}>
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Advanced Filters */}
+          {/* Advanced Filters - Enhanced Design */}
           {showFilters && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="px-6 py-6 bg-gradient-to-br from-saywhat-light-grey via-white to-saywhat-light-grey">
+              {/* Active Filters Summary */}
+              {hasActiveFilters && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-saywhat-orange/10 to-green-500/10 rounded-lg border-l-4 border-saywhat-orange">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-saywhat-orange rounded-full animate-pulse"></div>
+                      <span className="text-sm font-semibold text-saywhat-dark">
+                        {activeFiltersCount} filter{activeFiltersCount !== 1 ? 's' : ''} active
+                        {searchTerm && ' • Search active'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={clearFilters}
+                      className="text-xs font-semibold text-saywhat-orange hover:text-orange-600 transition-colors flex items-center gap-1"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                {/* Officer Filter */}
+                <div className="group">
+                  <label className="block text-sm font-bold text-saywhat-dark mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-saywhat-orange rounded-full"></div>
                     Officer
+                    {filters.officer && (
+                      <span className="ml-auto px-2 py-0.5 bg-saywhat-orange/20 text-saywhat-orange rounded-full text-xs font-semibold">
+                        Active
+                      </span>
+                    )}
                   </label>
-                  <select
-                    value={filters.officer}
-                    onChange={(e) => setFilters({ ...filters, officer: e.target.value })}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">All Officers</option>
-                    <option value="John Doe">John Doe</option>
-                    <option value="Jane Smith">Jane Smith</option>
-                    <option value="Mike Johnson">Mike Johnson</option>
-                    <option value="Lisa Brown">Lisa Brown</option>
-                    <option value="Tom Wilson">Tom Wilson</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={filters.officer}
+                      onChange={(e) => setFilters({ ...filters, officer: e.target.value })}
+                      className={`block w-full px-4 py-3 border-2 rounded-lg shadow-sm transition-all duration-200 font-medium text-saywhat-dark bg-white ${
+                        filters.officer
+                          ? "border-saywhat-orange bg-orange-50/50"
+                          : "border-gray-200 hover:border-gray-300"
+                      } focus:outline-none focus:ring-2 focus:ring-saywhat-orange/30 focus:border-saywhat-orange disabled:opacity-50 disabled:cursor-not-allowed`}
+                      disabled={filterOptionsLoading}
+                    >
+                      <option value="">All Officers</option>
+                      {filterOptions.officers.map((officer) => (
+                        <option key={officer} value={officer}>
+                          {officer}
+                        </option>
+                      ))}
+                    </select>
+                    {filterOptionsLoading && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-saywhat-orange border-t-transparent"></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                {/* Province Filter */}
+                <div className="group">
+                  <label className="block text-sm font-bold text-saywhat-dark mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                     Province
+                    {filters.province && (
+                      <span className="ml-auto px-2 py-0.5 bg-green-500/20 text-green-600 rounded-full text-xs font-semibold">
+                        Active
+                      </span>
+                    )}
                   </label>
-                  <select
-                    value={filters.province}
-                    onChange={(e) => setFilters({ ...filters, province: e.target.value })}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">All Provinces</option>
-                    <option value="Western Province">Western Province</option>
-                    <option value="Central Province">Central Province</option>
-                    <option value="Eastern Province">Eastern Province</option>
-                    <option value="Northern Province">Northern Province</option>
-                    <option value="Southern Province">Southern Province</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={filters.province}
+                      onChange={(e) => setFilters({ ...filters, province: e.target.value })}
+                      className={`block w-full px-4 py-3 border-2 rounded-lg shadow-sm transition-all duration-200 font-medium text-saywhat-dark bg-white ${
+                        filters.province
+                          ? "border-green-500 bg-green-50/50"
+                          : "border-gray-200 hover:border-gray-300"
+                      } focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                      disabled={filterOptionsLoading}
+                    >
+                      <option value="">All Provinces</option>
+                      {filterOptions.provinces.map((province) => (
+                        <option key={province} value={province}>
+                          {province}
+                        </option>
+                      ))}
+                    </select>
+                    {filterOptionsLoading && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-500 border-t-transparent"></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                {/* Status Filter */}
+                <div className="group">
+                  <label className="block text-sm font-bold text-saywhat-dark mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-saywhat-grey rounded-full"></div>
                     Status
+                    {filters.status && (
+                      <span className="ml-auto px-2 py-0.5 bg-saywhat-grey/20 text-saywhat-grey rounded-full text-xs font-semibold">
+                        Active
+                      </span>
+                    )}
                   </label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">All Statuses</option>
-                    <option value="Completed">Completed</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={filters.status}
+                      onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                      className={`block w-full px-4 py-3 border-2 rounded-lg shadow-sm transition-all duration-200 font-medium text-saywhat-dark bg-white ${
+                        filters.status
+                          ? "border-saywhat-grey bg-gray-50"
+                          : "border-gray-200 hover:border-gray-300"
+                      } focus:outline-none focus:ring-2 focus:ring-saywhat-grey/30 focus:border-saywhat-grey disabled:opacity-50 disabled:cursor-not-allowed`}
+                      disabled={filterOptionsLoading}
+                    >
+                      <option value="">All Statuses</option>
+                      {filterOptions.statuses.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                    {filterOptionsLoading && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-saywhat-grey border-t-transparent"></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                {/* Validity Filter */}
+                <div className="group">
+                  <label className="block text-sm font-bold text-saywhat-dark mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
                     Validity
+                    {filters.validity && (
+                      <span className="ml-auto px-2 py-0.5 bg-green-500/20 text-green-600 rounded-full text-xs font-semibold">
+                        Active
+                      </span>
+                    )}
                   </label>
-                  <select
-                    value={filters.validity}
-                    onChange={(e) => setFilters({ ...filters, validity: e.target.value })}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">All Validity</option>
-                    <option value="Valid">Valid</option>
-                    <option value="Invalid">Invalid</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={filters.validity}
+                      onChange={(e) => setFilters({ ...filters, validity: e.target.value })}
+                      className={`block w-full px-4 py-3 border-2 rounded-lg shadow-sm transition-all duration-200 font-medium text-saywhat-dark bg-white ${
+                        filters.validity
+                          ? "border-green-500 bg-green-50/50"
+                          : "border-gray-200 hover:border-gray-300"
+                      } focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                      disabled={filterOptionsLoading}
+                    >
+                      <option value="">All Validity</option>
+                      {filterOptions.validity.map((validity) => (
+                        <option key={validity} value={validity}>
+                          {validity}
+                        </option>
+                      ))}
+                    </select>
+                    {filterOptionsLoading && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-500 border-t-transparent"></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                {/* Communication Mode Filter */}
+                <div className="group">
+                  <label className="block text-sm font-bold text-saywhat-dark mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-saywhat-orange rounded-full"></div>
                     Communication Mode
+                    {filters.communicationMode && (
+                      <span className="ml-auto px-2 py-0.5 bg-saywhat-orange/20 text-saywhat-orange rounded-full text-xs font-semibold">
+                        Active
+                      </span>
+                    )}
                   </label>
-                  <select
-                    value={filters.communicationMode}
-                    onChange={(e) => setFilters({ ...filters, communicationMode: e.target.value })}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">All Modes</option>
-                    <option value="Inbound Call">Inbound Call</option>
-                    <option value="Outbound Call">Outbound Call</option>
-                    <option value="WhatsApp">WhatsApp</option>
-                    <option value="Walk-in">Walk-in</option>
-                    <option value="Text Message">Text Message</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={filters.communicationMode}
+                      onChange={(e) => setFilters({ ...filters, communicationMode: e.target.value })}
+                      className={`block w-full px-4 py-3 border-2 rounded-lg shadow-sm transition-all duration-200 font-medium text-saywhat-dark bg-white ${
+                        filters.communicationMode
+                          ? "border-saywhat-orange bg-orange-50/50"
+                          : "border-gray-200 hover:border-gray-300"
+                      } focus:outline-none focus:ring-2 focus:ring-saywhat-orange/30 focus:border-saywhat-orange disabled:opacity-50 disabled:cursor-not-allowed`}
+                      disabled={filterOptionsLoading}
+                    >
+                      <option value="">All Modes</option>
+                      {filterOptions.communicationModes.map((mode) => (
+                        <option key={mode} value={mode}>
+                          {mode}
+                        </option>
+                      ))}
+                    </select>
+                    {filterOptionsLoading && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-saywhat-orange border-t-transparent"></div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                {/* Date From Filter */}
+                <div className="group">
+                  <label className="block text-sm font-bold text-saywhat-dark mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-saywhat-grey rounded-full"></div>
                     Date From
+                    {filters.dateFrom && (
+                      <span className="ml-auto px-2 py-0.5 bg-saywhat-grey/20 text-saywhat-grey rounded-full text-xs font-semibold">
+                        Set
+                      </span>
+                    )}
                   </label>
                   <input
                     type="date"
                     value={filters.dateFrom}
                     onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className={`block w-full px-4 py-3 border-2 rounded-lg shadow-sm transition-all duration-200 font-medium text-saywhat-dark bg-white ${
+                      filters.dateFrom
+                        ? "border-saywhat-grey bg-gray-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    } focus:outline-none focus:ring-2 focus:ring-saywhat-grey/30 focus:border-saywhat-grey`}
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                {/* Date To Filter */}
+                <div className="group">
+                  <label className="block text-sm font-bold text-saywhat-dark mb-2 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-saywhat-grey rounded-full"></div>
                     Date To
+                    {filters.dateTo && (
+                      <span className="ml-auto px-2 py-0.5 bg-saywhat-grey/20 text-saywhat-grey rounded-full text-xs font-semibold">
+                        Set
+                      </span>
+                    )}
                   </label>
                   <input
                     type="date"
                     value={filters.dateTo}
                     onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    className={`block w-full px-4 py-3 border-2 rounded-lg shadow-sm transition-all duration-200 font-medium text-saywhat-dark bg-white ${
+                      filters.dateTo
+                        ? "border-saywhat-grey bg-gray-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    } focus:outline-none focus:ring-2 focus:ring-saywhat-grey/30 focus:border-saywhat-grey`}
                   />
                 </div>
 
+                {/* Clear Filters Button */}
                 <div className="flex items-end">
                   <button
                     onClick={clearFilters}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    disabled={!hasActiveFilters}
+                    className={`w-full px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 shadow-md ${
+                      hasActiveFilters
+                        ? "bg-gradient-to-r from-saywhat-grey to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 hover:shadow-lg transform hover:scale-105"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-saywhat-grey`}
                   >
-                    Clear Filters
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Clear Filters
+                    </span>
                   </button>
                 </div>
               </div>
@@ -395,61 +624,104 @@ export default function AllCallsPage() {
           )}
         </div>
 
-        {/* Calls Table */}
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
-              Call Records ({filteredCalls.length})
-            </h3>
+        {/* Calls Table - Enhanced Design */}
+        <div className="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
+          {/* Enhanced Header */}
+          <div className="bg-gradient-to-r from-saywhat-dark via-gray-800 to-saywhat-dark px-6 py-5 border-b-2 border-saywhat-orange/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-10 bg-gradient-to-b from-saywhat-orange to-orange-600 rounded-full"></div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    Call Records
+                  </h3>
+                  <p className="text-sm text-gray-300 mt-0.5">
+                    {filteredCalls.length} {filteredCalls.length === 1 ? 'record' : 'records'} found
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                <PhoneIcon className="h-5 w-5 text-saywhat-orange" />
+                <span className="text-white font-semibold">{filteredCalls.length}</span>
+              </div>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 table-fixed">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gradient-to-r from-saywhat-light-grey to-gray-50">
                 <tr>
-                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Call Details
+                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-saywhat-orange rounded-full"></div>
+                      Call Details
+                    </div>
                   </th>
-                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Caller Information
+                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                      Caller Information
+                    </div>
                   </th>
-                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Client Information
+                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-saywhat-orange rounded-full"></div>
+                      Client Information
+                    </div>
                   </th>
-                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Communication
+                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                      Communication
+                    </div>
                   </th>
-                  <th className="w-1/6 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-saywhat-grey rounded-full"></div>
+                      Status
+                    </div>
                   </th>
-                  <th className="w-1/12 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Officer
+                  <th className="px-4 py-4 text-left text-xs font-bold text-saywhat-dark uppercase tracking-wider border-r border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-saywhat-grey rounded-full"></div>
+                      Officer
+                    </div>
                   </th>
-                  <th className="w-16 px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
+                  <th className="px-4 py-4 text-right text-xs font-bold text-saywhat-dark uppercase tracking-wider">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="w-1.5 h-1.5 bg-saywhat-orange rounded-full"></div>
+                      Actions
+                    </div>
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-                        <span className="ml-3 text-gray-500">Loading call records...</span>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-saywhat-orange border-t-transparent mb-4"></div>
+                        <span className="text-saywhat-dark font-medium">Loading call records...</span>
+                        <span className="text-saywhat-grey text-sm mt-1">Please wait</span>
                       </div>
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <div className="text-red-500">
-                        <ExclamationTriangleIcon className="mx-auto h-12 w-12 mb-4" />
-                        <p>{error}</p>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                          <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-saywhat-dark mb-2">Error Loading Records</h3>
+                        <p className="text-saywhat-grey mb-6">{error}</p>
                         <button 
                           onClick={fetchCalls}
-                          className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700"
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-saywhat-orange to-orange-600 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                         >
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
                           Try Again
                         </button>
                       </div>
@@ -457,105 +729,190 @@ export default function AllCallsPage() {
                   </tr>
                 ) : filteredCalls.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                      No call records found
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 bg-saywhat-light-grey rounded-full flex items-center justify-center mb-4">
+                          <PhoneIcon className="h-10 w-10 text-saywhat-grey" />
+                        </div>
+                        <h3 className="text-lg font-bold text-saywhat-dark mb-2">No call records found</h3>
+                        <p className="text-saywhat-grey">
+                          {searchTerm || Object.values(filters).some(f => f) 
+                            ? "Try adjusting your search or filters."
+                            : "Get started by recording your first call."
+                          }
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  filteredCalls.map((call) => {
+                  filteredCalls.map((call, index) => {
                     const statusInfo = getStatusInfo(call.status);
                     const commIcon = getCommunicationIcon(call.communicationMode);
                     
                     return (
-                      <tr key={call.id} className="hover:bg-gray-50 align-top">
-                        <td className="w-1/6 px-3 py-3">
-                          <div className="text-sm">
-                            <div className="font-medium text-gray-900 truncate">{call.callNumber}</div>
-                            <div className="text-gray-500 text-xs truncate">{call.id}</div>
-                            <div className="text-gray-500 text-xs">{call.dateTime ? new Date(call.dateTime).toLocaleDateString() : 'N/A'}</div>
-                            <div className="text-gray-500 text-xs">Duration: {call.duration || 'N/A'}</div>
+                      <tr 
+                        key={call.id} 
+                        className="group hover:bg-gradient-to-r hover:from-orange-50/50 hover:to-white transition-all duration-200 border-b border-gray-100"
+                      >
+                        {/* Call Details */}
+                        <td className="px-4 py-4 align-top">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1 h-6 bg-gradient-to-b from-saywhat-orange to-orange-600 rounded-full"></div>
+                              <div className="font-bold text-saywhat-dark text-sm">{call.callNumber}</div>
+                            </div>
+                            <div className="text-xs text-saywhat-grey font-mono pl-3">{call.id.slice(0, 8)}...</div>
+                            <div className="flex items-center gap-2 pl-3">
+                              <svg className="h-3 w-3 text-saywhat-grey" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <span className="text-xs text-saywhat-dark font-medium">
+                                {call.dateTime ? new Date(call.dateTime).toLocaleDateString() : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 pl-3">
+                              <ClockIcon className="h-3 w-3 text-saywhat-grey" />
+                              <span className="text-xs text-saywhat-grey">{call.duration || 'N/A'}</span>
+                            </div>
                           </div>
                         </td>
-                        <td className="w-1/6 px-3 py-3">
-                          <div className="text-sm">
-                            <div className="font-medium text-gray-900 truncate">{call.callerName || 'Unknown'}</div>
-                            <div className="text-gray-500 text-xs truncate">{call.callerPhone || 'N/A'}</div>
-                            <div className="text-gray-500 text-xs truncate">{call.callerProvince || 'N/A'}</div>
-                            <div className="text-gray-500 text-xs">{call.callerGender || 'N/A'}, {call.callerAge || 'N/A'}</div>
+
+                        {/* Caller Information */}
+                        <td className="px-4 py-4 align-top">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                {call.callerName ? call.callerName.charAt(0).toUpperCase() : '?'}
+                              </div>
+                              <div className="font-semibold text-saywhat-dark text-sm truncate max-w-[120px]" title={call.callerName || 'Unknown'}>
+                                {call.callerName || 'Unknown'}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 pl-8">
+                              <svg className="h-3 w-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                              </svg>
+                              <span className="text-xs text-saywhat-dark font-medium">{call.callerPhone || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 pl-8">
+                              <svg className="h-3 w-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              <span className="text-xs text-saywhat-grey">{call.callerProvince || 'N/A'}</span>
+                            </div>
+                            <div className="pl-8">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-medium">
+                                {call.callerGender || 'N/A'}, {call.callerAge || 'N/A'}
+                              </span>
+                            </div>
                           </div>
                         </td>
-                        <td className="w-1/6 px-3 py-3">
-                          <div className="text-sm">
+
+                        {/* Client Information */}
+                        <td className="px-4 py-4 align-top">
+                          <div className="space-y-1.5">
                             {call.clientName ? (
                               <>
-                                <div className="font-medium text-gray-900 truncate" title={call.clientName}>
-                                  {call.clientName}
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 bg-gradient-to-br from-saywhat-orange to-orange-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                    {call.clientName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="font-semibold text-saywhat-dark text-sm truncate max-w-[120px]" title={call.clientName}>
+                                    {call.clientName}
+                                  </div>
                                 </div>
-                                <div className="text-gray-500 text-xs">
-                                  {call.clientSex || 'N/A'}, {call.clientAge || 'N/A'}
+                                <div className="pl-8">
+                                  <span className="text-xs text-saywhat-grey">
+                                    {call.clientSex || 'N/A'}, {call.clientAge || 'N/A'}
+                                  </span>
                                 </div>
-                                <div className="text-xs text-blue-600 font-medium">Client</div>
+                                <div className="pl-8">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-saywhat-orange/20 to-orange-100 text-saywhat-orange rounded-full text-xs font-bold">
+                                    <div className="w-1.5 h-1.5 bg-saywhat-orange rounded-full"></div>
+                                    Client
+                                  </span>
+                                </div>
                               </>
                             ) : (
-                              <div className="text-gray-400 text-xs italic">
-                                Same as caller
+                              <div className="flex items-center gap-2 pl-2">
+                                <div className="w-1 h-8 bg-gray-200 rounded-full"></div>
+                                <span className="text-xs text-gray-400 italic font-medium">Same as caller</span>
                               </div>
                             )}
                           </div>
                         </td>
-                        <td className="w-1/6 px-3 py-3">
-                          <div className="text-sm">
-                            <div className="flex items-center mb-1">
-                              <commIcon.icon className={`mr-1 h-4 w-4 ${commIcon.color}`} />
-                              <span className="font-medium text-gray-900 text-xs truncate">{call.communicationMode}</span>
+
+                        {/* Communication */}
+                        <td className="px-4 py-4 align-top">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className={`p-1.5 rounded-lg ${commIcon.color.includes('blue') ? 'bg-blue-50' : commIcon.color.includes('green') ? 'bg-green-50' : 'bg-gray-50'}`}>
+                                <commIcon.icon className={`h-4 w-4 ${commIcon.color}`} />
+                              </div>
+                              <span className="font-semibold text-saywhat-dark text-xs">{call.communicationMode}</span>
                             </div>
-                            <div className="text-gray-500 text-xs truncate mb-1">{call.purpose}</div>
-                            <div className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                              call.validity === 'Valid' ? 'text-green-800 bg-green-100' : 'text-red-800 bg-red-100'
-                            }`}>
-                              {call.validity || 'invalid'}
+                            <div className="pl-10">
+                              <span className="text-xs text-saywhat-grey font-medium">{call.purpose}</span>
+                            </div>
+                            <div className="pl-10">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full ${
+                                call.validity === 'Valid' || call.validity === 'valid'
+                                  ? 'bg-green-100 text-green-700 border border-green-200'
+                                  : 'bg-red-100 text-red-700 border border-red-200'
+                              }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${
+                                  call.validity === 'Valid' || call.validity === 'valid' ? 'bg-green-500' : 'bg-red-500'
+                                }`}></div>
+                                {call.validity || 'invalid'}
+                              </span>
                             </div>
                           </div>
                         </td>
-                        <td className="w-1/6 px-3 py-3">
-                          <div className="flex items-center mb-1">
-                            <statusInfo.icon className={`mr-1 h-4 w-4 text-gray-400`} />
-                            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${statusInfo.color}`}>
-                              {call.status}
+
+                        {/* Status */}
+                        <td className="px-4 py-4 align-top">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className={`p-1.5 rounded-lg ${statusInfo.color.includes('blue') ? 'bg-blue-50' : statusInfo.color.includes('yellow') ? 'bg-yellow-50' : statusInfo.color.includes('green') ? 'bg-green-50' : 'bg-gray-50'}`}>
+                                <statusInfo.icon className={`h-4 w-4 ${statusInfo.color.includes('blue') ? 'text-blue-600' : statusInfo.color.includes('yellow') ? 'text-yellow-600' : statusInfo.color.includes('green') ? 'text-green-600' : 'text-gray-600'}`} />
+                              </div>
+                              <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-lg ${statusInfo.color} border border-current/20`}>
+                                {call.status}
+                              </span>
+                            </div>
+                            {call.referredTo && call.referredTo !== "N/A" && (
+                              <div className="pl-10 mt-2 p-2 bg-blue-50 rounded-lg border-l-2 border-blue-400">
+                                <div className="text-xs font-semibold text-blue-700 mb-1">→ Referred to:</div>
+                                <div className="text-xs text-blue-600 line-clamp-2" title={call.referredTo}>
+                                  {call.referredTo}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Officer */}
+                        <td className="px-4 py-4 align-top">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-gradient-to-br from-saywhat-grey to-gray-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                              {call.officer ? call.officer.charAt(0).toUpperCase() : '?'}
+                            </div>
+                            <span className="text-sm font-medium text-saywhat-dark truncate max-w-[100px]" title={call.officer}>
+                              {call.officer}
                             </span>
                           </div>
-                          {call.referredTo && call.referredTo !== "N/A" && (
-                            <div className="text-xs text-gray-500 mt-1 leading-tight">
-                              <div className="font-medium text-gray-600 mb-0.5">→ Referred to:</div>
-                              <div 
-                                className="break-words overflow-hidden" 
-                                style={{
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 3,
-                                  WebkitBoxOrient: 'vertical',
-                                  maxHeight: '3.6em',
-                                  lineHeight: '1.2em'
-                                }}
-                                title={call.referredTo}
-                              >
-                                {call.referredTo}
-                              </div>
-                            </div>
-                          )}
                         </td>
-                        <td className="w-1/12 px-2 py-3 text-sm text-gray-900">
-                          <div className="truncate" title={call.officer}>
-                            {call.officer}
-                          </div>
-                        </td>
-                        <td className="w-16 px-2 py-3 text-right">
-                          <div className="flex items-center justify-end space-x-1">
+
+                        {/* Actions */}
+                        <td className="px-4 py-4 align-top">
+                          <div className="flex items-center justify-end gap-1">
                             <button 
                               onClick={() => {
                                 setSelectedCall(call);
                                 setShowCallDetail(true);
                               }}
-                              className="text-orange-600 hover:text-orange-700 p-1"
+                              className="p-2 rounded-lg bg-orange-50 text-saywhat-orange hover:bg-saywhat-orange hover:text-white transition-all duration-200 transform hover:scale-110 shadow-sm hover:shadow-md"
                               title="View Call Details"
                             >
                               <EyeIcon className="h-4 w-4" />
@@ -563,7 +920,7 @@ export default function AllCallsPage() {
                             {canEdit && (
                               <>
                                 <button 
-                                  className="text-indigo-600 hover:text-indigo-900 p-1"
+                                  className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-200 transform hover:scale-110 shadow-sm hover:shadow-md"
                                   onClick={() => {
                                     setEditingCall(call);
                                     setShowEditCall(true);
@@ -574,7 +931,7 @@ export default function AllCallsPage() {
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteCall(call.id)}
-                                  className="text-red-600 hover:text-red-900 p-1"
+                                  className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all duration-200 transform hover:scale-110 shadow-sm hover:shadow-md"
                                   title="Delete Call"
                                 >
                                   <TrashIcon className="h-4 w-4" />
@@ -591,18 +948,6 @@ export default function AllCallsPage() {
             </table>
           </div>
 
-          {filteredCalls.length === 0 && (
-            <div className="text-center py-12">
-              <PhoneIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No call records found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {searchTerm || Object.values(filters).some(f => f) 
-                  ? "Try adjusting your search or filters."
-                  : "Get started by recording your first call."
-                }
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
