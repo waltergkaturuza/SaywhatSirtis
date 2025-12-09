@@ -81,6 +81,7 @@ export default function AllCallsPage() {
   const [showCallDetail, setShowCallDetail] = useState(false);
   const [showEditCall, setShowEditCall] = useState(false);
   const [editingCall, setEditingCall] = useState<CallRecord | null>(null);
+  const [totalCallsCount, setTotalCallsCount] = useState<number | null>(null); // Actual total from database
 
   useEffect(() => {
     fetchCalls();
@@ -129,6 +130,8 @@ export default function AllCallsPage() {
       const data = await response.json();
       setCalls(data.calls || []);
       setFilteredCalls(data.calls || []);
+      // Store the actual total count from database (not just paginated count)
+      setTotalCallsCount(data.total || null);
     } catch (error) {
       console.error('Error fetching calls:', error);
       setError('Failed to load call records');
@@ -637,13 +640,23 @@ export default function AllCallsPage() {
                     Call Records
                   </h3>
                   <p className="text-sm text-gray-300 mt-0.5">
-                    {filteredCalls.length} {filteredCalls.length === 1 ? 'record' : 'records'} found
+                    {totalCallsCount !== null 
+                      ? `${totalCallsCount.toLocaleString()} ${totalCallsCount === 1 ? 'record' : 'records'} total`
+                      : `${filteredCalls.length} ${filteredCalls.length === 1 ? 'record' : 'records'} loaded`
+                    }
+                    {filteredCalls.length < (totalCallsCount || 0) && totalCallsCount !== null && (
+                      <span className="text-xs text-gray-400 ml-1">
+                        ({filteredCalls.length} shown)
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg backdrop-blur-sm">
                 <PhoneIcon className="h-5 w-5 text-saywhat-orange" />
-                <span className="text-white font-semibold">{filteredCalls.length}</span>
+                <span className="text-white font-semibold">
+                  {totalCallsCount !== null ? totalCallsCount.toLocaleString() : filteredCalls.length}
+                </span>
               </div>
             </div>
           </div>
