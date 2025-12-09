@@ -22,15 +22,16 @@ const createPrismaClient = () => {
   const parts = connectionUrl.split('?')
   if (parts[1]) {
     const params = new URLSearchParams(parts[1])
-    // Increase connection pool for better concurrency
+    // Optimize connection pool for Render.com deployment
+    // Reduce connection limit to prevent pool exhaustion
     if (!params.has('connection_limit')) {
-      params.set('connection_limit', '10')
+      params.set('connection_limit', '5') // Reduced from 10 to prevent exhaustion
     }
     if (!params.has('pool_timeout')) {
-      params.set('pool_timeout', '60')
+      params.set('pool_timeout', '20') // Reduced timeout for faster failure detection
     }
     if (!params.has('connect_timeout')) {
-      params.set('connect_timeout', '60')
+      params.set('connect_timeout', '10') // Faster connection timeout
     }
     // Remove any duplicate keys implicitly handled by URLSearchParams
     connectionUrl = parts[0] + '?' + params.toString()
@@ -42,10 +43,9 @@ const createPrismaClient = () => {
     datasources: { db: { url: connectionUrl } }
   })
 
-  // Automatically connect on first use
-  client.$connect().catch((error) => {
-    console.error('Failed to connect to database:', error)
-  })
+  // Don't auto-connect - let connections be managed lazily
+  // Auto-connecting can cause pool exhaustion on startup
+  // Connections will be established on first query
 
   // Lightweight health flag
   ;(client as any)._healthy = false
@@ -96,14 +96,23 @@ export async function executeQuery<T>(queryFn: (prisma: PrismaClient) => Promise
       const result = await queryFn(prisma)
       return result
     } catch (error: any) {
-      const transient = /P1001|P2024|timeout|ECONNRESET|ECONNREFUSED|read ECONNRESET|Could not connect|reset by peer|prepared statement/i.test(error?.message || '')
+      const transient = /P1001|P2024|timeout|ECONNRESET|ECONNREFUSED|read ECONNRESET|Could not connect|reset by peer|prepared statement|connection pool/i.test(error?.message || '')
+      
+      // For P2024 (connection pool timeout), reset health flag and wait longer
+      if (error?.code === 'P2024') {
+        ;(prisma as any)._healthy = false
+        console.warn(`Connection pool timeout (P2024) - resetting connection health flag`)
+        // Wait a bit longer for pool to recover
+        await new Promise(r => setTimeout(r, 1000))
+      }
+      
       if (attempt < maxRetries && transient) {
         const backoff = 250 * Math.pow(2, attempt - 1)
         console.warn(`Transient DB error (attempt ${attempt}/${maxRetries}), backing off ${backoff}ms`, error?.code || '')
         await new Promise(r => setTimeout(r, backoff))
         continue
       }
-      console.error('Non-retryable or max attempts reached for DB query')
+      console.error('Non-retryable or max attempts reached for DB query', error?.code || '')
       throw error
     }
   }

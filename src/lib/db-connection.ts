@@ -1,39 +1,55 @@
 // Database connection with retry logic and proper error handling for Render deployment
-import { PrismaClient } from '@prisma/client';
+// Import from the optimized prisma.ts to ensure single instance
+import { prisma as optimizedPrisma } from './prisma';
 
-declare global {
-  var prisma: PrismaClient | undefined;
-}
+// Re-export the optimized Prisma client to ensure single instance
+export const prisma = optimizedPrisma;
 
-const createPrismaClient = () => {
-  return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
-    errorFormat: 'pretty',
-  });
-};
-
-// Ensure we don't create multiple instances in development
-export const prisma = globalThis.prisma || createPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma;
-}
-
-// Connection health check function
+// Connection health check function with timeout and retry logic
 export async function checkDatabaseConnection() {
-  try {
-    await prisma.$connect();
-    console.log('✅ Database connected successfully');
-    return true;
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    return false;
+  const maxAttempts = 3;
+  let attempt = 0;
+  
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      // Use a timeout to prevent hanging
+      const connectPromise = prisma.$connect();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Connection timeout')), 10000)
+      );
+      
+      await Promise.race([connectPromise, timeoutPromise]);
+      
+      // Quick health check query
+      await prisma.$queryRaw`SELECT 1`.catch(() => {
+        throw new Error('Health check query failed');
+      });
+      
+      console.log('✅ Database connected successfully');
+      return true;
+    } catch (error: any) {
+      const isPoolError = error?.code === 'P2024' || /connection pool|timeout/i.test(error?.message || '');
+      
+      if (attempt >= maxAttempts) {
+        console.error('❌ Database connection failed after', maxAttempts, 'attempts:', error?.code || error?.message);
+        return false;
+      }
+      
+      if (isPoolError) {
+        console.warn(`⚠️ Connection pool issue (attempt ${attempt}/${maxAttempts}), retrying...`);
+        // Wait before retrying, with exponential backoff
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+        continue;
+      }
+      
+      // For other errors, log and return false
+      console.error('❌ Database connection failed:', error?.code || error?.message);
+      return false;
+    }
   }
+  
+  return false;
 }
 
 // Graceful shutdown
