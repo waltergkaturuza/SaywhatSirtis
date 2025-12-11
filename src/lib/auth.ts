@@ -5,6 +5,8 @@ import * as bcrypt from 'bcryptjs'
 import { securityService } from "@/lib/security-service"
 import AuditLogger from "@/lib/audit-logger"
 import { isTwoFactorEnabled, verifyTwoFactorToken, verifyAndConsumeBackupCode } from "@/lib/two-factor-auth"
+import { createOrUpdateSession, checkSessionIdle, checkSessionAbsoluteTimeout } from "@/lib/session-manager"
+import { validateIPAccess } from "@/lib/ip-security"
 
 // Development users REMOVED for security
 // All authentication now uses database only with proper password hashing

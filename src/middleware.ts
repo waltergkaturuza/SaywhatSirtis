@@ -1,293 +1,95 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+// Next.js Middleware for session activity tracking and IP validation
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
+import { updateSessionActivity, checkSessionIdle, checkSessionAbsoluteTimeout } from '@/lib/session-manager';
+import { validateIPAccess } from '@/lib/ip-security';
 
-// Rate limiting store (in production, use Redis or similar)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
-
-// Request logging store
-const requestLog: Array<{
-  timestamp: string;
-  method: string;
-  url: string;
-  userAgent?: string;
-  ip?: string;
-  userId?: string;
-  duration?: number;
-  status?: number;
-}> = []
-
-/**
- * Fast health check response to avoid timeout on Render
- */
-function createHealthResponse(): NextResponse {
-  return NextResponse.json({
-    status: 'healthy',
-    message: 'SIRTIS API is running (middleware)',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    middleware: true
-  }, { status: 200 });
-}
-
-/**
- * Rate limiting configuration
- */
-const RATE_LIMIT_CONFIG = {
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: process.env.NODE_ENV === 'development' ? 5000 : 500, // Much higher limit to prevent 502 errors
-  message: 'Too many requests, please try again later',
-  skipSuccessfulRequests: false,
-  skipFailedRequests: false
-}
-
-/**
- * Endpoints that should be excluded from rate limiting
- */
-const RATE_LIMIT_EXCLUDED_PATHS = [
-  '/api/test/hello',
-  '/api/auth',
-  '/api/health',
-  '/_next',
-  '/favicon.ico'
-]
-
-/**
- * Get client IP address
- */
-function getClientIP(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for')
-  const realIP = request.headers.get('x-real-ip')
-  const remoteAddr = request.headers.get('remote-addr')
-  
-  if (forwarded) {
-    return forwarded.split(',')[0].trim()
-  }
-  
-  return realIP || remoteAddr || 'unknown'
-}
-
-/**
- * Check rate limit for a client
- */
-function checkRateLimit(clientId: string): { allowed: boolean; remaining: number; resetTime: number } {
-  const now = Date.now()
-  const windowStart = now - RATE_LIMIT_CONFIG.windowMs
-  
-  // Clean up old entries
-  for (const [key, value] of rateLimitStore.entries()) {
-    if (value.resetTime < windowStart) {
-      rateLimitStore.delete(key)
-    }
-  }
-  
-  const clientData = rateLimitStore.get(clientId)
-  
-  if (!clientData || clientData.resetTime < windowStart) {
-    // First request in this window
-    const resetTime = now + RATE_LIMIT_CONFIG.windowMs
-    rateLimitStore.set(clientId, { count: 1, resetTime })
-    return {
-      allowed: true,
-      remaining: RATE_LIMIT_CONFIG.maxRequests - 1,
-      resetTime
-    }
-  }
-  
-  if (clientData.count >= RATE_LIMIT_CONFIG.maxRequests) {
-    // Rate limit exceeded
-    return {
-      allowed: false,
-      remaining: 0,
-      resetTime: clientData.resetTime
-    }
-  }
-  
-  // Increment counter
-  clientData.count++
-  rateLimitStore.set(clientId, clientData)
-  
-  return {
-    allowed: true,
-    remaining: RATE_LIMIT_CONFIG.maxRequests - clientData.count,
-    resetTime: clientData.resetTime
-  }
-}
-
-/**
- * Log request information
- */
-function logRequest(
-  request: NextRequest,
-  response?: NextResponse,
-  duration?: number,
-  userId?: string
-) {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    method: request.method,
-    url: request.url,
-    userAgent: request.headers.get('user-agent') || undefined,
-    ip: getClientIP(request),
-    userId,
-    duration,
-    status: response?.status
-  }
-  
-  requestLog.push(logEntry)
-  
-  // Keep only last 1000 requests in memory
-  if (requestLog.length > 1000) {
-    requestLog.shift()
-  }
-  
-  // Console log for development
-  console.log(`[${logEntry.timestamp}] ${logEntry.method} ${logEntry.url} - ${logEntry.status || 'pending'} - ${logEntry.duration || 0}ms - IP: ${logEntry.ip} - User: ${logEntry.userId || 'anonymous'}`)
-}
-
-/**
- * Security headers middleware
- */
-function addSecurityHeaders(response: NextResponse): NextResponse {
-  // Basic security headers
-  response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-Frame-Options', 'DENY')
-  response.headers.set('X-XSS-Protection', '1; mode=block')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  // ALLOW camera and geolocation for MEAL forms on mobile devices
-  response.headers.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(self)')
-  
-  // CORS headers for API routes
-  response.headers.set('Access-Control-Allow-Origin', process.env.NODE_ENV === 'production' ? 'https://sirtis.saywhat.org' : '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  
-  return response
-}
-
-/**
- * Main middleware function
- */
 export async function middleware(request: NextRequest) {
-  const startTime = Date.now()
-  
-  // Handle CORS preflight early
-  if (request.method === 'OPTIONS') {
-    const res = new NextResponse(null, { status: 204 })
-    return addSecurityHeaders(res)
-  }
-
-  // FAST HEALTH CHECK BYPASS - Critical for Render deployment
-  if (request.nextUrl.pathname === '/api/health') {
-    return createHealthResponse();
-  }
-  
-  // Skip middleware for static files and Next.js internals
+  // Skip middleware for static files and API routes (except auth)
   if (
     request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname.startsWith('/api/auth/') ||
     request.nextUrl.pathname.startsWith('/static') ||
-    request.nextUrl.pathname.includes('.') // Skip files with extensions
+    request.nextUrl.pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js)$/)
   ) {
-    return NextResponse.next()
+    return NextResponse.next();
   }
-  
-  // Get user info for logging
-  let userId: string | undefined
+
   try {
-    const token = await getToken({ req: request })
-    userId = token?.email as string
-  } catch (error) {
-    // Ignore token errors for public routes
-  }
-  
-  // Check rate limit for API routes (but skip auth routes and excluded paths to prevent login issues)
-  const shouldSkipRateLimit = RATE_LIMIT_EXCLUDED_PATHS.some(path => 
-    request.nextUrl.pathname.startsWith(path)
-  )
-  
-  if (request.nextUrl.pathname.startsWith('/api/') && !shouldSkipRateLimit) {
-    const clientId = userId || getClientIP(request)
-    const rateLimit = checkRateLimit(clientId)
-    
-    if (!rateLimit.allowed) {
-      const response = NextResponse.json(
-        {
-          success: false,
-          error: RATE_LIMIT_CONFIG.message,
-          code: 'RATE_LIMIT_EXCEEDED'
-        },
-        { status: 429 }
-      )
-      
-      // Add rate limit headers
-      response.headers.set('X-RateLimit-Limit', RATE_LIMIT_CONFIG.maxRequests.toString())
-      response.headers.set('X-RateLimit-Remaining', '0')
-      response.headers.set('X-RateLimit-Reset', Math.ceil(rateLimit.resetTime / 1000).toString())
-      response.headers.set('Retry-After', Math.ceil((rateLimit.resetTime - Date.now()) / 1000).toString())
-      
-      // Log the rate limit violation
-      logRequest(request, response, Date.now() - startTime, userId)
-      
-      return addSecurityHeaders(response)
+    // Get session token
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET 
+    });
+
+    if (token) {
+      // Get session token from cookies
+      const sessionToken = request.cookies.get('next-auth.session-token')?.value || 
+                          request.cookies.get('__Secure-next-auth.session-token')?.value;
+
+      if (sessionToken) {
+        // Check session idle timeout
+        const isIdle = await checkSessionIdle(sessionToken);
+        if (isIdle) {
+          console.log('⏱️ Session idle timeout - redirecting to login');
+          const response = NextResponse.redirect(new URL('/auth/signin?timeout=idle', request.url));
+          response.cookies.delete('next-auth.session-token');
+          response.cookies.delete('__Secure-next-auth.session-token');
+          return response;
+        }
+
+        // Check absolute timeout
+        const isExpired = await checkSessionAbsoluteTimeout(sessionToken);
+        if (isExpired) {
+          console.log('⏱️ Session absolute timeout - redirecting to login');
+          const response = NextResponse.redirect(new URL('/auth/signin?timeout=absolute', request.url));
+          response.cookies.delete('next-auth.session-token');
+          response.cookies.delete('__Secure-next-auth.session-token');
+          return response;
+        }
+
+        // Update session activity
+        await updateSessionActivity(sessionToken);
+      }
+
+      // Validate IP access for authenticated users
+      const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                       request.headers.get('x-real-ip') ||
+                       request.ip ||
+                       'unknown';
+
+      const ipValidation = await validateIPAccess(
+        ipAddress,
+        token.id as string,
+        (token.roles as string[])?.[0]
+      );
+
+      if (!ipValidation.allowed) {
+        console.log('🚫 IP access denied for authenticated user:', ipAddress, ipValidation.reason);
+        const response = NextResponse.redirect(new URL('/auth/signin?error=ip_blocked', request.url));
+        response.cookies.delete('next-auth.session-token');
+        response.cookies.delete('__Secure-next-auth.session-token');
+        return response;
+      }
     }
-    
-    // Add rate limit headers to successful responses
-    const response = NextResponse.next()
-    response.headers.set('X-RateLimit-Limit', RATE_LIMIT_CONFIG.maxRequests.toString())
-    response.headers.set('X-RateLimit-Remaining', rateLimit.remaining.toString())
-    response.headers.set('X-RateLimit-Reset', Math.ceil(rateLimit.resetTime / 1000).toString())
-    
-    // Log the request
-    logRequest(request, undefined, undefined, userId)
-    
-    return addSecurityHeaders(response)
+  } catch (error) {
+    console.error('Middleware error:', error);
+    // Don't block request on middleware errors
   }
-  
-  // For non-API routes, just add security headers and log
-  const response = NextResponse.next()
-  logRequest(request, undefined, undefined, userId)
-  
-  return addSecurityHeaders(response)
+
+  return NextResponse.next();
 }
 
-/**
- * Configure which routes the middleware should run on
- */
 export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public (public files)
-     * - api/auth (NextAuth routes)
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
-}
-
-/**
- * Get request logs (for admin dashboard)
- */
-export function getRequestLogs(limit: number = 100) {
-  return requestLog.slice(-limit).reverse()
-}
-
-/**
- * Get rate limit statistics
- */
-export function getRateLimitStats() {
-  const now = Date.now()
-  const activeClients = Array.from(rateLimitStore.entries())
-    .filter(([_, data]) => data.resetTime > now)
-    .map(([clientId, data]) => ({
-      clientId,
-      requestCount: data.count,
-      resetTime: new Date(data.resetTime).toISOString()
-    }))
-  
-  return {
-    totalActiveClients: activeClients.length,
-    clients: activeClients.sort((a, b) => b.requestCount - a.requestCount)
-  }
-}
+};
