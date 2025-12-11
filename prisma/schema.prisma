@@ -1380,6 +1380,47 @@ model sessions {
   users        users    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model user_sessions {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  deviceName   String
+  deviceType   String
+  browser      String
+  os           String
+  userAgent    String
+  ipAddress    String
+  createdAt    DateTime @default(now())
+  lastActivity DateTime @default(now())
+  expiresAt    DateTime
+  users        users    @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionToken])
+  @@index([expiresAt])
+  @@index([lastActivity])
+}
+
+model ip_rules {
+  id        String    @id @default(uuid())
+  ipAddress String
+  type      String    // 'whitelist' or 'blacklist'
+  userId    String?
+  role      String?
+  reason    String?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  isActive  Boolean   @default(true)
+  users     users?    @relation("IPRules", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([ipAddress, type, userId, role], name: "ipAddress_type_userId_role")
+  @@index([ipAddress])
+  @@index([type])
+  @@index([userId])
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
 model system_config {
   id          String   @id
   key         String   @unique
