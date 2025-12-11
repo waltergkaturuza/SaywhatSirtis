@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { securityService } from '@/lib/security-service';
+import AuditLogger from '@/lib/audit-logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,18 +35,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (newPassword.length < 8) {
+    // Enforce password policy using SecurityService
+    const passwordValidation = securityService.validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
       return NextResponse.json(
-        { error: 'New password must be at least 8 characters long' },
-        { status: 400 }
-      );
-    }
-
-    // Password strength validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
-    if (!passwordRegex.test(newPassword)) {
-      return NextResponse.json(
-        { error: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character' },
+        { 
+          error: 'Password does not meet security requirements',
+          details: passwordValidation.errors
+        },
         { status: 400 }
       );
     }
@@ -105,6 +103,19 @@ export async function POST(request: NextRequest) {
           setTimeout(() => reject(new Error('Database update timeout')), 15000)
         )
       ]);
+
+      // Log password change in audit trail
+      await AuditLogger.logSecurityEvent(
+        'PASSWORD_CHANGE',
+        {
+          userId: user.id,
+          email: user.email,
+          timestamp: new Date().toISOString()
+        },
+        user.id,
+        request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        request.headers.get('user-agent') || 'unknown'
+      ).catch(err => console.error('Failed to log password change:', err));
 
       // Create audit log for password change
       try {

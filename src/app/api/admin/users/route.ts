@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { randomUUID } from 'crypto'
 import * as bcrypt from 'bcryptjs'
+import { securityService } from "@/lib/security-service"
+import AuditLogger from "@/lib/audit-logger"
 
 // Helper functions for role management - aligned with HR module definitions
 function getRoleDisplayName(role: string): string {
@@ -433,8 +435,24 @@ export async function POST(request: NextRequest) {
             )
           }
 
-          // Hash the password
-          const hashedPassword = await bcrypt.hash(userData.password, 10)
+          // Enforce password policy if password is provided
+          if (userData.password) {
+            const passwordValidation = securityService.validatePasswordStrength(userData.password);
+            if (!passwordValidation.isValid) {
+              return NextResponse.json(
+                { 
+                  error: "Password does not meet security requirements",
+                  details: passwordValidation.errors
+                },
+                { status: 400 }
+              );
+            }
+          }
+
+          // Hash the password (use 12 rounds for better security)
+          const hashedPassword = userData.password 
+            ? await bcrypt.hash(userData.password, 12)
+            : null
 
           // Create new user
           const newUser = await prisma.users.create({
@@ -463,6 +481,26 @@ export async function POST(request: NextRequest) {
               createdAt: true,
             }
           })
+
+          // Log user creation in audit trail
+          const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+          const userAgent = request.headers.get('user-agent') || 'unknown';
+          
+          await AuditLogger.logCreate(
+            session?.user?.id || 'system',
+            'User Management',
+            newUser.id,
+            {
+              email: newUser.email,
+              firstName: newUser.firstName,
+              lastName: newUser.lastName,
+              role: newUser.role,
+              department: newUser.department,
+              createdBy: session?.user?.email || 'system'
+            },
+            ipAddress,
+            userAgent
+          ).catch(err => console.error('Failed to log user creation:', err));
 
           const transformedUser = {
             id: newUser.id,

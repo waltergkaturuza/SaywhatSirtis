@@ -2,6 +2,8 @@ import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import * as bcrypt from 'bcryptjs'
+import { securityService } from "@/lib/security-service"
+import AuditLogger from "@/lib/audit-logger"
 
 // Development users REMOVED for security
 // All authentication now uses database only with proper password hashing
@@ -301,12 +303,45 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
-        console.log('🔐 LOGIN ATTEMPT:', credentials.email)
+        // Get IP address for brute force protection and audit logging
+        const ipAddress = (request?.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+                         (request?.headers?.['x-real-ip'] as string) ||
+                         'unknown'
+        const userAgent = (request?.headers?.['user-agent'] as string) || 'unknown'
+        
+        // Use email + IP as identifier for brute force protection
+        const identifier = `${credentials.email}:${ipAddress}`
+
+        console.log('🔐 LOGIN ATTEMPT:', credentials.email, 'from IP:', ipAddress)
+
+        // Check if account is locked due to brute force attempts
+        if (securityService.isAccountLocked(identifier)) {
+          console.log('🚫 Account locked due to brute force attempts:', credentials.email)
+          // Log security violation
+          await AuditLogger.logSecurityEvent(
+            'BRUTE_FORCE_LOCKED',
+            {
+              email: credentials.email,
+              ipAddress,
+              userAgent,
+              reason: 'Account locked due to multiple failed login attempts',
+              timestamp: new Date().toISOString()
+            },
+            undefined, // No user ID for failed login
+            ipAddress,
+            userAgent
+          ).catch(err => console.error('Failed to log security event:', err))
+          
+          return null
+        }
+
+        let authenticationSuccess = false
+        let authenticatedUser: any = null
 
         try {
           // First, try to find user in database
@@ -330,7 +365,6 @@ export const authOptions: NextAuthOptions = {
           if (dbUser && dbUser.isActive) {
             console.log('✅ Database user found:', dbUser.email)
             console.log('🔍 Password hash exists:', !!dbUser.passwordHash)
-            console.log('🔍 Password hash length:', dbUser.passwordHash ? dbUser.passwordHash.length : 0)
             
             // Verify password against hash - only if hash exists
             if (!dbUser.passwordHash) {
@@ -341,6 +375,11 @@ export const authOptions: NextAuthOptions = {
                 
                 if (passwordMatch) {
                   console.log('✅ Password verified for database user')
+                  authenticationSuccess = true
+                  
+                  // Clear failed attempts on successful login
+                  securityService.clearFailedAttempts(identifier)
+                  
                   // Update lastLogin timestamp for database users
                   try {
                     await prisma.users.update({
@@ -352,10 +391,19 @@ export const authOptions: NextAuthOptions = {
                     console.error('❌ Failed to update lastLogin:', updateError)
                   }
 
+                  // Log successful login
+                  await AuditLogger.logLogin(
+                    dbUser.id,
+                    dbUser.email,
+                    ipAddress,
+                    userAgent,
+                    true
+                  ).catch(err => console.error('Failed to log login:', err))
+
                   // Map database user to auth format
                   const userRoles = dbUser.roles && dbUser.roles.length ? dbUser.roles : [dbUser.role || 'BASIC_USER_1']
                   
-                  return {
+                  authenticatedUser = {
                     id: dbUser.id,
                     email: dbUser.email,
                     name: `${dbUser.firstName} ${dbUser.lastName}`,
@@ -367,9 +415,25 @@ export const authOptions: NextAuthOptions = {
                   }
                 } else {
                   console.log('❌ Password mismatch for database user')
+                  // Record failed attempt
+                  const isLocked = securityService.recordFailedAttempt(identifier)
+                  if (isLocked) {
+                    console.log('🚫 Account locked after multiple failed attempts')
+                  }
+                  
+                  // Log failed login attempt
+                  await AuditLogger.logLogin(
+                    dbUser.id,
+                    dbUser.email,
+                    ipAddress,
+                    userAgent,
+                    false
+                  ).catch(err => console.error('Failed to log failed login:', err))
                 }
               } catch (bcryptError) {
                 console.error('❌ bcrypt comparison error:', bcryptError)
+                // Record failed attempt
+                securityService.recordFailedAttempt(identifier)
               }
             }
           } else {
@@ -377,7 +441,13 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error('❌ Database authentication error:', error)
-          // Continue to development users fallback
+          // Record failed attempt for database errors
+          securityService.recordFailedAttempt(identifier)
+        }
+
+        // If authentication succeeded, return user
+        if (authenticationSuccess && authenticatedUser) {
+          return authenticatedUser
         }
 
         // Fallback to development users ONLY if user doesn't exist in database
@@ -395,6 +465,8 @@ export const authOptions: NextAuthOptions = {
             if (existsInDb && existsInDb.passwordHash) {
               // User exists in database with a password hash - DO NOT use dev password
               console.log('❌ User exists in database, dev password disabled for security')
+              // Record failed attempt
+              securityService.recordFailedAttempt(identifier)
               return null
             }
           } catch (err) {
@@ -407,10 +479,31 @@ export const authOptions: NextAuthOptions = {
         
         if (!devUser || devUser.password !== credentials.password) {
           console.log('❌ User not found in development users or password mismatch')
+          // Record failed attempt
+          securityService.recordFailedAttempt(identifier)
+          
+          // Log failed login attempt (no user ID available)
+          await AuditLogger.logSecurityEvent(
+            'LOGIN_FAILURE',
+            {
+              email: credentials.email,
+              ipAddress,
+              userAgent,
+              reason: 'Invalid credentials',
+              timestamp: new Date().toISOString()
+            },
+            undefined,
+            ipAddress,
+            userAgent
+          ).catch(err => console.error('Failed to log security event:', err))
+          
           return null
         }
 
         console.log('✅ Development user authenticated (not in database):', devUser.email)
+        
+        // Clear failed attempts on successful login
+        securityService.clearFailedAttempts(identifier)
         
         // Try to update lastLogin for development user if they exist in database
         try {
@@ -424,6 +517,15 @@ export const authOptions: NextAuthOptions = {
               data: { lastLogin: new Date() }
             })
             console.log('✅ Updated lastLogin for development user in database:', devUser.email)
+            
+            // Log successful login
+            await AuditLogger.logLogin(
+              dbUserForUpdate.id,
+              devUser.email,
+              ipAddress,
+              userAgent,
+              true
+            ).catch(err => console.error('Failed to log login:', err))
           } else {
             console.log('⚠️ Development user not found in database, cannot update lastLogin')
           }

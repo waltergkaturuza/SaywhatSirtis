@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { securityService } from '@/lib/security-service';
+import AuditLogger from '@/lib/audit-logger';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -21,17 +23,12 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (newPassword.length < 8) {
-      return NextResponse.json({ 
-        error: 'New password must be at least 8 characters long' 
-      }, { status: 400 });
-    }
-
-    // Password strength validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
-    if (!passwordRegex.test(newPassword)) {
+    // Enforce password policy using SecurityService
+    const passwordValidation = securityService.validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
       return NextResponse.json({
-        error: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
+        error: 'Password does not meet security requirements',
+        details: passwordValidation.errors
       }, { status: 400 });
     }
 
