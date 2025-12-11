@@ -602,7 +602,7 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       // Handle new login
       if (user) {
         token.id = user.id
@@ -610,7 +610,14 @@ export const authOptions: NextAuthOptions = {
         token.position = (user as any).position
         token.roles = (user as any).roles
         token.permissions = (user as any).permissions
+        token.lastActivity = Date.now()
       }
+      
+      // Update last activity on token refresh
+      if (trigger === 'update') {
+        token.lastActivity = Date.now()
+      }
+      
       return token
     },
     async session({ session, token }) {

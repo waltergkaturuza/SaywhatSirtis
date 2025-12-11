@@ -4,6 +4,7 @@
 import { prisma } from '@/lib/prisma';
 import { getClientIP } from '@/lib/production-helpers';
 import AuditLogger from '@/lib/audit-logger';
+import crypto from 'crypto';
 
 export interface SessionInfo {
   id: string;
