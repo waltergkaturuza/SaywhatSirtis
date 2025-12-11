@@ -368,10 +368,14 @@ export async function POST(request: Request) {
       email: formData.email.toLowerCase().trim(),
       phoneNumber: formData.phoneNumber ? sanitizeInput(formData.phoneNumber) : null,
       alternativePhone: formData.alternativePhone ? sanitizeInput(formData.alternativePhone) : null,
+      personalEmail: formData.personalEmail ? sanitizeInput(formData.personalEmail.toLowerCase().trim()) : null,
+      alternativeEmail: formData.alternativeEmail ? sanitizeInput(formData.alternativeEmail.toLowerCase().trim()) : null,
       address: formData.address ? sanitizeInput(formData.address) : null,
       // Fix emergency contact field mapping
       emergencyContact: formData.emergencyContactName ? sanitizeInput(formData.emergencyContactName) : null,
       emergencyPhone: formData.emergencyContactPhone ? sanitizeInput(formData.emergencyContactPhone) : null,
+      emergencyContactRelationship: formData.emergencyContactRelationship ? sanitizeInput(formData.emergencyContactRelationship) : null,
+      emergencyContactAddress: formData.emergencyContactAddress ? sanitizeInput(formData.emergencyContactAddress) : null,
       department: sanitizeInput(departmentName || ''), // Keep for backward compatibility
       departmentId: validDepartmentId, // Use validated departmentId for proper relation
       position: sanitizeInput(formData.position),
@@ -542,9 +546,13 @@ export async function POST(request: Request) {
           email: sanitizedData.email,
           phoneNumber: sanitizedData.phoneNumber,
           alternativePhone: sanitizedData.alternativePhone,
+          personalEmail: sanitizedData.personalEmail,
+          alternativeEmail: sanitizedData.alternativeEmail,
           address: sanitizedData.address,
           emergencyContact: sanitizedData.emergencyContact,
           emergencyPhone: sanitizedData.emergencyPhone,
+          emergencyContactRelationship: sanitizedData.emergencyContactRelationship,
+          emergencyContactAddress: sanitizedData.emergencyContactAddress,
           department: sanitizedData.department,
           departmentId: sanitizedData.departmentId,
           position: sanitizedData.position,
