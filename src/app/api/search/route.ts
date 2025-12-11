@@ -156,10 +156,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Search error:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Search failed',
-      results: []
-    }, { status: 500 })
+    const { response, status } = createErrorResponse(error, request.url)
+    return NextResponse.json(response, { status })
   }
 }

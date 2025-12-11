@@ -5,6 +5,7 @@ import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon, SparklesIcon, UserIcon, LockClosedIcon } from "@heroicons/react/24/outline"
 import Image from "next/image"
+import TwoFactorVerify from "@/components/auth/TwoFactorVerify"
 
 export default function SignIn() {
   const [email, setEmail] = useState("")
@@ -13,13 +14,17 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState("")
+  const [requires2FA, setRequires2FA] = useState(false)
+  const [twoFactorToken, setTwoFactorToken] = useState("")
+  const [backupCode, setBackupCode] = useState("")
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
     setIsSuccess(false)
+    setRequires2FA(false)
 
     try {
       const result = await signIn("credentials", {
@@ -29,7 +34,12 @@ export default function SignIn() {
       })
 
       if (result?.error) {
-        setError("Invalid email or password")
+        // Check if 2FA is required
+        if (result.error === "2FA_REQUIRED" || result.error.includes("2FA")) {
+          setRequires2FA(true)
+        } else {
+          setError("Invalid email or password")
+        }
       } else {
         // Check if sign in was successful
         const session = await getSession()
@@ -43,6 +53,37 @@ export default function SignIn() {
       }
     } catch (error) {
       setError("An error occurred. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handle2FAVerify = async (token: string, backupCode?: string) => {
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        twoFactorToken: token || undefined,
+        backupCode: backupCode || undefined,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        setError("Invalid verification code. Please try again.")
+      } else {
+        const session = await getSession()
+        if (session) {
+          setIsSuccess(true)
+          setTimeout(() => {
+            router.push("/")
+          }, 1500)
+        }
+      }
+    } catch (error) {
+      setError("Verification failed. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -135,25 +176,35 @@ export default function SignIn() {
               </div>
             </div>
           
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              {error && (
-                <div className="rounded-2xl bg-red-50 border border-red-200 p-4 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
-                  <div className="text-sm text-red-700 font-medium text-center">{error}</div>
-                </div>
-              )}
-
-              {isSuccess && (
-                <div className="rounded-2xl bg-green-50 border border-green-200 p-4 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-green-500"></div>
-                  <div className="text-sm text-green-700 font-medium text-center flex items-center justify-center">
-                    <CheckCircleIcon className="h-5 w-5 mr-2" />
-                    Login successful! Redirecting...
+            {requires2FA ? (
+              <TwoFactorVerify
+                email={email}
+                onVerify={handle2FAVerify}
+                onCancel={() => {
+                  setRequires2FA(false)
+                  setError("")
+                }}
+              />
+            ) : (
+              <form className="space-y-4" onSubmit={handlePasswordSubmit}>
+                {error && (
+                  <div className="rounded-2xl bg-red-50 border border-red-200 p-4 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
+                    <div className="text-sm text-red-700 font-medium text-center">{error}</div>
                   </div>
-                </div>
-              )}
-              
-              <div className="space-y-4">
+                )}
+
+                {isSuccess && (
+                  <div className="rounded-2xl bg-green-50 border border-green-200 p-4 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-green-500"></div>
+                    <div className="text-sm text-green-700 font-medium text-center flex items-center justify-center">
+                      <CheckCircleIcon className="h-5 w-5 mr-2" />
+                      Login successful! Redirecting...
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-4">
                 {/* Email Input */}
                 <div className="group">
                   <label htmlFor="email" className="block text-xs font-semibold text-gray-700 mb-1">
@@ -243,6 +294,7 @@ export default function SignIn() {
                 </button>
               </div>
             </form>
+            )}
 
             {/* Footer */}
             <div className="mt-4 pt-4 border-t border-gray-200">

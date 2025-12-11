@@ -29,6 +29,7 @@ import {
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import EmployeeDocumentsSection from "@/components/employee/EmployeeDocumentsSection";
+import TwoFactorSetup from "@/components/auth/TwoFactorSetup";
 
 interface ProfileData {
   employeeId: string;
@@ -77,6 +78,11 @@ export default function EmployeeProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   
+  // 2FA state
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     phoneNumber: '',
     alternativePhone: '',
@@ -95,10 +101,11 @@ export default function EmployeeProfilePage() {
       setLoading(true);
       setError(null);
       
-      // Load profile and stats in parallel
-      const [profileResponse, statsResponse] = await Promise.all([
+      // Load profile, stats, and 2FA status in parallel
+      const [profileResponse, statsResponse, twoFactorResponse] = await Promise.all([
         fetch('/api/employee/profile'),
-        fetch('/api/employee/dashboard-stats')
+        fetch('/api/employee/dashboard-stats'),
+        fetch('/api/auth/2fa/status')
       ]);
       
       if (!profileResponse.ok) {
@@ -128,6 +135,12 @@ export default function EmployeeProfilePage() {
           performanceScore: statsData.performanceScore || null,
           completedTrainings: statsData.completedTrainings || 0
         });
+      }
+
+      // Load 2FA status
+      if (twoFactorResponse.ok) {
+        const twoFactorData = await twoFactorResponse.json();
+        setTwoFactorEnabled(twoFactorData.twoFactorEnabled || false);
       }
     } catch (err) {
       console.error('Error loading profile:', err);
@@ -741,6 +754,53 @@ export default function EmployeeProfilePage() {
                           Change Password
                         </button>
                       </div>
+
+                      {/* Two-Factor Authentication */}
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl border-l-4 border-green-400 mt-4">
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                            <ShieldCheckIcon className="mr-2 h-5 w-5 text-green-600" />
+                            Two-Factor Authentication
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {twoFactorEnabled 
+                              ? '2FA is enabled for your account' 
+                              : 'Add an extra layer of security to your account'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (twoFactorEnabled) {
+                              // TODO: Add disable 2FA functionality
+                              alert('To disable 2FA, please contact your administrator.');
+                            } else {
+                              setShow2FASetup(!show2FASetup);
+                            }
+                          }}
+                          className={`inline-flex items-center px-4 py-2 rounded-lg transition-colors ${
+                            twoFactorEnabled
+                              ? 'bg-gray-600 text-white hover:bg-gray-700'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          <ShieldCheckIcon className="h-4 w-4 mr-2" />
+                          {twoFactorEnabled ? '2FA Enabled' : 'Enable 2FA'}
+                        </button>
+                      </div>
+
+                      {/* 2FA Setup */}
+                      {show2FASetup && !twoFactorEnabled && (
+                        <div className="mt-4">
+                          <TwoFactorSetup
+                            onComplete={() => {
+                              setShow2FASetup(false);
+                              setTwoFactorEnabled(true);
+                              loadProfile(); // Reload to get updated status
+                            }}
+                            onCancel={() => setShow2FASetup(false)}
+                          />
+                        </div>
+                      )}
 
                       {/* Password Change Form */}
                       {showPasswordChange && (
