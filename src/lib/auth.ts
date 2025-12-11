@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import * as bcrypt from 'bcryptjs'
 import { securityService } from "@/lib/security-service"
 import AuditLogger from "@/lib/audit-logger"
+import { isTwoFactorEnabled, verifyTwoFactorToken, verifyAndConsumeBackupCode } from "@/lib/two-factor-auth"
 
 // Development users REMOVED for security
 // All authentication now uses database only with proper password hashing
@@ -358,7 +359,9 @@ export const authOptions: NextAuthOptions = {
               position: true,
               role: true,
               roles: true,
-              isActive: true
+              isActive: true,
+              twoFactorEnabled: true,
+              twoFactorSecret: true
             }
           })
 
@@ -375,6 +378,51 @@ export const authOptions: NextAuthOptions = {
                 
                 if (passwordMatch) {
                   console.log('✅ Password verified for database user')
+                  
+                  // Check if 2FA is enabled
+                  if (dbUser.twoFactorEnabled && dbUser.twoFactorSecret) {
+                    const twoFactorToken = (credentials as any).twoFactorToken;
+                    const backupCode = (credentials as any).backupCode;
+                    
+                    // Require 2FA token or backup code
+                    if (!twoFactorToken && !backupCode) {
+                      console.log('🔐 2FA required but token not provided')
+                      // Return special error that frontend can handle
+                      throw new Error('2FA_REQUIRED')
+                    }
+                    
+                    // Verify 2FA token or backup code
+                    let twoFactorValid = false;
+                    if (twoFactorToken) {
+                      twoFactorValid = verifyTwoFactorToken(twoFactorToken, dbUser.twoFactorSecret);
+                    } else if (backupCode) {
+                      twoFactorValid = await verifyAndConsumeBackupCode(dbUser.id, backupCode);
+                    }
+                    
+                    if (!twoFactorValid) {
+                      console.log('❌ 2FA verification failed')
+                      // Record failed attempt
+                      securityService.recordFailedAttempt(identifier)
+                      
+                      // Log failed 2FA attempt
+                      await AuditLogger.logSecurityEvent(
+                        '2FA_VERIFICATION_FAILED',
+                        {
+                          userId: dbUser.id,
+                          email: dbUser.email,
+                          timestamp: new Date().toISOString()
+                        },
+                        dbUser.id,
+                        ipAddress,
+                        userAgent
+                      ).catch(err => console.error('Failed to log 2FA failure:', err))
+                      
+                      return null
+                    }
+                    
+                    console.log('✅ 2FA verified successfully')
+                  }
+                  
                   authenticationSuccess = true
                   
                   // Clear failed attempts on successful login

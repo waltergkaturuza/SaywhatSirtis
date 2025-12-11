@@ -1520,6 +1520,8 @@ model users {
   bio                                                               String?
   location                                                          String?
   twoFactorEnabled                                                  Boolean                      @default(false)
+  twoFactorSecret                                                    String?
+  twoFactorBackupCodes                                               String[]                     @default([])
   supervisorId                                                      String?
   employeeId                                                        String?
   passwordHash                                                      String?
