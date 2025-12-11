@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma, withRetry } from '@/lib/database';
+import { createErrorResponse } from '@/lib/error-handler';
 
 export async function GET(
   request: NextRequest,
