@@ -85,8 +85,7 @@ export async function GET(
 
   } catch (error: any) {
     console.error('Error fetching document:', error);
-    const { response, status } = createErrorResponse(error, request.url)
-    return NextResponse.json(response, { status })
+    return createErrorResponse(error, request.url)
   }
 }
 
@@ -150,8 +149,7 @@ export async function PUT(
 
   } catch (error: any) {
     console.error('Error updating document:', error);
-    const { response, status } = createErrorResponse(error, request.url)
-    return NextResponse.json(response, { status })
+    return createErrorResponse(error, request.url)
   }
 }
 
@@ -196,7 +194,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting document:', error);
-    const { response, status } = createErrorResponse(error, request.url)
-    return NextResponse.json(response, { status })
+    return createErrorResponse(error, request.url)
   }
 }

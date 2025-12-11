@@ -138,7 +138,6 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('Dashboard metrics API error:', error)
-    const { response, status } = createErrorResponse(error, request.url)
-    return NextResponse.json(response, { status })
+    return createErrorResponse(error, request.url)
   }
 }

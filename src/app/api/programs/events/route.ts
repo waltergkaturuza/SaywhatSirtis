@@ -61,8 +61,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Events fetch error:', error);
-    const { response, status } = createErrorResponse(error, request.url)
-    return NextResponse.json(response, { status })
+    return createErrorResponse(error, request.url)
   }
 }
 
@@ -138,7 +137,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(event, { status: 201 });
   } catch (error) {
     console.error('Event creation error:', error);
-    const { response, status } = createErrorResponse(error, request.url)
-    return NextResponse.json(response, { status })
+    return createErrorResponse(error, request.url)
   }
 }
