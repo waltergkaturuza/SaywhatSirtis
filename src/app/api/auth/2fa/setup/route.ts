@@ -14,18 +14,7 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(createAuthError(), request.url);
     }
 
-    // Check if user is admin or has permission to enable 2FA
-    const isAdmin = session.user.roles?.some(role => 
-      ['admin', 'SYSTEM_ADMINISTRATOR'].includes(role.toUpperCase())
-    ) || session.user.email?.includes('admin');
-
-    if (!isAdmin) {
-      return createErrorResponse(
-        new Error('2FA is currently only available for administrator accounts'),
-        request.url
-      );
-    }
-
+    // 2FA is now available to all authenticated users
     // Setup 2FA
     const twoFactorSetup = await setupTwoFactor(session.user.id, session.user.email);
 
