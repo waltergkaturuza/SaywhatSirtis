@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto'
 import * as bcrypt from 'bcryptjs'
 import { securityService } from "@/lib/security-service"
 import AuditLogger from "@/lib/audit-logger"
+import emailService from "@/lib/email-service"
 
 // Helper functions for role management - aligned with HR module definitions
 function getRoleDisplayName(role: string): string {
@@ -501,6 +502,30 @@ export async function POST(request: NextRequest) {
             ipAddress,
             userAgent
           ).catch(err => console.error('Failed to log user creation:', err));
+
+          // Send welcome email to new user
+          if (userData.password) {
+            // Send welcome email with temporary password
+            emailService.sendWelcomeEmail(
+              newUser.email,
+              newUser.firstName,
+              newUser.email,
+              userData.password
+            ).catch(err => {
+              console.error('Failed to send welcome email:', err);
+              // Don't fail user creation if email fails
+            });
+          } else {
+            // Send welcome email without password (user will need to set it)
+            emailService.sendWelcomeEmail(
+              newUser.email,
+              newUser.firstName,
+              newUser.email
+            ).catch(err => {
+              console.error('Failed to send welcome email:', err);
+              // Don't fail user creation if email fails
+            });
+          }
 
           const transformedUser = {
             id: newUser.id,

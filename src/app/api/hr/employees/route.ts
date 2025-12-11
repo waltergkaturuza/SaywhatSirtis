@@ -14,6 +14,7 @@ import {
   HttpStatus,
   ErrorCodes
 } from '@/lib/api-utils'
+import emailService from '@/lib/email-service'
 
 export async function GET() {
   try {
@@ -668,7 +669,19 @@ export async function POST(request: Request) {
       })
     )
 
-    const { newEmployee, educationQualification, certificationQualifications, jobDescriptionRecord } = result
+    const { newUser, newEmployee, educationQualification, certificationQualifications, jobDescriptionRecord } = result
+
+    // Send welcome email to new employee
+    if (newUser && newEmployee.email) {
+      emailService.sendWelcomeEmail(
+        newEmployee.email,
+        newEmployee.firstName,
+        newEmployee.email
+      ).catch(err => {
+        console.error('Failed to send welcome email to employee:', err);
+        // Don't fail employee creation if email fails
+      });
+    }
 
     const response = createSuccessResponse({
       id: newEmployee.id,

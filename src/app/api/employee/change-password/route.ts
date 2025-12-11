@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { securityService } from '@/lib/security-service';
 import AuditLogger from '@/lib/audit-logger';
+import emailService from '@/lib/email-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,14 +55,15 @@ export async function POST(request: NextRequest) {
           where: { email: session.user.email },
           select: { 
             id: true, 
-            email: true, 
+            email: true,
+            firstName: true,
             passwordHash: true 
           }
         }),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Database query timeout')), 10000)
         )
-      ]) as { id: string; email: string; passwordHash: string | null } | null;
+      ]) as { id: string; email: string; firstName: string | null; passwordHash: string | null } | null;
 
       if (!user) {
         return NextResponse.json(
@@ -143,6 +145,17 @@ export async function POST(request: NextRequest) {
       } catch (auditError) {
         console.warn('Failed to create audit log for password change:', auditError);
         // Continue anyway - password change was successful
+      }
+
+      // Send password changed notification email
+      if (user.firstName) {
+        emailService.sendPasswordChangedEmail(
+          user.email,
+          user.firstName
+        ).catch(err => {
+          console.error('Failed to send password changed email:', err);
+          // Don't fail password change if email fails
+        });
       }
 
       return NextResponse.json({

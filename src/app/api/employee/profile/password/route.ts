@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { securityService } from '@/lib/security-service';
 import AuditLogger from '@/lib/audit-logger';
+import emailService from '@/lib/email-service';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function PUT(request: NextRequest) {
     // Find the user in the database
     const user = await prisma.users.findUnique({
       where: { email: session.user.email },
-      select: { id: true, email: true, passwordHash: true }
+      select: { id: true, email: true, firstName: true, passwordHash: true }
     });
 
     if (!user) {
@@ -92,6 +93,17 @@ export async function PUT(request: NextRequest) {
     } catch (auditError) {
       console.warn('Failed to create audit log for password change:', auditError);
       // Continue anyway - password change was successful
+    }
+
+    // Send password changed notification email
+    if (user.firstName) {
+      emailService.sendPasswordChangedEmail(
+        user.email,
+        user.firstName
+      ).catch(err => {
+        console.error('Failed to send password changed email:', err);
+        // Don't fail password change if email fails
+      });
     }
 
     return NextResponse.json({ 
