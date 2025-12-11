@@ -41,7 +41,46 @@ export async function GET() {
       employee = await Promise.race([
         prisma.employees.findUnique({
           where: { userId: user.id },
-          include: {
+          select: {
+            id: true,
+            employeeId: true,
+            firstName: true,
+            lastName: true,
+            middleName: true,
+            email: true,
+            phoneNumber: true,
+            alternativePhone: true,
+            personalEmail: true,
+            alternativeEmail: true,
+            address: true,
+            dateOfBirth: true,
+            gender: true,
+            nationality: true,
+            nationalId: true,
+            passportNumber: true,
+            emergencyContact: true,
+            emergencyPhone: true,
+            emergencyContactAddress: true,
+            emergencyContactRelationship: true,
+            profilePicture: true,
+            position: true,
+            department: true,
+            departmentId: true,
+            employmentType: true,
+            startDate: true,
+            hireDate: true,
+            endDate: true,
+            salary: true,
+            currency: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            departments: {
+              select: {
+                id: true,
+                name: true
+              }
+            },
             users: {
               select: {
                 id: true,
@@ -52,21 +91,12 @@ export async function GET() {
                 isActive: true
               }
             },
-            // Load normalized department relation so we can return the canonical department name
-            departments: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            // Include supervisor and reviewer relations
             employees: {
               select: { id: true, firstName: true, lastName: true }
             },
             reviewer: {
               select: { id: true, firstName: true, lastName: true }
             },
-            // Include job description with key responsibilities
             job_descriptions: true
           }
         }),
