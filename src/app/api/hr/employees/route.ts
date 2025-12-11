@@ -675,7 +675,7 @@ export async function POST(request: Request) {
     if (newUser && newEmployee.email) {
       emailService.sendWelcomeEmail(
         newEmployee.email,
-        newEmployee.firstName,
+        newEmployee.firstName || 'User',
         newEmployee.email
       ).catch(err => {
         console.error('Failed to send welcome email to employee:', err);
