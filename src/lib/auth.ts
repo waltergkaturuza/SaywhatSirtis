@@ -363,8 +363,38 @@ export const authOptions: NextAuthOptions = {
               roles: true,
               isActive: true,
               twoFactorEnabled: true,
-              twoFactorSecret: true
+              twoFactorSecret: true,
+              twoFactorBackupCodes: true
             }
+          }).catch(async (error: any) => {
+            // Handle missing 2FA columns gracefully
+            if (error?.code === 'P2022' || error?.message?.includes('twoFactor')) {
+              console.log('⚠️ 2FA columns not found, querying without them...')
+              return await prisma.users.findUnique({
+                where: { email: credentials.email },
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                  passwordHash: true,
+                  department: true,
+                  position: true,
+                  role: true,
+                  roles: true,
+                  isActive: true
+                }
+              }).then((user: any) => {
+                // Add default 2FA values if columns don't exist
+                return user ? {
+                  ...user,
+                  twoFactorEnabled: false,
+                  twoFactorSecret: null,
+                  twoFactorBackupCodes: []
+                } : null
+              })
+            }
+            throw error
           })
 
           if (dbUser && dbUser.isActive) {
