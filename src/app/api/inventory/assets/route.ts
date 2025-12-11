@@ -353,10 +353,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Error creating asset:", error)
-    return NextResponse.json(
-      { error: "Failed to create asset" },
-      { status: 500 }
-    )
+    return createErrorResponse(error, request.url)
   }
 }
 
@@ -484,10 +481,7 @@ export async function PUT(request: NextRequest) {
 
   } catch (error) {
     console.error("Error updating asset:", error)
-    return NextResponse.json(
-      { error: "Failed to update asset" },
-      { status: 500 }
-    )
+    return createErrorResponse(error, request.url)
   }
 }
 
@@ -539,9 +533,6 @@ export async function DELETE(request: NextRequest) {
 
   } catch (error) {
     console.error("Error deleting asset:", error)
-    return NextResponse.json(
-      { error: "Failed to delete asset" },
-      { status: 500 }
-    )
+    return createErrorResponse(error, request.url)
   }
 }
