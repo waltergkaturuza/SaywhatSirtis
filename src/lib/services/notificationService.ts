@@ -1,5 +1,6 @@
 import { executeQuery } from '@/lib/prisma'
 import { v4 as uuidv4 } from 'uuid'
+import emailService from '@/lib/email-service'
 
 export interface NotificationData {
   title: string
@@ -48,7 +49,7 @@ export class NotificationService {
           }
         }
 
-        return prisma.notifications.create({
+        const notification = await prisma.notifications.create({
           data: {
             id: uuidv4(),
             title: data.title,
@@ -64,11 +65,52 @@ export class NotificationService {
             status: 'pending'
           },
           include: {
-            users_notifications_recipientIdTousers: true,
+            users_notifications_recipientIdTousers: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true
+              }
+            },
             users_notifications_senderIdTousers: true,
-            employees: true
+            employees: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true
+              }
+            }
           }
         })
+
+        // Send email notification if recipient has email
+        if (notification.users_notifications_recipientIdTousers?.email) {
+          const recipient = notification.users_notifications_recipientIdTousers
+          const employee = notification.employees
+          const actionUrl = data.actionUrl 
+            ? `${process.env.NEXTAUTH_URL || 'https://sirtis-saywhat.onrender.com'}${data.actionUrl}`
+            : undefined
+
+          // Send email based on notification type
+          this.sendNotificationEmail(
+            notification.type,
+            recipient.email,
+            recipient.firstName || 'User',
+            data.title,
+            data.message,
+            actionUrl,
+            employee,
+            data.deadline,
+            data.priority || 'normal'
+          ).catch(err => {
+            console.error('Failed to send notification email:', err)
+            // Don't fail notification creation if email fails
+          })
+        }
+
+        return notification
       })
     } catch (error) {
       console.error('Error creating notification:', error)
@@ -392,13 +434,163 @@ export class NotificationService {
 
       return await executeQuery(async (prisma) => {
         return prisma.notifications.update({
-        where: { id: notificationId },
-        data: updateData
+          where: { id: notificationId },
+          data: updateData
         })
       })
     } catch (error) {
       console.error('Error updating notification status:', error)
       throw new Error('Failed to update notification status')
+    }
+  }
+
+  /**
+   * Send email notification based on type
+   */
+  private static async sendNotificationEmail(
+    type: string,
+    recipientEmail: string,
+    recipientName: string,
+    title: string,
+    message: string,
+    actionUrl?: string,
+    employee?: { firstName: string; lastName: string; email: string | null } | null,
+    deadline?: Date | null,
+    priority: string = 'normal'
+  ): Promise<void> {
+    const notificationType = type.toUpperCase()
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://sirtis-saywhat.onrender.com'
+    const actionButtonText = this.getActionButtonText(notificationType)
+    const formattedDeadline = deadline 
+      ? new Date(deadline).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })
+      : null
+
+    // Generate email content based on notification type
+    let emailSubject = title
+    let emailMessage = message
+
+    // Add context based on notification type
+    switch (notificationType) {
+      case 'PERFORMANCE_PLAN':
+        emailSubject = `Performance Plan Required - ${employee ? `${employee.firstName} ${employee.lastName}` : 'Action Required'}`
+        emailMessage = `
+${message}
+
+${employee ? `Employee: ${employee.firstName} ${employee.lastName}` : ''}
+${formattedDeadline ? `Deadline: ${formattedDeadline}` : ''}
+
+Please review and create the performance plan as soon as possible.
+        `.trim()
+        break
+
+      case 'APPRAISAL':
+        emailSubject = `Performance Appraisal Due - ${employee ? `${employee.firstName} ${employee.lastName}` : 'Action Required'}`
+        emailMessage = `
+${message}
+
+${employee ? `Employee: ${employee.firstName} ${employee.lastName}` : ''}
+${formattedDeadline ? `Due Date: ${formattedDeadline}` : ''}
+
+Please complete the performance appraisal evaluation process.
+        `.trim()
+        break
+
+      case 'TRAINING':
+        emailSubject = `Training Assignment - ${employee ? `${employee.firstName} ${employee.lastName}` : 'Action Required'}`
+        emailMessage = `
+${message}
+
+${employee ? `Employee: ${employee.firstName} ${employee.lastName}` : ''}
+${formattedDeadline ? `Training Deadline: ${formattedDeadline}` : ''}
+
+Please assign appropriate training modules.
+        `.trim()
+        break
+
+      case 'DEADLINE':
+        emailSubject = `Deadline Reminder - ${employee ? `${employee.firstName} ${employee.lastName}` : 'Action Required'}`
+        emailMessage = `
+${message}
+
+${employee ? `Related to: ${employee.firstName} ${employee.lastName}` : ''}
+${formattedDeadline ? `⚠️ Deadline: ${formattedDeadline}` : ''}
+
+Please ensure completion on time.
+        `.trim()
+        break
+
+      case 'ESCALATION':
+        emailSubject = `🚨 Escalation Required - ${employee ? `${employee.firstName} ${employee.lastName}` : 'Urgent'}`
+        emailMessage = `
+${message}
+
+${employee ? `Employee: ${employee.firstName} ${employee.lastName}` : ''}
+${formattedDeadline ? `Response Required By: ${formattedDeadline}` : ''}
+
+Immediate supervisor attention required.
+        `.trim()
+        break
+
+      case 'APPROVAL':
+        emailSubject = `Approval Required - ${employee ? `${employee.firstName} ${employee.lastName}` : 'Action Required'}`
+        emailMessage = `
+${message}
+
+${employee ? `Employee: ${employee.firstName} ${employee.lastName}` : ''}
+${formattedDeadline ? `Approval Deadline: ${formattedDeadline}` : ''}
+
+Please review and approve/reject as appropriate.
+        `.trim()
+        break
+
+      default:
+        // Generic notification
+        emailMessage = `
+${message}
+
+${employee ? `Related Employee: ${employee.firstName} ${employee.lastName}` : ''}
+${formattedDeadline ? `Deadline: ${formattedDeadline}` : ''}
+        `.trim()
+    }
+
+    // Add priority indicator
+    if (priority === 'critical' || priority === 'high') {
+      emailMessage = `[${priority.toUpperCase()} PRIORITY]\n\n${emailMessage}`
+    }
+
+    // Send email using email service
+    await emailService.sendNotificationEmail(
+      recipientEmail,
+      emailSubject,
+      emailMessage,
+      actionUrl,
+      actionButtonText
+    )
+  }
+
+  /**
+   * Get action button text based on notification type
+   */
+  private static getActionButtonText(type: string): string {
+    switch (type.toUpperCase()) {
+      case 'PERFORMANCE_PLAN':
+        return 'View Performance Plan'
+      case 'APPRAISAL':
+        return 'Complete Appraisal'
+      case 'TRAINING':
+        return 'View Training'
+      case 'DEADLINE':
+        return 'View Details'
+      case 'ESCALATION':
+        return 'Respond Now'
+      case 'APPROVAL':
+        return 'Review & Approve'
+      default:
+        return 'View Notification'
     }
   }
 }
