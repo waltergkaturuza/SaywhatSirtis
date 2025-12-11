@@ -1562,6 +1562,7 @@ model users {
   location                                                          String?
   twoFactorEnabled                                                  Boolean                      @default(false)
   twoFactorSecret                                                    String?
+  twoFactorSecretTemp                                                String?
   twoFactorBackupCodes                                               String[]                     @default([])
   supervisorId                                                      String?
   employeeId                                                        String?
