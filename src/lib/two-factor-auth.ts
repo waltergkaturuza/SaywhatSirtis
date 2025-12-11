@@ -182,20 +182,24 @@ export async function getUserBackupCodes(userId: string): Promise<string[]> {
  */
 export async function verifyAndConsumeBackupCode(userId: string, code: string): Promise<boolean> {
   const hashedCodes = await getUserBackupCodes(userId);
-  const isValid = await verifyBackupCode(code, hashedCodes);
+  const cryptoModule = await import('crypto');
+  const codeHash = cryptoModule.createHash('sha256').update(code.toUpperCase()).digest('hex');
   
-  if (isValid) {
-    // Remove used backup code
-    const updatedCodes = hashedCodes.filter(
-      hashed => hashed !== (await import('crypto')).createHash('sha256').update(code.toUpperCase()).digest('hex')
-    );
-    
-    await prisma.users.update({
-      where: { id: userId },
-      data: { twoFactorBackupCodes: updatedCodes }
-    });
+  // Find the matching backup code
+  const codeIndex = hashedCodes.findIndex(hashed => hashed === codeHash);
+  
+  if (codeIndex === -1) {
+    return false; // Code not found
   }
   
-  return isValid;
+  // Remove used backup code
+  const updatedCodes = hashedCodes.filter((_, index) => index !== codeIndex);
+  
+  await prisma.users.update({
+    where: { id: userId },
+    data: { twoFactorBackupCodes: updatedCodes }
+  });
+  
+  return true;
 }
 
