@@ -508,7 +508,7 @@ export async function POST(request: NextRequest) {
             // Send welcome email with temporary password
             emailService.sendWelcomeEmail(
               newUser.email,
-              newUser.firstName,
+              newUser.firstName || 'User',
               newUser.email,
               userData.password
             ).catch(err => {
@@ -519,7 +519,7 @@ export async function POST(request: NextRequest) {
             // Send welcome email without password (user will need to set it)
             emailService.sendWelcomeEmail(
               newUser.email,
-              newUser.firstName,
+              newUser.firstName || 'User',
               newUser.email
             ).catch(err => {
               console.error('Failed to send welcome email:', err);
