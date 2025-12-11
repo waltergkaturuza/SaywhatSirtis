@@ -87,9 +87,26 @@ export async function setupTwoFactor(userId: string, email: string): Promise<Two
   // Hash backup codes for storage
   const hashedBackupCodes = await hashBackupCodes(backupCodes);
 
-  // Store in database (you'll need to add a twoFactorAuth table or extend users table)
-  // For now, we'll return the setup data
-  // In production, store: secret, hashedBackupCodes, enabled: false (until verified)
+  // Store temporary secret and backup codes in database (not enabled until verified)
+  // Use twoFactorSecretTemp to store the secret until user verifies
+  try {
+    await prisma.users.update({
+      where: { id: userId },
+      data: {
+        twoFactorSecretTemp: secret,
+        twoFactorBackupCodes: hashedBackupCodes,
+        twoFactorEnabled: false // Not enabled until verified
+      }
+    });
+  } catch (error: any) {
+    // If columns don't exist, log error but continue (graceful degradation)
+    if (error?.code === 'P2022' || error?.message?.includes('twoFactor')) {
+      console.warn('⚠️ 2FA columns not found in database. Please run the migration script: add-2fa-columns.sql');
+      // Continue anyway - user can still see QR code, but won't be able to enable until migration is run
+    } else {
+      throw error; // Re-throw other errors
+    }
+  }
 
   return {
     secret,

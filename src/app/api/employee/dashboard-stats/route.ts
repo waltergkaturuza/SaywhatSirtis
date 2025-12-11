@@ -14,9 +14,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get employee record with startDate
-    const employee = await prisma.employees.findUnique({
+    // Find user first to get userId
+    const user = await prisma.users.findUnique({
       where: { email: session.user.email },
+      select: { id: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get employee record by userId
+    const employee = await prisma.employees.findUnique({
+      where: { userId: user.id },
       select: { 
         id: true,
         startDate: true,
@@ -24,11 +37,17 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // If no employee record, return default stats
     if (!employee) {
-      return NextResponse.json(
-        { error: 'Employee not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        qualifications: 0,
+        trainings: 0,
+        certificates: 0,
+        notifications: 0,
+        yearsOfService: 0,
+        performanceScore: null,
+        completedTrainings: 0
+      });
     }
 
     // Calculate years of service
