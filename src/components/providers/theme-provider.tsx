@@ -38,8 +38,15 @@ export function ThemeProvider({
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    // Load theme from localStorage on mount
+    if (typeof window !== 'undefined') {
+      const storedTheme = localStorage.getItem(storageKey) as Theme | null
+      if (storedTheme && ['light', 'dark', 'system'].includes(storedTheme)) {
+        setTheme(storedTheme)
+      }
+    }
     setMounted(true)
-  }, [])
+  }, [storageKey])
 
   useEffect(() => {
     if (!mounted) return

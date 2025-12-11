@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { ModuleConfig } from "@/types/navigation"
 import { GlobalSearchTrigger } from "@/components/ui/global-search"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { NotificationDropdown } from "@/components/ui/notification-dropdown"
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -76,10 +77,8 @@ export default function Header({ onMenuClick, currentModule }: HeaderProps) {
             {/* Theme Toggle */}
             <ThemeToggle />
             
-            <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 transition-colors">
-              <span className="sr-only">View notifications</span>
-              <BellIcon className="h-6 w-6" aria-hidden="true" />
-            </button>
+            {/* Notification Dropdown */}
+            <NotificationDropdown />
 
             {/* Separator */}
             <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200" aria-hidden="true" />
