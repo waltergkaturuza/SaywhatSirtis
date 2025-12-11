@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createErrorResponse } from '@/lib/error-handler'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { executeQuery } from '@/lib/prisma'
@@ -95,14 +96,8 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching departments:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch departments',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    const { response, status } = createErrorResponse(error, request.url)
+    return NextResponse.json(response, { status })
   }
 }
 

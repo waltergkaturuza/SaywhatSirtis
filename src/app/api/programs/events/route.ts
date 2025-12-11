@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { createErrorResponse } from '@/lib/error-handler';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
@@ -60,13 +61,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Events fetch error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch events',
-        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
-      },
-      { status: 500 }
-    );
+    const { response, status } = createErrorResponse(error, request.url)
+    return NextResponse.json(response, { status })
   }
 }
 
@@ -142,9 +138,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(event, { status: 201 });
   } catch (error) {
     console.error('Event creation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create event' },
-      { status: 500 }
-    );
+    const { response, status } = createErrorResponse(error, request.url)
+    return NextResponse.json(response, { status })
   }
 }

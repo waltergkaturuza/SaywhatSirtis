@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { executeQuery } from "@/lib/prisma"
 import { z } from "zod"
+import { createErrorResponse } from '@/lib/error-handler'
 
 // Map category to valid enum value
 const mapCategory = (category: string): 'COMPUTER' | 'FURNITURE' | 'VEHICLE' | 'EQUIPMENT' | 'OTHER' => {
@@ -223,13 +224,8 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Error fetching assets:", error)
-    return NextResponse.json(
-      { 
-        error: "Failed to fetch assets",
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    )
+    const { response, status } = createErrorResponse(error, request.url)
+    return NextResponse.json(response, { status })
   }
 }
 

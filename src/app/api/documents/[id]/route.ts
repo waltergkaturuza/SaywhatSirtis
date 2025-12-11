@@ -85,32 +85,8 @@ export async function GET(
 
   } catch (error: any) {
     console.error('Error fetching document:', error);
-    
-    // Provide more specific error messages based on error type
-    if (error.code === 'P1001') {
-      return NextResponse.json(
-        { 
-          error: 'Database connection failed. Please try again in a moment.',
-          details: 'The database server is temporarily unavailable.'
-        },
-        { status: 503 }
-      );
-    }
-    
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Document not found' },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch document',
-        details: error.message || 'An unexpected error occurred'
-      },
-      { status: 500 }
-    );
+    const { response, status } = createErrorResponse(error, request.url)
+    return NextResponse.json(response, { status })
   }
 }
 
@@ -220,6 +196,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting document:', error);
-    return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 });
+    const { response, status } = createErrorResponse(error, request.url)
+    return NextResponse.json(response, { status })
   }
 }
