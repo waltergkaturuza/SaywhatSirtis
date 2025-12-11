@@ -218,41 +218,19 @@ export async function POST(request: NextRequest) {
       metadata
     } = body
 
-    // Create notification
-    const notification = await executeQuery(async (prisma) => {
-      return prisma.notifications.create({
-        data: {
-          id: uuidv4(),
-          title,
-          message,
-          type: type.toUpperCase(),
-          priority,
-          userId: recipientId,
-          recipientId,
-          employeeId,
-          senderId: session.user.id,
-          deadline: deadline ? new Date(deadline) : null,
-          actionUrl,
-          metadata,
-          status: 'pending'
-        },
-        include: {
-          users_notifications_recipientIdTousers: {
-            select: {
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          },
-          employees: {
-            select: {
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
-        }
-      })
+    // Create notification using NotificationService (which will automatically send email)
+    const { NotificationService } = await import('@/lib/services/notificationService')
+    const notification = await NotificationService.createNotification({
+      title,
+      message,
+      type: type.toUpperCase(),
+      priority: priority as 'low' | 'normal' | 'high' | 'critical',
+      recipientId,
+      employeeId,
+      senderId: session.user.id,
+      deadline: deadline ? new Date(deadline) : undefined,
+      actionUrl,
+      metadata
     })
 
     return NextResponse.json({
