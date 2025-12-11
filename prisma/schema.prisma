@@ -1593,6 +1593,8 @@ model users {
   risk_mitigations_risk_mitigations_createdByIdTousers              risk_mitigations[]           @relation("risk_mitigations_createdByIdTousers")
   risk_mitigations_risk_mitigations_ownerIdTousers                  risk_mitigations[]           @relation("risk_mitigations_ownerIdTousers")
   risk_notifications                                                risk_notifications[]
+  user_sessions                                                    user_sessions[]              @relation("UserSessions")
+  ip_rules                                                         ip_rules[]                  @relation("IPRules")
   risks_risks_createdByIdTousers                                    risks[]                      @relation("risks_createdByIdTousers")
   risks_risks_ownerIdTousers                                        risks[]                      @relation("risks_ownerIdTousers")
   search_logs                                                       search_logs[]
