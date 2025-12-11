@@ -629,6 +629,20 @@ export const authOptions: NextAuthOptions = {
           (session.user as any).position = token.position as string
           (session.user as any).roles = token.roles as string[]
           (session.user as any).permissions = token.permissions as string[]
+          
+          // Check session idle timeout (30 minutes)
+          const lastActivity = (token.lastActivity as number) || Date.now();
+          const idleTimeout = 30 * 60 * 1000; // 30 minutes
+          const now = Date.now();
+          
+          if (now - lastActivity > idleTimeout) {
+            console.log('⏱️ Session idle timeout exceeded');
+            // Session will be invalidated - return null to force re-auth
+            throw new Error('SESSION_IDLE_TIMEOUT');
+          }
+          
+          // Update last activity
+          token.lastActivity = now;
         }
       } catch (error) {
         console.error('Session callback error:', error)

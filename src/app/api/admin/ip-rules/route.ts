@@ -20,8 +20,7 @@ export async function GET(request: NextRequest) {
 
     // Check admin permissions
     const isAdmin = session.user.roles?.includes('SYSTEM_ADMINISTRATOR') || 
-                   session.user.roles?.includes('ADMIN') ||
-                   session.user.role === 'SYSTEM_ADMINISTRATOR';
+                   session.user.roles?.includes('ADMIN');
 
     if (!isAdmin) {
       return NextResponse.json(
@@ -56,8 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Check admin permissions
     const isAdmin = session.user.roles?.includes('SYSTEM_ADMINISTRATOR') || 
-                   session.user.roles?.includes('ADMIN') ||
-                   session.user.role === 'SYSTEM_ADMINISTRATOR';
+                   session.user.roles?.includes('ADMIN');
 
     if (!isAdmin) {
       return NextResponse.json(
@@ -116,8 +114,7 @@ export async function DELETE(request: NextRequest) {
 
     // Check admin permissions
     const isAdmin = session.user.roles?.includes('SYSTEM_ADMINISTRATOR') || 
-                   session.user.roles?.includes('ADMIN') ||
-                   session.user.role === 'SYSTEM_ADMINISTRATOR';
+                   session.user.roles?.includes('ADMIN');
 
     if (!isAdmin) {
       return NextResponse.json(

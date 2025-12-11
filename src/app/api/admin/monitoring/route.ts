@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { getRequestLogs, getRateLimitStats } from '@/middleware'
+// Note: getRequestLogs and getRateLimitStats removed - middleware simplified
+// TODO: Implement request logging and rate limiting in a separate service if needed
 import { 
   createSuccessResponse, 
   createErrorResponse, 
@@ -38,7 +39,8 @@ export async function GET(request: NextRequest) {
     switch (type) {
       case 'logs':
         const limit = parseInt(searchParams.get('limit') || '100')
-        const logs = getRequestLogs(limit)
+        // Request logs temporarily disabled - middleware simplified
+        const logs: any[] = []
         
         const response = createSuccessResponse({
           logs,
@@ -50,7 +52,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(response)
 
       case 'ratelimit':
-        const rateLimitStats = getRateLimitStats()
+        // Rate limit stats temporarily disabled - middleware simplified
+        const rateLimitStats: any = {}
         
         const rateLimitResponse = createSuccessResponse(rateLimitStats, {
           message: 'Rate limit statistics retrieved'
@@ -77,8 +80,8 @@ export async function GET(request: NextRequest) {
       default:
         // Overview combining all metrics
         const overviewData = {
-          requestLogs: getRequestLogs(50),
-          rateLimitStats: getRateLimitStats(),
+          requestLogs: [],
+          rateLimitStats: {},
           systemMetrics: {
             uptime: process.uptime(),
             memory: process.memoryUsage(),
