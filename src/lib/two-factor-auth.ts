@@ -1,6 +1,7 @@
 // Two-Factor Authentication (2FA) Service
 import { authenticator } from 'otplib';
-import * as QRCode from 'qrcode';
+// @ts-ignore - qrcode types are available but may not be detected
+import QRCode from 'qrcode';
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 
