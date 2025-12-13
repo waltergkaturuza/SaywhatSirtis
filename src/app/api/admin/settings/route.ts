@@ -240,19 +240,21 @@ async function loadSettingsFromDatabase() {
 
     // Override with database values
     configs.forEach((config: any) => {
-      const category = config.category || 'system'
-      const key = config.key.replace(`${category}.`, '')
+      // Extract category and key from config.key (format: "category.key" or "category.nested.key")
+      const keyParts = config.key.split('.')
+      const category = config.category || keyParts[0] || 'system'
+      const key = keyParts.slice(1).join('.') // Everything after category
       
       if (!settings[category]) {
-        settings[category] = {}
+        settings[category] = { ...defaultSettings[category as keyof typeof defaultSettings] }
       }
       
       // Handle nested keys (e.g., "integrations.office365.enabled")
       if (key.includes('.')) {
         const keys = key.split('.')
-        let current = settings[category]
+        let current: any = settings[category]
         for (let i = 0; i < keys.length - 1; i++) {
-          if (!current[keys[i]]) {
+          if (!current[keys[i]] || typeof current[keys[i]] !== 'object') {
             current[keys[i]] = {}
           }
           current = current[keys[i]]
