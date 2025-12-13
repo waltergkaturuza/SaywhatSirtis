@@ -38,16 +38,21 @@ async function getDatabaseStatus() {
     const activeConnections = Number((connectionInfo?.[0] as any)?.count || 0)
 
     // Get database query stats
-    const queryStats = await prisma.$queryRaw<Array<{
+    const queryStats = await safeQuery(async (prisma) => {
+      return await prisma.$queryRaw<Array<{
+        total_queries: bigint
+        slow_queries: bigint
+      }>>`
+        SELECT 
+          sum(calls) as total_queries,
+          sum(case when mean_exec_time > 1000 then calls else 0 end) as slow_queries
+        FROM pg_stat_statements
+        WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
+      `
+    }).catch(() => [{ total_queries: BigInt(0), slow_queries: BigInt(0) }]) as Array<{
       total_queries: bigint
       slow_queries: bigint
-    }>>`
-      SELECT 
-        sum(calls) as total_queries,
-        sum(case when mean_exec_time > 1000 then calls else 0 end) as slow_queries
-      FROM pg_stat_statements
-      WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
-    ` as any[].catch(() => [{ total_queries: 0n, slow_queries: 0n }])
+    }>
 
     const totalQueries = Number((queryStats?.[0] as any)?.total_queries || 0)
 
@@ -90,17 +95,14 @@ async function getRecentLogs() {
           action: true,
           userId: true,
           timestamp: true,
-          details: true,
-          severity: true
+          details: true
         }
       })
     }).catch(() => [])
 
     return recentLogs.map(log => {
       let level = 'INFO'
-      if (log.severity) {
-        level = log.severity.toUpperCase()
-      } else if (log.action?.toUpperCase().includes('ERROR') || 
+      if (log.action?.toUpperCase().includes('ERROR') || 
                  log.action?.toUpperCase().includes('FAIL')) {
         level = 'ERROR'
       } else if (log.action?.toUpperCase().includes('WARN')) {
@@ -237,7 +239,7 @@ export async function GET(request: NextRequest) {
     const version = process.env.npm_package_version || '1.0.0'
 
     // Determine server status based on database connectivity
-    const serverStatus = databaseStatus.status === 'connected' ? 'online' : 'degraded'
+    const overallServerStatus = databaseStatus.status === 'connected' ? 'online' : 'degraded'
 
     // Get start time (approximate from process uptime)
     const startTime = new Date(Date.now() - process.uptime() * 1000)
@@ -245,7 +247,7 @@ export async function GET(request: NextRequest) {
     const serverStatusData = {
       server: {
         uptime,
-        status: serverStatus,
+        status: overallServerStatus,
         version,
         environment,
         startTime: startTime.toISOString(),
@@ -256,7 +258,7 @@ export async function GET(request: NextRequest) {
       services: [
         {
           name: 'Web Server',
-          status: serverStatus === 'online' ? 'running' : 'stopped',
+          status: overallServerStatus === 'online' ? 'running' : 'stopped',
           port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
           uptime,
           lastCheck: new Date().toISOString()
@@ -298,141 +300,6 @@ export async function GET(request: NextRequest) {
         errorRate: databaseStatus.queries.failed / Math.max(databaseStatus.queries.total, 1),
         activeUsers: systemMetrics.network.connections,
         throughput: systemMetrics.network.inbound + systemMetrics.network.outbound
-      }
-    }
-    const serverStatus = {
-      server: {
-        uptime: '7d 14h 23m',
-        status: 'online',
-        version: '1.0.0',
-        environment: 'production',
-        startTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        lastRestart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      system: {
-        cpu: {
-          usage: Math.floor(Math.random() * 50) + 25,
-          cores: 4,
-          loadAverage: [0.5, 0.8, 1.2]
-        },
-        memory: {
-          usage: Math.floor(Math.random() * 40) + 40,
-          total: 8192,
-          used: 3276,
-          free: 4916,
-          cached: 1500
-        },
-        disk: {
-          usage: Math.floor(Math.random() * 30) + 20,
-          total: 100,
-          used: 35,
-          free: 65,
-          iops: 1250
-        },
-        network: {
-          inbound: Math.floor(Math.random() * 1000) + 500,
-          outbound: Math.floor(Math.random() * 800) + 400,
-          connections: 145
-        }
-      },
-      database: {
-        status: 'connected',
-        connections: 12,
-        maxConnections: 100,
-        responseTime: Math.floor(Math.random() * 50) + 10,
-        queries: {
-          total: 125430,
-          slow: 23,
-          failed: 2
-        }
-      },
-      services: [
-        {
-          name: 'Web Server',
-          status: 'running',
-          port: 3000,
-          uptime: '7d 14h 23m',
-          lastCheck: new Date().toISOString()
-        },
-        {
-          name: 'Database',
-          status: 'running',
-          port: 5432,
-          uptime: '7d 14h 23m',
-          lastCheck: new Date().toISOString()
-        },
-        {
-          name: 'Email Service',
-          status: 'running',
-          port: 587,
-          uptime: '7d 14h 23m',
-          lastCheck: new Date().toISOString()
-        },
-        {
-          name: 'File Storage',
-          status: 'running',
-          port: 443,
-          uptime: '7d 14h 23m',
-          lastCheck: new Date().toISOString()
-        },
-        {
-          name: 'Background Jobs',
-          status: 'running',
-          port: null,
-          uptime: '7d 14h 23m',
-          lastCheck: new Date().toISOString()
-        }
-      ],
-      logs: [
-        {
-          timestamp: new Date().toISOString(),
-          level: 'INFO',
-          service: 'Web Server',
-          message: 'Server health check completed successfully'
-        },
-        {
-          timestamp: new Date(Date.now() - 300000).toISOString(),
-          level: 'INFO',
-          service: 'Database',
-          message: 'Database connection pool optimized'
-        },
-        {
-          timestamp: new Date(Date.now() - 600000).toISOString(),
-          level: 'WARNING',
-          service: 'Email Service',
-          message: 'High email queue detected, processing increased'
-        },
-        {
-          timestamp: new Date(Date.now() - 900000).toISOString(),
-          level: 'INFO',
-          service: 'Background Jobs',
-          message: 'Scheduled backup completed successfully'
-        }
-      ],
-      alerts: [
-        {
-          id: '1',
-          type: 'info',
-          title: 'System Health',
-          message: 'All services running normally',
-          timestamp: new Date().toISOString(),
-          acknowledged: false
-        },
-        {
-          id: '2',
-          type: 'warning',
-          title: 'High CPU Usage',
-          message: 'CPU usage above 80% for 5 minutes',
-          timestamp: new Date(Date.now() - 300000).toISOString(),
-          acknowledged: true
-        }
-      ],
-      metrics: {
-        requestsPerSecond: Math.floor(Math.random() * 50) + 25,
-        responseTime: Math.floor(Math.random() * 200) + 100,
-        errorRate: Math.random() * 0.1,
-        activeUsers: Math.floor(Math.random() * 100) + 50,
-        throughput: Math.floor(Math.random() * 1000) + 500
       }
     }
 

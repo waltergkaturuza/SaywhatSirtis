@@ -127,7 +127,32 @@ async function loadApiKeys() {
     // Try to use api_keys table first
     await ensureApiKeysTable()
     
-    const keys = await prisma.$queryRaw<Array<{
+    const keys = await safeQuery(async (prisma) => {
+      return await prisma.$queryRaw<Array<{
+        id: string
+        name: string
+        key_prefix: string
+        permissions: any
+        expires_at: Date | null
+        is_active: boolean
+        last_used: Date | null
+        created_at: Date
+        rate_limit: number
+      }>>`
+        SELECT 
+          id,
+          name,
+          key_prefix,
+          permissions,
+          expires_at,
+          is_active,
+          last_used,
+          created_at,
+          rate_limit
+        FROM api_keys
+        ORDER BY created_at DESC
+      `
+    }).catch(() => []) as Array<{
       id: string
       name: string
       key_prefix: string
@@ -137,20 +162,7 @@ async function loadApiKeys() {
       last_used: Date | null
       created_at: Date
       rate_limit: number
-    }>>`
-      SELECT 
-        id,
-        name,
-        key_prefix,
-        permissions,
-        expires_at,
-        is_active,
-        last_used,
-        created_at,
-        rate_limit
-      FROM api_keys
-      ORDER BY created_at DESC
-    ` as any[].catch(() => [])
+    }>
     
     if (keys.length > 0) {
       // Load keys from api_keys table
@@ -283,13 +295,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { action, keyId, keyData } = body
+    const { action, keyId: requestKeyId, keyData } = body as { action: string; keyId?: string; keyData?: any }
 
     switch (action) {
       case 'create_key':
         await ensureApiKeysTable()
         
-        const keyPrefix = keyData.name.toLowerCase().replace(/\s+/g, '_')
+        const keyPrefix = keyData?.name?.toLowerCase().replace(/\s+/g, '_') || 'api_key'
         const generatedKey = generateApiKey(`sirtis_${keyPrefix}`)
         const keyHash = crypto.createHash('sha256').update(generatedKey).digest('hex')
         const keyId = randomUUID()
@@ -299,7 +311,7 @@ export async function POST(request: NextRequest) {
         
         // Save to database
         await safeQuery(async (prisma) => {
-          const keyPrefix = generatedKey.substring(0, 20)
+          const storedKeyPrefix = generatedKey.substring(0, 20)
           const permissionsJson = JSON.stringify(keyData.permissions || ['read'])
           
           await prisma.$executeRawUnsafe(
@@ -310,7 +322,7 @@ export async function POST(request: NextRequest) {
             keyId,
             keyData.name || 'API Key',
             keyHash,
-            keyPrefix,
+            storedKeyPrefix,
             permissionsJson,
             expiresAt,
             true,
@@ -343,10 +355,14 @@ export async function POST(request: NextRequest) {
         })
 
       case 'update_key':
+        if (!requestKeyId) {
+          return NextResponse.json({ error: 'keyId is required' }, { status: 400 })
+        }
+        
         await ensureApiKeysTable()
         
         const updates: string[] = []
-        const values: any[] = [keyId]
+        const values: any[] = [requestKeyId]
         let paramCount = 2
         
         if (keyData.name) {
@@ -381,7 +397,7 @@ export async function POST(request: NextRequest) {
         }
         
         const updatedKey = await loadApiKeys()
-        const foundKey = updatedKey.find(k => k.id === keyId)
+        const foundKey = updatedKey.find(k => k.id === requestKeyId)
         
         return NextResponse.json({
           success: true,
@@ -390,13 +406,17 @@ export async function POST(request: NextRequest) {
         })
 
       case 'toggle_status':
+        if (!requestKeyId) {
+          return NextResponse.json({ error: 'keyId is required' }, { status: 400 })
+        }
+        
         await ensureApiKeysTable()
         
         const toggled = await safeQuery(async (prisma) => {
           return await prisma.$executeRaw`
             UPDATE api_keys 
             SET is_active = NOT is_active, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ${keyId}
+            WHERE id = ${requestKeyId}
             RETURNING is_active
           `
         }).catch(() => null)
@@ -405,8 +425,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'API key not found' }, { status: 404 })
         }
         
-        const allKeys = await loadApiKeys()
-        const toggledKey = allKeys.find(k => k.id === keyId)
+        const toggledKeysList = await loadApiKeys()
+        const toggledKey = toggledKeysList.find(k => k.id === requestKeyId)
         
         return NextResponse.json({
           success: true,
@@ -415,12 +435,16 @@ export async function POST(request: NextRequest) {
         })
 
       case 'regenerate_key':
+        if (!requestKeyId) {
+          return NextResponse.json({ error: 'keyId is required' }, { status: 400 })
+        }
+        
         await ensureApiKeysTable()
         
         // Get existing key to get name
         const existingKey = await safeQuery(async (prisma) => {
           return await prisma.$queryRaw<Array<{ name: string; key_prefix: string }>>`
-            SELECT name, key_prefix FROM api_keys WHERE id = ${keyId}
+            SELECT name, key_prefix FROM api_keys WHERE id = ${requestKeyId}
           ` as any[]
         }).catch(() => [])
         
@@ -429,8 +453,8 @@ export async function POST(request: NextRequest) {
         }
         
         const keyName = (existingKey[0] as any).name
-        const keyPrefix = keyName.toLowerCase().replace(/\s+/g, '_')
-        const newGeneratedKey = generateApiKey(`sirtis_${keyPrefix}`)
+        const regenKeyPrefix = keyName.toLowerCase().replace(/\s+/g, '_')
+        const newGeneratedKey = generateApiKey(`sirtis_${regenKeyPrefix}`)
         const newKeyHash = crypto.createHash('sha256').update(newGeneratedKey).digest('hex')
         
         await safeQuery(async (prisma) => {
@@ -441,12 +465,12 @@ export async function POST(request: NextRequest) {
               key_prefix = ${newGeneratedKey.substring(0, 20)},
               last_used = CURRENT_TIMESTAMP,
               updated_at = CURRENT_TIMESTAMP
-            WHERE id = ${keyId}
+            WHERE id = ${requestKeyId}
           `
         })
         
-        const allKeys = await loadApiKeys()
-        const regeneratedKey = allKeys.find(k => k.id === keyId)
+        const regeneratedKeysList = await loadApiKeys()
+        const regeneratedKey = regeneratedKeysList.find(k => k.id === requestKeyId)
         
         return NextResponse.json({
           success: true,
@@ -458,11 +482,15 @@ export async function POST(request: NextRequest) {
         })
 
       case 'delete_key':
+        if (!requestKeyId) {
+          return NextResponse.json({ error: 'keyId is required' }, { status: 400 })
+        }
+        
         await ensureApiKeysTable()
         
         const deleted = await safeQuery(async (prisma) => {
           return await prisma.$executeRaw`
-            DELETE FROM api_keys WHERE id = ${keyId} RETURNING id
+            DELETE FROM api_keys WHERE id = ${requestKeyId} RETURNING id
           `
         }).catch(() => [])
         
@@ -476,6 +504,10 @@ export async function POST(request: NextRequest) {
         })
 
       case 'test_key':
+        if (!requestKeyId) {
+          return NextResponse.json({ error: 'keyId is required' }, { status: 400 })
+        }
+        
         await ensureApiKeysTable()
         
         const testKey = await safeQuery(async (prisma) => {
@@ -487,7 +519,7 @@ export async function POST(request: NextRequest) {
           }>>`
             SELECT is_active, permissions, expires_at, rate_limit
             FROM api_keys 
-            WHERE id = ${keyId}
+            WHERE id = ${requestKeyId}
           ` as any[]
         }).catch(() => [])
         
@@ -504,7 +536,7 @@ export async function POST(request: NextRequest) {
           })
         }
         
-        const usage = await getApiKeyUsage(keyId, '')
+        const usage = await getApiKeyUsage(requestKeyId, '')
         
         return NextResponse.json({
           success: true,

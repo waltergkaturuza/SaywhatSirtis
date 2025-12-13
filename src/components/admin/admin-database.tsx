@@ -336,35 +336,42 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {dbStats?.tables && dbStats.tables.length > 0 ? (
                       dbStats.tables.map((table, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {table.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {table.rows.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {table.size}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(table.lastModified).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleDatabaseAction('analyze_table', { table: table.name })}
-                            className="text-indigo-600 hover:text-indigo-900 mr-3"
-                          >
-                            Analyze
-                          </button>
-                          <button
-                            onClick={() => handleDatabaseAction('export_data', { table: table.name })}
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            Export
-                          </button>
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {table.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {table.rows.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {table.size}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(table.lastModified).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleDatabaseAction('analyze_table', { table: table.name })}
+                              className="text-indigo-600 hover:text-indigo-900 mr-3"
+                            >
+                              Analyze
+                            </button>
+                            <button
+                              onClick={() => handleDatabaseAction('export_data', { table: table.name })}
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              Export
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                          No tables found
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
