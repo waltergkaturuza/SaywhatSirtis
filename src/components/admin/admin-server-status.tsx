@@ -284,7 +284,8 @@ export function AdminServerStatus({ className = '' }: AdminServerStatusProps) {
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Services Status</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {serverStatus?.services?.map((service, index) => (
+          {serverStatus?.services && serverStatus.services.length > 0 ? (
+            serverStatus.services.map((service, index) => (
             <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 {getStatusIcon(service.status)}
@@ -302,7 +303,12 @@ export function AdminServerStatus({ className = '' }: AdminServerStatusProps) {
                 <p className="text-xs text-gray-500">{service.uptime}</p>
               </div>
             </div>
-          ))}
+            ))
+          ) : (
+            <div className="col-span-full text-center py-4 text-gray-500">
+              <p>No services information available</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -310,7 +316,8 @@ export function AdminServerStatus({ className = '' }: AdminServerStatusProps) {
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Logs</h3>
         <div className="space-y-2">
-          {serverStatus?.logs?.slice(0, 5).map((log, index) => (
+          {serverStatus?.logs && serverStatus.logs.length > 0 ? (
+            serverStatus.logs.slice(0, 5).map((log, index) => (
             <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -331,7 +338,12 @@ export function AdminServerStatus({ className = '' }: AdminServerStatusProps) {
                 </p>
               </div>
             </div>
-          ))}
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No recent logs available</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
