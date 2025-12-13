@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { hasAdminAccess } from '@/lib/admin-auth'
+import { safeQuery } from '@/lib/prisma'
+import { randomUUID } from 'crypto'
 
 // Real timezone data
 const TIMEZONES = [
@@ -220,6 +222,54 @@ const defaultSettings = {
   }
 }
 
+// Load settings from database, fallback to defaults
+async function loadSettingsFromDatabase() {
+  try {
+    const configs = await safeQuery(async (prisma) => {
+      return await prisma.system_config.findMany({
+        orderBy: { category: 'asc' }
+      })
+    }).catch(() => [])
+
+    const settings: any = {}
+    
+    // Initialize with defaults
+    Object.keys(defaultSettings).forEach(category => {
+      settings[category] = { ...defaultSettings[category as keyof typeof defaultSettings] }
+    })
+
+    // Override with database values
+    configs.forEach((config: any) => {
+      const category = config.category || 'system'
+      const key = config.key.replace(`${category}.`, '')
+      
+      if (!settings[category]) {
+        settings[category] = {}
+      }
+      
+      // Handle nested keys (e.g., "integrations.office365.enabled")
+      if (key.includes('.')) {
+        const keys = key.split('.')
+        let current = settings[category]
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!current[keys[i]]) {
+            current[keys[i]] = {}
+          }
+          current = current[keys[i]]
+        }
+        current[keys[keys.length - 1]] = config.value
+      } else {
+        settings[category][key] = config.value
+      }
+    })
+
+    return settings
+  } catch (error) {
+    console.error('Error loading settings from database:', error)
+    return defaultSettings
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -237,14 +287,17 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
 
     // Get system status
-    const systemStatus = await getSystemStatus();
+    const systemStatus = await getSystemStatus()
+    
+    // Load settings from database
+    const settings = await loadSettingsFromDatabase()
 
-    if (category && defaultSettings[category as keyof typeof defaultSettings]) {
+    if (category && settings[category as keyof typeof settings]) {
       return NextResponse.json({
         success: true,
         data: {
           category,
-          settings: defaultSettings[category as keyof typeof defaultSettings],
+          settings: settings[category as keyof typeof settings],
           systemStatus,
           options: {
             timezones: TIMEZONES,
@@ -258,9 +311,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        settings: defaultSettings,
+        settings,
         systemStatus,
-        categories: Object.keys(defaultSettings),
+        categories: Object.keys(settings),
         options: {
           timezones: TIMEZONES,
           currencies: CURRENCIES,
@@ -352,20 +405,78 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Update settings
+    // Update settings in database
     if (category && settingsData) {
-      if (defaultSettings[category as keyof typeof defaultSettings]) {
-        // In production, this would update the database
-        const updatedSettings = {
-          ...defaultSettings[category as keyof typeof defaultSettings],
-          ...settingsData
-        };
+      try {
+        const updatedSettings: any = {}
+        
+        // Helper function to flatten nested objects
+        const flattenObject = (obj: any, prefix = ''): Record<string, any> => {
+          const flattened: Record<string, any> = {}
+          for (const [key, value] of Object.entries(obj)) {
+            const newKey = prefix ? `${prefix}.${key}` : key
+            if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+              Object.assign(flattened, flattenObject(value, newKey))
+            } else {
+              flattened[newKey] = value
+            }
+          }
+          return flattened
+        }
+        
+        // Flatten nested settings (e.g., integrations.office365.enabled)
+        const flattened = flattenObject(settingsData)
+        
+        // Save each setting key-value pair to database
+        for (const [key, value] of Object.entries(flattened)) {
+          const configKey = `${category}.${key}`
+          
+          await safeQuery(async (prisma) => {
+            // Check if config exists
+            const existing = await prisma.system_config.findUnique({
+              where: { key: configKey }
+            })
+            
+            if (existing) {
+              // Update existing
+              await prisma.system_config.update({
+                where: { key: configKey },
+                data: {
+                  value: value as any,
+                  updatedAt: new Date()
+                }
+              })
+            } else {
+              // Create new
+              await prisma.system_config.create({
+                data: {
+                  id: randomUUID(),
+                  key: configKey,
+                  value: value as any,
+                  category: category,
+                  description: `${category} setting: ${key}`,
+                  updatedAt: new Date()
+                }
+              })
+            }
+            
+            updatedSettings[key] = value
+          }).catch(err => {
+            console.error(`Error saving setting ${configKey}:`, err)
+          })
+        }
         
         return NextResponse.json({
           success: true,
           message: `${category} settings updated successfully`,
           data: updatedSettings
         })
+      } catch (error) {
+        console.error('Error updating settings:', error)
+        return NextResponse.json({
+          success: false,
+          message: 'Failed to update settings in database'
+        }, { status: 500 })
       }
     }
 
