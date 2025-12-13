@@ -275,7 +275,8 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
               <div>
                 <h4 className="text-lg font-medium text-gray-900 mb-3">Recent Activity</h4>
                 <div className="space-y-2">
-                  {dbStats?.recentActivity?.slice(0, 5).map((activity, index) => (
+                  {dbStats?.recentActivity && dbStats.recentActivity.length > 0 ? (
+                    dbStats.recentActivity.slice(0, 5).map((activity, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -298,7 +299,12 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                         </p>
                       </div>
                     </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No recent activity</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -328,7 +334,8 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {dbStats?.tables?.map((table, index) => (
+                    {dbStats?.tables && dbStats.tables.length > 0 ? (
+                      dbStats.tables.map((table, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {table.name}
@@ -391,7 +398,8 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {dbStats?.backups?.map((backup, index) => (
+                    {dbStats?.backups && dbStats.backups.length > 0 ? (
+                      dbStats.backups.map((backup, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {backup.id}
@@ -424,7 +432,14 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                          No backups available
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -464,7 +479,8 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="text-lg font-medium text-gray-900 mb-4">Recent Migrations</h4>
                   <div className="space-y-2">
-                    {dbStats?.migrations?.slice(0, 5).map((migration, index) => (
+                    {dbStats?.migrations && dbStats.migrations.length > 0 ? (
+                      dbStats.migrations.slice(0, 5).map((migration, index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg">
                         <div>
                           <p className="text-sm font-medium text-gray-900">{migration.name}</p>
@@ -479,7 +495,12 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                           </p>
                         </div>
                       </div>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        <p>No migrations found</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
