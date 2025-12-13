@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { hasAdminAccess } from '@/lib/admin-auth'
 // Note: getRequestLogs and getRateLimitStats removed - middleware simplified
 // TODO: Implement request logging and rate limiting in a separate service if needed
 import { 
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(response, { status })
     }
 
-    // Check if user has admin privileges (simple check for demo)
-    if (!session.user.email.includes('admin') && !session.user.email.includes('john.doe')) {
+    // Check if user has admin privileges
+    if (!hasAdminAccess(session)) {
       const { response, status } = createErrorResponse(
         'Insufficient permissions',
         HttpStatus.FORBIDDEN,

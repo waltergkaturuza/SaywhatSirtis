@@ -4,35 +4,36 @@ import { getToken } from 'next-auth/jwt'
 
 // Define protected routes and their required roles
 const PROTECTED_ROUTES: Record<string, string[]> = {
-  '/admin': ['SUPER_ADMIN', 'ADMIN'],
-  '/admin/users': ['SUPER_ADMIN', 'ADMIN'],
-  '/admin/roles': ['SUPER_ADMIN', 'ADMIN'],
-  '/admin/database': ['SUPER_ADMIN'],
-  '/admin/settings': ['SUPER_ADMIN', 'ADMIN'],
-  '/admin/audit': ['SUPER_ADMIN', 'ADMIN'],
-  '/hr/employees/manage': ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'],
-  '/hr/performance': ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'],
-  '/hr/training': ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'],
-  '/hr/analytics': ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'],
-  '/programs/new': ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'],
-  '/inventory': ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'],
-  '/call-centre/analytics': ['SUPER_ADMIN', 'ADMIN', 'CALL_CENTRE_AGENT'],
-  '/settings': ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER', 'PROJECT_MANAGER']
+  '/admin': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR'],
+  '/admin/users': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR'],
+  '/admin/roles': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR'],
+  '/admin/database': ['SUPER_ADMIN', 'SYSTEM_ADMINISTRATOR'],
+  '/admin/settings': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR'],
+  '/admin/audit': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR'],
+  '/hr/employees/manage': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'HR_MANAGER'],
+  '/hr/performance': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'HR_MANAGER'],
+  '/hr/training': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'HR_MANAGER'],
+  '/hr/analytics': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'HR_MANAGER'],
+  '/programs/new': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'PROJECT_MANAGER'],
+  '/inventory': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'PROJECT_MANAGER'],
+  '/call-centre/analytics': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'CALL_CENTRE_AGENT'],
+  '/settings': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'HR_MANAGER', 'PROJECT_MANAGER']
 }
 
 // API routes that require specific roles
 const PROTECTED_API_ROUTES: Record<string, string[]> = {
-  '/api/admin': ['SUPER_ADMIN', 'ADMIN'],
-  '/api/hr/employees/manage': ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'],
-  '/api/hr/performance': ['SUPER_ADMIN', 'ADMIN', 'HR_MANAGER'],
-  '/api/programs/projects': ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'],
-  '/api/inventory': ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'],
-  '/api/call-centre/analytics': ['SUPER_ADMIN', 'ADMIN', 'CALL_CENTRE_AGENT']
+  '/api/admin': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR'],
+  '/api/hr/employees/manage': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'HR_MANAGER'],
+  '/api/hr/performance': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'HR_MANAGER'],
+  '/api/programs/projects': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'PROJECT_MANAGER'],
+  '/api/inventory': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'PROJECT_MANAGER'],
+  '/api/call-centre/analytics': ['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMINISTRATOR', 'CALL_CENTRE_AGENT']
 }
 
 // Role hierarchy for access control
 const ROLE_HIERARCHY: Record<string, number> = {
   SUPER_ADMIN: 7,
+  SYSTEM_ADMINISTRATOR: 7, // Same level as SUPER_ADMIN
   ADMIN: 6,
   HR_MANAGER: 5,
   PROJECT_MANAGER: 4,
@@ -72,16 +73,25 @@ export async function middleware(request: NextRequest) {
   const primaryRole = userRoles[0] || 'USER'
   const userHierarchy = ROLE_HIERARCHY[primaryRole] || 0
 
+  // Normalize roles to uppercase for comparison
+  const normalizedRoles = userRoles.map(r => r.toUpperCase())
+  
   // Check if user has admin role for admin access
-  const isAdmin = userRoles.includes('admin') || primaryRole === 'SUPER_ADMIN' || primaryRole === 'ADMIN'
+  const isAdmin = normalizedRoles.includes('ADMIN') || 
+                  normalizedRoles.includes('SYSTEM_ADMINISTRATOR') ||
+                  primaryRole === 'SUPER_ADMIN' || 
+                  primaryRole === 'ADMIN' ||
+                  primaryRole === 'SYSTEM_ADMINISTRATOR'
 
   // Check API route protection
   for (const [route, requiredRoles] of Object.entries(PROTECTED_API_ROUTES)) {
     if (pathname.startsWith(route)) {
       const hasAccess = requiredRoles.some(role => {
         const requiredHierarchy = ROLE_HIERARCHY[role] || 0
-        return userHierarchy >= requiredHierarchy || userRoles.includes(role.toLowerCase()) || 
-               (isAdmin && ['ADMIN', 'SUPER_ADMIN'].includes(role))
+        const roleUpper = role.toUpperCase()
+        return userHierarchy >= requiredHierarchy || 
+               normalizedRoles.includes(roleUpper) ||
+               (isAdmin && ['ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMINISTRATOR'].includes(role))
       })
 
       if (!hasAccess) {
@@ -99,8 +109,10 @@ export async function middleware(request: NextRequest) {
     if (pathname === route || pathname.startsWith(route + '/')) {
       const hasAccess = requiredRoles.some(role => {
         const requiredHierarchy = ROLE_HIERARCHY[role] || 0
-        return userHierarchy >= requiredHierarchy || userRoles.includes(role.toLowerCase()) ||
-               (isAdmin && ['ADMIN', 'SUPER_ADMIN'].includes(role))
+        const roleUpper = role.toUpperCase()
+        return userHierarchy >= requiredHierarchy || 
+               normalizedRoles.includes(roleUpper) ||
+               (isAdmin && ['ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMINISTRATOR'].includes(role))
       })
 
       if (!hasAccess) {

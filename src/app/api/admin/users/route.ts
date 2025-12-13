@@ -7,6 +7,7 @@ import * as bcrypt from 'bcryptjs'
 import { securityService } from "@/lib/security-service"
 import AuditLogger from "@/lib/audit-logger"
 import emailService from "@/lib/email-service"
+import { hasAdminAccess as checkAdminAccess } from "@/lib/admin-auth"
 
 // Helper functions for role management - aligned with HR module definitions
 function getRoleDisplayName(role: string): string {
@@ -143,13 +144,8 @@ export async function GET(request: Request) {
     }
 
     // Check if user has admin privileges (allow in development)
-    if (session) {
-      const hasAdminAccess = session.user?.email?.includes("admin") || 
-                            session.user?.email?.includes("john.doe")
-      
-      if (!hasAdminAccess && !isDevelopment) {
-        return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
-      }
+    if (session && !checkAdminAccess(session) && !isDevelopment) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
     // Handle specific user permissions request
@@ -320,13 +316,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has admin privileges (allow in development)
-    if (session) {
-      const hasAdminAccess = session.user?.email?.includes("admin") || 
-                            session.user?.email?.includes("john.doe")
-      
-      if (!hasAdminAccess && !isDevelopment) {
-        return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
-      }
+    if (session && !checkAdminAccess(session) && !isDevelopment) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
     const requestBody = await request.json()

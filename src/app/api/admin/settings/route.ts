@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { hasAdminAccess } from '@/lib/admin-auth'
 
 // Real timezone data
 const TIMEZONES = [
@@ -228,7 +229,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check admin permissions
-    if (!session.user?.email?.includes("admin") && !session.user?.email?.includes("john.doe")) {
+    if (!hasAdminAccess(session)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
@@ -286,7 +287,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check admin permissions
-    if (!session.user?.email?.includes("admin") && !session.user?.email?.includes("john.doe")) {
+    if (!hasAdminAccess(session)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

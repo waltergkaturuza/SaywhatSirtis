@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { safeQuery } from "@/lib/prisma"
 import { createSafeJsonResponse } from "@/lib/json-utils"
+import { hasAdminAccess } from "@/lib/admin-auth"
 
 export async function GET() {
   try {
@@ -16,13 +17,8 @@ export async function GET() {
     }
 
     // Check if user has admin privileges (allow in development)
-    if (session) {
-      const hasAdminAccess = session.user?.email?.includes("admin") || 
-                            session.user?.email?.includes("john.doe")
-      
-      if (!hasAdminAccess && !isDevelopment) {
-        return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
-      }
+    if (session && !hasAdminAccess(session) && !isDevelopment) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
     // Get real system metrics from database (includes multi-deployment data)
@@ -609,7 +605,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user has admin privileges
-    if (!session.user?.email?.includes("admin") && !session.user?.email?.includes("john.doe")) {
+    if (!hasAdminAccess(session)) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
