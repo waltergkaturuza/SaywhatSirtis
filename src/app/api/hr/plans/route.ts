@@ -118,7 +118,25 @@ export async function POST(request: NextRequest) {
     // Prepare plan data matching the actual schema
     const currentYear = new Date().getFullYear();
     const planYear = formData.planYear ? parseInt(formData.planYear) : currentYear;
-    const planPeriod = formData.planPeriod || `January ${planYear} - December ${planYear}`;
+    
+    // Handle planPeriod - it might come as an object with startDate/endDate or as a string
+    let planPeriod: string;
+    if (typeof formData.planPeriod === 'string') {
+      planPeriod = formData.planPeriod;
+    } else if (formData.planPeriod && typeof formData.planPeriod === 'object') {
+      // If it's an object, convert to string format
+      const startDate = formData.planPeriod.startDate || '';
+      const endDate = formData.planPeriod.endDate || '';
+      if (startDate && endDate) {
+        planPeriod = `${startDate} - ${endDate}`;
+      } else {
+        planPeriod = `January ${planYear} - December ${planYear}`;
+      }
+    } else {
+      planPeriod = `January ${planYear} - December ${planYear}`;
+    }
+    
+    console.log('📝 Plan period resolved:', planPeriod);
     
     // Check for existing draft plan for this employee and period
     const existingDraft = await prisma.performance_plans.findFirst({
