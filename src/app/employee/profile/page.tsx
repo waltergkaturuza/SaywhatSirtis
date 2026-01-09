@@ -27,6 +27,9 @@ import {
   EyeIcon,
   EyeSlashIcon,
   ArrowDownTrayIcon,
+  UsersIcon,
+  ClipboardDocumentCheckIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
 import EmployeeDocumentsSection from "@/components/employee/EmployeeDocumentsSection";
 import TwoFactorSetup from "@/components/auth/TwoFactorSetup";
@@ -66,6 +69,28 @@ export default function EmployeeProfilePage() {
     performanceScore: null as number | null,
     completedTrainings: 0
   });
+  
+  // Supervisor/Reviewer state
+  const [supervisorData, setSupervisorData] = useState<{
+    isSupervisor: boolean;
+    isReviewer: boolean;
+    employees: Array<{
+      id: string;
+      employeeId: string;
+      name: string;
+      email: string;
+      position: string;
+      department: string;
+      relationship: string;
+      plans: any[];
+      appraisals: any[];
+      plansCount: number;
+      appraisalsCount: number;
+      pendingPlans: number;
+      pendingAppraisals: number;
+    }>;
+  } | null>(null);
+  const [loadingSupervisorData, setLoadingSupervisorData] = useState(false);
   
   // Password change state
   const [showPasswordChange, setShowPasswordChange] = useState(false);
@@ -136,6 +161,9 @@ export default function EmployeeProfilePage() {
           completedTrainings: statsData.completedTrainings || 0
         });
       }
+
+      // Load supervisor/reviewer data
+      loadSupervisorData();
 
       // Load 2FA status
       if (twoFactorResponse.ok) {
@@ -250,6 +278,21 @@ export default function EmployeeProfilePage() {
       setError(err instanceof Error ? err.message : 'Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const loadSupervisorData = async () => {
+    try {
+      setLoadingSupervisorData(true);
+      const response = await fetch('/api/employee/supervised-employees');
+      if (response.ok) {
+        const data = await response.json();
+        setSupervisorData(data);
+      }
+    } catch (err) {
+      console.error('Error loading supervisor data:', err);
+    } finally {
+      setLoadingSupervisorData(false);
     }
   };
 
@@ -1009,6 +1052,181 @@ export default function EmployeeProfilePage() {
 
               </div>
             </div>
+
+            {/* Supervisor/Reviewer Section - Full Width */}
+            {supervisorData && (supervisorData.isSupervisor || supervisorData.isReviewer) && supervisorData.employees.length > 0 && (
+              <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+                  <h3 className="text-xl font-bold text-white flex items-center">
+                    <UsersIcon className="mr-3 h-6 w-6" />
+                    {supervisorData.isSupervisor && supervisorData.isReviewer 
+                      ? 'My Team - Supervised & Reviewed Employees'
+                      : supervisorData.isSupervisor 
+                        ? 'My Team - Supervised Employees'
+                        : 'My Team - Reviewed Employees'}
+                  </h3>
+                  <p className="text-sm text-white/80 mt-1">
+                    Manage performance plans and appraisals for your team members
+                  </p>
+                </div>
+                <div className="p-6">
+                  {loadingSupervisorData ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saywhat-orange"></div>
+                      <span className="ml-2 text-sm text-gray-500">Loading team data...</span>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                              Employee
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                              Department
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                              Relationship
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                              Plans
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                              Appraisals
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">
+                              Pending
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {supervisorData.employees.map((employee) => (
+                            <tr key={employee.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                                  <div className="text-xs text-gray-500">{employee.employeeId}</div>
+                                  <div className="text-xs text-gray-400">{employee.position}</div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">{employee.department}</div>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  employee.relationship === 'both'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : employee.relationship === 'supervised'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {employee.relationship === 'both'
+                                    ? 'Supervised & Reviewed'
+                                    : employee.relationship === 'supervised'
+                                      ? 'Supervised'
+                                      : 'Reviewed'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap text-center">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-sm font-medium text-gray-900">{employee.plansCount}</span>
+                                  {employee.plans.length > 0 && (
+                                    <div className="mt-1 space-y-1">
+                                      {employee.plans.slice(0, 2).map((plan: any) => (
+                                        <Link
+                                          key={plan.id}
+                                          href={`/hr/performance/plans/${plan.id}`}
+                                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline block"
+                                        >
+                                          {plan.planTitle || `${plan.planYear} - ${plan.planPeriod}`}
+                                        </Link>
+                                      ))}
+                                      {employee.plans.length > 2 && (
+                                        <span className="text-xs text-gray-500">+{employee.plans.length - 2} more</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap text-center">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-sm font-medium text-gray-900">{employee.appraisalsCount}</span>
+                                  {employee.appraisals.length > 0 && (
+                                    <div className="mt-1 space-y-1">
+                                      {employee.appraisals.slice(0, 2).map((appraisal: any) => (
+                                        <Link
+                                          key={appraisal.id}
+                                          href={`/hr/performance/appraisals/${appraisal.id}`}
+                                          className="text-xs text-green-600 hover:text-green-800 hover:underline block"
+                                        >
+                                          {appraisal.appraisalType} - {appraisal.performance_plans?.planYear || 'N/A'}
+                                        </Link>
+                                      ))}
+                                      {employee.appraisals.length > 2 && (
+                                        <span className="text-xs text-gray-500">+{employee.appraisals.length - 2} more</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap text-center">
+                                {(employee.pendingPlans > 0 || employee.pendingAppraisals > 0) && (
+                                  <div className="flex flex-col items-center space-y-1">
+                                    {employee.pendingPlans > 0 && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-orange-100 text-orange-800">
+                                        <ClockIcon className="h-3 w-3 mr-1" />
+                                        {employee.pendingPlans} Plan{employee.pendingPlans !== 1 ? 's' : ''}
+                                      </span>
+                                    )}
+                                    {employee.pendingAppraisals > 0 && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-red-100 text-red-800">
+                                        <ClockIcon className="h-3 w-3 mr-1" />
+                                        {employee.pendingAppraisals} Appraisal{employee.pendingAppraisals !== 1 ? 's' : ''}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {employee.pendingPlans === 0 && employee.pendingAppraisals === 0 && (
+                                  <span className="text-xs text-gray-400">None</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex space-x-2">
+                                  <Link
+                                    href={`/hr/performance/plans?employeeId=${employee.id}`}
+                                    className="text-blue-600 hover:text-blue-900 inline-flex items-center"
+                                    title="View Plans"
+                                  >
+                                    <DocumentTextIcon className="h-4 w-4" />
+                                  </Link>
+                                  <Link
+                                    href={`/hr/performance/appraisals?employeeId=${employee.id}`}
+                                    className="text-green-600 hover:text-green-900 inline-flex items-center"
+                                    title="View Appraisals"
+                                  >
+                                    <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {supervisorData.employees.length === 0 && (
+                        <div className="text-center py-8 text-gray-500">
+                          <UsersIcon className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                          <p>No employees assigned to supervise or review.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Employee Documents Section - Full Width */}
             {profile && profile.employeeId && (
