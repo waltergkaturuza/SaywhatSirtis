@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
               }
             }
           }
+        },
+        performance_activities: {
+          orderBy: {
+            createdAt: 'desc'
+          }
         }
       },
       orderBy: {
