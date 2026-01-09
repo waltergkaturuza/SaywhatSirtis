@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter by supervisor/reviewer if not HR
-    if (!canViewAll && user.employees) {
+    if (!canViewAll) {
       whereClause.OR = [
         { supervisorId: user.id },
         { reviewerId: user.id }
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
 
     // Get all performance plans with employee and department details
     const plans = await prisma.performance_plans.findMany({
-      where: whereClause,
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: {
         employees: {
           select: {

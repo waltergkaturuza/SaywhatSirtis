@@ -174,6 +174,7 @@ function PerformancePlansContent() {
       
       if (response.ok) {
         const data = await response.json()
+        console.log('Plans data:', data)
         setPerformancePlans(data.plans || data.data || [])
         setStatistics({
           total: 0,
@@ -227,8 +228,9 @@ function PerformancePlansContent() {
         
         setNotifications(notificationList)
       } else {
-        console.error('Failed to fetch performance plans')
-        setError('Failed to load performance plans')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Failed to fetch performance plans:', response.status, errorData)
+        setError(errorData.error || 'Failed to load performance plans')
       }
 
     } catch (error) {

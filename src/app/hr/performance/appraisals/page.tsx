@@ -104,7 +104,12 @@ export default function PerformanceAppraisalsPage() {
         
         if (appraisalsRes.ok) {
           const appraisalsData = await appraisalsRes.json()
-          setPerformanceAppraisals(appraisalsData.appraisals || [])
+          console.log('Appraisals data:', appraisalsData)
+          setPerformanceAppraisals(appraisalsData.appraisals || appraisalsData.data || [])
+        } else {
+          const errorData = await appraisalsRes.json().catch(() => ({}))
+          console.error('Failed to fetch appraisals:', appraisalsRes.status, errorData)
+          setError(errorData.error || 'Failed to fetch appraisals')
         }
         
         if (deliverablesRes.ok) {

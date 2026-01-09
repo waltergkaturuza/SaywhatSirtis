@@ -108,6 +108,9 @@ export default function EmployeeProfilePage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   
+  // Tab state
+  const [activeTab, setActiveTab] = useState('personal');
+  
   const [formData, setFormData] = useState({
     phoneNumber: '',
     alternativePhone: '',
@@ -520,19 +523,78 @@ export default function EmployeeProfilePage() {
               </div>
             </div>
 
-            {/* Modern Information Cards Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-              {/* Left Column - Contains Personal Information and Contact Information */}
-              <div className="lg:col-span-3 space-y-8">
-                {/* Personal Details Card */}
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                  <div className="bg-gradient-to-r from-gray-900 to-black px-6 py-4">
-                    <h3 className="text-xl font-bold text-white flex items-center">
-                      <UserIcon className="mr-3 h-6 w-6 text-saywhat-orange" />
-                      Personal Information
-                    </h3>
-                  </div>
-                  <div className="p-6">
+            {/* Tab Navigation */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+              {/* Tab Headers */}
+              <div className="border-b border-gray-200 bg-gray-50">
+                <nav className="flex overflow-x-auto scrollbar-hide" aria-label="Tabs">
+                  <button
+                    onClick={() => setActiveTab('personal')}
+                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                      activeTab === 'personal'
+                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <UserIcon className="h-5 w-5 mr-2" />
+                    Personal Information
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('contact')}
+                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                      activeTab === 'contact'
+                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <PhoneIcon className="h-5 w-5 mr-2" />
+                    Contact Information
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('emergency')}
+                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                      activeTab === 'emergency'
+                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <IdentificationIcon className="h-5 w-5 mr-2" />
+                    Emergency Contacts
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('security')}
+                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                      activeTab === 'security'
+                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <ShieldCheckIcon className="h-5 w-5 mr-2" />
+                    Security Settings
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('documents')}
+                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                      activeTab === 'documents'
+                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <DocumentTextIcon className="h-5 w-5 mr-2" />
+                    Employee Documents
+                  </button>
+                </nav>
+              </div>
+
+              {/* Tab Content */}
+              <div className="p-6">
+                {/* Personal Information Tab */}
+                {activeTab === 'personal' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center mb-4">
+                      <UserIcon className="h-6 w-6 text-saywhat-orange mr-3" />
+                      <h3 className="text-xl font-bold text-gray-900">Personal Information</h3>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div className="p-4 bg-gradient-to-r from-saywhat-orange/10 to-transparent rounded-xl border-l-4 border-saywhat-orange">
@@ -569,122 +631,17 @@ export default function EmployeeProfilePage() {
                   </div>
                 </div>
 
-                {/* Contact Information Section - Now in Left Column */}
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                  <div className="bg-gradient-to-r from-saywhat-orange to-orange-500 px-6 py-4">
-                    <h3 className="text-xl font-bold text-white flex items-center">
-                      <PhoneIcon className="mr-3 h-6 w-6" />
-                      Contact Information
-                    </h3>
-                  </div>
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <div className="group">
-                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                          <PhoneIcon className="inline h-4 w-4 mr-2 text-saywhat-orange" />
-                          Primary Phone
-                        </label>
-                        {editMode ? (
-                          <input
-                            type="tel"
-                            value={formData.phoneNumber}
-                            onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
-                            placeholder="Enter phone number"
-                          />
-                        ) : (
-                          <div className="p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.phoneNumber || 'Not provided'}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="group">
-                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                          <PhoneIcon className="inline h-4 w-4 mr-2 text-green-600" />
-                          Alternative Phone
-                        </label>
-                        {editMode ? (
-                          <input
-                            type="tel"
-                            value={formData.alternativePhone}
-                            onChange={(e) => setFormData(prev => ({ ...prev, alternativePhone: e.target.value }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
-                            placeholder="Enter alternative phone"
-                          />
-                        ) : (
-                          <div className="p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl border-l-4 border-green-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.alternativePhone || 'Not provided'}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="group">
-                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                          <EnvelopeIcon className="inline h-4 w-4 mr-2 text-blue-600" />
-                          Personal Email
-                        </label>
-                        {editMode ? (
-                          <input
-                            type="email"
-                            value={formData.personalEmail}
-                            onChange={(e) => setFormData(prev => ({ ...prev, personalEmail: e.target.value }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
-                            placeholder="Enter personal email"
-                          />
-                        ) : (
-                          <div className="p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.personalEmail || 'Not provided'}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="group">
-                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                          <EnvelopeIcon className="inline h-4 w-4 mr-2 text-indigo-600" />
-                          Alternative Email
-                        </label>
-                        {editMode ? (
-                          <input
-                            type="email"
-                            value={formData.alternativeEmail}
-                            onChange={(e) => setFormData(prev => ({ ...prev, alternativeEmail: e.target.value }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
-                            placeholder="Enter alternative email"
-                          />
-                        ) : (
-                          <div className="p-4 bg-gradient-to-r from-indigo-50 to-transparent rounded-xl border-l-4 border-indigo-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.alternativeEmail || 'Not provided'}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="group md:col-span-2 lg:col-span-2">
-                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                          <MapPinIcon className="inline h-4 w-4 mr-2 text-purple-600" />
-                          Home Address
-                        </label>
-                        {editMode ? (
-                          <textarea
-                            value={formData.address}
-                            onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                            rows={3}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors resize-none"
-                            placeholder="Enter home address"
-                          />
-                        ) : (
-                          <div className="p-4 bg-gradient-to-r from-purple-50 to-transparent rounded-xl border-l-4 border-purple-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.address || 'Not provided'}</p>
-                          </div>
-                        )}
-                      </div>
+                {/* Emergency Contacts Tab */}
+                {activeTab === 'emergency' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center mb-4">
+                      <IdentificationIcon className="h-6 w-6 text-saywhat-orange mr-3" />
+                      <h3 className="text-xl font-bold text-gray-900">Emergency Contacts</h3>
                     </div>
-
-                    {/* Emergency Contact */}
-                    <div className="mt-8 p-6 bg-gradient-to-r from-red-50 to-red-25 rounded-xl border border-red-200">
+                    <div className="p-6 bg-gradient-to-r from-red-50 to-red-25 rounded-xl border border-red-200">
                       <h4 className="text-lg font-bold text-red-800 mb-4 flex items-center">
                         <span className="inline-block w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse"></span>
-                        Emergency Contact
+                        Emergency Contact Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -767,18 +724,15 @@ export default function EmployeeProfilePage() {
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                )}
 
-                {/* Security Section */}
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
-                  <div className="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
-                    <h3 className="text-xl font-bold text-white flex items-center">
-                      <ShieldCheckIcon className="mr-3 h-6 w-6" />
-                      Security Settings
-                    </h3>
-                  </div>
-                  <div className="p-6">
+                {/* Security Settings Tab */}
+                {activeTab === 'security' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center mb-4">
+                      <ShieldCheckIcon className="h-6 w-6 text-saywhat-orange mr-3" />
+                      <h3 className="text-xl font-bold text-gray-900">Security Settings</h3>
+                    </div>
                     {/* Password Management */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
@@ -937,11 +891,25 @@ export default function EmployeeProfilePage() {
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
-              </div>
+                )}
 
-              {/* Right Sidebar - Quick Stats and Quick Actions */}
+                {/* Employee Documents Tab */}
+                {activeTab === 'documents' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center mb-4">
+                      <DocumentTextIcon className="h-6 w-6 text-saywhat-orange mr-3" />
+                      <h3 className="text-xl font-bold text-gray-900">Employee Documents</h3>
+                    </div>
+                    {profile && profile.employeeId && (
+                      <EmployeeDocumentsSection employeeId={profile.employeeId} canUpload={true} />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Stats and Quick Actions Sidebar */}
+            <div className="mt-8">
               <div className="space-y-6">
                 {/* Quick Stats Card - Natural Height */}
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
@@ -1048,8 +1016,6 @@ export default function EmployeeProfilePage() {
                     </div>
                   </Link>
                 </div>
-              </div>
-
               </div>
             </div>
 
@@ -1228,12 +1194,6 @@ export default function EmployeeProfilePage() {
               </div>
             )}
 
-            {/* Employee Documents Section - Full Width */}
-            {profile && profile.employeeId && (
-              <div className="mt-8">
-                <EmployeeDocumentsSection employeeId={profile.employeeId} canUpload={true} />
-              </div>
-            )}
 
           </>
         )}

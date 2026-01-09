@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Build where clause - filter by supervisor/reviewer if not HR
     const whereClause: any = {};
     
-    if (!canViewAll && user.employees) {
+    if (!canViewAll) {
       // Filter to show only appraisals where user is supervisor or reviewer
       whereClause.OR = [
         { supervisorId: user.id },
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     // Get all performance appraisals with employee and plan details
     const appraisals = await prisma.performance_appraisals.findMany({
-      where: whereClause,
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: {
         employees: {
           select: {
