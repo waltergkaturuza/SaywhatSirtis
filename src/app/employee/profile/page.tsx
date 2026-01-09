@@ -523,71 +523,75 @@ export default function EmployeeProfilePage() {
               </div>
             </div>
 
-            {/* Tab Navigation */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-              {/* Tab Headers */}
-              <div className="border-b border-gray-200 bg-gray-50">
-                <nav className="flex overflow-x-auto scrollbar-hide" aria-label="Tabs">
-                  <button
-                    onClick={() => setActiveTab('personal')}
-                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === 'personal'
-                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <UserIcon className="h-5 w-5 mr-2" />
-                    Personal Information
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('contact')}
-                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === 'contact'
-                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <PhoneIcon className="h-5 w-5 mr-2" />
-                    Contact Information
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('emergency')}
-                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === 'emergency'
-                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <IdentificationIcon className="h-5 w-5 mr-2" />
-                    Emergency Contacts
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('security')}
-                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === 'security'
-                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <ShieldCheckIcon className="h-5 w-5 mr-2" />
-                    Security Settings
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('documents')}
-                    className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === 'documents'
-                        ? 'border-saywhat-orange text-saywhat-orange bg-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <DocumentTextIcon className="h-5 w-5 mr-2" />
-                    Employee Documents
-                  </button>
-                </nav>
-              </div>
+            {/* Main Content Grid - Tabs and Sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+              {/* Left Column - Tab Navigation and Content */}
+              <div className="lg:col-span-3">
+                {/* Tab Navigation */}
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                  {/* Tab Headers */}
+                  <div className="border-b border-gray-200 bg-gray-50">
+                    <nav className="flex overflow-x-auto scrollbar-hide" aria-label="Tabs">
+                      <button
+                        onClick={() => setActiveTab('personal')}
+                        className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                          activeTab === 'personal'
+                            ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <UserIcon className="h-5 w-5 mr-2" />
+                        Personal Information
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('contact')}
+                        className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                          activeTab === 'contact'
+                            ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <PhoneIcon className="h-5 w-5 mr-2" />
+                        Contact Information
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('emergency')}
+                        className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                          activeTab === 'emergency'
+                            ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <IdentificationIcon className="h-5 w-5 mr-2" />
+                        Emergency Contacts
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('security')}
+                        className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                          activeTab === 'security'
+                            ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <ShieldCheckIcon className="h-5 w-5 mr-2" />
+                        Security Settings
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('documents')}
+                        className={`flex items-center px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                          activeTab === 'documents'
+                            ? 'border-saywhat-orange text-saywhat-orange bg-white'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <DocumentTextIcon className="h-5 w-5 mr-2" />
+                        Employee Documents
+                      </button>
+                    </nav>
+                  </div>
 
-              {/* Tab Content */}
-              <div className="p-6">
+                  {/* Tab Content */}
+                  <div className="p-6">
                 {/* Personal Information Tab */}
                 {activeTab === 'personal' && (
                   <div className="space-y-6">
@@ -1018,12 +1022,13 @@ export default function EmployeeProfilePage() {
                     )}
                   </div>
                 )}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* Quick Stats and Quick Actions Sidebar */}
-            <div className="mt-8">
-              <div className="space-y-6">
+              {/* Right Sidebar - Quick Stats and Quick Actions */}
+              <div className="lg:col-span-1">
+                <div className="space-y-6">
                 {/* Quick Stats Card - Natural Height */}
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
                   <div className="bg-gradient-to-r from-green-600 to-green-500 px-4 py-3">
@@ -1131,6 +1136,7 @@ export default function EmployeeProfilePage() {
                 </div>
                 </div>
               </div>
+            </div>
             </div>
 
             {/* Supervisor/Reviewer Section - Full Width */}
