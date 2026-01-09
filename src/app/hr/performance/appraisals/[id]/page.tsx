@@ -75,7 +75,8 @@ const fetchAppraisalData = async (id: string): Promise<AppraisalData | null> => 
       throw new Error(`Failed to fetch appraisal: ${response.status}`);
     }
     const result = await response.json();
-    return result.success ? result.data : null;
+    // Handle both response formats: { success: true, data: ... } or { success: true, appraisal: ... }
+    return result.success ? (result.data || result.appraisal) : null;
   } catch (error) {
     console.error('Error fetching appraisal data:', error);
     return null;

@@ -74,16 +74,38 @@ export async function GET(
 
     // Check if user has permission to view this appraisal
     const userEmail = session.user.email;
+    const userId = session.user.id;
+    
+    // Get user record to check supervisor/reviewer status
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      include: {
+        employees: {
+          select: {
+            id: true,
+            is_supervisor: true,
+            is_reviewer: true
+          }
+        }
+      }
+    });
+
     const isEmployee = appraisal.employees?.email === userEmail;
     const userRoles = session.user.roles || [];
     const isHR = userRoles.some(role => 
-      ['HR', 'SUPERUSER', 'SYSTEM_ADMINISTRATOR'].includes(role)
+      ['HR', 'SUPERUSER', 'SYSTEM_ADMINISTRATOR', 'ADMIN', 'HR_MANAGER'].includes(role)
     );
+    
+    // Check if user is the supervisor or reviewer of this appraisal
+    const isSupervisor = appraisal.supervisorId === userId;
+    const isReviewer = appraisal.reviewerId === userId;
 
     console.log('   Is Employee?', isEmployee);
     console.log('   Is HR?', isHR);
+    console.log('   Is Supervisor?', isSupervisor);
+    console.log('   Is Reviewer?', isReviewer);
 
-    if (!isEmployee && !isHR) {
+    if (!isEmployee && !isHR && !isSupervisor && !isReviewer) {
       console.log('❌ Permission denied');
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
@@ -142,7 +164,8 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      appraisal: transformedAppraisal
+      data: transformedAppraisal,
+      appraisal: transformedAppraisal // Keep for backward compatibility
     });
 
   } catch (error) {

@@ -209,9 +209,49 @@ export default function EditAppraisalPage() {
   const [activeStep, setActiveStep] = useState(1)
 
   useEffect(() => {
-    // Load appraisal data
-    const appraisalData = getSampleAppraisal(appraisalId)
-    setFormData(appraisalData)
+    // Load appraisal data from API
+    const loadAppraisalData = async () => {
+      try {
+        const response = await fetch(`/api/hr/performance/appraisals/${appraisalId}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch appraisal: ${response.status}`);
+        }
+        const result = await response.json();
+        const appraisalData = result.success ? (result.data || result.appraisal) : null;
+        
+        if (appraisalData) {
+          // Transform API data to form data format
+          const formData: AppraisalFormData = {
+            id: appraisalData.id,
+            employeeName: appraisalData.employee?.name || '',
+            employeeId: appraisalData.employee?.id || '',
+            department: appraisalData.employee?.department || '',
+            position: appraisalData.employee?.position || '',
+            reviewPeriod: appraisalData.employee?.reviewPeriod || { startDate: '', endDate: '' },
+            performanceAreas: appraisalData.performance?.categories || [],
+            achievements: appraisalData.achievements || { keyResponsibilities: [] },
+            development: appraisalData.development || { trainingNeeds: [''], careerAspirations: '', skillsToImprove: [''], developmentPlan: [] },
+            comments: appraisalData.comments || { employeeComments: '', managerComments: '', hrComments: '' },
+            ratings: appraisalData.ratings || { finalRating: 0, actualPoints: 0, maxPoints: 0, percentage: 0, ratingCode: '', recommendation: 'maintain-current', salaryRecommendation: '' },
+            status: appraisalData.status || 'draft'
+          };
+          setFormData(formData);
+        } else {
+          // Fallback to sample data if API fails
+          const sampleData = getSampleAppraisal(appraisalId);
+          setFormData(sampleData);
+        }
+      } catch (error) {
+        console.error('Error loading appraisal data:', error);
+        // Fallback to sample data on error
+        const sampleData = getSampleAppraisal(appraisalId);
+        setFormData(sampleData);
+      }
+    };
+
+    if (appraisalId) {
+      loadAppraisalData();
+    }
   }, [appraisalId])
 
   const metadata = {
