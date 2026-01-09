@@ -36,14 +36,49 @@ export async function GET(request: NextRequest) {
     const employeeId = searchParams.get('employeeId')
 
     // Build where clause - filter by supervisor/reviewer if not HR
+    // Note: supervisorId and reviewerId in appraisals are user IDs, not employee IDs
     const whereClause: any = {};
     
     if (!canViewAll) {
+      // Get the current user's employee record to check if they supervise/review anyone
+      const userEmployee = user.employees;
+      
       // Build OR clause for supervisor/reviewer filtering
+      // supervisorId and reviewerId in performance_appraisals are user IDs
       const permissionFilter: any[] = [
         { supervisorId: user.id },
         { reviewerId: user.id }
       ]
+      
+      // Also check if user is a supervisor/reviewer via employee relationships
+      // This handles cases where appraisals might have been created with employee IDs
+      if (userEmployee) {
+        // Get employees supervised by this user's employee record
+        const supervisedEmployeeIds = await prisma.employees.findMany({
+          where: { supervisor_id: userEmployee.id },
+          select: { id: true }
+        }).then(emps => emps.map(e => e.id));
+        
+        // Get employees reviewed by this user's employee record
+        const reviewedEmployeeIds = await prisma.employees.findMany({
+          where: { reviewer_id: userEmployee.id },
+          select: { id: true }
+        }).then(emps => emps.map(e => e.id));
+        
+        // If user supervises/reviews employees, also filter by those employee IDs
+        if (supervisedEmployeeIds.length > 0 || reviewedEmployeeIds.length > 0) {
+          const employeeIdFilter: any[] = [];
+          if (supervisedEmployeeIds.length > 0) {
+            employeeIdFilter.push({ employeeId: { in: supervisedEmployeeIds } });
+          }
+          if (reviewedEmployeeIds.length > 0) {
+            employeeIdFilter.push({ employeeId: { in: reviewedEmployeeIds } });
+          }
+          if (employeeIdFilter.length > 0) {
+            permissionFilter.push(...employeeIdFilter);
+          }
+        }
+      }
       
       // If employeeId is provided, add it to the filter
       if (employeeId) {
@@ -60,9 +95,17 @@ export async function GET(request: NextRequest) {
       whereClause.employeeId = employeeId
     }
 
+    console.log('🔍 GET /api/hr/performance/appraisals');
+    console.log('   User:', session.user.email);
+    console.log('   User ID:', session.user.id);
+    console.log('   User Role:', user.role);
+    console.log('   Can View All:', canViewAll);
+    console.log('   Where Clause:', JSON.stringify(whereClause, null, 2));
+    console.log('   EmployeeId filter:', employeeId);
+
     // Get all performance appraisals with employee and plan details
     const appraisals = await prisma.performance_appraisals.findMany({
-      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+      where: Object.keys(whereClause).length > 0 ? whereClause : {},
       include: {
         employees: {
           select: {
@@ -96,6 +139,17 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc'
       }
     });
+
+    console.log('   Found appraisals:', appraisals.length);
+    if (appraisals.length > 0) {
+      console.log('   First appraisal:', {
+        id: appraisals[0].id,
+        employeeId: appraisals[0].employeeId,
+        status: appraisals[0].status,
+        supervisorId: appraisals[0].supervisorId,
+        reviewerId: appraisals[0].reviewerId
+      });
+    }
 
     // Transform appraisals for frontend
     const transformedAppraisals = appraisals.map(appraisal => ({
@@ -174,9 +228,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Get supervisor user account - required for appraisals
-    const supervisorUser = employeeRecord.supervisor_id 
-      ? await prisma.users.findFirst({ where: { employeeId: employeeRecord.supervisor_id } })
-      : null;
+    // supervisor_id is an employee ID, so we need to get the employee first, then their userId
+    let supervisorUser = null;
+    if (employeeRecord.supervisor_id) {
+      const supervisorEmployee = await prisma.employees.findUnique({
+        where: { id: employeeRecord.supervisor_id },
+        select: { userId: true }
+      });
+      if (supervisorEmployee?.userId) {
+        supervisorUser = await prisma.users.findUnique({
+          where: { id: supervisorEmployee.userId }
+        });
+      }
+    }
 
     if (!supervisorUser) {
       return NextResponse.json(
@@ -186,9 +250,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Get reviewer user account if assigned
-    const reviewerUser = employeeRecord.reviewer_id
-      ? await prisma.users.findFirst({ where: { employeeId: employeeRecord.reviewer_id } })
-      : null;
+    // reviewer_id is an employee ID, so we need to get the employee first, then their userId
+    let reviewerUser = null;
+    if (employeeRecord.reviewer_id) {
+      const reviewerEmployee = await prisma.employees.findUnique({
+        where: { id: employeeRecord.reviewer_id },
+        select: { userId: true }
+      });
+      if (reviewerEmployee?.userId) {
+        reviewerUser = await prisma.users.findUnique({
+          where: { id: reviewerEmployee.userId }
+        });
+      }
+    }
 
     // Find or create performance plan for this employee
     let performancePlan = await prisma.performance_plans.findFirst({

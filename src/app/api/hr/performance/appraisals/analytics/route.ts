@@ -100,16 +100,62 @@ export async function GET(request: NextRequest) {
       });
     });
 
+    console.log('🔍 GET /api/hr/performance/appraisals/analytics');
+    console.log('   User:', user.email);
+    console.log('   User ID:', user.id);
+    console.log('   User Role:', user.role);
+    console.log('   Can View All:', canViewAllAppraisals);
+
     // Build where clause for filtering
+    // Note: supervisorId and reviewerId in appraisals are user IDs, not employee IDs
     let whereClause: any = {}
     
     if (!canViewAllAppraisals) {
       // Filter to show only appraisals where user is supervisor or reviewer
-      whereClause.OR = [
+      const permissionFilter: any[] = [
         { supervisorId: user.id },
         { reviewerId: user.id }
       ];
+      
+      // Also check if user is a supervisor/reviewer via employee relationships
+      if (employee) {
+        // Get employees supervised by this user's employee record
+        const supervisedEmployeeIds = await executeQuery(async (prisma) => {
+          const emps = await prisma.employees.findMany({
+            where: { supervisor_id: employee.id },
+            select: { id: true }
+          });
+          return emps.map(e => e.id);
+        });
+        
+        // Get employees reviewed by this user's employee record
+        const reviewedEmployeeIds = await executeQuery(async (prisma) => {
+          const emps = await prisma.employees.findMany({
+            where: { reviewer_id: employee.id },
+            select: { id: true }
+          });
+          return emps.map(e => e.id);
+        });
+        
+        // If user supervises/reviews employees, also filter by those employee IDs
+        if (supervisedEmployeeIds.length > 0 || reviewedEmployeeIds.length > 0) {
+          const employeeIdFilter: any[] = [];
+          if (supervisedEmployeeIds.length > 0) {
+            employeeIdFilter.push({ employeeId: { in: supervisedEmployeeIds } });
+          }
+          if (reviewedEmployeeIds.length > 0) {
+            employeeIdFilter.push({ employeeId: { in: reviewedEmployeeIds } });
+          }
+          if (employeeIdFilter.length > 0) {
+            permissionFilter.push(...employeeIdFilter);
+          }
+        }
+      }
+      
+      whereClause.OR = permissionFilter;
     }
+    
+    console.log('   Where Clause:', JSON.stringify(whereClause, null, 2));
 
     // Add department filter
     if (department && department !== 'all') {
@@ -143,21 +189,38 @@ export async function GET(request: NextRequest) {
         improvementAreas
       ] = await Promise.all([
         // Total appraisals - use performance_appraisals table
-        executeQuery(async (prisma) => prisma.performance_appraisals.count({ where: whereClause })),
+        executeQuery(async (prisma) => {
+          const countWhere = Object.keys(whereClause).length > 0 ? whereClause : {};
+          console.log('   Counting appraisals with where:', JSON.stringify(countWhere, null, 2));
+          const count = await prisma.performance_appraisals.count({ where: countWhere });
+          console.log('   Total appraisals count:', count);
+          return count;
+        }),
         
         // Completed appraisals - status 'approved' or 'reviewer_approved'
-        executeQuery(async (prisma) => prisma.performance_appraisals.count({ 
-          where: { 
-            ...whereClause, 
-            status: { in: ['approved', 'reviewer_approved'] } 
-          } 
-        })),
+        executeQuery(async (prisma) => {
+          const completedWhere = Object.keys(whereClause).length > 0
+            ? { ...whereClause, status: { in: ['approved', 'reviewer_approved'] } }
+            : { status: { in: ['approved', 'reviewer_approved'] } };
+          console.log('   Counting completed appraisals with where:', JSON.stringify(completedWhere, null, 2));
+          const count = await prisma.performance_appraisals.count({ where: completedWhere });
+          console.log('   Completed appraisals count:', count);
+          return count;
+        }),
         
         // Average rating
-        executeQuery(async (prisma) => prisma.performance_appraisals.aggregate({ 
-          where: { ...whereClause, overallRating: { not: null } }, 
-          _avg: { overallRating: true } 
-        })),
+        executeQuery(async (prisma) => {
+          const avgWhere = Object.keys(whereClause).length > 0
+            ? { ...whereClause, overallRating: { not: null } }
+            : { overallRating: { not: null } };
+          console.log('   Calculating average rating with where:', JSON.stringify(avgWhere, null, 2));
+          const result = await prisma.performance_appraisals.aggregate({ 
+            where: avgWhere, 
+            _avg: { overallRating: true } 
+          });
+          console.log('   Average rating result:', result);
+          return result;
+        }),
         
         // On-time completions (completed before due date)
         getOnTimeCompletions(whereClause),
@@ -183,30 +246,43 @@ export async function GET(request: NextRequest) {
         : 0
 
       // Calculate pending and overdue appraisals
-      const pendingAppraisals = await executeQuery(async (prisma) => 
-        prisma.performance_appraisals.count({ 
-          where: { 
-            ...whereClause, 
-            status: { in: ['draft', 'submitted', 'supervisor_review', 'reviewer_assessment'] } 
-          } 
-        })
-      );
+      const pendingWhereClause = Object.keys(whereClause).length > 0 
+        ? { ...whereClause, status: { in: ['draft', 'submitted', 'supervisor_review', 'reviewer_assessment'] } }
+        : { status: { in: ['draft', 'submitted', 'supervisor_review', 'reviewer_assessment'] } };
+      
+      const pendingAppraisals = await executeQuery(async (prisma) => {
+        console.log('   Counting pending appraisals with where:', JSON.stringify(pendingWhereClause, null, 2));
+        const count = await prisma.performance_appraisals.count({ where: pendingWhereClause });
+        console.log('   Pending appraisals count:', count);
+        return count;
+      });
 
       // Overdue: submitted but not approved after 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const overdueAppraisals = await executeQuery(async (prisma) => 
-        prisma.performance_appraisals.count({ 
-          where: { 
+      const overdueWhereClause = Object.keys(whereClause).length > 0
+        ? { 
             ...whereClause, 
             status: { in: ['submitted', 'supervisor_review', 'reviewer_assessment'] },
             submittedAt: { 
               not: null,
               lt: thirtyDaysAgo
             }
-          } 
-        })
-      );
+          }
+        : {
+            status: { in: ['submitted', 'supervisor_review', 'reviewer_assessment'] },
+            submittedAt: { 
+              not: null,
+              lt: thirtyDaysAgo
+            }
+          };
+      
+      const overdueAppraisals = await executeQuery(async (prisma) => {
+        console.log('   Counting overdue appraisals with where:', JSON.stringify(overdueWhereClause, null, 2));
+        const count = await prisma.performance_appraisals.count({ where: overdueWhereClause });
+        console.log('   Overdue appraisals count:', count);
+        return count;
+      });
 
       analyticsData = {
         totalAppraisals,

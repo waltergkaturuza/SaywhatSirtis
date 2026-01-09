@@ -104,12 +104,19 @@ export default function PerformanceAppraisalsPage() {
         
         if (appraisalsRes.ok) {
           const appraisalsData = await appraisalsRes.json()
-          console.log('Appraisals data:', appraisalsData)
-          setPerformanceAppraisals(appraisalsData.appraisals || appraisalsData.data || [])
+          console.log('📊 Appraisals API Response:', appraisalsData)
+          console.log('   Success:', appraisalsData.success)
+          console.log('   Appraisals array:', appraisalsData.appraisals)
+          console.log('   Appraisals count:', appraisalsData.appraisals?.length || 0)
+          console.log('   Statistics:', appraisalsData.statistics)
+          const appraisalsList = appraisalsData.appraisals || appraisalsData.data || []
+          console.log('   Setting appraisals list with', appraisalsList.length, 'items')
+          setPerformanceAppraisals(appraisalsList)
         } else {
           const errorData = await appraisalsRes.json().catch(() => ({}))
-          console.error('Failed to fetch appraisals:', appraisalsRes.status, errorData)
+          console.error('❌ Failed to fetch appraisals:', appraisalsRes.status, errorData)
           setError(errorData.error || 'Failed to fetch appraisals')
+          setPerformanceAppraisals([])
         }
         
         if (deliverablesRes.ok) {
