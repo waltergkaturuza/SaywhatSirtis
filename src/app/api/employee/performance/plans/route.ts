@@ -71,17 +71,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check for existing draft plan for this employee and period
+    const planYear = parseInt(body.planYear);
+    const planPeriod = body.planPeriod || 'Annual';
+    
+    const existingDraft = await prisma.performance_plans.findFirst({
+      where: {
+        employeeId: employee.id,
+        planYear: planYear,
+        planPeriod: planPeriod,
+        status: 'draft'
+      },
+      include: {
+        performance_responsibilities: true
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
+    });
+
+    // If draft exists, return it instead of creating a new one
+    if (existingDraft) {
+      return NextResponse.json({
+        success: true,
+        existing: true,
+        message: 'Existing draft plan found. Continuing from saved draft.',
+        plan: existingDraft
+      });
+    }
+
+    // Check if there's a submitted plan for the same period
+    const existingSubmitted = await prisma.performance_plans.findFirst({
+      where: {
+        employeeId: employee.id,
+        planYear: planYear,
+        planPeriod: planPeriod,
+        status: { in: ['submitted', 'active', 'approved'] }
+      }
+    });
+
+    if (existingSubmitted) {
+      return NextResponse.json({
+        success: false,
+        error: 'A plan for this period already exists and has been submitted. Please edit the existing plan instead.',
+        existingPlanId: existingSubmitted.id
+      }, { status: 400 });
+    }
+
     // Generate key responsibilities based on position
     const defaultResponsibilities = getDefaultResponsibilities(employee.position || 'General Employee');
     
-    // Create performance plan
+    // Create performance plan only if no draft exists
     const performancePlan = await prisma.performance_plans.create({
       data: {
         id: randomUUID(),
         employeeId: employee.id,
         supervisorId: supervisorEmployee.users.id,
-        planYear: parseInt(body.planYear),
-        planPeriod: body.planPeriod || 'Annual',
+        planYear: planYear,
+        planPeriod: planPeriod,
         status: 'draft',
         updatedAt: new Date(),
         performance_responsibilities: {

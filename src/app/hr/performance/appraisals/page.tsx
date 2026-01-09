@@ -121,12 +121,15 @@ export default function PerformanceAppraisalsPage() {
             pendingAppraisals: statsData.pendingAppraisals || 0,
             overdueAppraisals: statsData.overdueAppraisals || 0,
             averageRating: statsData.averageRating || 0,
-            completionRate: statsData.completionRate || 0,
+            completionRate: statsData.completedAppraisals > 0 && statsData.totalAppraisals > 0 
+              ? Math.round((statsData.completedAppraisals / statsData.totalAppraisals) * 100) 
+              : 0,
             ratingDistribution: {
-              excellent: statsData.ratingDistribution?.excellent || 0,
-              good: statsData.ratingDistribution?.good || 0,
-              average: statsData.ratingDistribution?.average || 0,
-              belowAverage: statsData.ratingDistribution?.belowAverage || 0
+              excellent: statsData.ratingDistribution?.find((r: any) => r.rating === 5)?.percentage || 0,
+              good: statsData.ratingDistribution?.find((r: any) => r.rating === 4)?.percentage || 0,
+              average: statsData.ratingDistribution?.find((r: any) => r.rating === 3)?.percentage || 0,
+              belowAverage: (statsData.ratingDistribution?.find((r: any) => r.rating === 2)?.percentage || 0) + 
+                           (statsData.ratingDistribution?.find((r: any) => r.rating === 1)?.percentage || 0)
             }
           })
         }

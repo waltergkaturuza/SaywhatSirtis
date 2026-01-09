@@ -10,6 +10,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
+    // Get user and check permissions
+    const user = await prisma.users.findUnique({
+      where: { id: session.user.id },
+      include: {
+        employees: {
+          select: {
+            id: true,
+            is_supervisor: true,
+            is_reviewer: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if user can view all plans (HR staff)
+    const canViewAll = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role || '');
+
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const year = searchParams.get('year')
@@ -24,6 +45,14 @@ export async function GET(request: NextRequest) {
     
     if (status && status !== 'all') {
       whereClause.status = status
+    }
+
+    // Filter by supervisor/reviewer if not HR
+    if (!canViewAll && user.employees) {
+      whereClause.OR = [
+        { supervisorId: user.id },
+        { reviewerId: user.id }
+      ];
     }
 
     // Get all performance plans with employee and department details

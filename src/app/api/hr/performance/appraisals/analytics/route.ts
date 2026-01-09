@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
       const emptyAnalytics = {
         totalAppraisals: 0,
         completedAppraisals: 0,
+        pendingAppraisals: 0,
+        overdueAppraisals: 0,
         averageRating: 0,
         onTimeCompletion: 0,
         departmentStats: [],
@@ -66,6 +68,8 @@ export async function GET(request: NextRequest) {
       const emptyAnalytics = {
         totalAppraisals: 0,
         completedAppraisals: 0,
+        pendingAppraisals: 0,
+        overdueAppraisals: 0,
         averageRating: 0,
         onTimeCompletion: 0,
         departmentStats: [],
@@ -84,11 +88,27 @@ export async function GET(request: NextRequest) {
     const canViewAllAppraisals = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role)
     const now = new Date()
 
+    // Get employee record to check supervisor/reviewer status
+    const employee = await executeQuery(async (prisma) => {
+      return prisma.employees.findUnique({
+        where: { userId: user.id },
+        select: {
+          id: true,
+          is_supervisor: true,
+          is_reviewer: true
+        }
+      });
+    });
+
     // Build where clause for filtering
     let whereClause: any = {}
     
-    if (!canViewAllAppraisals && user.id) {
-  whereClause.employeeId = user.id
+    if (!canViewAllAppraisals) {
+      // Filter to show only appraisals where user is supervisor or reviewer
+      whereClause.OR = [
+        { supervisorId: user.id },
+        { reviewerId: user.id }
+      ];
     }
 
     // Add department filter
@@ -122,14 +142,22 @@ export async function GET(request: NextRequest) {
         topPerformers,
         improvementAreas
       ] = await Promise.all([
-        // Total appraisals
-        executeQuery(async (prisma) => prisma.performance_reviews.count({ where: whereClause })),
+        // Total appraisals - use performance_appraisals table
+        executeQuery(async (prisma) => prisma.performance_appraisals.count({ where: whereClause })),
         
-        // Completed appraisals
-        executeQuery(async (prisma) => prisma.performance_reviews.count({ where: { ...whereClause, reviewStatus: 'completed' } })),
+        // Completed appraisals - status 'approved' or 'reviewer_approved'
+        executeQuery(async (prisma) => prisma.performance_appraisals.count({ 
+          where: { 
+            ...whereClause, 
+            status: { in: ['approved', 'reviewer_approved'] } 
+          } 
+        })),
         
         // Average rating
-        executeQuery(async (prisma) => prisma.performance_reviews.aggregate({ where: { ...whereClause, overallRating: { not: null } }, _avg: { overallRating: true } })),
+        executeQuery(async (prisma) => prisma.performance_appraisals.aggregate({ 
+          where: { ...whereClause, overallRating: { not: null } }, 
+          _avg: { overallRating: true } 
+        })),
         
         // On-time completions (completed before due date)
         getOnTimeCompletions(whereClause),
@@ -154,9 +182,37 @@ export async function GET(request: NextRequest) {
         ? Math.round((onTimeAppraisals / completedAppraisals) * 100) 
         : 0
 
+      // Calculate pending and overdue appraisals
+      const pendingAppraisals = await executeQuery(async (prisma) => 
+        prisma.performance_appraisals.count({ 
+          where: { 
+            ...whereClause, 
+            status: { in: ['draft', 'submitted', 'supervisor_review', 'reviewer_assessment'] } 
+          } 
+        })
+      );
+
+      // Overdue: submitted but not approved after 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const overdueAppraisals = await executeQuery(async (prisma) => 
+        prisma.performance_appraisals.count({ 
+          where: { 
+            ...whereClause, 
+            status: { in: ['submitted', 'supervisor_review', 'reviewer_assessment'] },
+            submittedAt: { 
+              not: null,
+              lt: thirtyDaysAgo
+            }
+          } 
+        })
+      );
+
       analyticsData = {
         totalAppraisals,
         completedAppraisals,
+        pendingAppraisals,
+        overdueAppraisals,
         averageRating: Math.round((avgRating._avg.overallRating || 0) * 10) / 10,
         onTimeCompletion,
         departmentStats,
@@ -172,6 +228,8 @@ export async function GET(request: NextRequest) {
       analyticsData = {
         totalAppraisals: 0,
         completedAppraisals: 0,
+        pendingAppraisals: 0,
+        overdueAppraisals: 0,
         averageRating: 0,
         onTimeCompletion: 0,
         departmentStats: [],
@@ -200,8 +258,13 @@ export async function GET(request: NextRequest) {
 // Helper function to get on-time completions
 async function getOnTimeCompletions(baseWhereClause: any): Promise<number> {
   try {
-    return await executeQuery(async (prisma) => prisma.performance_reviews.count({
-      where: { ...baseWhereClause, reviewStatus: 'completed', reviewedAt: { not: null }, reviewDate: { not: null } }
+    return await executeQuery(async (prisma) => prisma.performance_appraisals.count({
+      where: { 
+        ...baseWhereClause, 
+        status: { in: ['approved', 'reviewer_approved'] },
+        approvedAt: { not: null },
+        submittedAt: { not: null }
+      }
     }))
   } catch (error) {
     console.error('Error getting on-time completions:', error)
@@ -217,7 +280,7 @@ async function getDepartmentStats(baseWhereClause: any, canViewAllAppraisals: bo
     }
     const departments = await executeQuery(async (prisma) => prisma.departments.findMany({
       where: { isActive: true },
-      include: { employees: { include: { performance_reviews: { where: baseWhereClause } } } }
+      include: { employees: { include: { performance_appraisals: { where: baseWhereClause } } } }
     }))
 
     const departmentStats = await Promise.all(
@@ -228,9 +291,9 @@ async function getDepartmentStats(baseWhereClause: any, canViewAllAppraisals: bo
         }
 
         const [total, completed, avgRating, onTime] = await Promise.all([
-          executeQuery(async (prisma) => prisma.performance_reviews.count({ where: deptWhereClause })),
-          executeQuery(async (prisma) => prisma.performance_reviews.count({ where: { ...deptWhereClause, reviewStatus: 'completed' } })),
-          executeQuery(async (prisma) => prisma.performance_reviews.aggregate({ where: { ...deptWhereClause, overallRating: { not: null } }, _avg: { overallRating: true } })),
+          executeQuery(async (prisma) => prisma.performance_appraisals.count({ where: deptWhereClause })),
+          executeQuery(async (prisma) => prisma.performance_appraisals.count({ where: { ...deptWhereClause, status: { in: ['approved', 'reviewer_approved'] } } })),
+          executeQuery(async (prisma) => prisma.performance_appraisals.aggregate({ where: { ...deptWhereClause, overallRating: { not: null } }, _avg: { overallRating: true } })),
           getOnTimeCompletions(deptWhereClause)
         ])
 
@@ -254,7 +317,7 @@ async function getDepartmentStats(baseWhereClause: any, canViewAllAppraisals: bo
 // Helper function to get rating distribution
 async function getRatingDistribution(baseWhereClause: any) {
   try {
-    const ratings = await executeQuery(async (prisma) => prisma.performance_reviews.groupBy({
+    const ratings = await executeQuery(async (prisma) => prisma.performance_appraisals.groupBy({
       by: ['overallRating'],
       where: { ...baseWhereClause, overallRating: { not: null } },
       _count: true
@@ -294,8 +357,8 @@ async function getMonthlyTrends(baseWhereClause: any) {
       const nextMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1)
       
       const monthlyData = await Promise.all([
-        executeQuery(async (prisma) => prisma.performance_reviews.count({ where: { ...baseWhereClause, reviewStatus: 'completed', reviewedAt: { gte: date, lt: nextMonth } } })),
-        executeQuery(async (prisma) => prisma.performance_reviews.aggregate({ where: { ...baseWhereClause, reviewStatus: 'completed', reviewedAt: { gte: date, lt: nextMonth }, overallRating: { not: null } }, _avg: { overallRating: true } }))
+        executeQuery(async (prisma) => prisma.performance_appraisals.count({ where: { ...baseWhereClause, status: { in: ['approved', 'reviewer_approved'] }, approvedAt: { gte: date, lt: nextMonth } } })),
+        executeQuery(async (prisma) => prisma.performance_appraisals.aggregate({ where: { ...baseWhereClause, status: { in: ['approved', 'reviewer_approved'] }, approvedAt: { gte: date, lt: nextMonth }, overallRating: { not: null } }, _avg: { overallRating: true } }))
       ])
 
       months.push({
@@ -315,20 +378,31 @@ async function getMonthlyTrends(baseWhereClause: any) {
 // Helper function to get top performers
 async function getTopPerformers(baseWhereClause: any) {
   try {
-    const topPerformers = await executeQuery(async (prisma) => prisma.performance_reviews.findMany({
-      where: { ...baseWhereClause, reviewStatus: 'completed', overallRating: { not: null } },
-      include: { employees: { include: { users: true, departments: true } } },
+    const topPerformers = await executeQuery(async (prisma) => prisma.performance_appraisals.findMany({
+      where: { ...baseWhereClause, status: { in: ['approved', 'reviewer_approved'] }, overallRating: { not: null } },
+      include: { 
+        employees: { 
+          include: { 
+            users: true, 
+            departments: true 
+          } 
+        },
+        performance_plans: {
+          select: {
+            planYear: true,
+            planPeriod: true
+          }
+        }
+      },
       orderBy: { overallRating: 'desc' },
       take: 5
     }))
 
-    return topPerformers.map(review => ({
-   name: review.employees.users?.firstName && review.employees.users?.lastName
-     ? `${review.employees.users.firstName} ${review.employees.users.lastName}`
-           : `${review.employees.firstName} ${review.employees.lastName}`,
-      department: review.employees.departments?.name || 'Unknown',
-      rating: Math.round((review.overallRating || 0) * 10) / 10,
-      period: formatReviewPeriod(review.reviewType, review.reviewDate)
+    return topPerformers.map(appraisal => ({
+      name: `${appraisal.employees?.firstName || ''} ${appraisal.employees?.lastName || ''}`.trim(),
+      department: appraisal.employees?.departments?.name || 'Unknown',
+      rating: Math.round((appraisal.overallRating || 0) * 10) / 10,
+      period: appraisal.performance_plans?.planPeriod || `${appraisal.performance_plans?.planYear || new Date().getFullYear()}`
     }))
   } catch (error) {
     console.error('Error getting top performers:', error)

@@ -10,8 +10,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
+    // Get user and check permissions
+    const user = await prisma.users.findUnique({
+      where: { id: session.user.id },
+      include: {
+        employees: {
+          select: {
+            id: true,
+            is_supervisor: true,
+            is_reviewer: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if user can view all appraisals (HR staff)
+    const canViewAll = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role || '');
+
+    // Build where clause - filter by supervisor/reviewer if not HR
+    const whereClause: any = {};
+    
+    if (!canViewAll && user.employees) {
+      // Filter to show only appraisals where user is supervisor or reviewer
+      whereClause.OR = [
+        { supervisorId: user.id },
+        { reviewerId: user.id }
+      ];
+    }
+
     // Get all performance appraisals with employee and plan details
     const appraisals = await prisma.performance_appraisals.findMany({
+      where: whereClause,
       include: {
         employees: {
           select: {
@@ -176,34 +209,85 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create the appraisal
-    const crypto = require('crypto');
-    
-    console.log('Creating appraisal with data:', {
-      employeeId: employeeRecord.id,
-      supervisorId: supervisorUser.id,
-      reviewerId: reviewerUser?.id,
-      planId: performancePlan.id
-    });
-
-    const appraisal = await prisma.performance_appraisals.create({
-      data: {
-        id: crypto.randomUUID(),
-        planId: performancePlan.id,
+    // Check for existing draft appraisal for this employee, plan, and type
+    const appraisalType = body.appraisalType || 'annual';
+    const existingDraft = await prisma.performance_appraisals.findFirst({
+      where: {
         employeeId: employeeRecord.id,
-        supervisorId: supervisorUser.id,
-        reviewerId: reviewerUser?.id || null,
-        appraisalType: body.appraisalType || 'annual',
-        status: status || 'draft',
-        overallRating: ratings?.overall || 0,
-        selfAssessments: achievements || {},
-        supervisorAssessments: {},
-        valueGoalsAssessments: development || {},
-        comments: { ...comments, ratings: ratings || {}, recommendations: recommendations || {} },
-        submittedAt: status === 'submitted' ? new Date() : null,
-        updatedAt: new Date()
+        planId: performancePlan.id,
+        appraisalType: appraisalType,
+        status: 'draft'
+      },
+      orderBy: {
+        updatedAt: 'desc'
       }
     });
+
+    // If draft exists, update it instead of creating a new one
+    let appraisal;
+    const crypto = require('crypto');
+    
+    if (existingDraft) {
+      console.log('Found existing draft appraisal, updating:', existingDraft.id);
+      
+      appraisal = await prisma.performance_appraisals.update({
+        where: { id: existingDraft.id },
+        data: {
+          status: status || 'draft',
+          overallRating: ratings?.overall || existingDraft.overallRating || 0,
+          selfAssessments: achievements || existingDraft.selfAssessments || {},
+          supervisorAssessments: existingDraft.supervisorAssessments || {},
+          valueGoalsAssessments: development || existingDraft.valueGoalsAssessments || {},
+          comments: comments ? { ...comments, ratings: ratings || {}, recommendations: recommendations || {} } : existingDraft.comments,
+          submittedAt: status === 'submitted' ? new Date() : existingDraft.submittedAt,
+          updatedAt: new Date()
+        }
+      });
+    } else {
+      // Check if there's a submitted appraisal for the same period
+      const existingSubmitted = await prisma.performance_appraisals.findFirst({
+        where: {
+          employeeId: employeeRecord.id,
+          planId: performancePlan.id,
+          appraisalType: appraisalType,
+          status: { in: ['submitted', 'approved', 'supervisor_approved', 'reviewer_approved'] }
+        }
+      });
+
+      if (existingSubmitted) {
+        return NextResponse.json({
+          success: false,
+          error: 'An appraisal for this period already exists and has been submitted. Please edit the existing appraisal instead.',
+          existingAppraisalId: existingSubmitted.id
+        }, { status: 400 });
+      }
+
+      console.log('Creating new appraisal with data:', {
+        employeeId: employeeRecord.id,
+        supervisorId: supervisorUser.id,
+        reviewerId: reviewerUser?.id,
+        planId: performancePlan.id
+      });
+
+      appraisal = await prisma.performance_appraisals.create({
+        data: {
+          id: crypto.randomUUID(),
+          planId: performancePlan.id,
+          employeeId: employeeRecord.id,
+          supervisorId: supervisorUser.id,
+          reviewerId: reviewerUser?.id || null,
+          appraisalType: appraisalType,
+          status: status || 'draft',
+          overallRating: ratings?.overall || 0,
+          selfAssessments: achievements || {},
+          supervisorAssessments: {},
+          valueGoalsAssessments: development || {},
+          comments: { ...comments, ratings: ratings || {}, recommendations: recommendations || {} },
+          submittedAt: status === 'submitted' ? new Date() : null,
+          updatedAt: new Date()
+        }
+      });
+    }
 
     console.log('Appraisal created successfully:', appraisal.id);
 

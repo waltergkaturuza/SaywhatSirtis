@@ -103,25 +103,109 @@ export async function POST(request: NextRequest) {
     // Prepare plan data matching the actual schema
     const currentYear = new Date().getFullYear();
     const planYear = formData.planYear ? parseInt(formData.planYear) : currentYear;
+    const planPeriod = formData.planPeriod || `January ${planYear} - December ${planYear}`;
     
-    const planData = {
-      id: crypto.randomUUID(),
-      employeeId: employee.id,
-      supervisorId: supervisorEmployee?.userId || employee.supervisor_id || '',
-      planYear: planYear,
-      planPeriod: `January ${planYear} - December ${planYear}`,
-      status,
-      updatedAt: new Date(),
-      reviewerId: null, // Set to null unless formData provides a valid user ID
-      comments: JSON.stringify([])
-    };
-
-    console.log('💾 Saving plan to database:', planData);
-
-    // Create the performance plan
-    const plan = await prisma.performance_plans.create({
-      data: planData
+    // Check for existing draft plan for this employee and period
+    const existingDraft = await prisma.performance_plans.findFirst({
+      where: {
+        employeeId: employee.id,
+        planYear: planYear,
+        planPeriod: planPeriod,
+        status: 'draft'
+      },
+      include: {
+        performance_responsibilities: true
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
     });
+
+    let plan;
+    
+    // If draft exists and we're saving as draft, update it instead of creating new
+    if (existingDraft && isDraft) {
+      console.log('📝 Found existing draft plan, updating:', existingDraft.id);
+      
+      // Update existing draft
+      plan = await prisma.performance_plans.update({
+        where: { id: existingDraft.id },
+        data: {
+          status: 'draft',
+          updatedAt: new Date()
+        },
+        include: {
+          performance_responsibilities: true
+        }
+      });
+
+      // Update or create responsibilities
+      if (formData.keyResponsibilities && formData.keyResponsibilities.length > 0) {
+        // Delete existing responsibilities
+        await prisma.performance_responsibilities.deleteMany({
+          where: { planId: plan.id }
+        });
+
+        // Create new responsibilities
+        for (const responsibility of formData.keyResponsibilities) {
+          const respData = {
+            id: crypto.randomUUID(),
+            planId: plan.id,
+            title: responsibility.description?.substring(0, 100) || 'Responsibility',
+            description: responsibility.description || '',
+            weight: responsibility.weight || 0,
+            updatedAt: new Date()
+          };
+
+          await prisma.performance_responsibilities.create({
+            data: respData
+          });
+        }
+      }
+
+      console.log('✅ Performance plan draft updated:', plan.id);
+    } else {
+      // Check if there's a submitted plan for the same period (unless we're updating a draft)
+      if (!existingDraft) {
+        const existingSubmitted = await prisma.performance_plans.findFirst({
+          where: {
+            employeeId: employee.id,
+            planYear: planYear,
+            planPeriod: planPeriod,
+            status: { in: ['submitted', 'active', 'approved'] }
+          }
+        });
+
+        if (existingSubmitted) {
+          return NextResponse.json({
+            success: false,
+            error: 'A plan for this period already exists and has been submitted. Please edit the existing plan instead.',
+            existingPlanId: existingSubmitted.id
+          }, { status: 400 });
+        }
+      }
+
+      const planData = {
+        id: crypto.randomUUID(),
+        employeeId: employee.id,
+        supervisorId: supervisorEmployee?.userId || employee.supervisor_id || '',
+        planYear: planYear,
+        planPeriod: planPeriod,
+        status,
+        updatedAt: new Date(),
+        reviewerId: null, // Set to null unless formData provides a valid user ID
+        comments: JSON.stringify([])
+      };
+
+      console.log('💾 Saving plan to database:', planData);
+
+      // Create the performance plan
+      plan = await prisma.performance_plans.create({
+        data: planData
+      });
+
+      console.log('✅ Performance plan created:', plan.id);
+    }
 
     console.log('✅ Performance plan created:', plan.id);
 
