@@ -231,11 +231,13 @@ function PerformancePlansContent() {
         const errorData = await response.json().catch(() => ({}))
         console.error('Failed to fetch performance plans:', response.status, errorData)
         setError(errorData.error || 'Failed to load performance plans')
+        setPerformancePlans([]) // Ensure array is always set
       }
 
     } catch (error) {
       console.error('Error fetching performance plans:', error)
       setError('Failed to load performance plans')
+      setPerformancePlans([]) // Ensure array is always set
     } finally {
       setLoading(false)
     }
@@ -404,7 +406,7 @@ function PerformancePlansContent() {
         <div className="bg-white p-4 rounded-lg border-l-4 border-black shadow-sm">
           <h3 className="text-lg font-semibold text-black mb-4">Department Summary</h3>
           <div className="space-y-3">
-            {departments.length > 0 ? (
+            {departments && Array.isArray(departments) && departments.length > 0 ? (
               departments.map((dept, index) => {
                 const getProgressColor = (rate: number) => {
                   if (rate >= 90) return 'bg-green-500'
@@ -838,7 +840,8 @@ function PerformancePlansContent() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {performancePlans.map((plan) => (
+                      {performancePlans && Array.isArray(performancePlans) && performancePlans.length > 0 ? (
+                        performancePlans.map((plan) => (
                         <tr key={plan.id} className="hover:bg-orange-50 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
@@ -937,7 +940,14 @@ function PerformancePlansContent() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      ))
+                      ) : (
+                        <tr>
+                          <td colSpan={10} className="px-6 py-8 text-center text-gray-500">
+                            No performance plans found
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -956,7 +966,7 @@ function PerformancePlansContent() {
                 </div>
 
                 <div className="space-y-4">
-                  {activities.length === 0 ? (
+                  {(!activities || !Array.isArray(activities) || activities.length === 0) ? (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
                       <FlagIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                       <h4 className="text-sm font-medium text-gray-600 mb-1">No Key Deliverables Found</h4>
@@ -1047,7 +1057,7 @@ function PerformancePlansContent() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Performance Plan Notifications</h3>
                 
-                {notifications.length === 0 ? (
+                {(!notifications || !Array.isArray(notifications) || notifications.length === 0) ? (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <p className="text-sm text-gray-600">No notifications at this time.</p>
                   </div>
