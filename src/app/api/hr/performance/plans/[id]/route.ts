@@ -52,18 +52,20 @@ export async function GET(
     console.log('Found plan:', plan.id, 'for employee:', plan.employeeId)
 
     // Check permissions: employee can view their own, supervisor/reviewer/HR can view
+    // Note: supervisorId and reviewerId are user IDs, not employee IDs
     const employeeRecord = await prisma.employees.findFirst({
       where: { email: session.user.email },
       select: { id: true }
     })
 
     const isOwnPlan = plan.employeeId === employeeRecord?.id
-    const isHR = session.user.roles?.some(r => ['HR', 'admin'].includes(r))
-    const isSupervisor = plan.supervisorId === employeeRecord?.id
-    const isReviewer = plan.reviewerId === employeeRecord?.id
+    const isHR = session.user.roles?.some(r => ['HR', 'admin', 'HR_MANAGER', 'ADMIN'].includes(r))
+    const isSupervisor = plan.supervisorId === session.user.id
+    const isReviewer = plan.reviewerId === session.user.id
 
     if (!isOwnPlan && !isHR && !isSupervisor && !isReviewer) {
-      console.log('Permission denied for user:', session.user.email)
+      console.log('Permission denied for user:', session.user.email, 'user.id:', session.user.id)
+      console.log('Plan supervisorId:', plan.supervisorId, 'Plan reviewerId:', plan.reviewerId)
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 

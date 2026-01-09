@@ -31,15 +31,33 @@ export async function GET(request: NextRequest) {
     // Check if user can view all appraisals (HR staff)
     const canViewAll = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role || '');
 
+    // Get query parameters
+    const { searchParams } = new URL(request.url)
+    const employeeId = searchParams.get('employeeId')
+
     // Build where clause - filter by supervisor/reviewer if not HR
     const whereClause: any = {};
     
     if (!canViewAll) {
-      // Filter to show only appraisals where user is supervisor or reviewer
-      whereClause.OR = [
+      // Build OR clause for supervisor/reviewer filtering
+      const permissionFilter: any[] = [
         { supervisorId: user.id },
         { reviewerId: user.id }
-      ];
+      ]
+      
+      // If employeeId is provided, add it to the filter
+      if (employeeId) {
+        // Filter by employeeId AND ensure user is supervisor/reviewer
+        whereClause.AND = [
+          { employeeId: employeeId },
+          { OR: permissionFilter }
+        ]
+      } else {
+        whereClause.OR = permissionFilter
+      }
+    } else if (employeeId) {
+      // HR can filter by employeeId directly
+      whereClause.employeeId = employeeId
     }
 
     // Get all performance appraisals with employee and plan details

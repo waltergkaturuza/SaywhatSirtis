@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const year = searchParams.get('year')
     const status = searchParams.get('status')
+    const employeeId = searchParams.get('employeeId')
 
     // Build where clause
     const whereClause: any = {}
@@ -49,10 +50,25 @@ export async function GET(request: NextRequest) {
 
     // Filter by supervisor/reviewer if not HR
     if (!canViewAll) {
-      whereClause.OR = [
+      // Build OR clause for supervisor/reviewer filtering
+      const permissionFilter: any[] = [
         { supervisorId: user.id },
         { reviewerId: user.id }
-      ];
+      ]
+      
+      // If employeeId is provided, add it to the filter
+      if (employeeId) {
+        // Filter by employeeId AND ensure user is supervisor/reviewer
+        whereClause.AND = [
+          { employeeId: employeeId },
+          { OR: permissionFilter }
+        ]
+      } else {
+        whereClause.OR = permissionFilter
+      }
+    } else if (employeeId) {
+      // HR can filter by employeeId directly
+      whereClause.employeeId = employeeId
     }
 
     // Get all performance plans with employee and department details

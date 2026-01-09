@@ -90,7 +90,11 @@ export async function GET(
       }
     });
 
-    const isEmployee = appraisal.employees?.email === userEmail;
+    // Check if user is the employee themselves
+    const userEmployee = user?.employees;
+    const isEmployee = appraisal.employees?.email === userEmail || 
+                      (userEmployee && appraisal.employeeId === userEmployee.id);
+    
     const userRoles = session.user.roles || [];
     const isHR = userRoles.some(role => 
       ['HR', 'SUPERUSER', 'SYSTEM_ADMINISTRATOR', 'ADMIN', 'HR_MANAGER'].includes(role)
@@ -104,6 +108,8 @@ export async function GET(
     console.log('   Is HR?', isHR);
     console.log('   Is Supervisor?', isSupervisor);
     console.log('   Is Reviewer?', isReviewer);
+    console.log('   Appraisal employeeId:', appraisal.employeeId);
+    console.log('   User employee id:', userEmployee?.id);
 
     if (!isEmployee && !isHR && !isSupervisor && !isReviewer) {
       console.log('❌ Permission denied');
