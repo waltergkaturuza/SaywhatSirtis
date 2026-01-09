@@ -102,7 +102,61 @@ export default function ViewAppraisalPage() {
         const appraisalData = await fetchAppraisalData(appraisalId)
         
         if (appraisalData) {
-          setAppraisal(appraisalData)
+          // Transform API response to match frontend interface
+          const apiData = appraisalData as any
+          const normalizedData: AppraisalData = {
+            id: apiData.id || 0,
+            employeeName: apiData.employee?.name || apiData.employeeName || '',
+            employeeId: apiData.employee?.id || apiData.employeeId || '',
+            department: apiData.employee?.department || apiData.department || '',
+            position: apiData.employee?.position || apiData.position || '',
+            period: apiData.employee?.reviewPeriod?.startDate && apiData.employee?.reviewPeriod?.endDate
+              ? `${apiData.employee.reviewPeriod.startDate} - ${apiData.employee.reviewPeriod.endDate}`
+              : (apiData.period || ''),
+            overallRating: apiData.performance?.overallRating || apiData.ratings?.finalRating || apiData.overallRating || null,
+            status: apiData.status || 'draft',
+            submittedAt: apiData.submittedAt || null,
+            reviewedAt: apiData.approvedAt || apiData.reviewedAt || null,
+            supervisor: apiData.employee?.manager || apiData.supervisor || '',
+            reviewer: apiData.employee?.reviewer || apiData.reviewer || '',
+            planProgress: apiData.planProgress || 0,
+            strengths: Array.isArray(apiData.performance?.strengths) 
+              ? apiData.performance.strengths.join(', ')
+              : (apiData.performance?.strengths || apiData.strengths || ''),
+            areasImprovement: Array.isArray(apiData.performance?.areasForImprovement)
+              ? apiData.performance.areasForImprovement.join(', ')
+              : (apiData.performance?.areasForImprovement || apiData.areasImprovement || ''),
+            goals: apiData.goals || '',
+            lastUpdated: apiData.createdAt || apiData.lastUpdated || new Date().toISOString(),
+            performanceAreas: Array.isArray(apiData.performance?.categories) 
+              ? apiData.performance.categories 
+              : (Array.isArray(apiData.performanceAreas) ? apiData.performanceAreas : []),
+            achievements: Array.isArray(apiData.achievements)
+              ? apiData.achievements
+              : (Array.isArray(apiData.achievements?.keyResponsibilities)
+                  ? apiData.achievements.keyResponsibilities.map((item: any) => ({
+                      achievement: item.title || item.description || item,
+                      impact: item.impact || '',
+                      evidence: item.evidence || ''
+                    }))
+                  : []),
+            developmentPlans: Array.isArray(apiData.developmentPlans)
+              ? apiData.developmentPlans
+              : (Array.isArray(apiData.development?.developmentPlan)
+                  ? apiData.development.developmentPlan.map((item: any) => ({
+                      area: item.area || item.title || item,
+                      currentLevel: item.currentLevel || '',
+                      targetLevel: item.targetLevel || '',
+                      timeline: item.timeline || '',
+                      resources: item.resources || ''
+                    }))
+                  : []),
+            supervisorComments: apiData.comments?.managerComments || apiData.comments?.supervisorComments || apiData.supervisorComments || '',
+            employeeComments: apiData.comments?.employeeComments || apiData.employeeComments || '',
+            nextSteps: apiData.nextSteps || '',
+            improvementPlan: apiData.improvementPlan || ''
+          }
+          setAppraisal(normalizedData)
         } else {
           setError('Appraisal not found')
         }
@@ -170,9 +224,9 @@ export default function ViewAppraisalPage() {
   }
 
   const calculateOverallRating = () => {
-    if (!appraisal?.performanceAreas.length) return 0
-    const totalWeight = appraisal.performanceAreas.reduce((sum, area) => sum + area.weight, 0)
-    const weightedScore = appraisal.performanceAreas.reduce((sum, area) => sum + (area.rating * area.weight), 0)
+    if (!appraisal?.performanceAreas || !Array.isArray(appraisal.performanceAreas) || appraisal.performanceAreas.length === 0) return 0
+    const totalWeight = appraisal.performanceAreas.reduce((sum, area) => sum + (area.weight || 0), 0)
+    const weightedScore = appraisal.performanceAreas.reduce((sum, area) => sum + ((area.rating || 0) * (area.weight || 0)), 0)
     return totalWeight > 0 ? (weightedScore / totalWeight).toFixed(1) : "0.0"
   }
 
@@ -398,7 +452,8 @@ export default function ViewAppraisalPage() {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Performance Areas Assessment</h3>
                 
-                {appraisal.performanceAreas.map((area, index) => (
+                {appraisal.performanceAreas && Array.isArray(appraisal.performanceAreas) && appraisal.performanceAreas.length > 0 ? (
+                  appraisal.performanceAreas.map((area, index) => (
                   <div key={index} className="border rounded-lg p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
@@ -433,9 +488,15 @@ export default function ViewAppraisalPage() {
                       </div>
                     )}
                   </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <StarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p>No performance areas recorded yet</p>
+                  </div>
+                )}
 
-                {appraisal.performanceAreas.some(area => area.rating > 0) && (
+                {appraisal.performanceAreas && Array.isArray(appraisal.performanceAreas) && appraisal.performanceAreas.some(area => (area.rating || 0) > 0) && (
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <h4 className="font-semibold text-blue-900 mb-2">Overall Performance Summary</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -446,7 +507,9 @@ export default function ViewAppraisalPage() {
                       <div>
                         <span className="text-blue-700">Total Weight:</span>
                         <span className="ml-2 font-semibold">
-                          {appraisal.performanceAreas.reduce((sum, area) => sum + area.weight, 0)}%
+                          {appraisal.performanceAreas && Array.isArray(appraisal.performanceAreas) 
+                            ? appraisal.performanceAreas.reduce((sum, area) => sum + (area.weight || 0), 0)
+                            : 0}%
                         </span>
                       </div>
                     </div>
@@ -459,7 +522,7 @@ export default function ViewAppraisalPage() {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Key Achievements</h3>
                 
-                {appraisal.achievements.length > 0 ? (
+                {appraisal.achievements && Array.isArray(appraisal.achievements) && appraisal.achievements.length > 0 ? (
                   appraisal.achievements.map((achievement, index) => (
                     <div key={index} className="border rounded-lg p-6">
                       <div className="flex items-start space-x-3">
@@ -493,7 +556,7 @@ export default function ViewAppraisalPage() {
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-gray-900">Development Plans</h3>
                 
-                {appraisal.developmentPlans.length > 0 ? (
+                {appraisal.developmentPlans && Array.isArray(appraisal.developmentPlans) && appraisal.developmentPlans.length > 0 ? (
                   appraisal.developmentPlans.map((plan, index) => (
                     <div key={index} className="border rounded-lg p-6">
                       <div className="flex items-start space-x-3">
