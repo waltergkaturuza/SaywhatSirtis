@@ -629,7 +629,118 @@ export default function EmployeeProfilePage() {
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* Contact Information Tab */}
+                {activeTab === 'contact' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center mb-4">
+                      <PhoneIcon className="h-6 w-6 text-saywhat-orange mr-3" />
+                      <h3 className="text-xl font-bold text-gray-900">Contact Information</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <PhoneIcon className="inline h-4 w-4 mr-2 text-saywhat-orange" />
+                          Primary Phone
+                        </label>
+                        {editMode ? (
+                          <input
+                            type="tel"
+                            value={formData.phoneNumber}
+                            onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            placeholder="Enter phone number"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.phoneNumber || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <PhoneIcon className="inline h-4 w-4 mr-2 text-green-600" />
+                          Alternative Phone
+                        </label>
+                        {editMode ? (
+                          <input
+                            type="tel"
+                            value={formData.alternativePhone}
+                            onChange={(e) => setFormData(prev => ({ ...prev, alternativePhone: e.target.value }))}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            placeholder="Enter alternative phone"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl border-l-4 border-green-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.alternativePhone || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <EnvelopeIcon className="inline h-4 w-4 mr-2 text-blue-600" />
+                          Personal Email
+                        </label>
+                        {editMode ? (
+                          <input
+                            type="email"
+                            value={formData.personalEmail}
+                            onChange={(e) => setFormData(prev => ({ ...prev, personalEmail: e.target.value }))}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            placeholder="Enter personal email"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.personalEmail || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <EnvelopeIcon className="inline h-4 w-4 mr-2 text-indigo-600" />
+                          Alternative Email
+                        </label>
+                        {editMode ? (
+                          <input
+                            type="email"
+                            value={formData.alternativeEmail}
+                            onChange={(e) => setFormData(prev => ({ ...prev, alternativeEmail: e.target.value }))}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            placeholder="Enter alternative email"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-indigo-50 to-transparent rounded-xl border-l-4 border-indigo-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.alternativeEmail || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="group md:col-span-2 lg:col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          <MapPinIcon className="inline h-4 w-4 mr-2 text-purple-600" />
+                          Home Address
+                        </label>
+                        {editMode ? (
+                          <textarea
+                            value={formData.address}
+                            onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                            rows={3}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors resize-none"
+                            placeholder="Enter home address"
+                          />
+                        ) : (
+                          <div className="p-4 bg-gradient-to-r from-purple-50 to-transparent rounded-xl border-l-4 border-purple-400">
+                            <p className="text-lg font-medium text-gray-900">{profile.address || 'Not provided'}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Emergency Contacts Tab */}
                 {activeTab === 'emergency' && (
@@ -724,6 +835,7 @@ export default function EmployeeProfilePage() {
                         </div>
                       </div>
                     </div>
+                  </div>
                 )}
 
                 {/* Security Settings Tab */}
@@ -891,6 +1003,7 @@ export default function EmployeeProfilePage() {
                         </div>
                       )}
                     </div>
+                  </div>
                 )}
 
                 {/* Employee Documents Tab */}
@@ -1015,6 +1128,7 @@ export default function EmployeeProfilePage() {
                       <p className="text-xs text-gray-600">Employee portal home</p>
                     </div>
                   </Link>
+                </div>
                 </div>
               </div>
             </div>
@@ -1193,7 +1307,6 @@ export default function EmployeeProfilePage() {
                 </div>
               </div>
             )}
-
 
           </>
         )}
