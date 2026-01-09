@@ -11,42 +11,68 @@ import {
 } from "@heroicons/react/24/outline"
 
 interface AppraisalFormData {
-  id: number
+  id?: string | number
   employeeName: string
   employeeId: string
   department: string
   position: string
-  period: string
-  overallRating: number | null
+  period?: string
+  reviewPeriod?: {
+    startDate: string
+    endDate: string
+  }
+  overallRating?: number | null
   status: string
-  supervisor: string
-  reviewer: string
-  strengths: string
-  areasImprovement: string
-  goals: string
-  performanceAreas: Array<{
+  supervisor?: string
+  reviewer?: string
+  strengths?: string
+  areasImprovement?: string
+  goals?: string
+  performanceAreas?: Array<{
     area: string
     rating: number
     weight: number
     comments: string
     evidence: string
   }>
-  achievements: Array<{
+  achievements?: Array<{
     achievement: string
     impact: string
     evidence: string
-  }>
-  developmentPlans: Array<{
+  }> | {
+    keyResponsibilities: any[]
+  }
+  development?: {
+    trainingNeeds: string[]
+    careerAspirations: string
+    skillsToImprove: string[]
+    developmentPlan: any[]
+  }
+  developmentPlans?: Array<{
     area: string
     currentLevel: string
     targetLevel: string
     timeline: string
     resources: string
   }>
-  supervisorComments: string
-  employeeComments: string
-  nextSteps: string
-  improvementPlan: string
+  comments?: {
+    employeeComments: string
+    managerComments: string
+    hrComments: string
+  }
+  ratings?: {
+    finalRating: number
+    actualPoints: number
+    maxPoints: number
+    percentage: number
+    ratingCode: string
+    recommendation: string
+    salaryRecommendation: string
+  }
+  supervisorComments?: string
+  employeeComments?: string
+  nextSteps?: string
+  improvementPlan?: string
 }
 
 // Sample data - in real app this would come from API
@@ -221,19 +247,26 @@ export default function EditAppraisalPage() {
         
         if (appraisalData) {
           // Transform API data to form data format
+          const reviewPeriod = appraisalData.employee?.reviewPeriod || { startDate: '', endDate: '' };
           const formData: AppraisalFormData = {
             id: appraisalData.id,
             employeeName: appraisalData.employee?.name || '',
             employeeId: appraisalData.employee?.id || '',
             department: appraisalData.employee?.department || '',
             position: appraisalData.employee?.position || '',
-            reviewPeriod: appraisalData.employee?.reviewPeriod || { startDate: '', endDate: '' },
+            period: reviewPeriod.startDate && reviewPeriod.endDate ? 
+              `${reviewPeriod.startDate} - ${reviewPeriod.endDate}` : 
+              '',
+            reviewPeriod: reviewPeriod,
+            overallRating: appraisalData.ratings?.finalRating || appraisalData.performance?.overallRating || null,
+            status: appraisalData.status || 'draft',
+            supervisor: appraisalData.employee?.manager || '',
+            reviewer: appraisalData.employee?.reviewer || '',
             performanceAreas: appraisalData.performance?.categories || [],
             achievements: appraisalData.achievements || { keyResponsibilities: [] },
             development: appraisalData.development || { trainingNeeds: [''], careerAspirations: '', skillsToImprove: [''], developmentPlan: [] },
             comments: appraisalData.comments || { employeeComments: '', managerComments: '', hrComments: '' },
-            ratings: appraisalData.ratings || { finalRating: 0, actualPoints: 0, maxPoints: 0, percentage: 0, ratingCode: '', recommendation: 'maintain-current', salaryRecommendation: '' },
-            status: appraisalData.status || 'draft'
+            ratings: appraisalData.ratings || { finalRating: 0, actualPoints: 0, maxPoints: 0, percentage: 0, ratingCode: '', recommendation: 'maintain-current', salaryRecommendation: '' }
           };
           setFormData(formData);
         } else {
