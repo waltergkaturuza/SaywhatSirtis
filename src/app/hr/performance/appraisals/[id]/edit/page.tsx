@@ -308,7 +308,7 @@ export default function EditAppraisalPage() {
     if (!formData) return
     setFormData(prev => prev ? ({
       ...prev,
-      performanceAreas: prev.performanceAreas.map((area, i) => 
+      performanceAreas: (prev.performanceAreas || []).map((area, i) => 
         i === index ? { ...area, [field]: value } : area
       )
     }) : null)
@@ -316,35 +316,56 @@ export default function EditAppraisalPage() {
 
   const handleAchievementChange = (index: number, field: string, value: string) => {
     if (!formData) return
-    setFormData(prev => prev ? ({
-      ...prev,
-      achievements: prev.achievements.map((achievement, i) => 
-        i === index ? { ...achievement, [field]: value } : achievement
-      )
-    }) : null)
+    setFormData(prev => {
+      if (!prev) return null
+      // Handle both array and object formats
+      if (Array.isArray(prev.achievements)) {
+        return {
+          ...prev,
+          achievements: prev.achievements.map((achievement, i) => 
+            i === index ? { ...achievement, [field]: value } : achievement
+          )
+        }
+      }
+      return prev
+    })
   }
 
   const addAchievement = () => {
     if (!formData) return
-    setFormData(prev => prev ? ({
-      ...prev,
-      achievements: [...prev.achievements, { achievement: "", impact: "", evidence: "" }]
-    }) : null)
+    setFormData(prev => {
+      if (!prev) return null
+      // Handle both array and object formats
+      if (Array.isArray(prev.achievements)) {
+        return {
+          ...prev,
+          achievements: [...prev.achievements, { achievement: "", impact: "", evidence: "" }]
+        }
+      }
+      return prev
+    })
   }
 
   const removeAchievement = (index: number) => {
     if (!formData) return
-    setFormData(prev => prev ? ({
-      ...prev,
-      achievements: prev.achievements.filter((_, i) => i !== index)
-    }) : null)
+    setFormData(prev => {
+      if (!prev) return null
+      // Handle both array and object formats
+      if (Array.isArray(prev.achievements)) {
+        return {
+          ...prev,
+          achievements: prev.achievements.filter((_, i) => i !== index)
+        }
+      }
+      return prev
+    })
   }
 
   const handleDevelopmentPlanChange = (index: number, field: string, value: string) => {
     if (!formData) return
     setFormData(prev => prev ? ({
       ...prev,
-      developmentPlans: prev.developmentPlans.map((plan, i) => 
+      developmentPlans: (prev.developmentPlans || []).map((plan, i) => 
         i === index ? { ...plan, [field]: value } : plan
       )
     }) : null)
@@ -354,7 +375,7 @@ export default function EditAppraisalPage() {
     if (!formData) return
     setFormData(prev => prev ? ({
       ...prev,
-      developmentPlans: [...prev.developmentPlans, {
+      developmentPlans: [...(prev.developmentPlans || []), {
         area: "",
         currentLevel: "",
         targetLevel: "",
@@ -368,12 +389,12 @@ export default function EditAppraisalPage() {
     if (!formData) return
     setFormData(prev => prev ? ({
       ...prev,
-      developmentPlans: prev.developmentPlans.filter((_, i) => i !== index)
+      developmentPlans: (prev.developmentPlans || []).filter((_, i) => i !== index)
     }) : null)
   }
 
   const calculateOverallRating = () => {
-    if (!formData?.performanceAreas.length) return 0
+    if (!formData?.performanceAreas || formData.performanceAreas.length === 0) return 0
     const totalWeight = formData.performanceAreas.reduce((sum, area) => sum + area.weight, 0)
     const weightedScore = formData.performanceAreas.reduce((sum, area) => sum + (area.rating * area.weight), 0)
     return totalWeight > 0 ? parseFloat((weightedScore / totalWeight).toFixed(1)) : 0
@@ -514,7 +535,7 @@ export default function EditAppraisalPage() {
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-900">Performance Areas Assessment</h2>
               
-              {formData.performanceAreas.map((area, index) => (
+              {(formData.performanceAreas || []).map((area, index) => (
                 <div key={index} className="border rounded-lg p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
@@ -575,7 +596,7 @@ export default function EditAppraisalPage() {
                 </button>
               </div>
 
-              {formData.achievements.map((achievement, index) => (
+              {(Array.isArray(formData.achievements) ? formData.achievements : []).map((achievement, index) => (
                 <div key={index} className="border rounded-lg p-6">
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="font-semibold text-gray-900">Achievement {index + 1}</h3>
@@ -630,7 +651,7 @@ export default function EditAppraisalPage() {
                 </div>
               ))}
 
-              {formData.achievements.length === 0 && (
+              {(!Array.isArray(formData.achievements) || formData.achievements.length === 0) && (
                 <div className="text-center py-8 text-gray-500">
                   <p>No achievements added yet. Click "Add Achievement" to get started.</p>
                 </div>
@@ -650,7 +671,7 @@ export default function EditAppraisalPage() {
                 </button>
               </div>
 
-              {formData.developmentPlans.map((plan, index) => (
+              {(formData.developmentPlans || []).map((plan, index) => (
                 <div key={index} className="border rounded-lg p-6">
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="font-semibold text-gray-900">Development Plan {index + 1}</h3>
