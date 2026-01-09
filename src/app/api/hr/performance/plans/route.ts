@@ -49,12 +49,47 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter by supervisor/reviewer if not HR
+    // Note: supervisorId and reviewerId in performance_plans are user IDs, not employee IDs
     if (!canViewAll) {
+      // Get the current user's employee record to check if they supervise/review anyone
+      const userEmployee = user.employees;
+      
       // Build OR clause for supervisor/reviewer filtering
+      // supervisorId and reviewerId in performance_plans are user IDs
       const permissionFilter: any[] = [
         { supervisorId: user.id },
         { reviewerId: user.id }
       ]
+      
+      // Also check if user is a supervisor/reviewer via employee relationships
+      // This handles cases where plans might have been created with employee IDs
+      if (userEmployee) {
+        // Get employees supervised by this user's employee record
+        const supervisedEmployeeIds = await prisma.employees.findMany({
+          where: { supervisor_id: userEmployee.id },
+          select: { id: true }
+        }).then(emps => emps.map(e => e.id));
+        
+        // Get employees reviewed by this user's employee record
+        const reviewedEmployeeIds = await prisma.employees.findMany({
+          where: { reviewer_id: userEmployee.id },
+          select: { id: true }
+        }).then(emps => emps.map(e => e.id));
+        
+        // If user supervises/reviews employees, also filter by those employee IDs
+        if (supervisedEmployeeIds.length > 0 || reviewedEmployeeIds.length > 0) {
+          const employeeIdFilter: any[] = [];
+          if (supervisedEmployeeIds.length > 0) {
+            employeeIdFilter.push({ employeeId: { in: supervisedEmployeeIds } });
+          }
+          if (reviewedEmployeeIds.length > 0) {
+            employeeIdFilter.push({ employeeId: { in: reviewedEmployeeIds } });
+          }
+          if (employeeIdFilter.length > 0) {
+            permissionFilter.push(...employeeIdFilter);
+          }
+        }
+      }
       
       // If employeeId is provided, add it to the filter
       if (employeeId) {
@@ -71,9 +106,17 @@ export async function GET(request: NextRequest) {
       whereClause.employeeId = employeeId
     }
 
+    console.log('🔍 GET /api/hr/performance/plans');
+    console.log('   User:', session.user.email);
+    console.log('   User ID:', session.user.id);
+    console.log('   User Role:', user.role);
+    console.log('   Can View All:', canViewAll);
+    console.log('   Where Clause:', JSON.stringify(whereClause, null, 2));
+    console.log('   EmployeeId filter:', employeeId);
+
     // Get all performance plans with employee and department details
     const plans = await prisma.performance_plans.findMany({
-      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+      where: Object.keys(whereClause).length > 0 ? whereClause : {},
       include: {
         employees: {
           select: {
@@ -115,6 +158,17 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc'
       }
     });
+
+    console.log('   Found plans:', plans.length);
+    if (plans.length > 0) {
+      console.log('   First plan:', {
+        id: plans[0].id,
+        employeeId: plans[0].employeeId,
+        status: plans[0].status,
+        supervisorId: plans[0].supervisorId,
+        reviewerId: plans[0].reviewerId
+      });
+    }
 
     // Calculate statistics
     const statistics = {

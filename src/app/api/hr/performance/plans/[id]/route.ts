@@ -154,8 +154,9 @@ export async function PUT(
 
     const isOwnPlan = existingPlan.employeeId === employeeRecord?.id
     const isHR = session.user.roles?.some(r => ['HR', 'admin'].includes(r))
-    const isSupervisor = existingPlan.supervisorId === employeeRecord?.id
-    const isReviewer = existingPlan.reviewerId === employeeRecord?.id
+    // Note: supervisorId and reviewerId are user IDs, not employee IDs
+    const isSupervisor = existingPlan.supervisorId === session.user.id
+    const isReviewer = existingPlan.reviewerId === session.user.id
 
     if (!isOwnPlan && !isHR && !isSupervisor && !isReviewer) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })

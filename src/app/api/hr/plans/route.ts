@@ -80,7 +80,8 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         employeeId: true,
-        supervisor_id: true
+        supervisor_id: true,
+        reviewer_id: true
       }
     });
 
@@ -95,10 +96,24 @@ export async function POST(request: NextRequest) {
     const status = isDraft ? 'draft' : 'submitted';
 
     // Get supervisor user ID (performance_plans.supervisorId is a foreign key to users table)
-    const supervisorEmployee = await prisma.employees.findUnique({
-      where: { id: employee.supervisor_id || '' },
-      select: { userId: true }
-    });
+    // supervisor_id is an employee ID, so we need to get the employee first, then their userId
+    let supervisorUserId = null;
+    if (employee.supervisor_id) {
+      const supervisorEmployee = await prisma.employees.findUnique({
+        where: { id: employee.supervisor_id },
+        select: { userId: true }
+      });
+      if (supervisorEmployee?.userId) {
+        supervisorUserId = supervisorEmployee.userId;
+      }
+    }
+
+    if (!supervisorUserId) {
+      return NextResponse.json(
+        { error: 'Employee must have a supervisor with a user account to create a performance plan', success: false },
+        { status: 400 }
+      );
+    }
 
     // Prepare plan data matching the actual schema
     const currentYear = new Date().getFullYear();
@@ -185,15 +200,27 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Get reviewer user ID if employee has a reviewer
+      let reviewerUserId = null;
+      if (employee.reviewer_id) {
+        const reviewerEmployee = await prisma.employees.findUnique({
+          where: { id: employee.reviewer_id },
+          select: { userId: true }
+        });
+        if (reviewerEmployee?.userId) {
+          reviewerUserId = reviewerEmployee.userId;
+        }
+      }
+
       const planData = {
         id: crypto.randomUUID(),
         employeeId: employee.id,
-        supervisorId: supervisorEmployee?.userId || employee.supervisor_id || '',
+        supervisorId: supervisorUserId, // This must be a user ID, not an employee ID
         planYear: planYear,
         planPeriod: planPeriod,
         status,
         updatedAt: new Date(),
-        reviewerId: null, // Set to null unless formData provides a valid user ID
+        reviewerId: reviewerUserId, // This must be a user ID, not an employee ID
         comments: JSON.stringify([])
       };
 
