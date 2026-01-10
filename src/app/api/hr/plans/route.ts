@@ -55,13 +55,179 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { formData, isDraft } = body;
 
-    console.log('📝 Creating performance plan:', {
+    console.log('📝 Creating/Updating performance plan:', {
+      planId: formData.id,
       employee: formData.employee,
       isDraft,
       planYear: formData.planYear
     });
 
-    // Validate required fields
+    // If formData has an ID, this is an update - redirect to PUT endpoint logic
+    if (formData.id) {
+      // Find the existing plan
+      const existingPlan = await prisma.performance_plans.findUnique({
+        where: { id: formData.id },
+        include: {
+          performance_responsibilities: true
+        }
+      });
+
+      if (!existingPlan) {
+        return NextResponse.json(
+          { error: 'Performance plan not found', success: false },
+          { status: 404 }
+        );
+      }
+
+      // Check permissions - user must be the employee owner, HR, supervisor, or reviewer
+      const employeeRecord = await prisma.employees.findFirst({
+        where: { email: session.user.email },
+        select: { id: true }
+      });
+
+      const isOwnPlan = existingPlan.employeeId === employeeRecord?.id;
+      const isHR = session.user.roles?.some((r: string) => ['HR', 'ADMIN', 'HR_MANAGER', 'SUPERUSER'].includes(r));
+      const isSupervisor = existingPlan.supervisorId === session.user.id;
+      const isReviewer = existingPlan.reviewerId === session.user.id;
+
+      // Allow updates if user is the owner or HR (even for submitted plans, owners can update drafts)
+      // For supervisors/reviewers, only allow updates if they're reviewing (not editing the plan itself)
+      if (!isOwnPlan && !isHR) {
+        // Supervisors and reviewers can only update via workflow, not edit the plan directly
+        return NextResponse.json(
+          { error: 'Insufficient permissions to update this plan. Only the plan owner or HR can edit plans.', success: false },
+          { status: 403 }
+        );
+      }
+
+      // If plan is submitted (not draft) and user is not HR, only allow draft saves (not status changes)
+      if (existingPlan.status !== 'draft' && isDraft && !isHR) {
+        // Only owner can continue editing as draft even if previously submitted
+        // This allows users to make revisions after submission
+      }
+
+      // Prepare update data with ALL fields from formData
+      const updateData: any = {
+        status: isDraft ? 'draft' : (formData.status || 'submitted'),
+        updatedAt: new Date()
+      };
+
+      // Update all basic fields
+      if (formData.planTitle !== undefined) {
+        updateData.planTitle = formData.planTitle;
+      }
+      if (formData.planYear !== undefined) {
+        updateData.planYear = parseInt(formData.planYear.toString());
+      }
+      
+      // Handle planPeriod
+      let planPeriod: string;
+      if (formData.planPeriod) {
+        if (typeof formData.planPeriod === 'string') {
+          planPeriod = formData.planPeriod;
+        } else if (typeof formData.planPeriod === 'object') {
+          const startDate = formData.planPeriod.startDate || formData.startDate || '';
+          const endDate = formData.planPeriod.endDate || formData.endDate || '';
+          if (startDate && endDate) {
+            planPeriod = `${startDate} - ${endDate}`;
+          } else {
+            planPeriod = existingPlan.planPeriod || `January ${updateData.planYear || existingPlan.planYear} - December ${updateData.planYear || existingPlan.planYear}`;
+          }
+        } else {
+          planPeriod = existingPlan.planPeriod || `January ${updateData.planYear || existingPlan.planYear} - December ${updateData.planYear || existingPlan.planYear}`;
+        }
+        updateData.planPeriod = planPeriod;
+      }
+      
+      // Update date fields
+      if (formData.startDate) {
+        updateData.startDate = new Date(formData.startDate);
+      }
+      if (formData.endDate) {
+        updateData.endDate = new Date(formData.endDate);
+      }
+
+      // Save JSON fields (deliverables, valueGoals, competencies, developmentNeeds, comments)
+      if (formData.deliverables !== undefined) {
+        updateData.deliverables = typeof formData.deliverables === 'string' 
+          ? formData.deliverables 
+          : JSON.stringify(formData.deliverables);
+      }
+      if (formData.valueGoals !== undefined) {
+        updateData.valueGoals = typeof formData.valueGoals === 'string'
+          ? formData.valueGoals
+          : JSON.stringify(formData.valueGoals);
+      }
+      if (formData.competencies !== undefined) {
+        updateData.competencies = typeof formData.competencies === 'string'
+          ? formData.competencies
+          : JSON.stringify(formData.competencies);
+      }
+      if (formData.developmentNeeds !== undefined) {
+        updateData.developmentNeeds = typeof formData.developmentNeeds === 'string'
+          ? formData.developmentNeeds
+          : JSON.stringify(formData.developmentNeeds);
+      }
+      if (formData.comments !== undefined) {
+        updateData.comments = typeof formData.comments === 'string'
+          ? formData.comments
+          : JSON.stringify(formData.comments);
+      }
+
+      // Set submittedAt if status is submitted
+      if (!isDraft && formData.status === 'submitted' && !existingPlan.submittedAt) {
+        updateData.submittedAt = new Date();
+      }
+
+      console.log('💾 Updating existing plan with data:', { ...updateData, deliverables: '[data]', valueGoals: '[data]', competencies: '[data]', developmentNeeds: '[data]', comments: '[data]' });
+
+      // Update the plan
+      const updatedPlan = await prisma.performance_plans.update({
+        where: { id: formData.id },
+        data: updateData,
+        include: {
+          performance_responsibilities: true
+        }
+      });
+
+      // Update performance_responsibilities if keyResponsibilities is provided
+      if (formData.keyResponsibilities && Array.isArray(formData.keyResponsibilities) && formData.keyResponsibilities.length > 0) {
+        // Delete existing responsibilities
+        await prisma.performance_responsibilities.deleteMany({
+          where: { planId: updatedPlan.id }
+        });
+
+        // Create new responsibilities
+        for (const responsibility of formData.keyResponsibilities) {
+          const respData = {
+            id: crypto.randomUUID(),
+            planId: updatedPlan.id,
+            title: (responsibility.description || responsibility.title || 'Responsibility')?.substring(0, 100) || 'Responsibility',
+            description: responsibility.description || responsibility.title || '',
+            weight: responsibility.weight || 0,
+            updatedAt: new Date()
+          };
+
+          await prisma.performance_responsibilities.create({
+            data: respData
+          });
+        }
+      }
+
+      console.log('✅ Performance plan updated:', updatedPlan.id);
+
+      return NextResponse.json({
+        success: true,
+        message: isDraft ? 'Draft saved successfully!' : 'Performance plan updated successfully',
+        plan: {
+          id: updatedPlan.id,
+          planYear: updatedPlan.planYear,
+          status: updatedPlan.status
+        }
+      });
+    }
+
+    // Validate required fields for new plan creation
     if (!formData.employee?.id) {
       return NextResponse.json(
         { error: 'Employee ID is required', success: false },

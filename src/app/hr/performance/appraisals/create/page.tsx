@@ -286,28 +286,67 @@ function CreateAppraisalContent() {
           }
           console.log('✅ Appraisal loaded for form:', appraisalDataForForm)
           
+          // Parse JSON fields from API response
+          const parseJsonField = (field: any, defaultValue: any = []) => {
+            if (!field) return defaultValue;
+            if (typeof field === 'string') {
+              try {
+                const parsed = JSON.parse(field);
+                return Array.isArray(parsed) ? parsed : (typeof parsed === 'object' ? Object.values(parsed) : defaultValue);
+              } catch {
+                return defaultValue;
+              }
+            }
+            return Array.isArray(field) ? field : (typeof field === 'object' && field !== null ? field : defaultValue);
+          };
+          
+          // Parse achievements (selfAssessments)
+          const parsedAchievements = parseJsonField(appraisalDataForForm.achievements || appraisalDataForForm.selfAssessments, { keyResponsibilities: [] });
+          
+          // Parse development (valueGoalsAssessments)
+          const parsedDevelopment = parseJsonField(appraisalDataForForm.development || appraisalDataForForm.valueGoalsAssessments, { 
+            trainingNeeds: [], 
+            careerAspirations: '', 
+            skillsToImprove: [], 
+            developmentPlan: [] 
+          });
+          
+          // Parse performance areas/categories
+          const parsedPerformance = appraisalDataForForm.performance || {
+            overallRating: appraisalDataForForm.overallRating || 0,
+            categories: [
+              { id: '1', name: 'Teamwork', rating: 0, comment: '', weight: 20, description: 'Working collaboratively with others to achieve common goals and support team success.' },
+              { id: '2', name: 'Responsiveness and Effectiveness', rating: 0, comment: '', weight: 20, description: 'Acting promptly and efficiently to meet stakeholder needs and deliver quality results.' },
+              { id: '3', name: 'Accountability', rating: 0, comment: '', weight: 20, description: 'Taking ownership of responsibilities and being answerable for actions and outcomes.' },
+              { id: '4', name: 'Professionalism and Integrity', rating: 0, comment: '', weight: 20, description: 'Maintaining high ethical standards, honesty, and professional conduct in all interactions.' },
+              { id: '5', name: 'Innovation', rating: 0, comment: '', weight: 20, description: 'Embracing creativity and new ideas to improve processes, services, and outcomes.' }
+            ],
+            strengths: parseJsonField(appraisalDataForForm.performance?.strengths || appraisalDataForForm.strengths, []),
+            areasForImprovement: parseJsonField(appraisalDataForForm.performance?.areasForImprovement || appraisalDataForForm.areasImprovement, [])
+          };
+          
+          // Parse comments
+          const parsedComments = parseJsonField(appraisalDataForForm.comments, { 
+            employeeComments: '', 
+            managerComments: '', 
+            hrComments: '',
+            supervisorComments: '',
+            reviewerComments: '',
+            supervisor: [],
+            reviewer: []
+          });
+          
           // Populate form with existing appraisal data
           setFormData({
             ...formData,
             id: appraisalDataForForm.id,
-            employee: appraisalDataForForm.employee,
-            achievements: appraisalDataForForm.achievements || { keyResponsibilities: [] },
-            development: appraisalDataForForm.development || { trainingNeeds: [], careerAspirations: '', skillsToImprove: [], developmentPlan: [] },
-            performance: appraisalDataForForm.performance || {
-              overallRating: 0,
-              categories: [
-                { id: '1', name: 'Teamwork', rating: 0, comment: '', weight: 20, description: 'Working collaboratively with others to achieve common goals and support team success.' },
-                { id: '2', name: 'Responsiveness and Effectiveness', rating: 0, comment: '', weight: 20, description: 'Acting promptly and efficiently to meet stakeholder needs and deliver quality results.' },
-                { id: '3', name: 'Accountability', rating: 0, comment: '', weight: 20, description: 'Taking ownership of responsibilities and being answerable for actions and outcomes.' },
-                { id: '4', name: 'Professionalism and Integrity', rating: 0, comment: '', weight: 20, description: 'Maintaining high ethical standards, honesty, and professional conduct in all interactions.' },
-                { id: '5', name: 'Innovation', rating: 0, comment: '', weight: 20, description: 'Embracing creativity and new ideas to improve processes, services, and outcomes.' }
-              ],
-              strengths: [],
-              areasForImprovement: []
-            },
-            comments: appraisalDataForForm.comments || { employeeComments: '', managerComments: '', hrComments: '' },
+            employee: appraisalDataForForm.employee || formData.employee,
+            achievements: parsedAchievements,
+            development: parsedDevelopment,
+            performance: parsedPerformance,
+            comments: parsedComments,
             ratings: appraisalDataForForm.ratings || {
-              finalRating: 0,
+              finalRating: appraisalDataForForm.overallRating || 0,
               actualPoints: 0,
               maxPoints: 0,
               percentage: 0,
@@ -326,7 +365,9 @@ function CreateAppraisalContent() {
               reviewerMeetingConfirmed: false
             },
             status: appraisalDataForForm.status || 'draft',
-            workflowStatus: appraisalDataForForm.status || 'draft'
+            workflowStatus: appraisalDataForForm.status || 'draft',
+            period: appraisalDataForForm.period || formData.period,
+            appraisalType: appraisalDataForForm.appraisalType || 'annual'
           })
           
           setWorkflowStatus(appraisalDataForForm.status || 'draft')
@@ -457,16 +498,27 @@ function CreateAppraisalContent() {
     try {
       console.log('Submitting appraisal data:', formData)
       
+      // Prepare the data in the format the API expects
+      const submitPayload = {
+        id: formData.id || appraisalId || undefined, // Include ID if it exists
+        employee: formData.employee,
+        achievements: formData.achievements,
+        development: formData.development,
+        ratings: formData.ratings,
+        comments: formData.comments,
+        recommendations: formData.recommendations || {},
+        status: 'submitted',
+        workflowStatus: 'submitted',
+        appraisalType: formData.appraisalType || 'annual',
+        submittedAt: new Date().toISOString()
+      }
+      
       const response = await fetch('/api/hr/performance/appraisals', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...formData,
-          status: 'submitted',
-          submittedAt: new Date().toISOString()
-        })
+        body: JSON.stringify(submitPayload)
       })
 
       const result = await response.json()
@@ -497,21 +549,32 @@ function CreateAppraisalContent() {
     }
   }
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (showAlert = true) => {
     setIsSavingDraft(true)
     
     try {
       console.log('Saving draft data:', formData)
+      
+      // Prepare the data in the format the API expects
+      const payload = {
+        id: formData.id || appraisalId || undefined, // Include ID if it exists
+        employee: formData.employee,
+        achievements: formData.achievements,
+        development: formData.development,
+        ratings: formData.ratings,
+        comments: formData.comments,
+        recommendations: formData.recommendations || {},
+        status: 'draft',
+        workflowStatus: 'draft',
+        appraisalType: formData.appraisalType || 'annual'
+      }
       
       const response = await fetch('/api/hr/performance/appraisals', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...formData,
-          status: 'draft'
-        })
+        body: JSON.stringify(payload)
       })
 
       const result = await response.json()
@@ -521,20 +584,96 @@ function CreateAppraisalContent() {
         throw new Error(result.error || result.details || 'Failed to save draft')
       }
 
-      showInfo(
-        'Draft Saved',
-        'Your appraisal draft has been saved successfully.'
-      )
+      // Update formData with the returned appraisal ID if it's a new appraisal
+      if (result.appraisal?.id && !formData.id) {
+        setFormData(prev => ({ ...prev, id: result.appraisal.id }))
+        // Update URL with appraisal ID for future saves
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.set('appraisalId', result.appraisal.id)
+        window.history.replaceState({}, '', newUrl.toString())
+      }
+      
+      // Save to localStorage as backup with timestamp
+      const draftToSave = { ...formData, id: result.appraisal?.id || formData.id, lastSaved: Date.now() }
+      const storageKey = result.appraisal?.id || formData.id ? `appraisal-draft-${result.appraisal?.id || formData.id}` : 'appraisal-draft-temp'
+      localStorage.setItem(storageKey, JSON.stringify(draftToSave))
+      
+      if (showAlert) {
+        showInfo(
+          'Draft Saved',
+          'Your appraisal draft has been saved successfully.'
+        )
+      }
     } catch (error) {
       console.error('Error saving draft:', error)
-      showError(
-        'Save Failed',
-        'An error occurred while saving the draft.'
-      )
+      
+      // Save to localStorage even on error as backup
+      const draftToSave = { ...formData, lastSaved: Date.now() }
+      const storageKey = formData.id ? `appraisal-draft-${formData.id}` : 'appraisal-draft-temp'
+      localStorage.setItem(storageKey, JSON.stringify(draftToSave))
+      
+      if (showAlert) {
+        showError(
+          'Save Failed',
+          'An error occurred while saving the draft. Data has been saved locally as backup.'
+        )
+      }
     } finally {
       setIsSavingDraft(false)
     }
   }
+
+  // Auto-save functionality with debouncing (only for drafts, not on initial load)
+  useEffect(() => {
+    // Don't auto-save on initial mount, when loading existing appraisal, or during submit/save
+    if (!formData.id && !appraisalId) {
+      return
+    }
+    
+    if (isSubmitting || isSavingDraft) {
+      return
+    }
+    
+    // Debounce auto-save - wait 3 seconds after user stops typing
+    const autoSaveTimer = setTimeout(() => {
+      // Only auto-save if form has been modified (has meaningful data) and is draft
+      const hasData = formData.employee?.id ||
+                     (formData.achievements && typeof formData.achievements === 'object' && Object.keys(formData.achievements).length > 0) ||
+                     (formData.development && typeof formData.development === 'object' && Object.keys(formData.development).length > 0) ||
+                     (formData.performance && formData.performance.categories && Array.isArray(formData.performance.categories) && formData.performance.categories.length > 0)
+      
+      const isDraftStatus = formData.status === 'draft' || !formData.status
+      
+      if (hasData && isDraftStatus) {
+        console.log('Auto-saving appraisal draft...', { appraisalId: formData.id || appraisalId })
+        handleSaveDraft(false) // Don't show alert for auto-save
+      }
+    }, 3000) // 3 second delay
+    
+    return () => clearTimeout(autoSaveTimer)
+  }, [formData.employee, formData.achievements, formData.development, formData.performance, formData.status, formData.id, appraisalId])
+
+  // Restore from localStorage on mount (if not loading existing appraisal)
+  useEffect(() => {
+    if (!appraisalId && session?.user?.id) {
+      const savedDraft = localStorage.getItem('appraisal-draft-temp')
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft)
+          // Only restore if draft is less than 7 days old
+          if (parsed.lastSaved && (Date.now() - parsed.lastSaved < 7 * 24 * 60 * 60 * 1000)) {
+            setFormData(prev => ({ ...prev, ...parsed, lastSaved: undefined }))
+            console.log('Restored appraisal draft from localStorage')
+          } else {
+            localStorage.removeItem('appraisal-draft-temp')
+          }
+        } catch (e) {
+          console.error('Error restoring appraisal draft from localStorage:', e)
+          localStorage.removeItem('appraisal-draft-temp')
+        }
+      }
+    }
+  }, [appraisalId, session?.user?.id])
 
   const renderStepContent = () => {
     switch (currentStep) {

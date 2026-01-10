@@ -212,7 +212,108 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { employee, achievements, development, ratings, comments, recommendations, status, workflowStatus } = body;
+    const { id, employee, achievements, development, ratings, comments, recommendations, status, workflowStatus } = body;
+
+    // If ID is provided, update existing appraisal
+    if (id) {
+      try {
+        const existingAppraisal = await prisma.performance_appraisals.findUnique({
+          where: { id: id },
+          include: {
+            employees: true
+          }
+        });
+
+        if (!existingAppraisal) {
+          return NextResponse.json({ error: 'Appraisal not found' }, { status: 404 });
+        }
+
+        // Get employee database ID
+        const employeeRecord = await prisma.employees.findUnique({
+          where: { email: employee?.email || existingAppraisal.employees?.email },
+          include: {
+            employees: true,
+            reviewer: true
+          }
+        });
+
+        if (!employeeRecord) {
+          return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+        }
+
+        // Prepare update data - ensure all fields are properly saved
+        const updateData: any = {
+          status: status || existingAppraisal.status,
+          updatedAt: new Date()
+        };
+
+        // Update overall rating if provided
+        if (ratings?.overall !== undefined) {
+          updateData.overallRating = ratings.overall;
+        }
+
+        // Update assessments if provided
+        if (achievements !== undefined) {
+          updateData.selfAssessments = typeof achievements === 'string' 
+            ? achievements 
+            : (achievements !== null ? JSON.stringify(achievements) : existingAppraisal.selfAssessments || {});
+        }
+
+        // Preserve supervisor assessments if they exist
+        if (existingAppraisal.supervisorAssessments) {
+          updateData.supervisorAssessments = existingAppraisal.supervisorAssessments;
+        }
+
+        if (development !== undefined) {
+          updateData.valueGoalsAssessments = typeof development === 'string'
+            ? development
+            : (development !== null ? JSON.stringify(development) : existingAppraisal.valueGoalsAssessments || {});
+        }
+
+        // Combine comments, ratings, and recommendations
+        const combinedComments = comments || {};
+        if (ratings) {
+          combinedComments.ratings = ratings;
+        }
+        if (recommendations) {
+          combinedComments.recommendations = recommendations;
+        }
+        updateData.comments = typeof combinedComments === 'string'
+          ? combinedComments
+          : (Object.keys(combinedComments).length > 0 ? JSON.stringify(combinedComments) : (existingAppraisal.comments || {}));
+
+        // Set submittedAt if status is submitted
+        if (status === 'submitted' && !existingAppraisal.submittedAt) {
+          updateData.submittedAt = new Date();
+        }
+
+        console.log('Updating existing appraisal with ID:', id);
+        console.log('Update data keys:', Object.keys(updateData));
+
+        const updatedAppraisal = await prisma.performance_appraisals.update({
+          where: { id: id },
+          data: updateData
+        });
+
+        return NextResponse.json({
+          success: true,
+          appraisal: {
+            id: updatedAppraisal.id,
+            employeeId: employeeRecord.employeeId || employeeRecord.id,
+            status: updatedAppraisal.status
+          }
+        });
+      } catch (error) {
+        console.error('Error updating appraisal:', error);
+        return NextResponse.json(
+          { 
+            error: 'Failed to update appraisal', 
+            details: error instanceof Error ? error.message : 'Unknown error'
+          },
+          { status: 500 }
+        );
+      }
+    }
 
     // Get employee database ID from email with supervisor and reviewer relations
     const employeeRecord = await prisma.employees.findUnique({
@@ -409,6 +510,21 @@ export async function POST(request: NextRequest) {
         planId: performancePlan.id
       });
 
+      // Prepare JSON fields - ensure they are properly stringified
+      const selfAssessmentsData = achievements 
+        ? (typeof achievements === 'string' ? achievements : JSON.stringify(achievements))
+        : '{}';
+      const valueGoalsAssessmentsData = development
+        ? (typeof development === 'string' ? development : JSON.stringify(development))
+        : '{}';
+      const commentsData = comments || ratings || recommendations
+        ? JSON.stringify({ 
+            ...(typeof comments === 'object' ? comments : {}), 
+            ratings: ratings || {}, 
+            recommendations: recommendations || {} 
+          })
+        : '{}';
+
       appraisal = await prisma.performance_appraisals.create({
         data: {
           id: crypto.randomUUID(),
@@ -419,10 +535,10 @@ export async function POST(request: NextRequest) {
           appraisalType: appraisalType,
           status: status || 'draft',
           overallRating: ratings?.overall || 0,
-          selfAssessments: achievements || {},
-          supervisorAssessments: {},
-          valueGoalsAssessments: development || {},
-          comments: { ...comments, ratings: ratings || {}, recommendations: recommendations || {} },
+          selfAssessments: selfAssessmentsData,
+          supervisorAssessments: '{}',
+          valueGoalsAssessments: valueGoalsAssessmentsData,
+          comments: commentsData,
           submittedAt: status === 'submitted' ? new Date() : null,
           updatedAt: new Date()
         }

@@ -16,7 +16,10 @@ import {
   ChartBarIcon,
   BuildingOfficeIcon,
   ChatBubbleLeftRightIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  ClipboardDocumentCheckIcon,
+  UserCircleIcon,
+  ShieldCheckIcon
 } from "@heroicons/react/24/outline"
 import { useSession } from "next-auth/react"
 import { exportService } from "@/lib/export-service"
@@ -95,6 +98,7 @@ export default function ViewPlanPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSupervisor, setIsSupervisor] = useState(false)
   const [isReviewer, setIsReviewer] = useState(false)
+  const [activeWorkflowTab, setActiveWorkflowTab] = useState<'submitted' | 'supervisor' | 'reviewer'>('submitted')
   const [currentSupervisorComment, setCurrentSupervisorComment] = useState('')
   const [currentReviewerComment, setCurrentReviewerComment] = useState('')
   const [submittingWorkflow, setSubmittingWorkflow] = useState(false)
@@ -143,8 +147,22 @@ export default function ViewPlanPage() {
           // Check if current user is supervisor or reviewer
           // Note: supervisorId and reviewerId are user IDs
           if (session?.user?.id) {
-            setIsSupervisor(planData.supervisorId === session.user.id)
-            setIsReviewer(planData.reviewerId === session.user.id)
+            const isSupervisorRole = planData.supervisorId === session.user.id
+            const isReviewerRole = planData.reviewerId === session.user.id
+            
+            setIsSupervisor(isSupervisorRole)
+            setIsReviewer(isReviewerRole)
+            
+            // Set default tab based on user role and plan status
+            if (planData.status !== 'draft') {
+              if (isSupervisorRole && planData.supervisorApproval !== 'approved') {
+                setActiveWorkflowTab('supervisor')
+              } else if (isReviewerRole && planData.reviewerApproval !== 'approved' && planData.supervisorApproval === 'approved') {
+                setActiveWorkflowTab('reviewer')
+              } else {
+                setActiveWorkflowTab('submitted')
+              }
+            }
           }
           
           // Load workflow comments if they exist
@@ -307,97 +325,131 @@ export default function ViewPlanPage() {
 
   return (
     <ModulePage metadata={metadata}>
-      {/* Export PDF Button */}
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={handleExportPDF}
-          disabled={exportingPDF || !plan}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <ArrowDownTrayIcon className={`h-4 w-4 mr-2 ${exportingPDF ? 'animate-spin' : ''}`} />
-          {exportingPDF ? 'Exporting...' : 'Export PDF'}
-        </button>
+      {/* Header with Export PDF Button */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4">
+            <Link
+              href="/hr/performance/plans"
+              className="text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeftIcon className="h-5 w-5" />
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {plan.employeeName}'s Performance Plan
+              </h1>
+              <p className="text-sm text-gray-600 mt-1">
+                {plan.planTitle} • {plan.planYear} • {plan.position} • {plan.department}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(plan.status)}`}>
+              {plan.status}
+            </span>
+            <button
+              onClick={handleExportPDF}
+              disabled={exportingPDF || !plan}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowDownTrayIcon className={`h-4 w-4 mr-2 ${exportingPDF ? 'animate-spin' : ''}`} />
+              {exportingPDF ? 'Exporting...' : 'Export PDF'}
+            </button>
+            {!isReviewContext && plan.status === 'draft' && (
+              <Link
+                href={`/hr/performance/plans/create?planId=${plan.id}&edit=true`}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <PencilIcon className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            )}
+          </div>
+        </div>
+        
+        {/* Workflow Tabs */}
+        <div className="bg-white rounded-lg shadow border border-gray-200">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px" aria-label="Workflow Tabs">
+              <button
+                onClick={() => setActiveWorkflowTab('submitted')}
+                className={`flex-1 py-4 px-6 border-b-2 font-medium text-sm transition-colors flex items-center justify-center space-x-2 ${
+                  activeWorkflowTab === 'submitted'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <ClipboardDocumentCheckIcon className="h-5 w-5" />
+                <span>{plan.employeeName}'s Performance Plan</span>
+              </button>
+              {isSupervisor && plan.status !== 'draft' && (
+                <button
+                  onClick={() => setActiveWorkflowTab('supervisor')}
+                  className={`flex-1 py-4 px-6 border-b-2 font-medium text-sm transition-colors flex items-center justify-center space-x-2 ${
+                    activeWorkflowTab === 'supervisor'
+                      ? 'border-orange-500 text-orange-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <UserCircleIcon className="h-5 w-5" />
+                  <span>Supervisor Review</span>
+                </button>
+              )}
+              {isReviewer && plan.status !== 'draft' && (
+                <button
+                  onClick={() => setActiveWorkflowTab('reviewer')}
+                  className={`flex-1 py-4 px-6 border-b-2 font-medium text-sm transition-colors flex items-center justify-center space-x-2 ${
+                    activeWorkflowTab === 'reviewer'
+                      ? 'border-green-500 text-green-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <ShieldCheckIcon className="h-5 w-5" />
+                  <span>Final Review</span>
+                </button>
+              )}
+            </nav>
+          </div>
+        </div>
       </div>
       
       <div className="space-y-6" id="plan-content-to-export" ref={planContentRef}>
-        {/* Header */}
-        <div className={`rounded-lg shadow p-6 ${isReviewContext ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500' : 'bg-white'}`}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/hr/performance/plans"
-                className="text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeftIcon className="h-5 w-5" />
-              </Link>
-              <div>
-                {isReviewContext ? (
-                  <>
-                    <h1 className="text-2xl font-bold text-gray-900">
-                      {isSupervisor ? 'Supervise Employee Performance Plan' : 'Review Employee Performance Plan'}
-                    </h1>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Employee: <span className="font-semibold">{plan.employeeName}</span> • {plan.position} • {plan.department}
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Plan: {plan.planTitle} • {plan.planYear} • {plan.planType}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h1 className="text-2xl font-bold text-gray-900">{plan.planTitle}</h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {plan.planYear} • {plan.planType}
-                    </p>
-                  </>
-                )}
+        {/* Tab 1: Submitted Plan Content */}
+        {activeWorkflowTab === 'submitted' && (
+          <>
+          {/* Employee Info Card */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center space-x-3">
+                <UserIcon className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{plan.employeeName}</p>
+                  <p className="text-xs text-gray-500">{plan.position}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(plan.status)}`}>
-                {plan.status}
-              </span>
-              {!isReviewContext && plan.status === 'draft' && (
-                <Link
-                  href={`/hr/performance/plans/create?planId=${plan.id}&edit=true`}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  <PencilIcon className="h-4 w-4 mr-2" />
-                  Edit
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {/* Employee Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
-            <div className="flex items-center space-x-3">
-              <UserIcon className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">{plan.employeeName}</p>
-                <p className="text-xs text-gray-500">{plan.position}</p>
+              <div className="flex items-center space-x-3">
+                <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Department</p>
+                  <p className="text-xs text-gray-500">{plan.department || 'N/A'}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Department</p>
-                <p className="text-xs text-gray-500">{plan.department || 'N/A'}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <CalendarIcon className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Period</p>
-                <p className="text-xs text-gray-500">
-                  {plan.reviewPeriod.startDate && plan.reviewPeriod.endDate
-                    ? `${new Date(plan.reviewPeriod.startDate).toLocaleDateString()} - ${new Date(plan.reviewPeriod.endDate).toLocaleDateString()}`
-                    : 'N/A'}
-                </p>
+              <div className="flex items-center space-x-3">
+                <CalendarIcon className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Period</p>
+                  <p className="text-xs text-gray-500">
+                    {plan.reviewPeriod.startDate && plan.reviewPeriod.endDate
+                      ? `${new Date(plan.reviewPeriod.startDate).toLocaleDateString()} - ${new Date(plan.reviewPeriod.endDate).toLocaleDateString()}`
+                      : plan.startDate && plan.endDate
+                        ? `${new Date(plan.startDate).toLocaleDateString()} - ${new Date(plan.endDate).toLocaleDateString()}`
+                        : 'N/A'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
         {/* Deliverables */}
         {plan.deliverables && Array.isArray(plan.deliverables) && plan.deliverables.length > 0 && (
@@ -591,83 +643,6 @@ export default function ViewPlanPage() {
               </>
             )}
             
-            {/* Supervisor/Comment Action Panel - Only show for submitted plans and if user is supervisor/reviewer */}
-            {plan.status !== 'draft' && (isSupervisor || isReviewer) && (
-              <div className="border-t pt-6 mt-6">
-                {isSupervisor && (
-                  <div className="mb-6">
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">Add Supervisor Comment</h3>
-                    <textarea
-                      value={currentSupervisorComment}
-                      onChange={(e) => setCurrentSupervisorComment(e.target.value)}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Provide feedback on this performance plan..."
-                    />
-                    <div className="flex space-x-2 mt-3">
-                      <button
-                        onClick={() => handleWorkflowAction('comment', 'supervisor')}
-                        disabled={submittingWorkflow || !currentSupervisorComment}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Add Comment
-                      </button>
-                      <button
-                        onClick={() => handleWorkflowAction('approve', 'supervisor')}
-                        disabled={submittingWorkflow}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
-                        disabled={submittingWorkflow || !currentSupervisorComment}
-                        className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Request Changes
-                      </button>
-                    </div>
-                  </div>
-                )}
-                
-                {isReviewer && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">Add Reviewer Comment</h3>
-                    <textarea
-                      value={currentReviewerComment}
-                      onChange={(e) => setCurrentReviewerComment(e.target.value)}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-                      placeholder="Provide final review feedback..."
-                    />
-                    <div className="flex space-x-2 mt-3">
-                      <button
-                        onClick={() => handleWorkflowAction('comment', 'reviewer')}
-                        disabled={submittingWorkflow || !currentReviewerComment}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Add Comment
-                      </button>
-                      <button
-                        onClick={() => handleWorkflowAction('final_approve', 'reviewer')}
-                        disabled={submittingWorkflow}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Final Approve
-                      </button>
-                      <button
-                        onClick={() => handleWorkflowAction('request_changes', 'reviewer')}
-                        disabled={submittingWorkflow || !currentReviewerComment}
-                        className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Request Changes
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
             {!plan.comments?.employeeComments && workflowComments.supervisor.length === 0 && workflowComments.reviewer.length === 0 && !plan.comments?.supervisorComments && !plan.comments?.reviewerComments && (
               <p className="text-sm text-gray-500 italic">No comments yet.</p>
             )}
@@ -714,6 +689,222 @@ export default function ViewPlanPage() {
             </div>
           </div>
         </div>
+          </>
+        )}
+
+        {/* Tab 2: Supervisor Review */}
+        {activeWorkflowTab === 'supervisor' && isSupervisor && plan.status !== 'draft' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <UserCircleIcon className="h-6 w-6 text-orange-600" />
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Supervisor Review</h2>
+                  <p className="text-sm text-gray-600">Review and provide feedback on {plan.employeeName}'s performance plan</p>
+                </div>
+              </div>
+
+              {/* Plan Summary */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Plan Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Plan Title:</span>
+                    <p className="font-medium text-gray-900">{plan.planTitle}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Year:</span>
+                    <p className="font-medium text-gray-900">{plan.planYear}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Status:</span>
+                    <p className="font-medium text-gray-900">{plan.status}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Submitted:</span>
+                    <p className="font-medium text-gray-900">
+                      {plan.submittedAt ? new Date(plan.submittedAt).toLocaleDateString() : 'Not submitted'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Supervisor Comments History */}
+              {workflowComments.supervisor && workflowComments.supervisor.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Previous Comments</h3>
+                  <div className="space-y-3">
+                    {workflowComments.supervisor.map((comment: any, index: number) => (
+                      <div key={comment.id || index} className="border-l-4 border-blue-500 pl-4 py-3 bg-blue-50 rounded">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-semibold text-gray-900">{comment.name || 'Supervisor'}</span>
+                            <span className="text-xs text-gray-500">
+                              {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
+                            </span>
+                          </div>
+                          <span className={`px-2 py-1 text-xs font-medium rounded ${
+                            comment.action === 'approve' ? 'bg-green-100 text-green-800' :
+                            comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
+                          </span>
+                        </div>
+                        {comment.comment && (
+                          <p className="text-sm text-gray-700">{comment.comment}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add Supervisor Comment Form */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Your Review</h3>
+                <textarea
+                  value={currentSupervisorComment}
+                  onChange={(e) => setCurrentSupervisorComment(e.target.value)}
+                  rows={6}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                  placeholder="Provide your feedback and comments on this performance plan..."
+                />
+                <div className="flex space-x-3 mt-4">
+                  <button
+                    onClick={() => handleWorkflowAction('comment', 'supervisor')}
+                    disabled={submittingWorkflow || !currentSupervisorComment.trim()}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submittingWorkflow ? 'Submitting...' : 'Add Comment'}
+                  </button>
+                  <button
+                    onClick={() => handleWorkflowAction('approve', 'supervisor')}
+                    disabled={submittingWorkflow}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submittingWorkflow ? 'Processing...' : 'Approve'}
+                  </button>
+                  <button
+                    onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
+                    disabled={submittingWorkflow || !currentSupervisorComment.trim()}
+                    className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submittingWorkflow ? 'Processing...' : 'Request Changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Final Review (Reviewer) */}
+        {activeWorkflowTab === 'reviewer' && isReviewer && plan.status !== 'draft' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <ShieldCheckIcon className="h-6 w-6 text-green-600" />
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Final Review</h2>
+                  <p className="text-sm text-gray-600">Final reviewer assessment for {plan.employeeName}'s performance plan</p>
+                </div>
+              </div>
+
+              {/* Plan Summary */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Plan Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Plan Title:</span>
+                    <p className="font-medium text-gray-900">{plan.planTitle}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Year:</span>
+                    <p className="font-medium text-gray-900">{plan.planYear}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Status:</span>
+                    <p className="font-medium text-gray-900">{plan.status}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Supervisor:</span>
+                    <p className={`font-medium ${
+                      plan.supervisorApproval === 'approved' ? 'text-green-600' : 'text-yellow-600'
+                    }`}>
+                      {plan.supervisorApproval === 'approved' ? 'Approved' : 'Pending'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reviewer Comments History */}
+              {workflowComments.reviewer && workflowComments.reviewer.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Previous Comments</h3>
+                  <div className="space-y-3">
+                    {workflowComments.reviewer.map((comment: any, index: number) => (
+                      <div key={comment.id || index} className="border-l-4 border-green-500 pl-4 py-3 bg-green-50 rounded">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-semibold text-gray-900">{comment.name || 'Reviewer'}</span>
+                            <span className="text-xs text-gray-500">
+                              {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
+                            </span>
+                          </div>
+                          <span className={`px-2 py-1 text-xs font-medium rounded ${
+                            comment.action === 'final_approve' ? 'bg-green-100 text-green-800' :
+                            comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
+                          </span>
+                        </div>
+                        {comment.comment && (
+                          <p className="text-sm text-gray-700">{comment.comment}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add Reviewer Comment Form */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Your Final Review</h3>
+                <textarea
+                  value={currentReviewerComment}
+                  onChange={(e) => setCurrentReviewerComment(e.target.value)}
+                  rows={6}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                  placeholder="Provide your final review feedback and assessment..."
+                />
+                <div className="flex space-x-3 mt-4">
+                  <button
+                    onClick={() => handleWorkflowAction('comment', 'reviewer')}
+                    disabled={submittingWorkflow || !currentReviewerComment.trim()}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submittingWorkflow ? 'Submitting...' : 'Add Comment'}
+                  </button>
+                  <button
+                    onClick={() => handleWorkflowAction('final_approve', 'reviewer')}
+                    disabled={submittingWorkflow}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submittingWorkflow ? 'Processing...' : 'Final Approve'}
+                  </button>
+                  <button
+                    onClick={() => handleWorkflowAction('request_changes', 'reviewer')}
+                    disabled={submittingWorkflow || !currentReviewerComment.trim()}
+                    className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {submittingWorkflow ? 'Processing...' : 'Request Changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ModulePage>
   )

@@ -411,9 +411,31 @@ function CreatePerformancePlanPageContent() {
             startDate: planData.startDate || planData.reviewPeriod?.startDate || '',
             endDate: planData.endDate || planData.reviewPeriod?.endDate || ''
           },
-          // Map deliverables to keyResponsibilities if they exist
-          keyResponsibilities: planData.deliverables && Array.isArray(planData.deliverables) 
-            ? planData.deliverables.map((item: any, index: number) => ({
+          // Map deliverables/performance_responsibilities to keyResponsibilities
+          // Priority: keyResponsibilities from API > performance_responsibilities > deliverables JSON field
+          keyResponsibilities: (() => {
+            // First try to use keyResponsibilities directly from API (if provided)
+            if (planData.keyResponsibilities && Array.isArray(planData.keyResponsibilities) && planData.keyResponsibilities.length > 0) {
+              return planData.keyResponsibilities;
+            }
+            
+            // Then try to use performance_responsibilities from the API
+            if (planData.performance_responsibilities && Array.isArray(planData.performance_responsibilities) && planData.performance_responsibilities.length > 0) {
+              return planData.performance_responsibilities.map((item: any, index: number) => ({
+                id: item.id || `resp-${index}`,
+                description: item.description || item.title || '',
+                tasks: item.description || item.tasks || '',
+                weight: item.weight || 0,
+                targetDate: item.targetDate || item.dueDate || '',
+                status: item.status || 'not-started',
+                progress: item.progress || 0,
+                successIndicators: item.successIndicators || []
+              }));
+            }
+            
+            // Fall back to deliverables array
+            if (planData.deliverables && Array.isArray(planData.deliverables) && planData.deliverables.length > 0) {
+              return planData.deliverables.map((item: any, index: number) => ({
                 id: item.id || `deliverable-${index}`,
                 description: item.description || item.title || '',
                 tasks: item.tasks || '',
@@ -422,13 +444,17 @@ function CreatePerformancePlanPageContent() {
                 status: item.status || 'not-started',
                 progress: item.progress || 0,
                 successIndicators: item.successIndicators || []
-              }))
-            : prev.keyResponsibilities,
-          deliverables: planData.deliverables || [],
-          valueGoals: planData.valueGoals || [],
-          competencies: planData.competencies || prev.competencies,
-          developmentNeeds: planData.developmentNeeds || [],
-          comments: planData.comments || prev.comments
+              }));
+            }
+            
+            // Return previous if nothing found
+            return prev.keyResponsibilities;
+          })(),
+          deliverables: Array.isArray(planData.deliverables) ? planData.deliverables : (planData.deliverables ? [planData.deliverables] : []),
+          valueGoals: Array.isArray(planData.valueGoals) ? planData.valueGoals : (planData.valueGoals ? [planData.valueGoals] : []),
+          competencies: Array.isArray(planData.competencies) ? planData.competencies : (planData.competencies ? [planData.competencies] : prev.competencies || []),
+          developmentNeeds: Array.isArray(planData.developmentNeeds) ? planData.developmentNeeds : (planData.developmentNeeds ? [planData.developmentNeeds] : []),
+          comments: planData.comments || prev.comments || { employeeComments: '', supervisorComments: '', reviewerComments: '', supervisor: [], reviewer: [] }
         }))
         
         // Set workflow status
@@ -645,6 +671,12 @@ function CreatePerformancePlanPageContent() {
       const result = await response.json()
 
       if (response.ok) {
+        // Clear localStorage on successful submit
+        if (formData.id) {
+          localStorage.removeItem(`plan-draft-${formData.id}`)
+        }
+        localStorage.removeItem('plan-draft-temp')
+        
         // Success - redirect to plans page
         router.push("/hr/performance/plans")
       } else {
@@ -663,9 +695,10 @@ function CreatePerformancePlanPageContent() {
     }
   }
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (showAlert = true) => {
     setIsSavingDraft(true)
     try {
+      // Always use POST to /api/hr/plans - it handles both create and update based on formData.id
       const response = await fetch('/api/hr/plans', {
         method: 'POST',
         headers: {
@@ -680,7 +713,24 @@ function CreatePerformancePlanPageContent() {
       const result = await response.json()
 
       if (response.ok) {
-        alert(result.message || 'Draft saved successfully!')
+        // Update formData with the returned plan ID if it's a new plan
+        if (result.plan?.id && !formData.id) {
+          setFormData(prev => ({ ...prev, id: result.plan.id }))
+          // Update URL with plan ID for future saves
+          const newUrl = new URL(window.location.href)
+          newUrl.searchParams.set('planId', result.plan.id)
+          newUrl.searchParams.set('edit', 'true')
+          window.history.replaceState({}, '', newUrl.toString())
+        }
+        
+        // Save to localStorage as backup with timestamp
+        const draftToSave = { ...formData, id: result.plan?.id || formData.id, lastSaved: Date.now() }
+        const storageKey = result.plan?.id || formData.id ? `plan-draft-${result.plan?.id || formData.id}` : 'plan-draft-temp'
+        localStorage.setItem(storageKey, JSON.stringify(draftToSave))
+        
+        if (showAlert) {
+          alert(result.message || 'Draft saved successfully!')
+        }
       } else {
         // Handle different error types
         if (response.status === 401) {
@@ -691,11 +741,72 @@ function CreatePerformancePlanPageContent() {
       }
     } catch (error) {
       console.error('Error saving draft:', error)
-      alert('An error occurred while saving the draft. Please try again.')
+      // Save to localStorage even on error as backup
+      const draftToSave = { ...formData, lastSaved: Date.now() }
+      const storageKey = formData.id ? `plan-draft-${formData.id}` : 'plan-draft-temp'
+      localStorage.setItem(storageKey, JSON.stringify(draftToSave))
+      
+      if (showAlert) {
+        alert('An error occurred while saving the draft. Data has been saved locally as backup.')
+      }
     } finally {
       setIsSavingDraft(false)
     }
   }
+
+  // Auto-save functionality with debouncing (only for drafts, not on initial load)
+  useEffect(() => {
+    // Don't auto-save on initial mount, when loading existing plan, or during submit/save
+    if (!formData.id && !planId) {
+      return
+    }
+    
+    if (isSubmitting || isSavingDraft) {
+      return
+    }
+    
+    // Debounce auto-save - wait 3 seconds after user stops typing
+    const autoSaveTimer = setTimeout(() => {
+      // Only auto-save if form has been modified (has meaningful data) and is draft
+      const hasData = formData.planTitle || 
+                     (formData.keyResponsibilities && Array.isArray(formData.keyResponsibilities) && formData.keyResponsibilities.length > 0) || 
+                     (formData.valueGoals && Array.isArray(formData.valueGoals) && formData.valueGoals.length > 0) ||
+                     formData.employee?.id ||
+                     formData.startDate ||
+                     formData.endDate
+      
+      const isDraftStatus = formData.status === 'draft' || !formData.status
+      
+      if (hasData && isDraftStatus) {
+        console.log('Auto-saving draft...', { planId: formData.id || planId })
+        handleSaveDraft(false) // Don't show alert for auto-save
+      }
+    }, 3000) // 3 second delay
+    
+    return () => clearTimeout(autoSaveTimer)
+  }, [formData.planTitle, formData.keyResponsibilities, formData.valueGoals, formData.employee, formData.startDate, formData.endDate, formData.competencies, formData.developmentNeeds, formData.status, formData.id, planId])
+
+  // Restore from localStorage on mount (if not loading existing plan)
+  useEffect(() => {
+    if (!planId && session?.user?.id) {
+      const savedDraft = localStorage.getItem('plan-draft-temp')
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft)
+          // Only restore if draft is less than 7 days old
+          if (parsed.lastSaved && (Date.now() - parsed.lastSaved < 7 * 24 * 60 * 60 * 1000)) {
+            setFormData(prev => ({ ...prev, ...parsed, lastSaved: undefined }))
+            console.log('Restored draft from localStorage')
+          } else {
+            localStorage.removeItem('plan-draft-temp')
+          }
+        } catch (e) {
+          console.error('Error restoring draft from localStorage:', e)
+          localStorage.removeItem('plan-draft-temp')
+        }
+      }
+    }
+  }, [planId, session?.user?.id])
 
   // Workflow action handlers
   const handleWorkflowAction = async (action: 'comment' | 'request_changes' | 'approve' | 'final_approve', role: 'supervisor' | 'reviewer') => {

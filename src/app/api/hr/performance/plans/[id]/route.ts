@@ -40,6 +40,11 @@ export async function GET(
               }
             }
           }
+        },
+        performance_responsibilities: {
+          orderBy: {
+            createdAt: 'asc'
+          }
         }
       }
     })
@@ -94,16 +99,51 @@ export async function GET(
         keyResponsibilities: plan.employees.job_descriptions.keyResponsibilities,
       } : null,
       // Map deliverables to keyResponsibilities structure - handle both JSON objects and strings
+      // First try to use performance_responsibilities table, then fall back to deliverables JSON field
       deliverables: (() => {
+        // If we have performance_responsibilities, use those
+        if (plan.performance_responsibilities && plan.performance_responsibilities.length > 0) {
+          return plan.performance_responsibilities.map((resp: any) => ({
+            id: resp.id,
+            title: resp.title || '',
+            description: resp.description || '',
+            tasks: resp.description || '', // Use description as tasks
+            weight: resp.weight || 0,
+            targetDate: resp.targetDate || '',
+            status: resp.status || 'not-started',
+            progress: resp.progress || 0,
+            successIndicators: resp.successIndicators || []
+          }));
+        }
+        
+        // Fall back to deliverables JSON field
         if (!plan.deliverables) return [];
         if (typeof plan.deliverables === 'string') {
           try {
-            return JSON.parse(plan.deliverables);
+            const parsed = JSON.parse(plan.deliverables);
+            return Array.isArray(parsed) ? parsed : (typeof parsed === 'object' ? Object.values(parsed) : []);
           } catch {
             return [];
           }
         }
-        return Array.isArray(plan.deliverables) ? plan.deliverables : (typeof plan.deliverables === 'object' ? plan.deliverables : []);
+        return Array.isArray(plan.deliverables) ? plan.deliverables : (typeof plan.deliverables === 'object' ? Object.values(plan.deliverables) : []);
+      })(),
+      performance_responsibilities: plan.performance_responsibilities || [],
+      keyResponsibilities: (() => {
+        // If we have performance_responsibilities, use those
+        if (plan.performance_responsibilities && plan.performance_responsibilities.length > 0) {
+          return plan.performance_responsibilities.map((resp: any) => ({
+            id: resp.id,
+            description: resp.description || resp.title || '',
+            tasks: resp.description || resp.tasks || '',
+            weight: resp.weight || 0,
+            targetDate: resp.targetDate || '',
+            status: resp.status || 'not-started',
+            progress: resp.progress || 0,
+            successIndicators: resp.successIndicators || []
+          }));
+        }
+        return [];
       })(),
       valueGoals: (() => {
         if (!plan.valueGoals) return [];
@@ -240,33 +280,95 @@ export async function PUT(
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Prepare update data
+    // Prepare update data with ALL fields from body (formData)
     const updateData: any = {
       updatedAt: new Date()
     }
 
+    // Update basic fields
+    if (body.planTitle !== undefined) {
+      updateData.planTitle = body.planTitle
+    }
+    if (body.planYear !== undefined) {
+      updateData.planYear = parseInt(body.planYear.toString())
+    }
+    if (body.planType !== undefined) {
+      updateData.planPeriod = body.planPeriod || `Annual ${body.planYear || existingPlan.planYear}`
+    }
+    
+    // Handle planPeriod - it might come as an object with startDate/endDate or as a string
+    let planPeriod: string | undefined;
+    if (body.planPeriod) {
+      if (typeof body.planPeriod === 'string') {
+        planPeriod = body.planPeriod;
+      } else if (typeof body.planPeriod === 'object') {
+        const startDate = body.planPeriod.startDate || body.startDate || '';
+        const endDate = body.planPeriod.endDate || body.endDate || '';
+        if (startDate && endDate) {
+          planPeriod = `${startDate} - ${endDate}`;
+        }
+      }
+      if (planPeriod) {
+        updateData.planPeriod = planPeriod;
+      }
+    }
+    
+    // Update date fields
+    if (body.startDate || body.reviewPeriod?.startDate || body.planPeriod?.startDate) {
+      const startDate = body.startDate || body.reviewPeriod?.startDate || body.planPeriod?.startDate;
+      if (startDate) {
+        updateData.startDate = new Date(startDate);
+      }
+    }
+    if (body.endDate || body.reviewPeriod?.endDate || body.planPeriod?.endDate) {
+      const endDate = body.endDate || body.reviewPeriod?.endDate || body.planPeriod?.endDate;
+      if (endDate) {
+        updateData.endDate = new Date(endDate);
+      }
+    }
+
+    // Update status
+    if (body.status !== undefined) {
+      updateData.status = body.status
+      // Set submittedAt if status is submitted
+      if (body.status === 'submitted' && !existingPlan.submittedAt) {
+        updateData.submittedAt = new Date()
+      }
+    }
+
+    // Save JSON fields (deliverables, valueGoals, competencies, developmentNeeds, comments)
+    // Always update these if provided, otherwise keep existing
     if (body.deliverables !== undefined) {
-      updateData.deliverables = body.deliverables
+      updateData.deliverables = typeof body.deliverables === 'string' 
+        ? body.deliverables 
+        : JSON.stringify(body.deliverables)
     }
     if (body.valueGoals !== undefined) {
-      updateData.valueGoals = body.valueGoals
+      updateData.valueGoals = typeof body.valueGoals === 'string'
+        ? body.valueGoals
+        : JSON.stringify(body.valueGoals)
     }
     if (body.competencies !== undefined) {
-      updateData.competencies = body.competencies
+      updateData.competencies = typeof body.competencies === 'string'
+        ? body.competencies
+        : JSON.stringify(body.competencies)
     }
     if (body.developmentNeeds !== undefined) {
-      updateData.developmentNeeds = body.developmentNeeds
+      updateData.developmentNeeds = typeof body.developmentNeeds === 'string'
+        ? body.developmentNeeds
+        : JSON.stringify(body.developmentNeeds)
     }
     if (body.comments !== undefined) {
-      updateData.comments = body.comments
+      updateData.comments = typeof body.comments === 'string'
+        ? body.comments
+        : JSON.stringify(body.comments)
     }
-    if (body.status) {
-      updateData.status = body.status
-    }
-    if (body.supervisorApproval) {
+
+    // Update approval fields
+    if (body.supervisorApproval !== undefined) {
       updateData.supervisorApproval = body.supervisorApproval
     }
-    if (body.reviewerApproval) {
+    if (body.reviewerApproval !== undefined) {
       updateData.reviewerApproval = body.reviewerApproval
     }
     if (body.supervisorApprovedAt) {
@@ -275,25 +377,51 @@ export async function PUT(
     if (body.reviewerApprovedAt) {
       updateData.reviewerApprovedAt = new Date(body.reviewerApprovedAt)
     }
-    if (body.reviewPeriod?.startDate) {
-      updateData.startDate = new Date(body.reviewPeriod.startDate)
-    }
-    if (body.reviewPeriod?.endDate) {
-      updateData.endDate = new Date(body.reviewPeriod.endDate)
-    }
+
+    console.log('💾 Updating plan with data:', { ...updateData, deliverables: '[data]', valueGoals: '[data]', competencies: '[data]', developmentNeeds: '[data]', comments: '[data]' })
 
     // Update the plan
     const updatedPlan = await prisma.performance_plans.update({
       where: { id: planId },
-      data: updateData
+      data: updateData,
+      include: {
+        performance_responsibilities: true
+      }
     })
 
-    console.log('Plan updated successfully:', updatedPlan.id)
+    // Update performance_responsibilities if keyResponsibilities is provided
+    if (body.keyResponsibilities && Array.isArray(body.keyResponsibilities) && body.keyResponsibilities.length > 0) {
+      // Delete existing responsibilities
+      await prisma.performance_responsibilities.deleteMany({
+        where: { planId: updatedPlan.id }
+      })
+
+      // Create new responsibilities
+      const crypto = require('crypto');
+      for (const responsibility of body.keyResponsibilities) {
+        await prisma.performance_responsibilities.create({
+          data: {
+            id: crypto.randomUUID(),
+            planId: updatedPlan.id,
+            title: (responsibility.description || responsibility.title || 'Responsibility')?.substring(0, 100) || 'Responsibility',
+            description: responsibility.description || responsibility.title || '',
+            weight: responsibility.weight || 0,
+            updatedAt: new Date()
+          }
+        })
+      }
+    }
+
+    console.log('✅ Plan updated successfully:', updatedPlan.id)
 
     return NextResponse.json({
       success: true,
       message: 'Performance plan updated successfully',
-      planId: updatedPlan.id
+      plan: {
+        id: updatedPlan.id,
+        planYear: updatedPlan.planYear,
+        status: updatedPlan.status
+      }
     })
 
   } catch (error) {
