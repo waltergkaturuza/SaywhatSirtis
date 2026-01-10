@@ -644,6 +644,13 @@ export default function EmployeeProfilePage() {
               <div className="lg:col-span-3">
                 {/* Tab Navigation */}
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                  {/* Green Header - Matching Quick Stats */}
+                  <div className="bg-gradient-to-r from-green-600 to-green-500 px-6 py-4">
+                    <h3 className="text-lg font-bold text-white flex items-center">
+                      <UserIcon className="mr-2 h-5 w-5" />
+                      Employee Profile
+                    </h3>
+                  </div>
                   {/* Tab Headers */}
                   <div className="border-b border-gray-200 bg-gray-50">
                     <nav className="flex overflow-x-auto scrollbar-hide" aria-label="Tabs">
