@@ -321,19 +321,67 @@ export async function POST(request: NextRequest) {
     
     if (existingDraft) {
       console.log('Found existing draft appraisal, updating:', existingDraft.id);
+      console.log('Update data:', { status, hasAchievements: !!achievements, hasDevelopment: !!development, hasComments: !!comments, hasRatings: !!ratings });
+      
+      // Prepare update data - ensure all fields are properly saved
+      const updateData: any = {
+        status: status || 'draft',
+        updatedAt: new Date()
+      };
+      
+      // Always update these fields if provided, otherwise keep existing
+      if (ratings?.overall !== undefined) {
+        updateData.overallRating = ratings.overall;
+      } else if (existingDraft.overallRating !== null) {
+        updateData.overallRating = existingDraft.overallRating;
+      }
+      
+      // Save assessments - handle both object and already-stringified JSON
+      if (achievements !== undefined) {
+        updateData.selfAssessments = typeof achievements === 'string' 
+          ? achievements 
+          : (achievements !== null ? JSON.stringify(achievements) : {});
+      } else {
+        updateData.selfAssessments = existingDraft.selfAssessments || {};
+      }
+      
+      // Preserve supervisor assessments if they exist
+      if (existingDraft.supervisorAssessments) {
+        updateData.supervisorAssessments = existingDraft.supervisorAssessments;
+      }
+      
+      if (development !== undefined) {
+        updateData.valueGoalsAssessments = typeof development === 'string'
+          ? development
+          : (development !== null ? JSON.stringify(development) : {});
+      } else {
+        updateData.valueGoalsAssessments = existingDraft.valueGoalsAssessments || {};
+      }
+      
+      // Combine comments, ratings, and recommendations
+      const combinedComments = comments || {};
+      if (ratings) {
+        combinedComments.ratings = ratings;
+      }
+      if (recommendations) {
+        combinedComments.recommendations = recommendations;
+      }
+      updateData.comments = typeof combinedComments === 'string'
+        ? combinedComments
+        : (Object.keys(combinedComments).length > 0 ? JSON.stringify(combinedComments) : (existingDraft.comments || {}));
+      
+      // Set submittedAt if status is submitted
+      if (status === 'submitted') {
+        updateData.submittedAt = new Date();
+      } else {
+        updateData.submittedAt = existingDraft.submittedAt;
+      }
+      
+      console.log('Updating appraisal with data:', { ...updateData, selfAssessments: '[data]', valueGoalsAssessments: '[data]', comments: '[data]' });
       
       appraisal = await prisma.performance_appraisals.update({
         where: { id: existingDraft.id },
-        data: {
-          status: status || 'draft',
-          overallRating: ratings?.overall || existingDraft.overallRating || 0,
-          selfAssessments: achievements || existingDraft.selfAssessments || {},
-          supervisorAssessments: existingDraft.supervisorAssessments || {},
-          valueGoalsAssessments: development || existingDraft.valueGoalsAssessments || {},
-          comments: comments ? { ...comments, ratings: ratings || {}, recommendations: recommendations || {} } : existingDraft.comments,
-          submittedAt: status === 'submitted' ? new Date() : existingDraft.submittedAt,
-          updatedAt: new Date()
-        }
+        data: updateData
       });
     } else {
       // Check if there's a submitted appraisal for the same period

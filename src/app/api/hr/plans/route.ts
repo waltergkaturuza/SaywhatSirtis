@@ -160,13 +160,56 @@ export async function POST(request: NextRequest) {
     if (existingDraft && isDraft) {
       console.log('📝 Found existing draft plan, updating:', existingDraft.id);
       
+      // Prepare update data with ALL fields from formData
+      const updateData: any = {
+        status: 'draft',
+        updatedAt: new Date(),
+        planTitle: formData.planTitle || existingDraft.planTitle || `Annual Plan ${planYear}`,
+        planPeriod: planPeriod,
+        planYear: planYear
+      };
+      
+      // Add date fields if provided
+      if (formData.startDate) {
+        updateData.startDate = new Date(formData.startDate);
+      }
+      if (formData.endDate) {
+        updateData.endDate = new Date(formData.endDate);
+      }
+      
+      // Save JSON fields (deliverables, valueGoals, competencies, developmentNeeds, comments)
+      if (formData.deliverables !== undefined) {
+        updateData.deliverables = typeof formData.deliverables === 'string' 
+          ? formData.deliverables 
+          : JSON.stringify(formData.deliverables);
+      }
+      if (formData.valueGoals !== undefined) {
+        updateData.valueGoals = typeof formData.valueGoals === 'string'
+          ? formData.valueGoals
+          : JSON.stringify(formData.valueGoals);
+      }
+      if (formData.competencies !== undefined) {
+        updateData.competencies = typeof formData.competencies === 'string'
+          ? formData.competencies
+          : JSON.stringify(formData.competencies);
+      }
+      if (formData.developmentNeeds !== undefined) {
+        updateData.developmentNeeds = typeof formData.developmentNeeds === 'string'
+          ? formData.developmentNeeds
+          : JSON.stringify(formData.developmentNeeds);
+      }
+      if (formData.comments !== undefined) {
+        updateData.comments = typeof formData.comments === 'string'
+          ? formData.comments
+          : JSON.stringify(formData.comments);
+      }
+      
+      console.log('💾 Updating plan with data:', { ...updateData, deliverables: '[data]', valueGoals: '[data]', competencies: '[data]' });
+      
       // Update existing draft
       plan = await prisma.performance_plans.update({
         where: { id: existingDraft.id },
-        data: {
-          status: 'draft',
-          updatedAt: new Date()
-        },
+        data: updateData,
         include: {
           performance_responsibilities: true
         }
@@ -230,19 +273,57 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const planData = {
+      // Prepare plan data with ALL fields from formData
+      const planData: any = {
         id: crypto.randomUUID(),
         employeeId: employee.id,
         supervisorId: supervisorUserId, // This must be a user ID, not an employee ID
         planYear: planYear,
         planPeriod: planPeriod,
+        planTitle: formData.planTitle || `Annual Plan ${planYear}`,
         status,
+        workflowStatus: isDraft ? 'draft' : 'submitted',
         updatedAt: new Date(),
         reviewerId: reviewerUserId, // This must be a user ID, not an employee ID
-        comments: JSON.stringify([])
+        comments: formData.comments ? (typeof formData.comments === 'string' ? formData.comments : JSON.stringify(formData.comments)) : JSON.stringify([])
       };
+      
+      // Add date fields if provided
+      if (formData.startDate) {
+        planData.startDate = new Date(formData.startDate);
+      }
+      if (formData.endDate) {
+        planData.endDate = new Date(formData.endDate);
+      }
+      
+      // Save JSON fields (deliverables, valueGoals, competencies, developmentNeeds)
+      if (formData.deliverables !== undefined) {
+        planData.deliverables = typeof formData.deliverables === 'string' 
+          ? formData.deliverables 
+          : JSON.stringify(formData.deliverables);
+      }
+      if (formData.valueGoals !== undefined) {
+        planData.valueGoals = typeof formData.valueGoals === 'string'
+          ? formData.valueGoals
+          : JSON.stringify(formData.valueGoals);
+      }
+      if (formData.competencies !== undefined) {
+        planData.competencies = typeof formData.competencies === 'string'
+          ? formData.competencies
+          : JSON.stringify(formData.competencies);
+      }
+      if (formData.developmentNeeds !== undefined) {
+        planData.developmentNeeds = typeof formData.developmentNeeds === 'string'
+          ? formData.developmentNeeds
+          : JSON.stringify(formData.developmentNeeds);
+      }
+      
+      // Set submittedAt if not draft
+      if (!isDraft) {
+        planData.submittedAt = new Date();
+      }
 
-      console.log('💾 Saving plan to database:', planData);
+      console.log('💾 Saving plan to database:', { ...planData, deliverables: '[data]', valueGoals: '[data]', competencies: '[data]', developmentNeeds: '[data]' });
 
       // Create the performance plan
       plan = await prisma.performance_plans.create({
