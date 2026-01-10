@@ -1,10 +1,11 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
+import { ExportService } from "@/lib/export-service"
 import {
   DocumentCheckIcon,
   CalendarIcon,
@@ -22,7 +23,8 @@ import {
   PrinterIcon,
   ShareIcon,
   EyeIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  ArrowDownTrayIcon
 } from "@heroicons/react/24/outline"
 
 interface AppraisalData {
@@ -100,6 +102,32 @@ export default function ViewAppraisalPage() {
   const [currentReviewerComment, setCurrentReviewerComment] = useState('')
   const [submittingWorkflow, setSubmittingWorkflow] = useState(false)
   const [workflowComments, setWorkflowComments] = useState<{supervisor: any[], reviewer: any[]}>({supervisor: [], reviewer: []})
+  const [exportingPDF, setExportingPDF] = useState(false)
+  const appraisalContentRef = useRef<HTMLDivElement>(null)
+
+  // Export appraisal to PDF
+  const handleExportPDF = async () => {
+    if (!appraisal || !appraisalContentRef.current) return
+    
+    setExportingPDF(true)
+    try {
+      const exportService = new ExportService()
+      await exportService.exportFromElement(appraisalContentRef.current.id, {
+        format: 'pdf',
+        filename: `Performance_Appraisal_${appraisal.employeeName.replace(/\s+/g, '_')}_${appraisal.period?.replace(/\s+/g, '_') || Date.now()}_${Date.now()}.pdf`,
+        title: `Performance Appraisal - ${appraisal.employeeName}`,
+        includeLogo: true,
+        includeTimestamp: true,
+        orientation: 'portrait',
+        pageSize: 'a4'
+      })
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      alert('Failed to export PDF. Please try again.')
+    } finally {
+      setExportingPDF(false)
+    }
+  }
 
   useEffect(() => {
     // Load appraisal data from API
@@ -373,16 +401,16 @@ export default function ViewAppraisalPage() {
 
   const actions = (
     <div className="flex space-x-3">
-      <button className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">
-        <PrinterIcon className="h-4 w-4 mr-2" />
-        Print
-      </button>
-      <button className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">
-        <ShareIcon className="h-4 w-4 mr-2" />
-        Share
+      <button
+        onClick={handleExportPDF}
+        disabled={exportingPDF || !appraisal}
+        className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <ArrowDownTrayIcon className={`h-4 w-4 mr-2 ${exportingPDF ? 'animate-spin' : ''}`} />
+        {exportingPDF ? 'Exporting...' : 'Export PDF'}
       </button>
       {/* Only show edit button for drafts, not for submitted appraisals when reviewing */}
-      {appraisal.status === "draft" && !isReviewContext && (
+      {appraisal && appraisal.status === "draft" && !isReviewContext && (
         <Link href={`/hr/performance/appraisals/${appraisal.id}/edit`}>
           <button className="inline-flex items-center px-3 py-2 bg-blue-600 border border-transparent rounded-md text-sm text-white hover:bg-blue-700">
             <PencilIcon className="h-4 w-4 mr-2" />

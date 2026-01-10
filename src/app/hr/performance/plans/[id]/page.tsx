@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -15,9 +15,11 @@ import {
   ArrowLeftIcon,
   ChartBarIcon,
   BuildingOfficeIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  ArrowDownTrayIcon
 } from "@heroicons/react/24/outline"
 import { useSession } from "next-auth/react"
+import { ExportService } from "@/lib/export-service"
 
 interface PlanData {
   id: string
@@ -97,6 +99,32 @@ export default function ViewPlanPage() {
   const [currentReviewerComment, setCurrentReviewerComment] = useState('')
   const [submittingWorkflow, setSubmittingWorkflow] = useState(false)
   const [workflowComments, setWorkflowComments] = useState<{supervisor: any[], reviewer: any[]}>({supervisor: [], reviewer: []})
+  const [exportingPDF, setExportingPDF] = useState(false)
+  const planContentRef = useRef<HTMLDivElement>(null)
+
+  // Export plan to PDF
+  const handleExportPDF = async () => {
+    if (!plan || !planContentRef.current) return
+    
+    setExportingPDF(true)
+    try {
+      const exportService = new ExportService()
+      await exportService.exportFromElement(planContentRef.current.id, {
+        format: 'pdf',
+        filename: `Performance_Plan_${plan.employeeName.replace(/\s+/g, '_')}_${plan.planYear}_${Date.now()}.pdf`,
+        title: `Performance Plan - ${plan.employeeName}`,
+        includeLogo: true,
+        includeTimestamp: true,
+        orientation: 'portrait',
+        pageSize: 'a4'
+      })
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      alert('Failed to export PDF. Please try again.')
+    } finally {
+      setExportingPDF(false)
+    }
+  }
 
   useEffect(() => {
     const loadPlanData = async () => {
@@ -275,7 +303,18 @@ export default function ViewPlanPage() {
 
   return (
     <ModulePage metadata={metadata}>
-      <div className="space-y-6">
+      <div className="space-y-6" id="plan-content" ref={planContentRef}>
+        {/* Export PDF Button */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={handleExportPDF}
+            disabled={exportingPDF || !plan}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowDownTrayIcon className={`h-4 w-4 mr-2 ${exportingPDF ? 'animate-spin' : ''}`} />
+            {exportingPDF ? 'Exporting...' : 'Export PDF'}
+          </button>
+        </div>
         {/* Header */}
         <div className={`rounded-lg shadow p-6 ${isReviewContext ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500' : 'bg-white'}`}>
           <div className="flex items-center justify-between mb-4">

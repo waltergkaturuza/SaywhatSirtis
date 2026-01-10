@@ -83,9 +83,10 @@ export async function GET() {
               createdAt: true,
               updatedAt: true
             },
-            orderBy: {
-              createdAt: 'desc'
-            }
+            orderBy: [
+              { submittedAt: 'desc' },
+              { createdAt: 'desc' }
+            ]
           },
           performance_appraisals: {
             select: {
@@ -106,9 +107,10 @@ export async function GET() {
                 }
               }
             },
-            orderBy: {
-              createdAt: 'desc'
-            }
+            orderBy: [
+              { submittedAt: 'desc' },
+              { createdAt: 'desc' }
+            ]
           }
         }
       });
@@ -145,9 +147,10 @@ export async function GET() {
               createdAt: true,
               updatedAt: true
             },
-            orderBy: {
-              createdAt: 'desc'
-            }
+            orderBy: [
+              { submittedAt: 'desc' },
+              { createdAt: 'desc' }
+            ]
           },
           performance_appraisals: {
             select: {
@@ -168,9 +171,10 @@ export async function GET() {
                 }
               }
             },
-            orderBy: {
-              createdAt: 'desc'
-            }
+            orderBy: [
+              { submittedAt: 'desc' },
+              { createdAt: 'desc' }
+            ]
           }
         }
       });

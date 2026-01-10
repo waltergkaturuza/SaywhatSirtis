@@ -1282,20 +1282,63 @@ export default function EmployeeProfilePage() {
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex space-x-2">
-                                  <Link
-                                    href={`/hr/performance/plans?employeeId=${employee.id}`}
-                                    className="text-blue-600 hover:text-blue-900 inline-flex items-center"
-                                    title="View Plans"
-                                  >
-                                    <DocumentTextIcon className="h-4 w-4" />
-                                  </Link>
-                                  <Link
-                                    href={`/hr/performance/appraisals?employeeId=${employee.id}`}
-                                    className="text-green-600 hover:text-green-900 inline-flex items-center"
-                                    title="View Appraisals"
-                                  >
-                                    <ClipboardDocumentCheckIcon className="h-4 w-4" />
-                                  </Link>
+                                  {/* Link to most recent submitted plan, or list if none submitted */}
+                                  {(() => {
+                                    const submittedPlans = employee.plans.filter((p: any) => p.status !== 'draft' && p.status !== 'cancelled')
+                                    const latestPlan = submittedPlans.length > 0 
+                                      ? submittedPlans.sort((a: any, b: any) => 
+                                          new Date(b.submittedAt || b.createdAt || 0).getTime() - 
+                                          new Date(a.submittedAt || a.createdAt || 0).getTime()
+                                        )[0]
+                                      : null
+                                    
+                                    return latestPlan ? (
+                                      <Link
+                                        href={`/hr/performance/plans/${latestPlan.id}`}
+                                        className="text-blue-600 hover:text-blue-900 inline-flex items-center"
+                                        title={`View ${latestPlan.planTitle || 'Latest Plan'}`}
+                                      >
+                                        <DocumentTextIcon className="h-4 w-4" />
+                                      </Link>
+                                    ) : (
+                                      <Link
+                                        href={`/hr/performance/plans?employeeId=${employee.id}`}
+                                        className="text-blue-600 hover:text-blue-900 inline-flex items-center"
+                                        title="View Plans"
+                                      >
+                                        <DocumentTextIcon className="h-4 w-4" />
+                                      </Link>
+                                    )
+                                  })()}
+                                  
+                                  {/* Link to most recent submitted appraisal, or list if none submitted */}
+                                  {(() => {
+                                    const submittedAppraisals = employee.appraisals.filter((a: any) => a.status !== 'draft' && a.status !== 'cancelled')
+                                    const latestAppraisal = submittedAppraisals.length > 0
+                                      ? submittedAppraisals.sort((a: any, b: any) => 
+                                          new Date(b.submittedAt || b.createdAt || 0).getTime() - 
+                                          new Date(a.submittedAt || a.createdAt || 0).getTime()
+                                        )[0]
+                                      : null
+                                    
+                                    return latestAppraisal ? (
+                                      <Link
+                                        href={`/hr/performance/appraisals/${latestAppraisal.id}`}
+                                        className="text-green-600 hover:text-green-900 inline-flex items-center"
+                                        title={`View ${latestAppraisal.appraisalType || 'Latest Appraisal'}`}
+                                      >
+                                        <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                                      </Link>
+                                    ) : (
+                                      <Link
+                                        href={`/hr/performance/appraisals?employeeId=${employee.id}`}
+                                        className="text-green-600 hover:text-green-900 inline-flex items-center"
+                                        title="View Appraisals"
+                                      >
+                                        <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                                      </Link>
+                                    )
+                                  })()}
                                 </div>
                               </td>
                             </tr>
