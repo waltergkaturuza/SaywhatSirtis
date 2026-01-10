@@ -144,15 +144,83 @@ export async function GET(
         strengths: [],
         areasForImprovement: []
       },
-      achievements: typeof appraisal.selfAssessments === 'object' && appraisal.selfAssessments !== null
-        ? (appraisal.selfAssessments as any)
-        : { keyResponsibilities: [] },
-      development: typeof appraisal.valueGoalsAssessments === 'object' && appraisal.valueGoalsAssessments !== null
-        ? (appraisal.valueGoalsAssessments as any)
-        : { trainingNeeds: [], careerAspirations: '', skillsToImprove: [], developmentPlan: [] },
-      comments: typeof appraisal.comments === 'object' && appraisal.comments !== null
-        ? (appraisal.comments as any)
-        : { employeeComments: '', managerComments: '', hrComments: '' },
+      achievements: (() => {
+        if (!appraisal.selfAssessments) return { keyResponsibilities: [] };
+        if (typeof appraisal.selfAssessments === 'object' && appraisal.selfAssessments !== null) {
+          return appraisal.selfAssessments as any;
+        }
+        if (typeof appraisal.selfAssessments === 'string') {
+          try {
+            return JSON.parse(appraisal.selfAssessments);
+          } catch {
+            return { keyResponsibilities: [] };
+          }
+        }
+        return { keyResponsibilities: [] };
+      })(),
+      development: (() => {
+        if (!appraisal.valueGoalsAssessments) return { trainingNeeds: [], careerAspirations: '', skillsToImprove: [], developmentPlan: [] };
+        if (typeof appraisal.valueGoalsAssessments === 'object' && appraisal.valueGoalsAssessments !== null) {
+          return appraisal.valueGoalsAssessments as any;
+        }
+        if (typeof appraisal.valueGoalsAssessments === 'string') {
+          try {
+            return JSON.parse(appraisal.valueGoalsAssessments);
+          } catch {
+            return { trainingNeeds: [], careerAspirations: '', skillsToImprove: [], developmentPlan: [] };
+          }
+        }
+        return { trainingNeeds: [], careerAspirations: '', skillsToImprove: [], developmentPlan: [] };
+      })(),
+      comments: (() => {
+        if (!appraisal.comments) return { employeeComments: '', managerComments: '', hrComments: '', supervisor: [], reviewer: [] };
+        
+        let parsed: any;
+        if (typeof appraisal.comments === 'object' && appraisal.comments !== null) {
+          parsed = appraisal.comments;
+        } else if (typeof appraisal.comments === 'string') {
+          try {
+            parsed = JSON.parse(appraisal.comments);
+          } catch {
+            return { employeeComments: '', managerComments: '', hrComments: '', supervisor: [], reviewer: [] };
+          }
+        } else {
+          return { employeeComments: '', managerComments: '', hrComments: '', supervisor: [], reviewer: [] };
+        }
+        
+        // Handle both structures: workflow comments (arrays) and form comments (strings)
+        const comments: any = {
+          employeeComments: parsed.employeeComments || '',
+          managerComments: parsed.managerComments || parsed.supervisorComments || '',
+          hrComments: parsed.hrComments || parsed.reviewerComments || '',
+          supervisorComments: parsed.supervisorComments || parsed.managerComments || '',
+          reviewerComments: parsed.reviewerComments || parsed.hrComments || '',
+          supervisor: Array.isArray(parsed.supervisor) ? parsed.supervisor : [],
+          reviewer: Array.isArray(parsed.reviewer) ? parsed.reviewer : []
+        };
+        
+        // If we have workflow comments (arrays), extract the latest comment text for display
+        if (comments.supervisor.length > 0) {
+          const latestSupervisorComment = comments.supervisor[comments.supervisor.length - 1];
+          if (latestSupervisorComment?.comment && !comments.supervisorComments) {
+            comments.supervisorComments = latestSupervisorComment.comment;
+          }
+          if (latestSupervisorComment?.comment && !comments.managerComments) {
+            comments.managerComments = latestSupervisorComment.comment;
+          }
+        }
+        if (comments.reviewer.length > 0) {
+          const latestReviewerComment = comments.reviewer[comments.reviewer.length - 1];
+          if (latestReviewerComment?.comment && !comments.reviewerComments) {
+            comments.reviewerComments = latestReviewerComment.comment;
+          }
+          if (latestReviewerComment?.comment && !comments.hrComments) {
+            comments.hrComments = latestReviewerComment.comment;
+          }
+        }
+        
+        return comments;
+      })(),
       ratings: {
         finalRating: appraisal.overallRating || 0,
         actualPoints: 0,

@@ -916,12 +916,23 @@ function PerformancePlansContent() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center space-x-2">
-                              <Link href={`/hr/performance/plans/create?planId=${plan.id}`}>
-                                <button className="text-orange-600 hover:text-orange-900 transition-colors" title="View Performance Plan">
-                                  <EyeIcon className="h-4 w-4" />
-                                </button>
-                              </Link>
-                              {(plan.employeeId === session?.user?.id || userRole.canSeeAllPlans) && (
+                              {/* View button - always link to dedicated view page for submitted/approved plans */}
+                              {/* For draft plans, supervisors/reviewers should also use view page to see submitted data */}
+                              {plan.status === 'draft' && (plan.employeeId === session?.user?.id || userRole.canSeeAllPlans) ? (
+                                <Link href={`/hr/performance/plans/create?planId=${plan.id}&edit=true`}>
+                                  <button className="text-orange-600 hover:text-orange-900 transition-colors" title="Edit Performance Plan">
+                                    <EyeIcon className="h-4 w-4" />
+                                  </button>
+                                </Link>
+                              ) : (
+                                <Link href={`/hr/performance/plans/${plan.id}`}>
+                                  <button className="text-orange-600 hover:text-orange-900 transition-colors" title="View Performance Plan">
+                                    <EyeIcon className="h-4 w-4" />
+                                  </button>
+                                </Link>
+                              )}
+                              {/* Edit button - only show for drafts owned by current user or HR */}
+                              {plan.status === 'draft' && (plan.employeeId === session?.user?.id || userRole.canSeeAllPlans) && (
                                 <Link href={`/hr/performance/plans/create?planId=${plan.id}&edit=true`}>
                                   <button className="text-gray-600 hover:text-black transition-colors" title="Edit Performance Plan">
                                     <PencilIcon className="h-4 w-4" />

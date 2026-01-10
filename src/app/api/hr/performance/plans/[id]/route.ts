@@ -93,12 +93,90 @@ export async function GET(
         jobTitle: plan.employees.job_descriptions.jobTitle,
         keyResponsibilities: plan.employees.job_descriptions.keyResponsibilities,
       } : null,
-      // Map deliverables to keyResponsibilities structure
-      deliverables: plan.deliverables ? (typeof plan.deliverables === 'string' ? JSON.parse(plan.deliverables) : plan.deliverables) : [],
-      valueGoals: plan.valueGoals ? (typeof plan.valueGoals === 'string' ? JSON.parse(plan.valueGoals) : plan.valueGoals) : [],
-      competencies: plan.competencies ? (typeof plan.competencies === 'string' ? JSON.parse(plan.competencies) : plan.competencies) : [],
-      developmentNeeds: plan.developmentNeeds ? (typeof plan.developmentNeeds === 'string' ? JSON.parse(plan.developmentNeeds) : plan.developmentNeeds) : [],
-      comments: plan.comments ? (typeof plan.comments === 'string' ? JSON.parse(plan.comments) : plan.comments) : { employeeComments: '', supervisorComments: '', reviewerComments: '' },
+      // Map deliverables to keyResponsibilities structure - handle both JSON objects and strings
+      deliverables: (() => {
+        if (!plan.deliverables) return [];
+        if (typeof plan.deliverables === 'string') {
+          try {
+            return JSON.parse(plan.deliverables);
+          } catch {
+            return [];
+          }
+        }
+        return Array.isArray(plan.deliverables) ? plan.deliverables : (typeof plan.deliverables === 'object' ? plan.deliverables : []);
+      })(),
+      valueGoals: (() => {
+        if (!plan.valueGoals) return [];
+        if (typeof plan.valueGoals === 'string') {
+          try {
+            return JSON.parse(plan.valueGoals);
+          } catch {
+            return [];
+          }
+        }
+        return Array.isArray(plan.valueGoals) ? plan.valueGoals : (typeof plan.valueGoals === 'object' ? plan.valueGoals : []);
+      })(),
+      competencies: (() => {
+        if (!plan.competencies) return [];
+        if (typeof plan.competencies === 'string') {
+          try {
+            return JSON.parse(plan.competencies);
+          } catch {
+            return [];
+          }
+        }
+        return Array.isArray(plan.competencies) ? plan.competencies : (typeof plan.competencies === 'object' ? plan.competencies : []);
+      })(),
+      developmentNeeds: (() => {
+        if (!plan.developmentNeeds) return [];
+        if (typeof plan.developmentNeeds === 'string') {
+          try {
+            return JSON.parse(plan.developmentNeeds);
+          } catch {
+            return [];
+          }
+        }
+        return Array.isArray(plan.developmentNeeds) ? plan.developmentNeeds : (typeof plan.developmentNeeds === 'object' ? plan.developmentNeeds : []);
+      })(),
+      comments: (() => {
+        if (!plan.comments) return { employeeComments: '', supervisorComments: '', reviewerComments: '', supervisor: [], reviewer: [] };
+        
+        let parsed: any;
+        if (typeof plan.comments === 'string') {
+          try {
+            parsed = JSON.parse(plan.comments);
+          } catch {
+            return { employeeComments: '', supervisorComments: '', reviewerComments: '', supervisor: [], reviewer: [] };
+          }
+        } else {
+          parsed = plan.comments;
+        }
+        
+        // Handle both structures: workflow comments (arrays) and form comments (strings)
+        const comments: any = {
+          employeeComments: parsed.employeeComments || '',
+          supervisorComments: parsed.supervisorComments || '',
+          reviewerComments: parsed.reviewerComments || '',
+          supervisor: Array.isArray(parsed.supervisor) ? parsed.supervisor : [],
+          reviewer: Array.isArray(parsed.reviewer) ? parsed.reviewer : []
+        };
+        
+        // If we have workflow comments (arrays), extract the latest comment text for display
+        if (comments.supervisor.length > 0) {
+          const latestSupervisorComment = comments.supervisor[comments.supervisor.length - 1];
+          if (latestSupervisorComment?.comment && !comments.supervisorComments) {
+            comments.supervisorComments = latestSupervisorComment.comment;
+          }
+        }
+        if (comments.reviewer.length > 0) {
+          const latestReviewerComment = comments.reviewer[comments.reviewer.length - 1];
+          if (latestReviewerComment?.comment && !comments.reviewerComments) {
+            comments.reviewerComments = latestReviewerComment.comment;
+          }
+        }
+        
+        return comments;
+      })(),
       supervisorApproval: plan.supervisorApproval || 'pending',
       reviewerApproval: plan.reviewerApproval || 'pending',
       supervisorApprovedAt: plan.supervisorApprovedAt,

@@ -53,8 +53,19 @@ export async function POST(
     }
 
     // Verify permissions
-    const isSupervisor = plan.supervisorId === employee.id
-    const isReviewer = plan.reviewerId === employee.id
+    // Note: supervisorId and reviewerId are USER IDs, not employee IDs
+    const userId = session.user.id;
+    const isSupervisor = plan.supervisorId === userId;
+    const isReviewer = plan.reviewerId === userId;
+    
+    console.log('Workflow permission check:', {
+      userId: userId,
+      planSupervisorId: plan.supervisorId,
+      planReviewerId: plan.reviewerId,
+      isSupervisor,
+      isReviewer,
+      employeeId: employee.id
+    });
     const isHR = session.user.roles?.some(r => [
       'HR',
       'admin',

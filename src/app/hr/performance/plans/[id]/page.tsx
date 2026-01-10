@@ -14,8 +14,10 @@ import {
   PencilIcon,
   ArrowLeftIcon,
   ChartBarIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  ChatBubbleLeftRightIcon
 } from "@heroicons/react/24/outline"
+import { useSession } from "next-auth/react"
 
 interface PlanData {
   id: string
@@ -48,6 +50,8 @@ interface PlanData {
     employeeComments: string
     supervisorComments: string
     reviewerComments: string
+    supervisor?: any[]
+    reviewer?: any[]
   }
   supervisorApproval: string
   reviewerApproval: string
@@ -81,11 +85,18 @@ const fetchPlanData = async (planId: string): Promise<PlanData | null> => {
 export default function ViewPlanPage() {
   const params = useParams()
   const router = useRouter()
+  const { data: session } = useSession()
   const planId = params.id as string
   
   const [plan, setPlan] = useState<PlanData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isSupervisor, setIsSupervisor] = useState(false)
+  const [isReviewer, setIsReviewer] = useState(false)
+  const [currentSupervisorComment, setCurrentSupervisorComment] = useState('')
+  const [currentReviewerComment, setCurrentReviewerComment] = useState('')
+  const [submittingWorkflow, setSubmittingWorkflow] = useState(false)
+  const [workflowComments, setWorkflowComments] = useState<{supervisor: any[], reviewer: any[]}>({supervisor: [], reviewer: []})
 
   useEffect(() => {
     const loadPlanData = async () => {
@@ -96,6 +107,21 @@ export default function ViewPlanPage() {
         
         if (planData) {
           setPlan(planData)
+          
+          // Check if current user is supervisor or reviewer
+          // Note: supervisorId and reviewerId are user IDs
+          if (session?.user?.id) {
+            setIsSupervisor(planData.supervisorId === session.user.id)
+            setIsReviewer(planData.reviewerId === session.user.id)
+          }
+          
+          // Load workflow comments if they exist
+          if (planData.comments?.supervisor || planData.comments?.reviewer) {
+            setWorkflowComments({
+              supervisor: Array.isArray(planData.comments.supervisor) ? planData.comments.supervisor : [],
+              reviewer: Array.isArray(planData.comments.reviewer) ? planData.comments.reviewer : []
+            })
+          }
         } else {
           setError('Performance plan not found')
         }
@@ -110,7 +136,67 @@ export default function ViewPlanPage() {
     if (planId) {
       loadPlanData()
     }
-  }, [planId])
+  }, [planId, session?.user?.id])
+  
+  // Handle workflow action (comment, approve, request_changes)
+  const handleWorkflowAction = async (action: 'comment' | 'request_changes' | 'approve' | 'final_approve', role: 'supervisor' | 'reviewer') => {
+    if (!plan) return
+    
+    const comment = role === 'supervisor' ? currentSupervisorComment : currentReviewerComment
+    
+    if (action === 'request_changes' && !comment) {
+      alert('Please provide feedback when requesting changes.')
+      return
+    }
+    
+    setSubmittingWorkflow(true)
+    try {
+      const response = await fetch(`/api/hr/performance/plans/${plan.id}/workflow`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          comment,
+          role
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to process workflow action')
+      }
+
+      const result = await response.json()
+      
+      // Reload plan data to get updated comments
+      const updatedPlan = await fetchPlanData(planId)
+      if (updatedPlan) {
+        setPlan(updatedPlan)
+        if (updatedPlan.comments?.supervisor || updatedPlan.comments?.reviewer) {
+          setWorkflowComments({
+            supervisor: Array.isArray(updatedPlan.comments.supervisor) ? updatedPlan.comments.supervisor : [],
+            reviewer: Array.isArray(updatedPlan.comments.reviewer) ? updatedPlan.comments.reviewer : []
+          })
+        }
+      }
+      
+      // Clear current comment
+      if (role === 'supervisor') {
+        setCurrentSupervisorComment('')
+      } else {
+        setCurrentReviewerComment('')
+      }
+      
+      alert(result.message || 'Action completed successfully')
+    } catch (error) {
+      console.error('Error processing workflow action:', error)
+      alert(error instanceof Error ? error.message : 'Failed to process workflow action')
+    } finally {
+      setSubmittingWorkflow(false)
+    }
+  }
 
   const metadata = {
     title: `Performance Plan - ${plan?.employeeName || 'Loading...'}`,
@@ -291,27 +377,174 @@ export default function ViewPlanPage() {
 
         {/* Comments */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Comments</h2>
-          <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Comments & Feedback</h2>
+          <div className="space-y-6">
+            {/* Employee Comments */}
             {plan.comments?.employeeComments && (
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Employee Comments</h3>
                 <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{plan.comments.employeeComments}</p>
               </div>
             )}
-            {plan.comments?.supervisorComments && (
+            
+            {/* Supervisor Comments History */}
+            {workflowComments.supervisor && workflowComments.supervisor.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Supervisor Comments</h3>
-                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{plan.comments.supervisorComments}</p>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Supervisor Comments History</h3>
+                <div className="space-y-3">
+                  {workflowComments.supervisor.map((comment: any, index: number) => (
+                    <div key={comment.id || index} className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-semibold text-gray-900">{comment.name || 'Supervisor'}</span>
+                          <span className="text-xs text-gray-500">
+                            {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          comment.action === 'approve' ? 'bg-green-100 text-green-800' :
+                          comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
+                        </span>
+                      </div>
+                      {comment.comment && (
+                        <p className="text-sm text-gray-700">{comment.comment}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-            {plan.comments?.reviewerComments && (
+            
+            {/* Reviewer Comments History */}
+            {workflowComments.reviewer && workflowComments.reviewer.length > 0 && (
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Reviewer Comments</h3>
-                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{plan.comments.reviewerComments}</p>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Reviewer Comments History</h3>
+                <div className="space-y-3">
+                  {workflowComments.reviewer.map((comment: any, index: number) => (
+                    <div key={comment.id || index} className="border-l-4 border-green-500 pl-4 py-2 bg-green-50 rounded">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-semibold text-gray-900">{comment.name || 'Reviewer'}</span>
+                          <span className="text-xs text-gray-500">
+                            {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          comment.action === 'final_approve' ? 'bg-green-100 text-green-800' :
+                          comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
+                        </span>
+                      </div>
+                      {comment.comment && (
+                        <p className="text-sm text-gray-700">{comment.comment}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-            {(!plan.comments?.employeeComments && !plan.comments?.supervisorComments && !plan.comments?.reviewerComments) && (
+            
+            {/* Fallback to simple comments if workflow comments don't exist */}
+            {workflowComments.supervisor.length === 0 && workflowComments.reviewer.length === 0 && (
+              <>
+                {plan.comments?.supervisorComments && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Supervisor Comments</h3>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{plan.comments.supervisorComments}</p>
+                  </div>
+                )}
+                {plan.comments?.reviewerComments && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Reviewer Comments</h3>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{plan.comments.reviewerComments}</p>
+                  </div>
+                )}
+              </>
+            )}
+            
+            {/* Supervisor/Comment Action Panel - Only show for submitted plans and if user is supervisor/reviewer */}
+            {plan.status !== 'draft' && (isSupervisor || isReviewer) && (
+              <div className="border-t pt-6 mt-6">
+                {isSupervisor && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-medium text-gray-900 mb-3">Add Supervisor Comment</h3>
+                    <textarea
+                      value={currentSupervisorComment}
+                      onChange={(e) => setCurrentSupervisorComment(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Provide feedback on this performance plan..."
+                    />
+                    <div className="flex space-x-2 mt-3">
+                      <button
+                        onClick={() => handleWorkflowAction('comment', 'supervisor')}
+                        disabled={submittingWorkflow || !currentSupervisorComment}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Add Comment
+                      </button>
+                      <button
+                        onClick={() => handleWorkflowAction('approve', 'supervisor')}
+                        disabled={submittingWorkflow}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
+                        disabled={submittingWorkflow || !currentSupervisorComment}
+                        className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Request Changes
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {isReviewer && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900 mb-3">Add Reviewer Comment</h3>
+                    <textarea
+                      value={currentReviewerComment}
+                      onChange={(e) => setCurrentReviewerComment(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                      placeholder="Provide final review feedback..."
+                    />
+                    <div className="flex space-x-2 mt-3">
+                      <button
+                        onClick={() => handleWorkflowAction('comment', 'reviewer')}
+                        disabled={submittingWorkflow || !currentReviewerComment}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Add Comment
+                      </button>
+                      <button
+                        onClick={() => handleWorkflowAction('final_approve', 'reviewer')}
+                        disabled={submittingWorkflow}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Final Approve
+                      </button>
+                      <button
+                        onClick={() => handleWorkflowAction('request_changes', 'reviewer')}
+                        disabled={submittingWorkflow || !currentReviewerComment}
+                        className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Request Changes
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {!plan.comments?.employeeComments && workflowComments.supervisor.length === 0 && workflowComments.reviewer.length === 0 && !plan.comments?.supervisorComments && !plan.comments?.reviewerComments && (
               <p className="text-sm text-gray-500 italic">No comments yet.</p>
             )}
           </div>

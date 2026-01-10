@@ -594,12 +594,15 @@ export default function PerformanceAppraisalsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex items-center space-x-2">
+                              {/* View button - always link to dedicated view page for submitted/approved appraisals */}
                               <Link href={`/hr/performance/appraisals/${appraisal.id}`}>
                                 <button className="text-orange-600 hover:text-orange-900 transition-colors" title="View Appraisal">
                                   <EyeIcon className="h-4 w-4" />
                                 </button>
                               </Link>
-                              {(appraisal.status === 'draft' || canViewAllAppraisals || appraisal.status === 'submitted') && (
+                              {/* Edit button - only show for drafts owned by current user or HR */}
+                              {/* Supervisors/reviewers should use view page to see submitted data and add comments */}
+                              {appraisal.status === 'draft' && (canViewAllAppraisals || appraisal.employeeId === session?.user?.id) && (
                                 <Link href={`/hr/performance/appraisals/${appraisal.id}/edit`}>
                                   <button className="text-gray-600 hover:text-black transition-colors" title="Edit Appraisal">
                                     <PencilIcon className="h-4 w-4" />
