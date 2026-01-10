@@ -98,6 +98,8 @@ export interface AppraisalFormData {
   }
   status?: string
   workflowStatus?: string
+  appraisalType?: string
+  recommendations?: any
   submittedAt?: string
   approvedAt?: string
   createdAt?: string

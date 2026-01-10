@@ -366,7 +366,6 @@ function CreateAppraisalContent() {
             },
             status: appraisalDataForForm.status || 'draft',
             workflowStatus: appraisalDataForForm.status || 'draft',
-            period: appraisalDataForForm.period || formData.period,
             appraisalType: appraisalDataForForm.appraisalType || 'annual'
           })
           
