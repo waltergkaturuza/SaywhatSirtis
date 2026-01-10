@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { validatePerformanceAppraisal, formatValidationErrors } from '@/lib/validations/performance-validations';
 
 export async function GET(request: NextRequest) {
   try {
@@ -241,6 +242,82 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
         }
 
+        // Combine comments, ratings, and recommendations first (needed for validation)
+        const combinedComments = comments || {};
+        if (ratings) {
+          combinedComments.ratings = ratings;
+        }
+        if (recommendations) {
+          combinedComments.recommendations = recommendations;
+        }
+
+        // Validate appraisal data if submitting (not draft)
+        if (status === 'submitted' && existingAppraisal.status !== 'submitted') {
+          // Parse existing data for validation
+          let existingAchievements: any = {};
+          if (existingAppraisal.selfAssessments) {
+            if (typeof existingAppraisal.selfAssessments === 'string') {
+              try {
+                existingAchievements = JSON.parse(existingAppraisal.selfAssessments);
+              } catch {
+                existingAchievements = {};
+              }
+            } else {
+              existingAchievements = existingAppraisal.selfAssessments;
+            }
+          }
+
+          let existingDevelopment: any = {};
+          if (existingAppraisal.valueGoalsAssessments) {
+            if (typeof existingAppraisal.valueGoalsAssessments === 'string') {
+              try {
+                existingDevelopment = JSON.parse(existingAppraisal.valueGoalsAssessments);
+              } catch {
+                existingDevelopment = {};
+              }
+            } else {
+              existingDevelopment = existingAppraisal.valueGoalsAssessments;
+            }
+          }
+
+          // Get plan data for review period
+          const plan = await prisma.performance_plans.findUnique({
+            where: { id: existingAppraisal.planId },
+            select: { startDate: true, endDate: true, reviewStartDate: true, reviewEndDate: true }
+          });
+
+          // Build full appraisal data object for validation
+          const fullAppraisalData = {
+            id: existingAppraisal.id,
+            employee: {
+              id: employeeRecord.employeeId || employeeRecord.id,
+              email: employeeRecord.email || employee?.email || '',
+              reviewPeriod: {
+                startDate: plan?.reviewStartDate?.toISOString().split('T')[0] || plan?.startDate?.toISOString().split('T')[0] || '',
+                endDate: plan?.reviewEndDate?.toISOString().split('T')[0] || plan?.endDate?.toISOString().split('T')[0] || ''
+              }
+            },
+            achievements: achievements || existingAchievements,
+            performance: {
+              categories: ratings?.categories || [],
+              overallRating: ratings?.overall !== undefined ? ratings.overall : (existingAppraisal.overallRating || 0)
+            },
+            development: development || existingDevelopment,
+            comments: combinedComments,
+            ratings: ratings || {}
+          };
+          
+          const validation = validatePerformanceAppraisal(fullAppraisalData);
+          if (!validation.isValid) {
+            return NextResponse.json({
+              success: false,
+              error: 'Validation failed',
+              errors: validation.errors,
+              message: formatValidationErrors(validation.errors)
+            }, { status: 400 });
+          }
+        }
+
         // Prepare update data - ensure all fields are properly saved
         const updateData: any = {
           status: status || existingAppraisal.status,
@@ -270,14 +347,6 @@ export async function POST(request: NextRequest) {
             : (development !== null ? JSON.stringify(development) : existingAppraisal.valueGoalsAssessments || {});
         }
 
-        // Combine comments, ratings, and recommendations
-        const combinedComments = comments || {};
-        if (ratings) {
-          combinedComments.ratings = ratings;
-        }
-        if (recommendations) {
-          combinedComments.recommendations = recommendations;
-        }
         updateData.comments = typeof combinedComments === 'string'
           ? combinedComments
           : (Object.keys(combinedComments).length > 0 ? JSON.stringify(combinedComments) : (existingAppraisal.comments || {}));
@@ -485,6 +554,38 @@ export async function POST(request: NextRequest) {
         data: updateData
       });
     } else {
+      // Validate appraisal data if submitting (not draft)
+      if (status === 'submitted') {
+        const fullAppraisalData = {
+          employee: {
+            id: employeeRecord.employeeId || employeeRecord.id,
+            email: employeeRecord.email || employee?.email || '',
+            reviewPeriod: employee?.reviewPeriod || {
+              startDate: performancePlan.startDate?.toISOString().split('T')[0] || '',
+              endDate: performancePlan.endDate?.toISOString().split('T')[0] || ''
+            }
+          },
+          achievements: achievements || {},
+          performance: {
+            categories: ratings?.categories || [],
+            overallRating: ratings?.overall || 0
+          },
+          development: development || {},
+          comments: comments || {},
+          ratings: ratings || {}
+        };
+        
+        const validation = validatePerformanceAppraisal(fullAppraisalData);
+        if (!validation.isValid) {
+          return NextResponse.json({
+            success: false,
+            error: 'Validation failed',
+            errors: validation.errors,
+            message: formatValidationErrors(validation.errors)
+          }, { status: 400 });
+        }
+      }
+
       // Check if there's a submitted appraisal for the same period
       const existingSubmitted = await prisma.performance_appraisals.findFirst({
         where: {

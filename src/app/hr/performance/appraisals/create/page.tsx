@@ -525,7 +525,17 @@ function CreateAppraisalContent() {
       console.log('API Response:', result)
 
       if (!response.ok) {
-        throw new Error(result.error || result.details || 'Failed to submit appraisal')
+        if (response.status === 400 && result.errors) {
+          // Validation errors - display them in a user-friendly way
+          const errorMessages = result.errors.map((err: any) => `• ${err.message} (${err.field})`).join('\n')
+          const fullMessage = `Please fix the following errors before submitting:\n\n${errorMessages}\n\n${result.message || ''}`
+          showError(
+            'Validation Failed',
+            fullMessage
+          )
+          throw new Error(result.message || 'Validation failed. Please check all required fields are completed.')
+        }
+        throw new Error(result.error || result.details || result.message || 'Failed to submit appraisal')
       }
 
       showSuccess(

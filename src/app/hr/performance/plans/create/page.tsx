@@ -683,8 +683,15 @@ function CreatePerformancePlanPageContent() {
         // Handle different error types
         if (response.status === 401) {
           alert('Authentication required. Please log in to create performance plans. Visit /auth/signin to authenticate.')
+        } else if (response.status === 400 && result.errors) {
+          // Validation errors - display them in a user-friendly way
+          const errorMessages = result.errors.map((err: any) => `• ${err.message} (${err.field})`).join('\n')
+          alert(`Please fix the following errors before submitting:\n\n${errorMessages}\n\n${result.message || ''}`)
+          setError(`Validation failed: ${result.message || 'Please check all required fields are completed.'}`)
         } else {
-          alert(result.error || result.message || 'Failed to submit performance plan')
+          const errorMsg = result.message || result.error || 'Failed to submit performance plan'
+          alert(errorMsg)
+          setError(errorMsg)
         }
       }
     } catch (error) {

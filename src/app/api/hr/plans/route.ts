@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { validatePerformancePlan, formatValidationErrors, ValidationResult } from "@/lib/validations/performance-validations";
 
 export async function GET(request: NextRequest) {
   try {
@@ -104,6 +105,19 @@ export async function POST(request: NextRequest) {
       if (existingPlan.status !== 'draft' && isDraft && !isHR) {
         // Only owner can continue editing as draft even if previously submitted
         // This allows users to make revisions after submission
+      }
+
+      // Validate plan data if submitting (not draft)
+      if (!isDraft && formData.status === 'submitted') {
+        const validation = validatePerformancePlan(formData);
+        if (!validation.isValid) {
+          return NextResponse.json({
+            success: false,
+            error: 'Validation failed',
+            errors: validation.errors,
+            message: formatValidationErrors(validation.errors)
+          }, { status: 400 });
+        }
       }
 
       // Prepare update data with ALL fields from formData
@@ -225,6 +239,19 @@ export async function POST(request: NextRequest) {
           status: updatedPlan.status
         }
       });
+    }
+
+    // Validate plan data if submitting (not draft)
+    if (!isDraft && formData.status === 'submitted') {
+      const validation = validatePerformancePlan(formData);
+      if (!validation.isValid) {
+        return NextResponse.json({
+          success: false,
+          error: 'Validation failed',
+          errors: validation.errors,
+          message: formatValidationErrors(validation.errors)
+        }, { status: 400 });
+      }
     }
 
     // Validate required fields for new plan creation
