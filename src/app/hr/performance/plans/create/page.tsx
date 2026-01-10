@@ -346,7 +346,9 @@ function CreatePerformancePlanPageContent() {
               const employeeResponse = await fetch(`/api/hr/employees/by-email/${encodeURIComponent(session.user.email || '')}`)
               if (employeeResponse.ok) {
                 const employeeData = await employeeResponse.json()
+                // employeeId is an employee ID, so compare with employee record id
                 isOwner = employeeData.id === planData.employeeId
+                console.log('Ownership check:', { employeeDataId: employeeData.id, planEmployeeId: planData.employeeId, isOwner })
               }
             } catch (err) {
               console.error('Error checking employee ownership:', err)

@@ -251,12 +251,15 @@ function CreateAppraisalContent() {
             
             // Check if user is the employee owner by comparing employeeId with user's employee record
             let isOwner = false
-            if (appraisalData.employeeId || appraisalData.employee?.id) {
+            const appraisalEmployeeId = appraisalData.employeeId || appraisalData.employee?.id
+            if (appraisalEmployeeId) {
               try {
                 const employeeResponse = await fetch(`/api/hr/employees/by-email/${encodeURIComponent(session.user.email || '')}`)
                 if (employeeResponse.ok) {
                   const employeeData = await employeeResponse.json()
-                  isOwner = employeeData.id === (appraisalData.employeeId || appraisalData.employee?.id)
+                  // employeeId is an employee ID, so compare with employee record id
+                  isOwner = employeeData.id === appraisalEmployeeId
+                  console.log('Ownership check:', { employeeDataId: employeeData.id, appraisalEmployeeId, isOwner })
                 }
               } catch (err) {
                 console.error('Error checking employee ownership:', err)
