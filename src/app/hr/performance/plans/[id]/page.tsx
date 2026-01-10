@@ -110,7 +110,7 @@ export default function ViewPlanPage() {
     try {
       // Ensure element has an ID for export
       if (!planContentRef.current.id) {
-        planContentRef.current.id = 'plan-content'
+        planContentRef.current.id = 'plan-content-to-export'
       }
       
       await exportService.exportFromElement(planContentRef.current.id, {
@@ -319,7 +319,7 @@ export default function ViewPlanPage() {
         </button>
       </div>
       
-      <div className="space-y-6" id="plan-content" ref={planContentRef}>
+      <div className="space-y-6" id="plan-content-to-export" ref={planContentRef}>
         {/* Header */}
         <div className={`rounded-lg shadow p-6 ${isReviewContext ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500' : 'bg-white'}`}>
           <div className="flex items-center justify-between mb-4">
@@ -440,6 +440,59 @@ export default function ViewPlanPage() {
               {plan.valueGoals.map((goal: any, index: number) => (
                 <div key={index} className="border-l-4 border-orange-500 pl-4 py-2">
                   <p className="text-sm text-gray-900">{goal.title || goal.description || goal}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Competencies / Behavioral Expectations */}
+        {plan.competencies && Array.isArray(plan.competencies) && plan.competencies.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Competencies & Behavioral Expectations</h2>
+            <div className="space-y-3">
+              {plan.competencies.map((competency: any, index: number) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">
+                    {competency.title || competency.name || competency.competency || `Competency ${index + 1}`}
+                  </h3>
+                  {competency.description && (
+                    <p className="text-sm text-gray-600">{competency.description}</p>
+                  )}
+                  {competency.level && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Expected Level: {competency.level}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Development Needs */}
+        {plan.developmentNeeds && Array.isArray(plan.developmentNeeds) && plan.developmentNeeds.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Development Needs</h2>
+            <div className="space-y-4">
+              {plan.developmentNeeds.map((need: any, index: number) => (
+                <div key={index} className="border-l-4 border-blue-500 pl-4 py-3 bg-blue-50 rounded">
+                  <h3 className="text-sm font-medium text-gray-900 mb-1">
+                    {need.area || need.title || need.need || `Development Area ${index + 1}`}
+                  </h3>
+                  {need.description && (
+                    <p className="text-sm text-gray-600 mt-1">{need.description}</p>
+                  )}
+                  {need.timeline && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Timeline: {need.timeline}
+                    </p>
+                  )}
+                  {need.resources && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Resources: {need.resources}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

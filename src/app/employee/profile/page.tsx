@@ -35,6 +35,7 @@ import EmployeeDocumentsSection from "@/components/employee/EmployeeDocumentsSec
 import TwoFactorSetup from "@/components/auth/TwoFactorSetup";
 
 interface ProfileData {
+  id?: string;
   employeeId: string;
   firstName: string;
   lastName: string;
@@ -110,6 +111,12 @@ export default function EmployeeProfilePage() {
   
   // Tab state
   const [activeTab, setActiveTab] = useState('personal');
+  const [performanceHistoryTab, setPerformanceHistoryTab] = useState<'plans' | 'appraisals'>('plans');
+  
+  // Performance history state
+  const [performancePlans, setPerformancePlans] = useState<any[]>([]);
+  const [performanceAppraisals, setPerformanceAppraisals] = useState<any[]>([]);
+  const [loadingPerformanceHistory, setLoadingPerformanceHistory] = useState(false);
   
   const [formData, setFormData] = useState({
     phoneNumber: '',
@@ -284,6 +291,106 @@ export default function EmployeeProfilePage() {
     }
   };
 
+  const loadPerformanceHistory = async () => {
+    try {
+      setLoadingPerformanceHistory(true);
+      
+      // Load plans and appraisals in parallel
+      // Plans API already filters by current employee
+      // Appraisals API returns all appraisals (including where user is supervisor/reviewer), so we filter on frontend
+      const [plansResponse, appraisalsResponse] = await Promise.all([
+        fetch('/api/employee/performance/plans'),
+        fetch('/api/employee/performance/appraisals')
+      ]);
+      
+      if (plansResponse.ok) {
+        const plansData = await plansResponse.json();
+        console.log('Performance plans data:', plansData);
+        // Transform plans data to include status information
+        const transformedPlans = Array.isArray(plansData) ? plansData.map((plan: any) => ({
+          id: plan.id,
+          planTitle: plan.planTitle || plan.title || 'Untitled Plan',
+          planYear: plan.planYear || new Date(plan.createdAt || Date.now()).getFullYear(),
+          planPeriod: plan.planPeriod || (plan.startDate && plan.endDate ? `${new Date(plan.startDate).toLocaleDateString()} - ${new Date(plan.endDate).toLocaleDateString()}` : 'N/A'),
+          startDate: plan.startDate,
+          endDate: plan.endDate,
+          status: plan.status || 'draft',
+          supervisorApproval: plan.supervisorApproval || 'pending',
+          reviewerApproval: plan.reviewerApproval || 'pending',
+          supervisorApprovedAt: plan.supervisorApprovedAt,
+          reviewerApprovedAt: plan.reviewerApprovedAt,
+          submittedAt: plan.submittedAt,
+          createdAt: plan.createdAt,
+          updatedAt: plan.updatedAt
+        })) : [];
+        console.log('Transformed plans:', transformedPlans);
+        setPerformancePlans(transformedPlans);
+      } else {
+        console.error('Failed to load plans:', await plansResponse.text());
+      }
+      
+      if (appraisalsResponse.ok) {
+        const appraisalsData = await appraisalsResponse.json();
+        console.log('Performance appraisals data:', appraisalsData);
+        // Get current employee ID from profile
+        const currentEmployeeId = profile?.id;
+        console.log('Current employee ID:', currentEmployeeId);
+        
+        // Filter only appraisals where the current employee is the subject (not supervisor/reviewer)
+        // The API returns appraisals where employee is subject, supervisor, or reviewer
+        // We only want appraisals where employeeId matches the current employee's ID
+        const myAppraisals = Array.isArray(appraisalsData) ? appraisalsData
+          .filter((appraisal: any) => {
+            // Only include appraisals where employeeId matches the current employee
+            // Exclude appraisals where they're supervisor or reviewer
+            const isMyAppraisal = currentEmployeeId && appraisal.employeeId === currentEmployeeId;
+            console.log(`Appraisal ${appraisal.id}: employeeId=${appraisal.employeeId}, currentEmployeeId=${currentEmployeeId}, isMyAppraisal=${isMyAppraisal}`);
+            return isMyAppraisal;
+          })
+          .map((appraisal: any) => {
+            // Parse reviewPeriod if it's a JSON string or object
+            let reviewPeriodText = 'N/A';
+            if (appraisal.reviewPeriod) {
+              if (typeof appraisal.reviewPeriod === 'string') {
+                try {
+                  const parsed = JSON.parse(appraisal.reviewPeriod);
+                  if (parsed.startDate && parsed.endDate) {
+                    reviewPeriodText = `${new Date(parsed.startDate).toLocaleDateString()} - ${new Date(parsed.endDate).toLocaleDateString()}`;
+                  } else {
+                    reviewPeriodText = appraisal.reviewPeriod;
+                  }
+                } catch {
+                  reviewPeriodText = appraisal.reviewPeriod;
+                }
+              } else if (appraisal.reviewPeriod.startDate && appraisal.reviewPeriod.endDate) {
+                reviewPeriodText = `${new Date(appraisal.reviewPeriod.startDate).toLocaleDateString()} - ${new Date(appraisal.reviewPeriod.endDate).toLocaleDateString()}`;
+              }
+            }
+            
+            return {
+              id: appraisal.id,
+              appraisalType: appraisal.appraisalType || appraisal.type || 'annual',
+              reviewPeriod: reviewPeriodText,
+              status: appraisal.status || 'draft',
+              overallRating: appraisal.overallRating ? (typeof appraisal.overallRating === 'string' ? parseFloat(appraisal.overallRating) : appraisal.overallRating) : null,
+              submittedAt: appraisal.submittedAt,
+              approvedAt: appraisal.approvedAt,
+              createdAt: appraisal.createdAt,
+              updatedAt: appraisal.updatedAt
+            };
+          }) : [];
+        console.log('Filtered my appraisals:', myAppraisals);
+        setPerformanceAppraisals(myAppraisals);
+      } else {
+        console.error('Failed to load appraisals:', await appraisalsResponse.text());
+      }
+    } catch (error) {
+      console.error('Error loading performance history:', error);
+    } finally {
+      setLoadingPerformanceHistory(false);
+    }
+  };
+
   const loadSupervisorData = async () => {
     try {
       setLoadingSupervisorData(true);
@@ -368,8 +475,16 @@ export default function EmployeeProfilePage() {
     
     if (session) {
       loadProfile();
+      loadSupervisorData();
     }
   }, [session, status]);
+
+  // Load performance history after profile is loaded
+  useEffect(() => {
+    if (profile?.id) {
+      loadPerformanceHistory();
+    }
+  }, [profile?.id]);
 
   // Show loading while checking authentication or if no session
   if (status === "loading" || !session) {
@@ -1023,6 +1138,343 @@ export default function EmployeeProfilePage() {
                   </div>
                 )}
                   </div>
+                </div>
+
+                {/* Performance History Section - Inside left column next to sidebar */}
+                <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                    <h3 className="text-xl font-bold text-white flex items-center">
+                      <ClipboardDocumentCheckIcon className="mr-3 h-6 w-6" />
+                      Performance History
+                    </h3>
+                    <p className="text-sm text-white/80 mt-1">
+                      View your performance plans and appraisals history
+                    </p>
+                  </div>
+                  
+                  {/* Performance History Tabs */}
+                  <div className="border-b border-gray-200">
+                    <nav className="flex -mb-px px-6" aria-label="Tabs">
+                      <button
+                        onClick={() => setPerformanceHistoryTab('plans')}
+                        className={`py-4 px-6 border-b-2 font-medium text-sm transition-colors ${
+                          performanceHistoryTab === 'plans'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <ClipboardDocumentCheckIcon className="inline h-5 w-5 mr-2" />
+                        Performance Plans
+                      </button>
+                      <button
+                        onClick={() => setPerformanceHistoryTab('appraisals')}
+                        className={`py-4 px-6 border-b-2 font-medium text-sm transition-colors ${
+                          performanceHistoryTab === 'appraisals'
+                            ? 'border-blue-500 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <StarIcon className="inline h-5 w-5 mr-2" />
+                        Performance Appraisals
+                      </button>
+                    </nav>
+                  </div>
+
+                  {/* Performance Plans Tab Content */}
+                  {performanceHistoryTab === 'plans' && (
+                    <div className="p-6">
+                      {loadingPerformanceHistory ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                          <span className="ml-2 text-sm text-gray-500">Loading plans...</span>
+                        </div>
+                      ) : performancePlans.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Plan Title
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Period
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Year
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Status
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Supervisor Approval
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Reviewer Approval
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Submitted
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {performancePlans.map((plan) => (
+                                <tr key={plan.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm font-medium text-gray-900">{plan.planTitle}</div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-900">
+                                      {plan.startDate && plan.endDate
+                                        ? `${new Date(plan.startDate).toLocaleDateString()} - ${new Date(plan.endDate).toLocaleDateString()}`
+                                        : plan.planPeriod || 'N/A'}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-900">{plan.planYear || 'N/A'}</div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                      plan.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                                      plan.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                      plan.status === 'supervisor_review' ? 'bg-yellow-100 text-yellow-800' :
+                                      plan.status === 'reviewer_assessment' ? 'bg-purple-100 text-purple-800' :
+                                      plan.status === 'revision_requested' ? 'bg-orange-100 text-orange-800' :
+                                      plan.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {plan.status || 'draft'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="flex flex-col">
+                                      <span className={`px-2 py-1 text-xs font-medium rounded-full mb-1 ${
+                                        plan.supervisorApproval === 'approved' ? 'bg-green-100 text-green-800' :
+                                        plan.supervisorApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-gray-100 text-gray-800'
+                                      }`}>
+                                        {plan.supervisorApproval || 'pending'}
+                                      </span>
+                                      {plan.supervisorApprovedAt && (
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(plan.supervisorApprovedAt).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="flex flex-col">
+                                      <span className={`px-2 py-1 text-xs font-medium rounded-full mb-1 ${
+                                        plan.reviewerApproval === 'approved' ? 'bg-green-100 text-green-800' :
+                                        plan.reviewerApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-gray-100 text-gray-800'
+                                      }`}>
+                                        {plan.reviewerApproval || 'pending'}
+                                      </span>
+                                      {plan.reviewerApprovedAt && (
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(plan.reviewerApprovedAt).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-900">
+                                      {plan.submittedAt
+                                        ? new Date(plan.submittedAt).toLocaleDateString()
+                                        : 'Not submitted'}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                    <Link
+                                      href={`/hr/performance/plans/${plan.id}`}
+                                      className="text-blue-600 hover:text-blue-900"
+                                    >
+                                      View
+                                    </Link>
+                                    {plan.status === 'draft' && (
+                                      <>
+                                        <span className="mx-2 text-gray-300">|</span>
+                                        <Link
+                                          href={`/hr/performance/plans/create?planId=${plan.id}&edit=true`}
+                                          className="text-indigo-600 hover:text-indigo-900"
+                                        >
+                                          Edit
+                                        </Link>
+                                      </>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-gray-500">
+                          <ClipboardDocumentCheckIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                          <p className="text-lg font-medium">No performance plans found</p>
+                          <p className="text-sm mt-2">Create your first performance plan to get started.</p>
+                          <Link
+                            href="/hr/performance/plans/create?self=true"
+                            className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            Create Plan
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Performance Appraisals Tab Content */}
+                  {performanceHistoryTab === 'appraisals' && (
+                    <div className="p-6">
+                      {loadingPerformanceHistory ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                          <span className="ml-2 text-sm text-gray-500">Loading appraisals...</span>
+                        </div>
+                      ) : performanceAppraisals.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Type
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Review Period
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Overall Rating
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Status
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Submitted
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Approved
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Created
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {performanceAppraisals.map((appraisal) => (
+                                <tr key={appraisal.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm font-medium text-gray-900 capitalize">
+                                      {appraisal.appraisalType || 'Annual'}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-900">
+                                      {appraisal.reviewPeriod || 'N/A'}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    {appraisal.overallRating ? (
+                                      <div className="flex items-center">
+                                        <span className="text-sm font-medium text-gray-900">
+                                          {appraisal.overallRating.toFixed(1)}/5
+                                        </span>
+                                        <div className="ml-2 flex">
+                                          {[1, 2, 3, 4, 5].map((star) => (
+                                            <StarIcon
+                                              key={star}
+                                              className={`h-4 w-4 ${
+                                                star <= Math.round(appraisal.overallRating)
+                                                  ? 'text-yellow-400 fill-current'
+                                                  : 'text-gray-300'
+                                              }`}
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-gray-500">Not rated</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                      appraisal.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
+                                      appraisal.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                      appraisal.status === 'supervisor_review' ? 'bg-yellow-100 text-yellow-800' :
+                                      appraisal.status === 'reviewer_assessment' ? 'bg-purple-100 text-purple-800' :
+                                      appraisal.status === 'revision_requested' ? 'bg-orange-100 text-orange-800' :
+                                      appraisal.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {appraisal.status || 'draft'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-900">
+                                      {appraisal.submittedAt
+                                        ? new Date(appraisal.submittedAt).toLocaleDateString()
+                                        : 'Not submitted'}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-900">
+                                      {appraisal.approvedAt
+                                        ? new Date(appraisal.approvedAt).toLocaleDateString()
+                                        : 'Not approved'}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-900">
+                                      {appraisal.createdAt
+                                        ? new Date(appraisal.createdAt).toLocaleDateString()
+                                        : 'N/A'}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                                    <Link
+                                      href={`/hr/performance/appraisals/${appraisal.id}`}
+                                      className="text-blue-600 hover:text-blue-900"
+                                    >
+                                      View
+                                    </Link>
+                                    {appraisal.status === 'draft' && (
+                                      <>
+                                        <span className="mx-2 text-gray-300">|</span>
+                                        <Link
+                                          href={`/hr/performance/appraisals/create?appraisalId=${appraisal.id}&edit=true`}
+                                          className="text-indigo-600 hover:text-indigo-900"
+                                        >
+                                          Edit
+                                        </Link>
+                                      </>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 text-gray-500">
+                          <StarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                          <p className="text-lg font-medium">No performance appraisals found</p>
+                          <p className="text-sm mt-2">Create your first appraisal to get started.</p>
+                          <Link
+                            href="/hr/performance/appraisals/create"
+                            className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            Create Appraisal
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

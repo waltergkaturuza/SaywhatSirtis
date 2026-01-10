@@ -113,7 +113,7 @@ export default function ViewAppraisalPage() {
     try {
       // Ensure element has an ID for export
       if (!appraisalContentRef.current.id) {
-        appraisalContentRef.current.id = 'appraisal-content'
+        appraisalContentRef.current.id = 'appraisal-content-to-export'
       }
       
       await exportService.exportFromElement(appraisalContentRef.current.id, {
@@ -514,7 +514,7 @@ export default function ViewAppraisalPage() {
             </nav>
           </div>
 
-          <div className="p-6">
+          <div className="p-6" id="appraisal-content-to-export" ref={appraisalContentRef}>
             {activeSection === "overview" && (
               <div className="space-y-6">
                 {/* Key Metrics */}
