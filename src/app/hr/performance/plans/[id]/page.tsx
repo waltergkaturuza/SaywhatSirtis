@@ -19,7 +19,7 @@ import {
   ArrowDownTrayIcon
 } from "@heroicons/react/24/outline"
 import { useSession } from "next-auth/react"
-import { ExportService } from "@/lib/export-service"
+import { exportService } from "@/lib/export-service"
 
 interface PlanData {
   id: string
@@ -108,7 +108,6 @@ export default function ViewPlanPage() {
     
     setExportingPDF(true)
     try {
-      const exportService = new ExportService()
       await exportService.exportFromElement(planContentRef.current.id, {
         format: 'pdf',
         filename: `Performance_Plan_${plan.employeeName.replace(/\s+/g, '_')}_${plan.planYear}_${Date.now()}.pdf`,

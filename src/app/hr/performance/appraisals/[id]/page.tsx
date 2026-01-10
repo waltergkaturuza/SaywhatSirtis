@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import { ExportService } from "@/lib/export-service"
+import { exportService } from "@/lib/export-service"
 import {
   DocumentCheckIcon,
   CalendarIcon,
@@ -111,7 +111,6 @@ export default function ViewAppraisalPage() {
     
     setExportingPDF(true)
     try {
-      const exportService = new ExportService()
       await exportService.exportFromElement(appraisalContentRef.current.id, {
         format: 'pdf',
         filename: `Performance_Appraisal_${appraisal.employeeName.replace(/\s+/g, '_')}_${appraisal.period?.replace(/\s+/g, '_') || Date.now()}_${Date.now()}.pdf`,
