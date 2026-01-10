@@ -121,8 +121,11 @@ export async function GET(
     // Transform the data for the frontend
     const transformedAppraisal = {
       id: appraisal.id,
+      supervisorId: appraisal.supervisorId || null,
+      reviewerId: appraisal.reviewerId || null,
+      employeeId: appraisal.employeeId || '',
       employee: {
-        id: appraisal.employees?.employeeId || '',
+        id: appraisal.employees?.employeeId || appraisal.employeeId || '',
         name: `${appraisal.employees?.firstName || ''} ${appraisal.employees?.lastName || ''}`.trim(),
         email: appraisal.employees?.email || '',
         position: appraisal.employees?.position || '',

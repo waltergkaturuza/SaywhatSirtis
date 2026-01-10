@@ -43,6 +43,7 @@ function CreatePerformancePlanPageContent() {
     plan: false
   })
   const [error, setError] = useState<string | null>(null)
+  const [loadedPlanData, setLoadedPlanData] = useState<any>(null) // Store loaded plan data for title checks
 
   // Workflow state
   const [workflowStatus, setWorkflowStatus] = useState('draft') // 'draft', 'supervisor_review', 'reviewer_assessment', 'completed'
@@ -327,6 +328,43 @@ function CreatePerformancePlanPageContent() {
         
         const planData = await response.json()
         console.log('Loaded plan data:', planData)
+        setLoadedPlanData(planData) // Store for title checks
+        
+        // If plan is submitted (not draft) and user is supervisor/reviewer, redirect to view page IMMEDIATELY
+        // This ensures supervisors/reviewers never see the create form for submitted plans
+        if (planData.status && planData.status !== 'draft' && session?.user?.id) {
+          const isSupervisor = planData.supervisorId === session.user.id
+          const isReviewer = planData.reviewerId === session.user.id
+          
+          // Also check if user is HR/admin (they can edit submitted plans)
+          const isHR = session.user.roles?.some((r: string) => ['HR', 'ADMIN', 'HR_MANAGER', 'SUPERUSER'].includes(r))
+          
+          // Check if user is the employee owner by comparing employeeId with user's employee record
+          let isOwner = false
+          if (planData.employeeId) {
+            try {
+              const employeeResponse = await fetch(`/api/hr/employees/by-email/${encodeURIComponent(session.user.email || '')}`)
+              if (employeeResponse.ok) {
+                const employeeData = await employeeResponse.json()
+                isOwner = employeeData.id === planData.employeeId
+              }
+            } catch (err) {
+              console.error('Error checking employee ownership:', err)
+            }
+          }
+          
+          // If user is supervisor/reviewer (but not HR/admin or owner), redirect to view page IMMEDIATELY
+          if ((isSupervisor || isReviewer) && !isHR && !isOwner) {
+            console.log('🔀 Redirecting supervisor/reviewer to view page for submitted plan')
+            console.log('   Plan status:', planData.status)
+            console.log('   Is supervisor:', isSupervisor)
+            console.log('   Is reviewer:', isReviewer)
+            console.log('   Is HR:', isHR)
+            console.log('   Is owner:', isOwner)
+            router.push(`/hr/performance/plans/${planId}`)
+            return
+          }
+        }
         
         // Fetch supervisor information if supervisorId exists
         let supervisorName = 'Not Assigned'
@@ -413,8 +451,19 @@ function CreatePerformancePlanPageContent() {
       }
     }
     
-    loadExistingPlan()
-  }, [planId])
+    if (planId && session?.user?.id) {
+      loadExistingPlan()
+    } else if (planId && !session?.user?.id) {
+      // Wait for session to load before checking redirect
+      const checkSession = setInterval(() => {
+        if (session?.user?.id) {
+          clearInterval(checkSession)
+          loadExistingPlan()
+        }
+      }, 100)
+      return () => clearInterval(checkSession)
+    }
+  }, [planId, session?.user?.id, router])
 
   // Auto-populate current user's information when accessed from profile
   useEffect(() => {
@@ -2096,9 +2145,21 @@ function CreatePerformancePlanPageContent() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                  Performance Plan Creation
+                  {planId && (formData.status !== 'draft' || loadedPlanData?.status !== 'draft') && session?.user?.id
+                    ? (loadedPlanData?.supervisorId === session.user.id
+                        ? 'Supervise Employee Performance Plan'
+                        : loadedPlanData?.reviewerId === session.user.id
+                        ? 'Review Employee Performance Plan'
+                        : 'Performance Plan Creation')
+                    : 'Performance Plan Creation'}
                 </h1>
-                <p className="text-gray-600 text-sm">SAYWHAT Integrated Real-Time Information System</p>
+                <p className="text-gray-600 text-sm">
+                  {planId && (formData.status !== 'draft' || loadedPlanData?.status !== 'draft')
+                    ? (loadedPlanData?.supervisorId === session?.user?.id || loadedPlanData?.reviewerId === session?.user?.id
+                        ? 'Review and provide feedback on employee performance plan'
+                        : 'SAYWHAT Integrated Real-Time Information System')
+                    : 'SAYWHAT Integrated Real-Time Information System'}
+                </p>
               </div>
             </div>
           </div>

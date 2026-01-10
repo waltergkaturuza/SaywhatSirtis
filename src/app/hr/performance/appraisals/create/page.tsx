@@ -237,17 +237,60 @@ function CreateAppraisalContent() {
         
         if (response.ok) {
           const result = await response.json()
-          const appraisalData = result.appraisal
+          const appraisalData = result.appraisal || result.data
           console.log('✅ Appraisal loaded:', appraisalData)
+          
+          // If appraisal is submitted (not draft) and user is supervisor/reviewer, redirect to view page IMMEDIATELY
+          // This ensures supervisors/reviewers never see the create form for submitted appraisals
+          if (appraisalData && appraisalData.status && appraisalData.status !== 'draft' && session?.user?.id) {
+            const isSupervisor = appraisalData.supervisorId === session.user.id
+            const isReviewer = appraisalData.reviewerId === session.user.id
+            
+            // Also check if user is HR/admin (they can edit submitted appraisals)
+            const isHR = session.user.roles?.some((r: string) => ['HR', 'ADMIN', 'HR_MANAGER', 'SUPERUSER'].includes(r))
+            
+            // Check if user is the employee owner by comparing employeeId with user's employee record
+            let isOwner = false
+            if (appraisalData.employeeId || appraisalData.employee?.id) {
+              try {
+                const employeeResponse = await fetch(`/api/hr/employees/by-email/${encodeURIComponent(session.user.email || '')}`)
+                if (employeeResponse.ok) {
+                  const employeeData = await employeeResponse.json()
+                  isOwner = employeeData.id === (appraisalData.employeeId || appraisalData.employee?.id)
+                }
+              } catch (err) {
+                console.error('Error checking employee ownership:', err)
+              }
+            }
+            
+            // If user is supervisor/reviewer (but not HR/admin or owner), redirect to view page IMMEDIATELY
+            if ((isSupervisor || isReviewer) && !isHR && !isOwner) {
+              console.log('🔀 Redirecting supervisor/reviewer to view page for submitted appraisal')
+              console.log('   Appraisal status:', appraisalData.status)
+              console.log('   Is supervisor:', isSupervisor)
+              console.log('   Is reviewer:', isReviewer)
+              console.log('   Is HR:', isHR)
+              console.log('   Is owner:', isOwner)
+              router.push(`/hr/performance/appraisals/${appraisalId}`)
+              return
+            }
+          }
+          
+          const appraisalDataForForm = result.appraisal || result.data
+          if (!appraisalDataForForm) {
+            setIsLoadingAppraisal(false)
+            return
+          }
+          console.log('✅ Appraisal loaded for form:', appraisalDataForForm)
           
           // Populate form with existing appraisal data
           setFormData({
             ...formData,
-            id: appraisalData.id,
-            employee: appraisalData.employee,
-            achievements: appraisalData.achievements || { keyResponsibilities: [] },
-            development: appraisalData.development || { trainingNeeds: [], careerAspirations: '', skillsToImprove: [], developmentPlan: [] },
-            performance: appraisalData.performance || {
+            id: appraisalDataForForm.id,
+            employee: appraisalDataForForm.employee,
+            achievements: appraisalDataForForm.achievements || { keyResponsibilities: [] },
+            development: appraisalDataForForm.development || { trainingNeeds: [], careerAspirations: '', skillsToImprove: [], developmentPlan: [] },
+            performance: appraisalDataForForm.performance || {
               overallRating: 0,
               categories: [
                 { id: '1', name: 'Teamwork', rating: 0, comment: '', weight: 20, description: 'Working collaboratively with others to achieve common goals and support team success.' },
@@ -259,8 +302,8 @@ function CreateAppraisalContent() {
               strengths: [],
               areasForImprovement: []
             },
-            comments: appraisalData.comments || { employeeComments: '', managerComments: '', hrComments: '' },
-            ratings: appraisalData.ratings || {
+            comments: appraisalDataForForm.comments || { employeeComments: '', managerComments: '', hrComments: '' },
+            ratings: appraisalDataForForm.ratings || {
               finalRating: 0,
               actualPoints: 0,
               maxPoints: 0,
@@ -269,7 +312,7 @@ function CreateAppraisalContent() {
               recommendation: 'maintain-current',
               salaryRecommendation: ''
             },
-            signatures: appraisalData.signatures || {
+            signatures: appraisalDataForForm.signatures || {
               supervisorSignature: '',
               supervisorSignedAt: undefined,
               supervisorMeetingDate: undefined,
@@ -279,11 +322,11 @@ function CreateAppraisalContent() {
               reviewerMeetingDate: undefined,
               reviewerMeetingConfirmed: false
             },
-            status: appraisalData.status || 'draft',
-            workflowStatus: appraisalData.status || 'draft'
+            status: appraisalDataForForm.status || 'draft',
+            workflowStatus: appraisalDataForForm.status || 'draft'
           })
           
-          setWorkflowStatus(appraisalData.status || 'draft')
+          setWorkflowStatus(appraisalDataForForm.status || 'draft')
           console.log('✅ Form populated with existing data')
         } else {
           console.error('❌ Failed to load appraisal')
@@ -583,8 +626,7 @@ function CreateAppraisalContent() {
         <p className="text-gray-600 mb-8">
           {isSelfAssessment 
             ? 'Complete your self-assessment to reflect on your performance, achievements, and development areas.'
-            : 'Comprehensive performance appraisal with goals and expectations'
-          }
+            : 'Comprehensive performance appraisal with goals and expectations'}
         </p>
 
         {/* Tab Navigation */}

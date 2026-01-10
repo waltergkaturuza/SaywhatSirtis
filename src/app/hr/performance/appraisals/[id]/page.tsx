@@ -3,6 +3,7 @@
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
   DocumentCheckIcon,
@@ -86,12 +87,19 @@ const fetchAppraisalData = async (id: string): Promise<AppraisalData | null> => 
 export default function ViewAppraisalPage() {
   const params = useParams()
   const router = useRouter()
+  const { data: session } = useSession()
   const appraisalId = params.id as string
   
   const [appraisal, setAppraisal] = useState<AppraisalData | null>(null)
   const [activeSection, setActiveSection] = useState("overview")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isSupervisor, setIsSupervisor] = useState(false)
+  const [isReviewer, setIsReviewer] = useState(false)
+  const [currentSupervisorComment, setCurrentSupervisorComment] = useState('')
+  const [currentReviewerComment, setCurrentReviewerComment] = useState('')
+  const [submittingWorkflow, setSubmittingWorkflow] = useState(false)
+  const [workflowComments, setWorkflowComments] = useState<{supervisor: any[], reviewer: any[]}>({supervisor: [], reviewer: []})
 
   useEffect(() => {
     // Load appraisal data from API
@@ -157,6 +165,25 @@ export default function ViewAppraisalPage() {
             improvementPlan: apiData.improvementPlan || ''
           }
           setAppraisal(normalizedData)
+          
+          // Check if current user is supervisor or reviewer
+          // Note: supervisorId and reviewerId are user IDs
+          if (session?.user?.id && apiData) {
+            // Get supervisorId and reviewerId from the appraisal data (these are user IDs)
+            const supervisorId = apiData.supervisorId
+            const reviewerId = apiData.reviewerId
+            
+            setIsSupervisor(supervisorId === session.user.id)
+            setIsReviewer(reviewerId === session.user.id)
+            
+            // Load workflow comments if they exist
+            if (apiData.comments?.supervisor || apiData.comments?.reviewer) {
+              setWorkflowComments({
+                supervisor: Array.isArray(apiData.comments.supervisor) ? apiData.comments.supervisor : [],
+                reviewer: Array.isArray(apiData.comments.reviewer) ? apiData.comments.reviewer : []
+              })
+            }
+          }
         } else {
           setError('Appraisal not found')
         }
@@ -171,17 +198,94 @@ export default function ViewAppraisalPage() {
     if (appraisalId) {
       loadAppraisalData()
     }
-  }, [appraisalId])
+  }, [appraisalId, session?.user?.id])
+
+  // Handle workflow action (comment, approve, request_changes)
+  const handleWorkflowAction = async (action: 'comment' | 'request_changes' | 'approve' | 'final_approve', role: 'supervisor' | 'reviewer') => {
+    if (!appraisal) return
+    
+    const comment = role === 'supervisor' ? currentSupervisorComment : currentReviewerComment
+    
+    if (action === 'request_changes' && !comment) {
+      alert('Please provide feedback when requesting changes.')
+      return
+    }
+    
+    setSubmittingWorkflow(true)
+    try {
+      const response = await fetch(`/api/hr/performance/appraisals/${appraisal.id}/workflow`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          comment,
+          role
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to process workflow action')
+      }
+
+      const result = await response.json()
+      
+      // Reload appraisal data to get updated comments
+      const updatedAppraisalData = await fetchAppraisalData(appraisalId)
+      if (updatedAppraisalData) {
+        const apiData = updatedAppraisalData as any
+        const normalizedData: AppraisalData = {
+          ...appraisal,
+          status: apiData.status || appraisal.status,
+          supervisorComments: apiData.comments?.managerComments || apiData.comments?.supervisorComments || apiData.supervisorComments || appraisal.supervisorComments,
+          employeeComments: apiData.comments?.employeeComments || apiData.employeeComments || appraisal.employeeComments
+        }
+        setAppraisal(normalizedData)
+        
+        if (apiData.comments?.supervisor || apiData.comments?.reviewer) {
+          setWorkflowComments({
+            supervisor: Array.isArray(apiData.comments.supervisor) ? apiData.comments.supervisor : [],
+            reviewer: Array.isArray(apiData.comments.reviewer) ? apiData.comments.reviewer : []
+          })
+        }
+      }
+      
+      // Clear current comment
+      if (role === 'supervisor') {
+        setCurrentSupervisorComment('')
+      } else {
+        setCurrentReviewerComment('')
+      }
+      
+      alert(result.message || 'Action completed successfully')
+    } catch (error) {
+      console.error('Error processing workflow action:', error)
+      alert(error instanceof Error ? error.message : 'Failed to process workflow action')
+    } finally {
+      setSubmittingWorkflow(false)
+    }
+  }
+
+  // Determine if this is a review/supervise context
+  const isReviewContext = (isSupervisor || isReviewer) && appraisal && appraisal.status !== 'draft'
+  const pageTitle = isReviewContext 
+    ? (isSupervisor ? `Supervise Employee - ${appraisal?.employeeName || 'Loading...'}` : `Review Employee - ${appraisal?.employeeName || 'Loading...'}`)
+    : `Performance Appraisal - ${appraisal?.employeeName || 'Loading...'}`
+  const pageDescription = isReviewContext
+    ? (isSupervisor ? "Review and provide feedback on employee performance appraisal" : "Final review and approval of employee performance appraisal")
+    : "View detailed performance appraisal information"
 
   const metadata = {
-    title: `Performance Appraisal - ${appraisal?.employeeName || 'Loading...'}`,
-    description: "View detailed performance appraisal information",
+    title: pageTitle,
+    description: pageDescription,
     breadcrumbs: [
       { name: "SIRTIS" },
       { name: "HR Management", href: "/hr/dashboard" },
       { name: "Performance", href: "/hr/performance" },
       { name: "Appraisals", href: "/hr/performance/appraisals" },
-      { name: appraisal?.employeeName || "View Appraisal" }
+      { name: isReviewContext ? (isSupervisor ? "Supervise Employee" : "Review Employee") : (appraisal?.employeeName || "View Appraisal") }
     ]
   }
 
@@ -277,7 +381,8 @@ export default function ViewAppraisalPage() {
         <ShareIcon className="h-4 w-4 mr-2" />
         Share
       </button>
-      {appraisal.status !== "completed" && (
+      {/* Only show edit button for drafts, not for submitted appraisals when reviewing */}
+      {appraisal.status === "draft" && !isReviewContext && (
         <Link href={`/hr/performance/appraisals/${appraisal.id}/edit`}>
           <button className="inline-flex items-center px-3 py-2 bg-blue-600 border border-transparent rounded-md text-sm text-white hover:bg-blue-700">
             <PencilIcon className="h-4 w-4 mr-2" />
@@ -292,27 +397,51 @@ export default function ViewAppraisalPage() {
     <ModulePage metadata={metadata} actions={actions}>
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-white shadow-sm rounded-lg p-6">
+        <div className={`shadow-sm rounded-lg p-6 ${isReviewContext ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500' : 'bg-white'}`}>
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <DocumentCheckIcon className="h-8 w-8 text-blue-600" />
+              <div className={`p-3 rounded-lg ${isReviewContext ? 'bg-blue-200' : 'bg-blue-100'}`}>
+                <DocumentCheckIcon className={`h-8 w-8 ${isReviewContext ? 'text-blue-700' : 'text-blue-600'}`} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{appraisal.employeeName}</h1>
-                <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                  <span>{appraisal.position}</span>
-                  <span>•</span>
-                  <span>{appraisal.department}</span>
-                  <span>•</span>
-                  <span>ID: {appraisal.employeeId}</span>
-                </div>
-                <div className="flex items-center space-x-4 mt-2">
-                  <span className="text-sm text-gray-600">Period: {appraisal.period}</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(appraisal.status)}`}>
-                    {appraisal.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                  </span>
-                </div>
+                {isReviewContext ? (
+                  <>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {isSupervisor ? 'Supervise Employee Performance Appraisal' : 'Review Employee Performance Appraisal'}
+                    </h1>
+                    <div className="flex items-center space-x-4 text-sm text-gray-700 mt-2">
+                      <span className="font-semibold">Employee:</span>
+                      <span>{appraisal.employeeName}</span>
+                      <span>•</span>
+                      <span>{appraisal.position}</span>
+                      <span>•</span>
+                      <span>{appraisal.department}</span>
+                    </div>
+                    <div className="flex items-center space-x-4 mt-2">
+                      <span className="text-sm text-gray-600">Period: {appraisal.period}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(appraisal.status)}`}>
+                        {appraisal.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h1 className="text-2xl font-bold text-gray-900">{appraisal.employeeName}</h1>
+                    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                      <span>{appraisal.position}</span>
+                      <span>•</span>
+                      <span>{appraisal.department}</span>
+                      <span>•</span>
+                      <span>ID: {appraisal.employeeId}</span>
+                    </div>
+                    <div className="flex items-center space-x-4 mt-2">
+                      <span className="text-sm text-gray-600">Period: {appraisal.period}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(appraisal.status)}`}>
+                        {appraisal.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             
@@ -617,19 +746,7 @@ export default function ViewAppraisalPage() {
                 <h3 className="text-lg font-semibold text-gray-900">Feedback & Comments</h3>
                 
                 <div className="grid grid-cols-1 gap-6">
-                  {appraisal.supervisorComments && (
-                    <div className="border rounded-lg p-6">
-                      <div className="flex items-start space-x-3">
-                        <UserIcon className="h-6 w-6 text-blue-500 mt-1" />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 mb-2">Supervisor Comments</h4>
-                          <p className="text-sm text-gray-600 leading-relaxed">{appraisal.supervisorComments}</p>
-                          <p className="text-xs text-gray-500 mt-2">— {appraisal.supervisor}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
+                  {/* Employee Comments */}
                   {appraisal.employeeComments && (
                     <div className="border rounded-lg p-6">
                       <div className="flex items-start space-x-3">
@@ -643,7 +760,160 @@ export default function ViewAppraisalPage() {
                     </div>
                   )}
 
-                  {!appraisal.supervisorComments && !appraisal.employeeComments && (
+                  {/* Supervisor Comments History */}
+                  {workflowComments.supervisor && workflowComments.supervisor.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Supervisor Comments History</h4>
+                      <div className="space-y-3">
+                        {workflowComments.supervisor.map((comment: any, index: number) => (
+                          <div key={comment.id || index} className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-semibold text-gray-900">{comment.name || 'Supervisor'}</span>
+                                <span className="text-xs text-gray-500">
+                                  {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
+                                </span>
+                              </div>
+                              <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                comment.action === 'approve' ? 'bg-green-100 text-green-800' :
+                                comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
+                              </span>
+                            </div>
+                            {comment.comment && (
+                              <p className="text-sm text-gray-700">{comment.comment}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reviewer Comments History */}
+                  {workflowComments.reviewer && workflowComments.reviewer.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Reviewer Comments History</h4>
+                      <div className="space-y-3">
+                        {workflowComments.reviewer.map((comment: any, index: number) => (
+                          <div key={comment.id || index} className="border-l-4 border-green-500 pl-4 py-2 bg-green-50 rounded">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-semibold text-gray-900">{comment.name || 'Reviewer'}</span>
+                                <span className="text-xs text-gray-500">
+                                  {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
+                                </span>
+                              </div>
+                              <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                comment.action === 'final_approve' ? 'bg-green-100 text-green-800' :
+                                comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
+                              </span>
+                            </div>
+                            {comment.comment && (
+                              <p className="text-sm text-gray-700">{comment.comment}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fallback to simple comments if workflow comments don't exist */}
+                  {workflowComments.supervisor.length === 0 && workflowComments.reviewer.length === 0 && appraisal.supervisorComments && (
+                    <div className="border rounded-lg p-6">
+                      <div className="flex items-start space-x-3">
+                        <UserIcon className="h-6 w-6 text-blue-500 mt-1" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-2">Supervisor Comments</h4>
+                          <p className="text-sm text-gray-600 leading-relaxed">{appraisal.supervisorComments}</p>
+                          <p className="text-xs text-gray-500 mt-2">— {appraisal.supervisor}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Supervisor/Comment Action Panel - Only show for submitted appraisals and if user is supervisor/reviewer */}
+                  {isReviewContext && (
+                    <div className="border-t pt-6 mt-6">
+                      {isSupervisor && (
+                        <div className="mb-6">
+                          <h4 className="text-sm font-medium text-gray-900 mb-3">Add Supervisor Comment</h4>
+                          <textarea
+                            value={currentSupervisorComment}
+                            onChange={(e) => setCurrentSupervisorComment(e.target.value)}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Provide feedback on this performance appraisal..."
+                          />
+                          <div className="flex space-x-2 mt-3">
+                            <button
+                              onClick={() => handleWorkflowAction('comment', 'supervisor')}
+                              disabled={submittingWorkflow || !currentSupervisorComment}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Add Comment
+                            </button>
+                            <button
+                              onClick={() => handleWorkflowAction('approve', 'supervisor')}
+                              disabled={submittingWorkflow}
+                              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
+                              disabled={submittingWorkflow || !currentSupervisorComment}
+                              className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Request Changes
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {isReviewer && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900 mb-3">Add Reviewer Comment</h4>
+                          <textarea
+                            value={currentReviewerComment}
+                            onChange={(e) => setCurrentReviewerComment(e.target.value)}
+                            rows={4}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                            placeholder="Provide final review feedback..."
+                          />
+                          <div className="flex space-x-2 mt-3">
+                            <button
+                              onClick={() => handleWorkflowAction('comment', 'reviewer')}
+                              disabled={submittingWorkflow || !currentReviewerComment}
+                              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Add Comment
+                            </button>
+                            <button
+                              onClick={() => handleWorkflowAction('final_approve', 'reviewer')}
+                              disabled={submittingWorkflow}
+                              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Final Approve
+                            </button>
+                            <button
+                              onClick={() => handleWorkflowAction('request_changes', 'reviewer')}
+                              disabled={submittingWorkflow || !currentReviewerComment}
+                              className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Request Changes
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!appraisal.supervisorComments && !appraisal.employeeComments && workflowComments.supervisor.length === 0 && workflowComments.reviewer.length === 0 && (
                     <div className="text-center py-8 text-gray-500">
                       <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                       <p>No feedback provided yet</p>

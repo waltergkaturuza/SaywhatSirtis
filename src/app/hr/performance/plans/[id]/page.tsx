@@ -198,15 +198,24 @@ export default function ViewPlanPage() {
     }
   }
 
+  // Determine if this is a review/supervise context
+  const isReviewContext = (isSupervisor || isReviewer) && plan && plan.status !== 'draft'
+  const pageTitle = isReviewContext 
+    ? (isSupervisor ? `Supervise Employee - ${plan?.employeeName || 'Loading...'}` : `Review Employee - ${plan?.employeeName || 'Loading...'}`)
+    : `Performance Plan - ${plan?.employeeName || 'Loading...'}`
+  const pageDescription = isReviewContext
+    ? (isSupervisor ? "Review and provide feedback on employee performance plan" : "Final review and approval of employee performance plan")
+    : "View detailed performance plan information"
+
   const metadata = {
-    title: `Performance Plan - ${plan?.employeeName || 'Loading...'}`,
-    description: "View detailed performance plan information",
+    title: pageTitle,
+    description: pageDescription,
     breadcrumbs: [
       { name: "SIRTIS" },
       { name: "HR Management", href: "/hr/dashboard" },
       { name: "Performance", href: "/hr/performance" },
       { name: "Plans", href: "/hr/performance/plans" },
-      { name: plan?.employeeName || "View Plan" }
+      { name: isReviewContext ? (isSupervisor ? "Supervise Employee" : "Review Employee") : (plan?.employeeName || "View Plan") }
     ]
   }
 
@@ -268,7 +277,7 @@ export default function ViewPlanPage() {
     <ModulePage metadata={metadata}>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className={`rounded-lg shadow p-6 ${isReviewContext ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500' : 'bg-white'}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-4">
               <Link
@@ -278,23 +287,41 @@ export default function ViewPlanPage() {
                 <ArrowLeftIcon className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{plan.planTitle}</h1>
-                <p className="text-sm text-gray-500 mt-1">
-                  {plan.planYear} • {plan.planType}
-                </p>
+                {isReviewContext ? (
+                  <>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {isSupervisor ? 'Supervise Employee Performance Plan' : 'Review Employee Performance Plan'}
+                    </h1>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Employee: <span className="font-semibold">{plan.employeeName}</span> • {plan.position} • {plan.department}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Plan: {plan.planTitle} • {plan.planYear} • {plan.planType}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h1 className="text-2xl font-bold text-gray-900">{plan.planTitle}</h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {plan.planYear} • {plan.planType}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-center space-x-3">
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(plan.status)}`}>
                 {plan.status}
               </span>
-              <Link
-                href={`/hr/performance/plans/create?planId=${plan.id}&edit=true`}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
-                <PencilIcon className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
+              {!isReviewContext && plan.status === 'draft' && (
+                <Link
+                  href={`/hr/performance/plans/create?planId=${plan.id}&edit=true`}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <PencilIcon className="h-4 w-4 mr-2" />
+                  Edit
+                </Link>
+              )}
             </div>
           </div>
 
