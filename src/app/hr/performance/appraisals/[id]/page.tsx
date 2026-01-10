@@ -111,6 +111,11 @@ export default function ViewAppraisalPage() {
     
     setExportingPDF(true)
     try {
+      // Ensure element has an ID for export
+      if (!appraisalContentRef.current.id) {
+        appraisalContentRef.current.id = 'appraisal-content'
+      }
+      
       await exportService.exportFromElement(appraisalContentRef.current.id, {
         format: 'pdf',
         filename: `Performance_Appraisal_${appraisal.employeeName.replace(/\s+/g, '_')}_${appraisal.period?.replace(/\s+/g, '_') || Date.now()}_${Date.now()}.pdf`,

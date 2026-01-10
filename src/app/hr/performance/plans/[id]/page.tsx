@@ -108,6 +108,11 @@ export default function ViewPlanPage() {
     
     setExportingPDF(true)
     try {
+      // Ensure element has an ID for export
+      if (!planContentRef.current.id) {
+        planContentRef.current.id = 'plan-content'
+      }
+      
       await exportService.exportFromElement(planContentRef.current.id, {
         format: 'pdf',
         filename: `Performance_Plan_${plan.employeeName.replace(/\s+/g, '_')}_${plan.planYear}_${Date.now()}.pdf`,
@@ -302,18 +307,19 @@ export default function ViewPlanPage() {
 
   return (
     <ModulePage metadata={metadata}>
+      {/* Export PDF Button */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={handleExportPDF}
+          disabled={exportingPDF || !plan}
+          className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ArrowDownTrayIcon className={`h-4 w-4 mr-2 ${exportingPDF ? 'animate-spin' : ''}`} />
+          {exportingPDF ? 'Exporting...' : 'Export PDF'}
+        </button>
+      </div>
+      
       <div className="space-y-6" id="plan-content" ref={planContentRef}>
-        {/* Export PDF Button */}
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={handleExportPDF}
-            disabled={exportingPDF || !plan}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ArrowDownTrayIcon className={`h-4 w-4 mr-2 ${exportingPDF ? 'animate-spin' : ''}`} />
-            {exportingPDF ? 'Exporting...' : 'Export PDF'}
-          </button>
-        </div>
         {/* Header */}
         <div className={`rounded-lg shadow p-6 ${isReviewContext ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500' : 'bg-white'}`}>
           <div className="flex items-center justify-between mb-4">
