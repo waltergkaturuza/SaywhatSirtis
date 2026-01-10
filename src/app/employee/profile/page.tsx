@@ -1229,7 +1229,9 @@ export default function EmployeeProfilePage() {
                                     <div className="text-sm text-gray-900">
                                       {plan.startDate && plan.endDate
                                         ? `${new Date(plan.startDate).toLocaleDateString()} - ${new Date(plan.endDate).toLocaleDateString()}`
-                                        : plan.planPeriod || 'N/A'}
+                                        : (plan.planPeriod && typeof plan.planPeriod === 'string' && plan.planPeriod.includes('-')
+                                            ? plan.planPeriod
+                                            : plan.planPeriod || 'N/A')}
                                     </div>
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap">
@@ -1282,8 +1284,10 @@ export default function EmployeeProfilePage() {
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap">
                                     <div className="text-sm text-gray-900">
-                                      {plan.submittedAt
-                                        ? new Date(plan.submittedAt).toLocaleDateString()
+                                      {plan.status === 'submitted' || plan.status === 'approved' || plan.status === 'supervisor_review' || plan.status === 'reviewer_assessment' || plan.status === 'completed' 
+                                        ? (plan.submittedAt 
+                                            ? new Date(plan.submittedAt).toLocaleDateString() 
+                                            : (plan.updatedAt ? new Date(plan.updatedAt).toLocaleDateString() : 'Submitted'))
                                         : 'Not submitted'}
                                     </div>
                                   </td>
@@ -1417,8 +1421,10 @@ export default function EmployeeProfilePage() {
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap">
                                     <div className="text-sm text-gray-900">
-                                      {appraisal.submittedAt
-                                        ? new Date(appraisal.submittedAt).toLocaleDateString()
+                                      {appraisal.status === 'submitted' || appraisal.status === 'approved' || appraisal.status === 'supervisor_approved' || appraisal.status === 'reviewer_approved' || appraisal.status === 'completed'
+                                        ? (appraisal.submittedAt 
+                                            ? new Date(appraisal.submittedAt).toLocaleDateString() 
+                                            : (appraisal.updatedAt ? new Date(appraisal.updatedAt).toLocaleDateString() : 'Submitted'))
                                         : 'Not submitted'}
                                     </div>
                                   </td>

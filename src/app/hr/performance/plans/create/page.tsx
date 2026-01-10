@@ -2856,7 +2856,7 @@ function CreatePerformancePlanPageContent() {
                 
                 <div className="flex space-x-4">
                   <button
-                    onClick={handleSaveDraft}
+                    onClick={() => handleSaveDraft(true)}
                     disabled={isSavingDraft}
                     className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
                   >

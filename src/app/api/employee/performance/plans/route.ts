@@ -236,6 +236,8 @@ export async function GET(request: NextRequest) {
       orderBy: { planYear: 'desc' }
     });
 
+    // Next.js automatically serializes Date objects to ISO strings in JSON responses
+    // Return the plans as-is - dates will be serialized correctly
     return NextResponse.json(performancePlans);
 
   } catch (error) {

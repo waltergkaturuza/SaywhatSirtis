@@ -858,7 +858,7 @@ function CreateAppraisalContent() {
           <div className="flex gap-4">
             <Button
               variant="outline"
-              onClick={handleSaveDraft}
+              onClick={() => handleSaveDraft(true)}
               disabled={isSavingDraft}
                     className="flex items-center gap-2"
             >

@@ -304,6 +304,8 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     });
 
+    // Next.js automatically serializes Date objects to ISO strings in JSON responses
+    // Return the appraisals as-is - dates will be serialized correctly
     return NextResponse.json(appraisals);
 
   } catch (error) {
