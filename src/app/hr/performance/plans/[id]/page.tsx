@@ -1,4 +1,5 @@
-"use client"
+
+ "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import { useState, useEffect, useRef } from "react"
@@ -23,6 +24,11 @@ import {
 } from "@heroicons/react/24/outline"
 import { useSession } from "next-auth/react"
 import { exportService } from "@/lib/export-service"
+import { 
+  PerformancePlanFormData, 
+  performancePlanSteps,
+  getStatusColor
+} from "@/components/hr/performance/performance-plan-types"
 
 interface PlanData {
   id: string
@@ -105,6 +111,8 @@ export default function ViewPlanPage() {
   const [workflowComments, setWorkflowComments] = useState<{supervisor: any[], reviewer: any[]}>({supervisor: [], reviewer: []})
   const [exportingPDF, setExportingPDF] = useState(false)
   const planContentRef = useRef<HTMLDivElement>(null)
+  const [currentStep, setCurrentStep] = useState(1)
+  const [formData, setFormData] = useState<PerformancePlanFormData | null>(null)
 
   // Export plan to PDF
   const handleExportPDF = async () => {
@@ -245,6 +253,615 @@ export default function ViewPlanPage() {
       alert(error instanceof Error ? error.message : 'Failed to process workflow action')
     } finally {
       setSubmittingWorkflow(false)
+    }
+  }
+
+  // Transform plan data to formData format
+  useEffect(() => {
+    if (plan) {
+      const transformedData: PerformancePlanFormData = {
+        id: plan.id,
+        employee: {
+          id: plan.employeeId,
+          name: plan.employeeName,
+          email: plan.employeeEmail,
+          department: plan.department,
+          position: plan.position,
+          manager: plan.supervisorId || '',
+          planPeriod: {
+            startDate: plan.reviewPeriod?.startDate || plan.startDate || '',
+            endDate: plan.reviewPeriod?.endDate || plan.endDate || ''
+          }
+        },
+        planType: plan.planType || 'annual',
+        planTitle: plan.planTitle || '',
+        planDescription: '',
+        status: plan.status,
+        supervisor: plan.supervisorId || '',
+        reviewerId: plan.reviewerId || '',
+        planYear: plan.planYear || '',
+        startDate: plan.startDate || '',
+        endDate: plan.endDate || '',
+        planPeriod: {
+          startDate: plan.reviewPeriod?.startDate || plan.startDate || '',
+          endDate: plan.reviewPeriod?.endDate || plan.endDate || ''
+        },
+        keyResponsibilities: Array.isArray(plan.deliverables) && plan.deliverables.length > 0
+          ? plan.deliverables.map((del: any) => ({
+              id: del.id || Date.now().toString(),
+              description: del.description || del.title || del.keyDeliverable || '',
+              tasks: del.tasks || '',
+              weight: del.weight || 0,
+              targetDate: del.targetDate || del.timeline || '',
+              status: del.status || 'not-started',
+              progress: del.progress || 0,
+              successIndicators: del.successIndicators || [],
+              comments: del.comments || ''
+            }))
+          : [],
+        development: {
+          strengths: [],
+          areasForImprovement: [],
+          skillGaps: [],
+          trainingNeeds: [],
+          careerObjectives: '',
+          mentorshipNeeds: ''
+        },
+        developmentObjectives: Array.isArray(plan.developmentNeeds) ? plan.developmentNeeds.map((need: any) => ({
+          objective: need.area || need.title || need.need || '',
+          description: need.description || '',
+          competencyArea: need.competencyArea || '',
+          developmentActivities: need.activities || '',
+          resources: need.resources || '',
+          timeline: need.timeline || '',
+          successCriteria: need.successCriteria || '',
+          targetDate: need.targetDate || '',
+          priority: need.priority || 'medium',
+          status: need.status || 'not-started'
+        })) : [],
+        kpis: [],
+        competencies: Array.isArray(plan.competencies) ? plan.competencies.map((comp: any) => ({
+          id: comp.id || Date.now().toString(),
+          name: comp.name || comp.title || comp.competency || '',
+          currentLevel: comp.currentLevel || 0,
+          targetLevel: comp.level || comp.targetLevel || 0,
+          description: comp.description || '',
+          developmentActions: comp.actions || []
+        })) : [],
+        milestones: [],
+        valueGoals: Array.isArray(plan.valueGoals) ? plan.valueGoals.map((goal: any) => ({
+          id: goal.id || Date.now().toString(),
+          goal: goal.title || goal.description || goal,
+          description: goal.description || '',
+          target: goal.target || '',
+          measurement: goal.measurement || '',
+          timeline: goal.timeline || ''
+        })) : [],
+        reviewMilestones: [],
+        resourcesNeeded: '',
+        trainingRequirements: '',
+        mentorshipNeeds: '',
+        supportFromManager: '',
+        coreValuesAcknowledgment: {},
+        allCoreValuesAcknowledged: false,
+        careerAspirationsShortTerm: '',
+        careerAspirationsLongTerm: '',
+        trainingNeeds: '',
+        trainingPriority: 'medium',
+        developmentActionPlan: '',
+        developmentActionPlanTargetDate: '',
+        developmentSupportNeeded: '',
+        comments: {
+          employeeComments: plan.comments?.employeeComments || '',
+          supervisorComments: plan.comments?.supervisorComments || '',
+          reviewerComments: plan.comments?.reviewerComments || ''
+        },
+        review: {
+          reviewFrequency: 'monthly' as const,
+          nextReviewDate: '',
+          checkInNotes: '',
+          managerComments: plan.comments?.supervisorComments || '',
+          employeeComments: plan.comments?.employeeComments || ''
+        },
+        employeeAgreement: false,
+        managerApproval: plan.supervisorApproval === 'approved',
+        hrApproval: plan.reviewerApproval === 'approved',
+        employeeComments: plan.comments?.employeeComments || '',
+        supervisorComments: plan.comments?.supervisorComments || '',
+        behavioralExpectations: Array.isArray(plan.competencies) ? plan.competencies : [],
+        deliverables: Array.isArray(plan.deliverables) ? plan.deliverables : [],
+        developmentNeeds: Array.isArray(plan.developmentNeeds) ? plan.developmentNeeds : []
+      }
+      setFormData(transformedData)
+    }
+  }, [plan])
+
+  // Step navigation
+  const handleNext = () => {
+    if (currentStep < performancePlanSteps.length) {
+      setCurrentStep(currentStep + 1)
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  // Render step content in read-only mode
+  const renderStepContent = () => {
+    if (!formData) return null
+
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-8">
+            <div className="bg-gradient-to-br from-white via-orange-25 to-white p-8 rounded-2xl shadow-lg border border-orange-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500 rounded-full mr-2"></div>
+                    Employee Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.employee.name}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mr-2"></div>
+                    Employee ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.employee.id}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-2"></div>
+                    Position/Job Title
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.employee.position}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full mr-2"></div>
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.employee.department}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full mr-2"></div>
+                    Plan Year
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.planYear}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-pink-400 to-rose-500 rounded-full mr-2"></div>
+                    Plan Type
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.planType}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-white via-blue-25 to-white p-8 rounded-2xl shadow-lg border border-blue-100 mt-8">
+              <div className="flex items-center mb-6">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mr-3">
+                  <span className="text-white text-sm font-bold">📅</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Plan Period</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-2"></div>
+                    Start Date
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.startDate ? new Date(formData.startDate).toLocaleDateString() : ''}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                    <div className="w-2 h-2 bg-gradient-to-r from-red-400 to-pink-500 rounded-full mr-2"></div>
+                    End Date
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.endDate ? new Date(formData.endDate).toLocaleDateString() : ''}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 focus:outline-none shadow-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 2:
+        return (
+          <div className="space-y-8">
+            <div className="bg-gradient-to-r from-orange-50 via-orange-100 to-red-50 p-8 rounded-2xl shadow-lg border border-orange-200">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-white text-lg font-bold">📋</span>
+                </div>
+                <h3 className="text-2xl font-bold text-orange-900">Key Responsibilities</h3>
+              </div>
+              <p className="text-orange-800 text-lg leading-relaxed">Key responsibilities and performance areas from your job description.</p>
+            </div>
+
+            {formData.keyResponsibilities && formData.keyResponsibilities.length > 0 ? (
+              formData.keyResponsibilities.map((responsibility, index) => (
+                <div key={index} className="bg-gradient-to-br from-white via-blue-25 to-purple-25 border-2 border-gray-200 rounded-2xl p-8 space-y-6 shadow-lg">
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3">
+                      <span className="text-white text-sm font-bold">{index + 1}</span>
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900">Responsibility {index + 1}</h4>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                      <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mr-2"></div>
+                      Responsibility Description
+                    </label>
+                    <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white shadow-sm min-h-[60px]">
+                      <p className="text-gray-900">{responsibility.description || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  {responsibility.tasks && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-2"></div>
+                        Tasks / Activities
+                      </label>
+                      <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white shadow-sm min-h-[80px]">
+                        <p className="text-gray-900">{responsibility.tasks}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mr-2"></div>
+                        Weight (%)
+                      </label>
+                      <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white shadow-sm">
+                        <p className="text-gray-900">{responsibility.weight}%</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full mr-2"></div>
+                        Target Date
+                      </label>
+                      <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white shadow-sm">
+                        <p className="text-gray-900">{responsibility.targetDate ? new Date(responsibility.targetDate).toLocaleDateString() : 'N/A'}</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full mr-2"></div>
+                        Status
+                      </label>
+                      <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white shadow-sm">
+                        <span className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-sm ${getStatusColor(responsibility.status)}`}>
+                          {responsibility.status.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {responsibility.successIndicators && responsibility.successIndicators.length > 0 && (
+                    <div className="border-t-2 border-gray-200 pt-6">
+                      <label className="block text-sm font-semibold text-gray-800 mb-4 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-teal-500 rounded-full mr-2"></div>
+                        Success Indicators for this Responsibility
+                      </label>
+                      {responsibility.successIndicators.map((indicator: any, indicatorIndex: number) => (
+                        <div key={indicatorIndex} className="bg-green-50 border border-green-200 rounded-lg p-4 mb-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-1">Indicator Name</p>
+                              <p className="text-sm text-gray-900">{indicator.indicator || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-1">Target Value</p>
+                              <p className="text-sm text-gray-900">{indicator.target || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-gray-600 mb-1">Measurement Method</p>
+                              <p className="text-sm text-gray-900">{indicator.measurement || 'N/A'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {responsibility.comments && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                        <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full mr-2"></div>
+                        Additional Comments
+                      </label>
+                      <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white shadow-sm min-h-[60px]">
+                        <p className="text-gray-900">{responsibility.comments}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No key responsibilities defined.</p>
+              </div>
+            )}
+          </div>
+        )
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-green-50 via-teal-50 to-green-50 p-8 rounded-2xl shadow-lg border border-green-200">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-teal-600 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-white text-lg font-bold">✓</span>
+                </div>
+                <h3 className="text-2xl font-bold text-green-900">Success Indicators Summary</h3>
+              </div>
+              <p className="text-green-800 text-lg leading-relaxed">Review all success indicators defined for your key responsibilities.</p>
+            </div>
+
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">All Success Indicators by Responsibility</h3>
+              {formData.keyResponsibilities && formData.keyResponsibilities.length > 0 ? (
+                formData.keyResponsibilities.map((responsibility, respIndex) => (
+                  <div key={respIndex} className="mb-6 border-2 border-gray-200 rounded-xl p-6 bg-gradient-to-r from-white to-gray-50">
+                    <div className="mb-4">
+                      <h4 className="text-lg font-bold text-gray-900 mb-2">
+                        Responsibility {respIndex + 1}: {responsibility.description || 'Untitled'}
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-2">
+                        <span className="font-semibold">Weight:</span> {responsibility.weight}% | 
+                        <span className="font-semibold ml-2">Status:</span> {responsibility.status.replace('-', ' ')}
+                      </p>
+                    </div>
+
+                    {responsibility.successIndicators && responsibility.successIndicators.length > 0 ? (
+                      <div className="space-y-3">
+                        <h5 className="text-sm font-semibold text-green-800 mb-3">Success Indicators:</h5>
+                        {responsibility.successIndicators.map((indicator: any, indIndex: number) => (
+                          <div key={indIndex} className="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600 mb-1">Indicator</p>
+                                <p className="text-sm text-gray-900">{indicator.indicator || 'Not specified'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600 mb-1">Target</p>
+                                <p className="text-sm text-gray-900">{indicator.target || 'Not specified'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600 mb-1">Measurement Method</p>
+                                <p className="text-sm text-gray-900">{indicator.measurement || 'Not specified'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No success indicators defined for this responsibility.</p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No key responsibilities defined yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+
+      case 4:
+        const coreValues = [
+          { name: "Teamwork", description: "Working collaboratively with others to achieve common goals and support team success.", icon: "👥" },
+          { name: "Responsiveness and Effectiveness", description: "Acting promptly and efficiently to meet stakeholder needs and deliver quality results.", icon: "⚡" },
+          { name: "Accountability", description: "Taking ownership of responsibilities and being answerable for actions and outcomes.", icon: "✓" },
+          { name: "Professionalism and Integrity", description: "Maintaining high ethical standards, honesty, and professional conduct in all interactions.", icon: "🎯" },
+          { name: "Innovation", description: "Embracing creativity and new ideas to improve processes, services, and outcomes.", icon: "💡" }
+        ]
+
+        return (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 p-6 rounded-xl border-l-4 border-indigo-500">
+              <h3 className="text-2xl font-bold text-indigo-900 mb-2">SAYWHAT Core Values</h3>
+              <p className="text-indigo-700 text-lg">Review and acknowledge your understanding of our organizational core values.</p>
+            </div>
+
+            <div className="space-y-4">
+              {coreValues.map((value, index) => (
+                <div key={index} className="border-2 border-gray-200 rounded-xl p-6 hover:border-indigo-300 transition-all duration-200 bg-gradient-to-r from-white to-gray-50">
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <span className="text-2xl">{value.icon}</span>
+                      </div>
+                    </div>
+                    <div className="flex-grow">
+                      <h4 className="text-xl font-bold text-gray-900 mb-2">{value.name}</h4>
+                      <p className="text-gray-700 mb-4 leading-relaxed">{value.description}</p>
+                      <div className="flex items-center space-x-3">
+                        <input
+                          type="checkbox"
+                          checked={formData.coreValuesAcknowledgment?.[index] || false}
+                          readOnly
+                          className="w-5 h-5 text-indigo-600 border-2 border-gray-300 rounded"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          I understand and commit to upholding this core value
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl p-6 mt-6">
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-xl">✓</span>
+                  </div>
+                </div>
+                <div className="flex-grow">
+                  <div className="flex items-start space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={formData.allCoreValuesAcknowledged || false}
+                      readOnly
+                      className="mt-1 w-5 h-5 text-orange-600 border-2 border-gray-300 rounded"
+                    />
+                    <span className="text-sm font-semibold text-gray-800">
+                      I acknowledge that I have read, understood, and commit to demonstrating all five SAYWHAT Core Values in my daily work and interactions.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 5:
+        return (
+          <div className="space-y-6">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-purple-900 mb-2">Development Objectives</h3>
+              <p className="text-purple-700">Plan professional growth opportunities and skill development initiatives.</p>
+            </div>
+
+            {formData.developmentObjectives && formData.developmentObjectives.length > 0 ? (
+              formData.developmentObjectives.map((objective, index) => (
+                <div key={index} className="border rounded-lg p-6 space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900">Development Objective {index + 1}</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Development Objective</label>
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                        <p className="text-gray-900">{objective.objective || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Timeline</label>
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                        <p className="text-gray-900">{objective.timeline || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 min-h-[60px]">
+                      <p className="text-gray-900">{objective.description || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Development Activities</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 min-h-[80px]">
+                      <p className="text-gray-900">{objective.developmentActivities || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Resources Required</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 min-h-[60px]">
+                      <p className="text-gray-900">{objective.resources || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Success Criteria</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 min-h-[60px]">
+                      <p className="text-gray-900">{objective.successCriteria || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No development objectives defined.</p>
+              </div>
+            )}
+
+            {formData.careerAspirationsShortTerm && (
+              <div className="border rounded-lg p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Career Aspirations</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Short-term Career Goals (1-2 years)</label>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 min-h-[80px]">
+                      <p className="text-gray-900">{formData.careerAspirationsShortTerm}</p>
+                    </div>
+                  </div>
+                  {formData.careerAspirationsLongTerm && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Long-term Career Goals (3-5 years)</label>
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 min-h-[80px]">
+                        <p className="text-gray-900">{formData.careerAspirationsLongTerm}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+
+      default:
+        return null
     }
   }
 
@@ -416,280 +1033,230 @@ export default function ViewPlanPage() {
       
       <div className="space-y-6" id="plan-content-to-export" ref={planContentRef}>
         {/* Tab 1: Submitted Plan Content */}
-        {activeWorkflowTab === 'submitted' && (
-          <>
-          {/* Employee Info Card */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center space-x-3">
-                <UserIcon className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{plan.employeeName}</p>
-                  <p className="text-xs text-gray-500">{plan.position}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Department</p>
-                  <p className="text-xs text-gray-500">{plan.department || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <CalendarIcon className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Period</p>
-                  <p className="text-xs text-gray-500">
-                    {plan.reviewPeriod.startDate && plan.reviewPeriod.endDate
-                      ? `${new Date(plan.reviewPeriod.startDate).toLocaleDateString()} - ${new Date(plan.reviewPeriod.endDate).toLocaleDateString()}`
-                      : plan.startDate && plan.endDate
-                        ? `${new Date(plan.startDate).toLocaleDateString()} - ${new Date(plan.endDate).toLocaleDateString()}`
-                        : 'N/A'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        {/* Deliverables */}
-        {plan.deliverables && Array.isArray(plan.deliverables) && plan.deliverables.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Deliverables</h2>
-            <div className="space-y-4">
-              {plan.deliverables.map((deliverable: any, index: number) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-sm font-medium text-gray-900">
-                        {deliverable.title || deliverable.keyDeliverable || `Deliverable ${index + 1}`}
-                      </h3>
-                      {deliverable.description && (
-                        <p className="text-sm text-gray-600 mt-1">{deliverable.description}</p>
-                      )}
-                      {deliverable.timeline && (
-                        <p className="text-xs text-gray-500 mt-2">
-                          Timeline: {deliverable.timeline}
-                        </p>
-                      )}
-                    </div>
-                    {deliverable.weight && (
-                      <span className="ml-4 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
-                        {deliverable.weight}%
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Value Goals */}
-        {plan.valueGoals && Array.isArray(plan.valueGoals) && plan.valueGoals.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Value Goals</h2>
-            <div className="space-y-3">
-              {plan.valueGoals.map((goal: any, index: number) => (
-                <div key={index} className="border-l-4 border-orange-500 pl-4 py-2">
-                  <p className="text-sm text-gray-900">{goal.title || goal.description || goal}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Competencies / Behavioral Expectations */}
-        {plan.competencies && Array.isArray(plan.competencies) && plan.competencies.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Competencies & Behavioral Expectations</h2>
-            <div className="space-y-3">
-              {plan.competencies.map((competency: any, index: number) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">
-                    {competency.title || competency.name || competency.competency || `Competency ${index + 1}`}
-                  </h3>
-                  {competency.description && (
-                    <p className="text-sm text-gray-600">{competency.description}</p>
-                  )}
-                  {competency.level && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Expected Level: {competency.level}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Development Needs */}
-        {plan.developmentNeeds && Array.isArray(plan.developmentNeeds) && plan.developmentNeeds.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Development Needs</h2>
-            <div className="space-y-4">
-              {plan.developmentNeeds.map((need: any, index: number) => (
-                <div key={index} className="border-l-4 border-blue-500 pl-4 py-3 bg-blue-50 rounded">
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">
-                    {need.area || need.title || need.need || `Development Area ${index + 1}`}
-                  </h3>
-                  {need.description && (
-                    <p className="text-sm text-gray-600 mt-1">{need.description}</p>
-                  )}
-                  {need.timeline && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Timeline: {need.timeline}
-                    </p>
-                  )}
-                  {need.resources && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Resources: {need.resources}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Comments */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Comments & Feedback</h2>
+        {activeWorkflowTab === 'submitted' && formData && (
           <div className="space-y-6">
-            {/* Employee Comments */}
-            {plan.comments?.employeeComments && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Employee Comments</h3>
-                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{plan.comments.employeeComments}</p>
+            {/* Step Navigation */}
+            <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+              <div className="flex justify-between items-center px-8 py-6 border-b border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold">{currentStep}</span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {performancePlanSteps[currentStep - 1]?.title || 'Step'}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {performancePlanSteps[currentStep - 1]?.description || ''}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">
+                    Step {currentStep} of {performancePlanSteps.length}
+                  </span>
+                </div>
               </div>
-            )}
-            
-            {/* Supervisor Comments History */}
-            {workflowComments.supervisor && workflowComments.supervisor.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Supervisor Comments History</h3>
-                <div className="space-y-3">
-                  {workflowComments.supervisor.map((comment: any, index: number) => (
-                    <div key={comment.id || index} className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-semibold text-gray-900">{comment.name || 'Supervisor'}</span>
-                          <span className="text-xs text-gray-500">
-                            {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
-                          </span>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          comment.action === 'approve' ? 'bg-green-100 text-green-800' :
-                          comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-blue-100 text-blue-800'
+              
+              {/* Step Indicators */}
+              <div className="px-8 py-4 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  {performancePlanSteps.map((step, index) => (
+                    <div key={index} className="flex items-center flex-1">
+                      <div className="flex flex-col items-center flex-1">
+                        <button
+                          onClick={() => setCurrentStep(index + 1)}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                            currentStep === index + 1
+                              ? 'bg-orange-500 text-white shadow-lg scale-110'
+                              : currentStep > index + 1
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-300 text-gray-600'
+                          }`}
+                        >
+                          {currentStep > index + 1 ? '✓' : index + 1}
+                        </button>
+                        <span className={`text-xs mt-2 text-center ${
+                          currentStep === index + 1 ? 'font-bold text-orange-600' : 'text-gray-600'
                         }`}>
-                          {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
+                          {step.title}
                         </span>
                       </div>
-                      {comment.comment && (
-                        <p className="text-sm text-gray-700">{comment.comment}</p>
+                      {index < performancePlanSteps.length - 1 && (
+                        <div className={`flex-1 h-1 mx-2 ${
+                          currentStep > index + 1 ? 'bg-green-500' : 'bg-gray-300'
+                        }`} />
                       )}
                     </div>
                   ))}
                 </div>
               </div>
-            )}
-            
-            {/* Reviewer Comments History */}
-            {workflowComments.reviewer && workflowComments.reviewer.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Reviewer Comments History</h3>
-                <div className="space-y-3">
-                  {workflowComments.reviewer.map((comment: any, index: number) => (
-                    <div key={comment.id || index} className="border-l-4 border-green-500 pl-4 py-2 bg-green-50 rounded">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-semibold text-gray-900">{comment.name || 'Reviewer'}</span>
-                          <span className="text-xs text-gray-500">
-                            {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
-                          </span>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          comment.action === 'final_approve' ? 'bg-green-100 text-green-800' :
-                          comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
-                        </span>
-                      </div>
-                      {comment.comment && (
-                        <p className="text-sm text-gray-700">{comment.comment}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Fallback to simple comments if workflow comments don't exist */}
-            {workflowComments.supervisor.length === 0 && workflowComments.reviewer.length === 0 && (
-              <>
-                {plan.comments?.supervisorComments && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Supervisor Comments</h3>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{plan.comments.supervisorComments}</p>
-                  </div>
-                )}
-                {plan.comments?.reviewerComments && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Reviewer Comments</h3>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{plan.comments.reviewerComments}</p>
-                  </div>
-                )}
-              </>
-            )}
-            
-            {!plan.comments?.employeeComments && workflowComments.supervisor.length === 0 && workflowComments.reviewer.length === 0 && !plan.comments?.supervisorComments && !plan.comments?.reviewerComments && (
-              <p className="text-sm text-gray-500 italic">No comments yet.</p>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* Approval Status */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Approval Status</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Supervisor Approval</span>
-                <span className={`px-2 py-1 text-xs font-medium rounded ${
-                  plan.supervisorApproval === 'approved' ? 'bg-green-100 text-green-800' :
-                  plan.supervisorApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {plan.supervisorApproval || 'pending'}
-                </span>
+            {/* Tab Content */}
+            <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+              {/* Form Header */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Performance Plan Details</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {plan.planTitle} • {plan.planYear} • {plan.employeeName}
+                    </p>
+                  </div>
+                </div>
               </div>
-              {plan.supervisorApprovedAt && (
-                <p className="text-xs text-gray-500">
-                  Approved: {new Date(plan.supervisorApprovedAt).toLocaleDateString()}
-                </p>
-              )}
+
+              {/* Form Content */}
+              <div className="px-8 py-8">
+                {renderStepContent()}
+              </div>
+
+              {/* Navigation Footer */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-t border-gray-200">
+                <div className="flex justify-between items-center">
+                  <button
+                    onClick={handlePrevious}
+                    disabled={currentStep === 1}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                      currentStep === 1
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-gray-600 text-white hover:bg-gray-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                    }`}
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={currentStep === performancePlanSteps.length}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                      currentStep === performancePlanSteps.length
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-orange-600 text-white hover:bg-orange-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                    }`}
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Reviewer Approval</span>
-                <span className={`px-2 py-1 text-xs font-medium rounded ${
-                  plan.reviewerApproval === 'approved' ? 'bg-green-100 text-green-800' :
-                  plan.reviewerApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {plan.reviewerApproval || 'pending'}
-                </span>
+
+            {/* Comments & Approval Status Section */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Comments & Feedback</h2>
+              <div className="space-y-6">
+                {plan.comments?.employeeComments && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Employee Comments</h3>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{plan.comments.employeeComments}</p>
+                  </div>
+                )}
+                
+                {workflowComments.supervisor && workflowComments.supervisor.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">Supervisor Comments History</h3>
+                    <div className="space-y-3">
+                      {workflowComments.supervisor.map((comment: any, index: number) => (
+                        <div key={comment.id || index} className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-semibold text-gray-900">{comment.name || 'Supervisor'}</span>
+                              <span className="text-xs text-gray-500">
+                                {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
+                              </span>
+                            </div>
+                            <span className={`px-2 py-1 text-xs font-medium rounded ${
+                              comment.action === 'approve' ? 'bg-green-100 text-green-800' :
+                              comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
+                            </span>
+                          </div>
+                          {comment.comment && (
+                            <p className="text-sm text-gray-700">{comment.comment}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {workflowComments.reviewer && workflowComments.reviewer.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">Reviewer Comments History</h3>
+                    <div className="space-y-3">
+                      {workflowComments.reviewer.map((comment: any, index: number) => (
+                        <div key={comment.id || index} className="border-l-4 border-green-500 pl-4 py-2 bg-green-50 rounded">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-semibold text-gray-900">{comment.name || 'Reviewer'}</span>
+                              <span className="text-xs text-gray-500">
+                                {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
+                              </span>
+                            </div>
+                            <span className={`px-2 py-1 text-xs font-medium rounded ${
+                              comment.action === 'final_approve' ? 'bg-green-100 text-green-800' :
+                              comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
+                            </span>
+                          </div>
+                          {comment.comment && (
+                            <p className="text-sm text-gray-700">{comment.comment}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              {plan.reviewerApprovedAt && (
-                <p className="text-xs text-gray-500">
-                  Approved: {new Date(plan.reviewerApprovedAt).toLocaleDateString()}
-                </p>
-              )}
+            </div>
+
+            {/* Approval Status */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Approval Status</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Supervisor Approval</span>
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${
+                      plan.supervisorApproval === 'approved' ? 'bg-green-100 text-green-800' :
+                      plan.supervisorApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {plan.supervisorApproval || 'pending'}
+                    </span>
+                  </div>
+                  {plan.supervisorApprovedAt && (
+                    <p className="text-xs text-gray-500">
+                      Approved: {new Date(plan.supervisorApprovedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Reviewer Approval</span>
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${
+                      plan.reviewerApproval === 'approved' ? 'bg-green-100 text-green-800' :
+                      plan.reviewerApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {plan.reviewerApproval || 'pending'}
+                    </span>
+                  </div>
+                  {plan.reviewerApprovedAt && (
+                    <p className="text-xs text-gray-500">
+                      Approved: {new Date(plan.reviewerApprovedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-          </>
         )}
 
         {/* Tab 2: Supervisor Review */}

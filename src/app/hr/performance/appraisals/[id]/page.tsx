@@ -6,6 +6,16 @@ import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { exportService } from "@/lib/export-service"
+import { 
+  AppraisalFormData, 
+  appraisalSteps
+} from "@/components/hr/performance/appraisal-types"
+import { EmployeeDetailsStep } from "@/components/hr/performance/employee-details-step"
+import { PerformanceAssessmentStep } from "@/components/hr/performance/performance-assessment-step"
+import { AchievementsGoalsStep } from "@/components/hr/performance/achievements-goals-step"
+import { DevelopmentPlanningStep } from "@/components/hr/performance/development-planning-step"
+import { CommentsReviewStep } from "@/components/hr/performance/comments-review-step"
+import { FinalReviewStep } from "@/components/hr/performance/final-review-step"
 import {
   DocumentCheckIcon,
   CalendarIcon,
@@ -97,7 +107,6 @@ export default function ViewAppraisalPage() {
   const appraisalId = params.id as string
   
   const [appraisal, setAppraisal] = useState<AppraisalData | null>(null)
-  const [activeSection, setActiveSection] = useState("overview")
   const [activeWorkflowTab, setActiveWorkflowTab] = useState<'submitted' | 'supervisor' | 'reviewer'>('submitted')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -109,6 +118,8 @@ export default function ViewAppraisalPage() {
   const [workflowComments, setWorkflowComments] = useState<{supervisor: any[], reviewer: any[]}>({supervisor: [], reviewer: []})
   const [exportingPDF, setExportingPDF] = useState(false)
   const appraisalContentRef = useRef<HTMLDivElement>(null)
+  const [currentStep, setCurrentStep] = useState(1)
+  const [formData, setFormData] = useState<AppraisalFormData | null>(null)
 
   // Export appraisal to PDF
   const handleExportPDF = async () => {
@@ -324,6 +335,178 @@ export default function ViewAppraisalPage() {
     }
   }
 
+  // Transform appraisal data to formData format
+  useEffect(() => {
+    if (appraisal) {
+      // Fetch full appraisal data from API to get complete structure
+      const loadFullAppraisalData = async () => {
+        try {
+          const fullData = await fetchAppraisalData(appraisalId)
+          if (fullData) {
+            const apiData = fullData as any
+            
+            const transformedData: AppraisalFormData = {
+              id: apiData.id?.toString() || appraisal.id?.toString(),
+              employee: {
+                id: apiData.employee?.id || appraisal.employeeId || '',
+                name: apiData.employee?.name || appraisal.employeeName || '',
+                email: apiData.employee?.email || '',
+                department: apiData.employee?.department || appraisal.department || '',
+                position: apiData.employee?.position || appraisal.position || '',
+                manager: apiData.employee?.manager || appraisal.supervisor || '',
+                reviewer: apiData.employee?.reviewer || appraisal.reviewer || '',
+                hireDate: apiData.employee?.hireDate || '',
+                reviewPeriod: {
+                  startDate: apiData.employee?.reviewPeriod?.startDate || (apiData.period ? apiData.period.split(' - ')[0] : ''),
+                  endDate: apiData.employee?.reviewPeriod?.endDate || (apiData.period ? apiData.period.split(' - ')[1] : '')
+                }
+              },
+              performance: {
+                overallRating: apiData.performance?.overallRating || apiData.ratings?.finalRating || appraisal.overallRating || 0,
+                categories: Array.isArray(apiData.performance?.categories) && apiData.performance.categories.length > 0
+                  ? apiData.performance.categories
+                  : (Array.isArray(appraisal.performanceAreas) && appraisal.performanceAreas.length > 0
+                      ? appraisal.performanceAreas.map((area: any) => ({
+                          id: area.id || Date.now().toString(),
+                          name: area.name || area.area || '',
+                          rating: area.rating || 0,
+                          comment: area.comment || '',
+                          weight: area.weight || 20,
+                          description: area.description || ''
+                        }))
+                      : [
+                          { id: '1', name: 'Teamwork', rating: 0, comment: '', weight: 20, description: 'Working collaboratively with others to achieve common goals and support team success.' },
+                          { id: '2', name: 'Responsiveness and Effectiveness', rating: 0, comment: '', weight: 20, description: 'Acting promptly and efficiently to meet stakeholder needs and deliver quality results.' },
+                          { id: '3', name: 'Accountability', rating: 0, comment: '', weight: 20, description: 'Taking ownership of responsibilities and being answerable for actions and outcomes.' },
+                          { id: '4', name: 'Professionalism and Integrity', rating: 0, comment: '', weight: 20, description: 'Maintaining high ethical standards, honesty, and professional conduct in all interactions.' },
+                          { id: '5', name: 'Innovation', rating: 0, comment: '', weight: 20, description: 'Embracing creativity and new ideas to improve processes, services, and outcomes.' }
+                        ]),
+                strengths: Array.isArray(apiData.performance?.strengths)
+                  ? apiData.performance.strengths
+                  : (appraisal.strengths ? appraisal.strengths.split(',').map(s => s.trim()).filter(s => s) : []),
+                areasForImprovement: Array.isArray(apiData.performance?.areasForImprovement)
+                  ? apiData.performance.areasForImprovement
+                  : (appraisal.areasImprovement ? appraisal.areasImprovement.split(',').map(s => s.trim()).filter(s => s) : [])
+              },
+              achievements: {
+                keyResponsibilities: Array.isArray(apiData.achievements?.keyResponsibilities) && apiData.achievements.keyResponsibilities.length > 0
+                  ? apiData.achievements.keyResponsibilities
+                  : (Array.isArray(appraisal.achievements) && appraisal.achievements.length > 0
+                      ? appraisal.achievements.map((ach: any, index: number) => ({
+                          id: ach.id || Date.now().toString() + index,
+                          description: ach.achievement || ach.description || '',
+                          tasks: ach.tasks || '',
+                          weight: ach.weight || 0,
+                          targetDate: ach.targetDate || '',
+                          status: ach.status || 'Not Started' as const,
+                          achievementStatus: ach.achievementStatus || 'not-achieved' as const,
+                          comment: ach.comment || ach.impact || '',
+                          successIndicators: ach.successIndicators || []
+                        }))
+                      : [])
+              },
+              development: {
+                trainingNeeds: Array.isArray(apiData.development?.trainingNeeds)
+                  ? apiData.development.trainingNeeds
+                  : [],
+                careerAspirations: apiData.development?.careerAspirations || '',
+                skillsToImprove: Array.isArray(apiData.development?.skillsToImprove)
+                  ? apiData.development.skillsToImprove
+                  : [],
+                developmentPlan: Array.isArray(apiData.development?.developmentPlan) && apiData.development.developmentPlan.length > 0
+                  ? apiData.development.developmentPlan
+                  : (Array.isArray(appraisal.developmentPlans) && appraisal.developmentPlans.length > 0
+                      ? appraisal.developmentPlans.map((plan: any) => ({
+                          objective: plan.area || plan.objective || '',
+                          actions: Array.isArray(plan.actions) ? plan.actions : [],
+                          timeline: plan.timeline || '',
+                          resources: Array.isArray(plan.resources) ? plan.resources : (plan.resources ? [plan.resources] : [])
+                        }))
+                      : [])
+              },
+              comments: {
+                employeeComments: apiData.comments?.employeeComments || appraisal.employeeComments || '',
+                managerComments: apiData.comments?.managerComments || apiData.comments?.supervisorComments || appraisal.supervisorComments || '',
+                hrComments: apiData.comments?.hrComments || ''
+              },
+              ratings: {
+                finalRating: apiData.ratings?.finalRating || apiData.performance?.overallRating || appraisal.overallRating || 0,
+                actualPoints: apiData.ratings?.actualPoints || 0,
+                maxPoints: apiData.ratings?.maxPoints || 0,
+                percentage: apiData.ratings?.percentage || 0,
+                ratingCode: apiData.ratings?.ratingCode || '',
+                recommendation: apiData.ratings?.recommendation || 'maintain-current' as const,
+                salaryRecommendation: apiData.ratings?.salaryRecommendation || ''
+              },
+              signatures: {
+                supervisorSignature: apiData.signatures?.supervisorSignature || '',
+                supervisorSignedAt: apiData.signatures?.supervisorSignedAt,
+                supervisorMeetingDate: apiData.signatures?.supervisorMeetingDate,
+                supervisorMeetingConfirmed: apiData.signatures?.supervisorMeetingConfirmed || false,
+                reviewerSignature: apiData.signatures?.reviewerSignature || '',
+                reviewerSignedAt: apiData.signatures?.reviewerSignedAt,
+                reviewerMeetingDate: apiData.signatures?.reviewerMeetingDate,
+                reviewerMeetingConfirmed: apiData.signatures?.reviewerMeetingConfirmed || false
+              },
+              status: apiData.status || appraisal.status,
+              workflowStatus: apiData.workflowStatus || appraisal.status,
+              appraisalType: apiData.appraisalType || 'annual',
+              recommendations: apiData.recommendations || {},
+              submittedAt: apiData.submittedAt || appraisal.submittedAt || undefined,
+              approvedAt: apiData.approvedAt || appraisal.reviewedAt || undefined,
+              createdAt: apiData.createdAt || appraisal.lastUpdated || undefined
+            }
+            setFormData(transformedData)
+          }
+        } catch (error) {
+          console.error('Error transforming appraisal data:', error)
+        }
+      }
+      
+      loadFullAppraisalData()
+    }
+  }, [appraisal, appraisalId])
+
+  // Step navigation
+  const handleNext = () => {
+    if (currentStep < appraisalSteps.length) {
+      setCurrentStep(currentStep + 1)
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  // Render step content in read-only mode
+  const renderStepContent = () => {
+    if (!formData) return null
+
+    // Create a read-only update function
+    const readOnlyUpdate = () => {
+      // No-op for read-only mode
+    }
+
+    switch (currentStep) {
+      case 1:
+        return <EmployeeDetailsStep formData={formData} updateFormData={readOnlyUpdate} />
+      case 2:
+        return <AchievementsGoalsStep formData={formData} updateFormData={readOnlyUpdate} />
+      case 3:
+        return <DevelopmentPlanningStep formData={formData} updateFormData={readOnlyUpdate} />
+      case 4:
+        return <PerformanceAssessmentStep formData={formData} updateFormData={readOnlyUpdate} />
+      case 5:
+        return <CommentsReviewStep formData={formData} updateFormData={readOnlyUpdate} />
+      case 6:
+        return <FinalReviewStep formData={formData} updateFormData={readOnlyUpdate} />
+      default:
+        return null
+    }
+  }
+
   // Determine if this is a review/supervise context
   const isReviewContext = (isSupervisor || isReviewer) && appraisal && appraisal.status !== 'draft'
   const pageTitle = isReviewContext 
@@ -534,402 +717,124 @@ export default function ViewAppraisalPage() {
 
         <div className="space-y-6" id="appraisal-content-to-export" ref={appraisalContentRef}>
           {/* Tab 1: Submitted Appraisal Content */}
-          {activeWorkflowTab === 'submitted' && (
-          <>
-          {/* Navigation Tabs for Content Sections */}
-        <div className="bg-white shadow-sm rounded-lg">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6">
-              {[
-                { id: "overview", name: "Overview", icon: ChartBarIcon },
-                { id: "performance", name: "Performance Areas", icon: StarIcon },
-                { id: "achievements", name: "Achievements", icon: TrophyIcon },
-                { id: "development", name: "Development", icon: LightBulbIcon },
-                { id: "feedback", name: "Feedback", icon: ChatBubbleLeftRightIcon }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveSection(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-                    activeSection === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  <span>{tab.name}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <div className="p-6">
-            {activeSection === "overview" && (
-              <div className="space-y-6">
-                {/* Key Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-blue-600">Overall Rating</p>
-                        <p className="text-2xl font-bold text-blue-900">
-                          {appraisal.overallRating || calculateOverallRating()}
-                        </p>
-                      </div>
-                      <StarIcon className="h-8 w-8 text-blue-600" />
+          {activeWorkflowTab === 'submitted' && formData && (
+          <div className="space-y-6">
+            {/* Step Navigation */}
+            <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+              <div className="flex justify-between items-center px-8 py-6 border-b border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold">{currentStep}</span>
                     </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-green-600">Plan Progress</p>
-                        <p className="text-2xl font-bold text-green-900">{appraisal.planProgress}%</p>
-                      </div>
-                      <ArrowPathIcon className="h-8 w-8 text-green-600" />
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-purple-600">Completion</p>
-                        <p className="text-2xl font-bold text-purple-900">
-                          {appraisal.status === "completed" ? "100%" : "In Progress"}
-                        </p>
-                      </div>
-                      <CheckCircleIcon className="h-8 w-8 text-purple-600" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Appraisal Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Appraisal Information</h3>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Supervisor:</span>
-                        <span className="font-medium">{appraisal.supervisor}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Reviewer:</span>
-                        <span className="font-medium">{appraisal.reviewer}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Submitted:</span>
-                        <span className="font-medium">
-                          {appraisal.submittedAt 
-                            ? new Date(appraisal.submittedAt).toLocaleDateString()
-                            : "Not submitted"
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Reviewed:</span>
-                        <span className="font-medium">
-                          {appraisal.reviewedAt 
-                            ? new Date(appraisal.reviewedAt).toLocaleDateString()
-                            : "Not reviewed"
-                          }
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <h4 className="font-medium text-gray-700 mb-1">Key Strengths</h4>
-                        <p className="text-sm text-gray-600">
-                          {appraisal.strengths || "Not yet provided"}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-700 mb-1">Areas for Improvement</h4>
-                        <p className="text-sm text-gray-600">
-                          {appraisal.areasImprovement || "Not yet provided"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSection === "performance" && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900">Performance Areas Assessment</h3>
-                
-                {appraisal.performanceAreas && Array.isArray(appraisal.performanceAreas) && appraisal.performanceAreas.length > 0 ? (
-                  appraisal.performanceAreas.map((area, index) => (
-                  <div key={index} className="border rounded-lg p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{area.area}</h4>
-                        <p className="text-sm text-gray-600 mt-1">Weight: {area.weight}%</p>
-                      </div>
-                      <div className="text-right">
-                        {area.rating > 0 ? (
-                          <>
-                            {renderStars(area.rating)}
-                            <p className="text-sm text-gray-600 mt-1">
-                              Weighted Score: {((area.rating * area.weight) / 100).toFixed(1)}
-                            </p>
-                          </>
-                        ) : (
-                          <span className="text-sm text-gray-500">Not rated</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {area.comments && (
-                      <div className="mb-3">
-                        <h5 className="font-medium text-gray-700 mb-1">Comments</h5>
-                        <p className="text-sm text-gray-600">{area.comments}</p>
-                      </div>
-                    )}
-
-                    {area.evidence && (
-                      <div>
-                        <h5 className="font-medium text-gray-700 mb-1">Evidence</h5>
-                        <p className="text-sm text-gray-600">{area.evidence}</p>
-                      </div>
-                    )}
-                  </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <StarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No performance areas recorded yet</p>
-                  </div>
-                )}
-
-                {appraisal.performanceAreas && Array.isArray(appraisal.performanceAreas) && appraisal.performanceAreas.some(area => (area.rating || 0) > 0) && (
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-blue-900 mb-2">Overall Performance Summary</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-blue-700">Calculated Rating:</span>
-                        <span className="ml-2 font-semibold">{calculateOverallRating()}/5</span>
-                      </div>
-                      <div>
-                        <span className="text-blue-700">Total Weight:</span>
-                        <span className="ml-2 font-semibold">
-                          {appraisal.performanceAreas && Array.isArray(appraisal.performanceAreas) 
-                            ? appraisal.performanceAreas.reduce((sum, area) => sum + (area.weight || 0), 0)
-                            : 0}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeSection === "achievements" && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900">Key Achievements</h3>
-                
-                {appraisal.achievements && Array.isArray(appraisal.achievements) && appraisal.achievements.length > 0 ? (
-                  appraisal.achievements.map((achievement, index) => (
-                    <div key={index} className="border rounded-lg p-6">
-                      <div className="flex items-start space-x-3">
-                        <TrophyIcon className="h-6 w-6 text-yellow-500 mt-1" />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 mb-2">{achievement.achievement}</h4>
-                          <div className="space-y-3">
-                            <div>
-                              <h5 className="font-medium text-gray-700 mb-1">Impact</h5>
-                              <p className="text-sm text-gray-600">{achievement.impact}</p>
-                            </div>
-                            <div>
-                              <h5 className="font-medium text-gray-700 mb-1">Evidence</h5>
-                              <p className="text-sm text-gray-600">{achievement.evidence}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <TrophyIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No achievements recorded yet</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeSection === "development" && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900">Development Plans</h3>
-                
-                {appraisal.developmentPlans && Array.isArray(appraisal.developmentPlans) && appraisal.developmentPlans.length > 0 ? (
-                  appraisal.developmentPlans.map((plan, index) => (
-                    <div key={index} className="border rounded-lg p-6">
-                      <div className="flex items-start space-x-3">
-                        <LightBulbIcon className="h-6 w-6 text-blue-500 mt-1" />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 mb-3">{plan.area}</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <h5 className="font-medium text-gray-700 mb-1">Current Level</h5>
-                              <p className="text-sm text-gray-600">{plan.currentLevel}</p>
-                            </div>
-                            <div>
-                              <h5 className="font-medium text-gray-700 mb-1">Target Level</h5>
-                              <p className="text-sm text-gray-600">{plan.targetLevel}</p>
-                            </div>
-                            <div>
-                              <h5 className="font-medium text-gray-700 mb-1">Timeline</h5>
-                              <p className="text-sm text-gray-600">{plan.timeline}</p>
-                            </div>
-                            <div>
-                              <h5 className="font-medium text-gray-700 mb-1">Resources</h5>
-                              <p className="text-sm text-gray-600">{plan.resources}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <LightBulbIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p>No development plans created yet</p>
-                  </div>
-                )}
-
-                {appraisal.improvementPlan && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-                    <h4 className="font-semibold text-orange-900 mb-2">Improvement Plan</h4>
-                    <p className="text-sm text-orange-800">{appraisal.improvementPlan}</p>
-                  </div>
-                )}
-
-                {appraisal.nextSteps && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-                    <h4 className="font-semibold text-green-900 mb-2">Next Steps</h4>
-                    <div className="text-sm text-green-800">
-                      {appraisal.nextSteps.split('\\n').map((step, index) => (
-                        <p key={index} className="mb-1">{step}</p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeSection === "feedback" && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold text-gray-900">Feedback & Comments</h3>
-                
-                <div className="grid grid-cols-1 gap-6">
-                  {/* Employee Comments */}
-                  {appraisal.employeeComments && (
-                    <div className="border rounded-lg p-6">
-                      <div className="flex items-start space-x-3">
-                        <ChatBubbleLeftRightIcon className="h-6 w-6 text-green-500 mt-1" />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 mb-2">Employee Response</h4>
-                          <p className="text-sm text-gray-600 leading-relaxed">{appraisal.employeeComments}</p>
-                          <p className="text-xs text-gray-500 mt-2">— {appraisal.employeeName}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Supervisor Comments History */}
-                  {workflowComments.supervisor && workflowComments.supervisor.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-gray-900 mb-3">Supervisor Comments History</h4>
-                      <div className="space-y-3">
-                        {workflowComments.supervisor.map((comment: any, index: number) => (
-                          <div key={comment.id || index} className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50 rounded">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm font-semibold text-gray-900">{comment.name || 'Supervisor'}</span>
-                                <span className="text-xs text-gray-500">
-                                  {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
-                                </span>
-                              </div>
-                              <span className={`px-2 py-1 text-xs font-medium rounded ${
-                                comment.action === 'approve' ? 'bg-green-100 text-green-800' :
-                                comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-blue-100 text-blue-800'
-                              }`}>
-                                {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
-                              </span>
-                            </div>
-                            {comment.comment && (
-                              <p className="text-sm text-gray-700">{comment.comment}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {appraisalSteps[currentStep - 1]?.title || 'Step'}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {appraisalSteps[currentStep - 1]?.description || ''}
+                      </p>
                     </div>
-                  )}
-
-                  {/* Reviewer Comments History */}
-                  {workflowComments.reviewer && workflowComments.reviewer.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-3">Reviewer Comments History</h4>
-                      <div className="space-y-3">
-                        {workflowComments.reviewer.map((comment: any, index: number) => (
-                          <div key={comment.id || index} className="border-l-4 border-green-500 pl-4 py-2 bg-green-50 rounded">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm font-semibold text-gray-900">{comment.name || 'Reviewer'}</span>
-                                <span className="text-xs text-gray-500">
-                                  {comment.timestamp ? new Date(comment.timestamp).toLocaleString() : ''}
-                                </span>
-                              </div>
-                              <span className={`px-2 py-1 text-xs font-medium rounded ${
-                                comment.action === 'final_approve' ? 'bg-green-100 text-green-800' :
-                                comment.action === 'request_changes' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-green-100 text-green-800'
-                              }`}>
-                                {comment.action?.replace('_', ' ').toUpperCase() || 'COMMENT'}
-                              </span>
-                            </div>
-                            {comment.comment && (
-                              <p className="text-sm text-gray-700">{comment.comment}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Fallback to simple comments if workflow comments don't exist */}
-                  {workflowComments.supervisor.length === 0 && workflowComments.reviewer.length === 0 && appraisal.supervisorComments && (
-                    <div className="border rounded-lg p-6">
-                      <div className="flex items-start space-x-3">
-                        <UserIcon className="h-6 w-6 text-blue-500 mt-1" />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 mb-2">Supervisor Comments</h4>
-                          <p className="text-sm text-gray-600 leading-relaxed">{appraisal.supervisorComments}</p>
-                          <p className="text-xs text-gray-500 mt-2">— {appraisal.supervisor}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-
-                  {!appraisal.supervisorComments && !appraisal.employeeComments && workflowComments.supervisor.length === 0 && workflowComments.reviewer.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <ChatBubbleLeftRightIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>No feedback provided yet</p>
-                    </div>
-                  )}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">
+                    Step {currentStep} of {appraisalSteps.length}
+                  </span>
                 </div>
               </div>
-            )}
+              
+              {/* Step Indicators */}
+              <div className="px-8 py-4 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  {appraisalSteps.map((step, index) => (
+                    <div key={index} className="flex items-center flex-1">
+                      <div className="flex flex-col items-center flex-1">
+                        <button
+                          onClick={() => setCurrentStep(index + 1)}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                            currentStep === index + 1
+                              ? 'bg-orange-500 text-white shadow-lg scale-110'
+                              : currentStep > index + 1
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-300 text-gray-600'
+                          }`}
+                        >
+                          {currentStep > index + 1 ? '✓' : index + 1}
+                        </button>
+                        <span className={`text-xs mt-2 text-center ${
+                          currentStep === index + 1 ? 'font-bold text-orange-600' : 'text-gray-600'
+                        }`}>
+                          {step.title}
+                        </span>
+                      </div>
+                      {index < appraisalSteps.length - 1 && (
+                        <div className={`flex-1 h-1 mx-2 ${
+                          currentStep > index + 1 ? 'bg-green-500' : 'bg-gray-300'
+                        }`} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Tab Content */}
+            <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
+              {/* Form Header */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Performance Appraisal Details</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {appraisal.period} • {appraisal.employeeName} • {appraisal.position}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Content */}
+              <div className="px-8 py-8">
+                {renderStepContent()}
+              </div>
+
+              {/* Navigation Footer */}
+              <div className="bg-gradient-to-r from-gray-50 to-blue-50 px-8 py-6 border-t border-gray-200">
+                <div className="flex justify-between items-center">
+                  <button
+                    onClick={handlePrevious}
+                    disabled={currentStep === 1}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                      currentStep === 1
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-gray-600 text-white hover:bg-gray-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                    }`}
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={currentStep === appraisalSteps.length}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                      currentStep === appraisalSteps.length
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-orange-600 text-white hover:bg-orange-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                    }`}
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          </div>
-          </>
+          )}
+
+          {/* Legacy content removed - now using step-by-step view */}
+          {activeWorkflowTab === 'submitted' && !formData && (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading appraisal data...</p>
+            </div>
           )}
 
           {/* Tab 2: Supervisor Review */}
