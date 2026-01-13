@@ -540,6 +540,8 @@ export default function PerformanceAppraisalsPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Rating</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Plan Progress</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Supervisor</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Reviewer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Next Action</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Last Updated</th>
                         <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                       </tr>
@@ -588,6 +590,32 @@ export default function PerformanceAppraisalsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {appraisal.supervisor}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {appraisal.reviewer || 'Not assigned'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {appraisal.nextAction && (
+                              <div className="flex items-center space-x-2">
+                                {appraisal.canUserAct ? (
+                                  <button
+                                    onClick={() => {
+                                      // Handle workflow action
+                                      console.log('Workflow action for appraisal:', appraisal.id, appraisal.nextAction)
+                                    }}
+                                    className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100"
+                                  >
+                                    <ClockIcon className="h-3 w-3 mr-1" />
+                                    {appraisal.nextAction}
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded-md">
+                                    <ClockIcon className="h-3 w-3 mr-1" />
+                                    {appraisal.nextAction}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(appraisal.lastUpdated).toLocaleDateString()}

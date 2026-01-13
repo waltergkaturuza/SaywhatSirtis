@@ -126,6 +126,12 @@ export async function GET(request: NextRequest) {
                 firstName: true,
                 lastName: true
               }
+            },
+            reviewer: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
             }
           }
         },
@@ -152,6 +158,26 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Helper function to determine next action based on status
+    const getNextAction = (status: string, supervisorApprovedAt: Date | null, reviewerApprovedAt: Date | null) => {
+      switch (status) {
+        case 'draft':
+          return 'Submit for Review';
+        case 'submitted':
+        case 'supervisor_review':
+          return 'Supervisor Review Pending';
+        case 'supervisor_approved':
+        case 'reviewer_assessment':
+          return 'Final Review Pending';
+        case 'approved':
+          return 'Approved';
+        case 'revision_requested':
+          return 'Revisions Required';
+        default:
+          return 'Pending';
+      }
+    };
+
     // Transform appraisals for frontend
     const transformedAppraisals = appraisals.map(appraisal => ({
       id: appraisal.id,
@@ -162,10 +188,15 @@ export async function GET(request: NextRequest) {
       supervisor: appraisal.employees?.employees 
         ? `${appraisal.employees.employees.firstName} ${appraisal.employees.employees.lastName}`.trim()
         : 'Not assigned',
+      reviewer: appraisal.employees?.reviewer 
+        ? `${appraisal.employees.reviewer.firstName} ${appraisal.employees.reviewer.lastName}`.trim()
+        : 'Not assigned',
       period: appraisal.performance_plans?.planPeriod || `${appraisal.performance_plans?.planYear || new Date().getFullYear()}`,
       status: appraisal.status,
       overallRating: appraisal.overallRating || 0,
       planProgress: 0, // TODO: Calculate from performance plan
+      nextAction: getNextAction(appraisal.status, appraisal.supervisorApprovedAt, appraisal.reviewerApprovedAt),
+      canUserAct: false, // To be determined by frontend based on user role
       lastUpdated: appraisal.updatedAt?.toISOString() || appraisal.createdAt?.toISOString(),
       planYear: appraisal.performance_plans?.planYear,
       planPeriod: appraisal.performance_plans?.planPeriod,

@@ -540,21 +540,34 @@ function PerformancePlansContent() {
 
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    // Normalize status to handle both underscore and hyphen formats
+    const normalizedStatus = status?.toLowerCase().replace(/_/g, '-') || ''
+    switch (normalizedStatus) {
       case "draft":
         return "bg-gray-100 text-gray-800"
+      case "submitted":
       case "supervisor-review":
+      case "supervisor_review":
         return "bg-orange-100 text-orange-800"
       case "supervisor-approved":
+      case "supervisor_approved":
         return "bg-blue-100 text-blue-800"
       case "reviewer-review":
+      case "reviewer-assessment":
+      case "reviewer_assessment":
         return "bg-yellow-100 text-yellow-800"
       case "reviewer-approved":
+      case "approved":
         return "bg-indigo-100 text-indigo-800"
       case "completed":
         return "bg-green-100 text-green-800"
       case "rejected":
+      case "revision-requested":
+      case "revision_requested":
         return "bg-red-100 text-red-800"
+      case "active":
+        // For legacy "active" status, show as draft
+        return "bg-gray-100 text-gray-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -881,8 +894,8 @@ function PerformancePlansContent() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(plan.status)}`}>
-                              {plan.status.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(plan.workflowStatus || plan.status)}`}>
+                              {(plan.workflowStatus || plan.status).replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
