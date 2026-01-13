@@ -54,7 +54,11 @@ export async function GET(
       headers.set('Content-Disposition', `attachment; filename="${document.originalName}"`);
       headers.set('Cache-Control', 'no-cache');
 
-      return new NextResponse(buffer, {
+      // Convert Uint8Array to ArrayBuffer for NextResponse
+      // Use slice() to create a new Uint8Array with a proper ArrayBuffer
+      const bufferCopy = buffer.slice();
+      const arrayBuffer = bufferCopy.buffer.slice(bufferCopy.byteOffset, bufferCopy.byteOffset + bufferCopy.byteLength);
+      return new NextResponse(arrayBuffer, {
         status: 200,
         headers
       });
@@ -74,7 +78,8 @@ export async function GET(
         headers.set('Content-Disposition', `attachment; filename="${document.originalName}"`);
         headers.set('Cache-Control', 'no-cache');
 
-        return new NextResponse(new Uint8Array(arrayBuffer), {
+        // arrayBuffer is already an ArrayBuffer, which is a valid BodyInit type
+        return new NextResponse(arrayBuffer, {
           status: 200,
           headers
         });

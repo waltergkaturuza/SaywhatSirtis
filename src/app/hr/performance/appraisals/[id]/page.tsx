@@ -229,11 +229,75 @@ export default function ViewAppraisalPage() {
             const supervisorId = apiData.supervisorId
             const reviewerId = apiData.reviewerId
             
-            const isSupervisorRole = supervisorId === session.user.id
-            const isReviewerRole = reviewerId === session.user.id
+            let isSupervisorRole = supervisorId === session.user.id
+            let isReviewerRole = reviewerId === session.user.id
             
-            setIsSupervisor(isSupervisorRole)
-            setIsReviewer(isReviewerRole)
+            // Also check if user is supervisor via employee relationship
+            // This handles cases where the appraisal's supervisorId might not match but the employee's supervisor does
+            if (!isSupervisorRole && normalizedData.employeeId) {
+              try {
+                const employeeResponse = await fetch(`/api/hr/employees/${normalizedData.employeeId}`)
+                if (employeeResponse.ok) {
+                  const employeeData = await employeeResponse.json()
+                  const employee = employeeData.data || employeeData
+                  
+                  // Check if employee has a supervisor and if that supervisor's userId matches current user
+                  if (employee.supervisor_id) {
+                    const supervisorResponse = await fetch(`/api/hr/employees/${employee.supervisor_id}`)
+                    if (supervisorResponse.ok) {
+                      const supervisorData = await supervisorResponse.json()
+                      const supervisor = supervisorData.data || supervisorData
+                      
+                      // Check if supervisor's userId matches current user
+                      if (supervisor.userId === session.user.id) {
+                        isSupervisorRole = true
+                      }
+                    }
+                  }
+                  
+                  // Similar check for reviewer
+                  if (!isReviewerRole && employee.reviewer_id) {
+                    const reviewerResponse = await fetch(`/api/hr/employees/${employee.reviewer_id}`)
+                    if (reviewerResponse.ok) {
+                      const reviewerData = await reviewerResponse.json()
+                      const reviewer = reviewerData.data || reviewerData
+                      
+                      if (reviewer.userId === session.user.id) {
+                        isReviewerRole = true
+                      }
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('Error checking employee supervisor relationship:', error)
+              }
+            }
+            
+            // Also check if user is HR/admin - they can review appraisals too
+            const isHR = session.user.roles?.some((r: string) => ['HR', 'ADMIN', 'HR_MANAGER', 'SUPERUSER', 'admin'].includes(r))
+            const hasHRPermission = session.user.permissions?.some((p: string) => ['hr.full_access', 'hr.view_all_performance'].includes(p))
+            
+            // HR/Admin users can act as supervisors/reviewers if needed
+            const canActAsSupervisor = isSupervisorRole || isHR || hasHRPermission
+            const canActAsReviewer = isReviewerRole || isHR || hasHRPermission
+            
+            console.log('🔍 Appraisal Supervisor/Reviewer Check:', {
+              userId: session.user.id,
+              supervisorId: supervisorId,
+              reviewerId: reviewerId,
+              employeeId: normalizedData.employeeId,
+              isSupervisorRole,
+              isReviewerRole,
+              isHR,
+              hasHRPermission,
+              canActAsSupervisor,
+              canActAsReviewer,
+              appraisalStatus: normalizedData.status,
+              supervisorApproval: normalizedData.supervisorApproval
+            })
+            
+            setIsSupervisor(canActAsSupervisor)
+            setIsReviewer(canActAsReviewer)
             
             // Load workflow comments if they exist
             let comments = { supervisor: [] as any[], reviewer: [] as any[] }
@@ -250,9 +314,9 @@ export default function ViewAppraisalPage() {
               // Check if supervisor has already approved
               const hasSupervisorApproved = normalizedData.supervisorApproval === 'approved'
               
-              if (isSupervisorRole && !hasSupervisorApproved) {
+              if (canActAsSupervisor && !hasSupervisorApproved) {
                 setActiveWorkflowTab('supervisor')
-              } else if (isReviewerRole && hasSupervisorApproved) {
+              } else if (canActAsReviewer && hasSupervisorApproved) {
                 setActiveWorkflowTab('reviewer')
               } else {
                 setActiveWorkflowTab('submitted')

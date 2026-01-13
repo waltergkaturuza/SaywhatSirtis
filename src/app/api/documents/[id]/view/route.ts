@@ -86,7 +86,11 @@ export async function GET(
       headers.set('Access-Control-Allow-Origin', '*');
       headers.set('Access-Control-Allow-Methods', 'GET');
 
-      return new NextResponse(buffer, {
+      // Convert Uint8Array to ArrayBuffer for NextResponse
+      // Use slice() to create a new Uint8Array with a proper ArrayBuffer
+      const bufferCopy = buffer.slice();
+      const arrayBuffer = bufferCopy.buffer.slice(bufferCopy.byteOffset, bufferCopy.byteOffset + bufferCopy.byteLength);
+      return new NextResponse(arrayBuffer, {
         status: 200,
         headers
       });
