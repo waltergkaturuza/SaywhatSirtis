@@ -1301,12 +1301,16 @@ export default function ViewPlanPage() {
                 <div className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Supervisor Approval</span>
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${
-                      plan.supervisorApproval === 'approved' ? 'bg-green-100 text-green-800' :
-                      plan.supervisorApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {plan.supervisorApproval || 'pending'}
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded ${
+                        (plan.supervisorApproval === 'approved' || plan.status === 'supervisor_approved')
+                          ? 'bg-green-100 text-green-800'
+                          : (plan.supervisorApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
+                      }`}
+                    >
+                      {(plan.supervisorApproval === 'approved' || plan.status === 'supervisor_approved')
+                        ? 'approved'
+                        : (plan.supervisorApproval || 'pending')}
                     </span>
                   </div>
                   {plan.supervisorApprovedAt && (
@@ -1318,12 +1322,16 @@ export default function ViewPlanPage() {
                 <div className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">Reviewer Approval</span>
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${
-                      plan.reviewerApproval === 'approved' ? 'bg-green-100 text-green-800' :
-                      plan.reviewerApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {plan.reviewerApproval || 'pending'}
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded ${
+                        (plan.reviewerApproval === 'approved' || plan.status === 'approved')
+                          ? 'bg-green-100 text-green-800'
+                          : (plan.reviewerApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
+                      }`}
+                    >
+                      {(plan.reviewerApproval === 'approved' || plan.status === 'approved')
+                        ? 'approved'
+                        : (plan.reviewerApproval || 'pending')}
                     </span>
                   </div>
                   {plan.reviewerApprovedAt && (
@@ -1368,7 +1376,16 @@ export default function ViewPlanPage() {
                   <div>
                     <span className="text-gray-600">Submitted:</span>
                     <p className="font-medium text-gray-900">
-                      {plan.submittedAt ? new Date(plan.submittedAt).toLocaleDateString() : 'Not submitted'}
+                      {(() => {
+                        const submittedTimestamp =
+                          plan.submittedAt ||
+                          plan.supervisorApprovedAt ||
+                          plan.reviewerApprovedAt
+
+                        return submittedTimestamp
+                          ? new Date(submittedTimestamp).toLocaleDateString()
+                          : 'Not submitted'
+                      })()}
                     </p>
                   </div>
                 </div>

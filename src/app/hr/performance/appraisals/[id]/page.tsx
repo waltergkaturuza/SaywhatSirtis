@@ -52,6 +52,8 @@ interface AppraisalData {
   status: string
   submittedAt: string | null
   reviewedAt: string | null
+  supervisorApprovedAt?: string | null
+  reviewerApprovedAt?: string | null
   supervisor: string
   reviewer: string
   planProgress: number
@@ -239,8 +241,8 @@ export default function ViewAppraisalPage() {
             
             // Set default tab based on user role and appraisal status (after loading comments)
             if (normalizedData.status !== 'draft') {
-              // Check if supervisor has already approved by looking at workflow comments
-              const hasSupervisorApproved = comments.supervisor.some((c: any) => c.action === 'approve') || false
+              // Check if supervisor has already approved by checking supervisorApprovedAt
+              const hasSupervisorApproved = normalizedData.supervisorApprovedAt !== null && normalizedData.supervisorApprovedAt !== undefined
               
               if (isSupervisorRole && !hasSupervisorApproved) {
                 setActiveWorkflowTab('supervisor')
@@ -299,7 +301,7 @@ export default function ViewAppraisalPage() {
 
       const result = await response.json()
       
-      // Reload appraisal data to get updated comments
+      // Reload appraisal data to get updated comments and status
       const updatedAppraisalData = await fetchAppraisalData(appraisalId)
       if (updatedAppraisalData) {
         const apiData = updatedAppraisalData as any
@@ -316,6 +318,16 @@ export default function ViewAppraisalPage() {
             supervisor: Array.isArray(apiData.comments.supervisor) ? apiData.comments.supervisor : [],
             reviewer: Array.isArray(apiData.comments.reviewer) ? apiData.comments.reviewer : []
           })
+        }
+
+        // If supervisor approved, and user is reviewer, move to reviewer tab
+        if (action === 'approve' && role === 'supervisor' && normalizedData.supervisorApprovedAt) {
+          const isReviewerRole = apiData.reviewerId === session?.user?.id
+          if (isReviewerRole || isReviewer) {
+            setActiveWorkflowTab('reviewer')
+          } else {
+            setActiveWorkflowTab('submitted')
+          }
         }
       }
       
@@ -697,7 +709,7 @@ export default function ViewAppraisalPage() {
                     <span>Supervisor Review</span>
                   </button>
                 )}
-                {isReviewer && appraisal.status !== 'draft' && (
+                {isReviewer && appraisal.status !== 'draft' && appraisal.supervisorApprovedAt && (
                   <button
                     onClick={() => setActiveWorkflowTab('reviewer')}
                     className={`flex-1 py-4 px-6 border-b-2 font-medium text-sm transition-colors flex items-center justify-center space-x-2 ${
@@ -908,43 +920,57 @@ export default function ViewAppraisalPage() {
                 {/* Add Supervisor Comment Form */}
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Your Review</h3>
-                  <textarea
-                    value={currentSupervisorComment}
-                    onChange={(e) => setCurrentSupervisorComment(e.target.value)}
-                    rows={6}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-                    placeholder="Provide your feedback and comments on this performance appraisal..."
-                  />
-                  <div className="flex space-x-3 mt-4">
-                    <button
-                      onClick={() => handleWorkflowAction('comment', 'supervisor')}
-                      disabled={submittingWorkflow || !currentSupervisorComment.trim()}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {submittingWorkflow ? 'Submitting...' : 'Add Comment'}
-                    </button>
-                    <button
-                      onClick={() => handleWorkflowAction('approve', 'supervisor')}
-                      disabled={submittingWorkflow}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {submittingWorkflow ? 'Processing...' : 'Approve'}
-                    </button>
-                    <button
-                      onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
-                      disabled={submittingWorkflow || !currentSupervisorComment.trim()}
-                      className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {submittingWorkflow ? 'Processing...' : 'Request Changes'}
-                    </button>
-                  </div>
+                  {appraisal.supervisorApprovedAt ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                        <p className="text-green-800 font-medium">This appraisal has been approved by you.</p>
+                      </div>
+                      <p className="text-sm text-green-700 mt-2">
+                        Approved on: {new Date(appraisal.supervisorApprovedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <textarea
+                        value={currentSupervisorComment}
+                        onChange={(e) => setCurrentSupervisorComment(e.target.value)}
+                        rows={6}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                        placeholder="Provide your feedback and comments on this performance appraisal..."
+                      />
+                      <div className="flex space-x-3 mt-4">
+                        <button
+                          onClick={() => handleWorkflowAction('comment', 'supervisor')}
+                          disabled={submittingWorkflow || !currentSupervisorComment.trim()}
+                          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {submittingWorkflow ? 'Submitting...' : 'Add Comment'}
+                        </button>
+                        <button
+                          onClick={() => handleWorkflowAction('approve', 'supervisor')}
+                          disabled={submittingWorkflow}
+                          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {submittingWorkflow ? 'Processing...' : 'Approve'}
+                        </button>
+                        <button
+                          onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
+                          disabled={submittingWorkflow || !currentSupervisorComment.trim()}
+                          className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {submittingWorkflow ? 'Processing...' : 'Request Changes'}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
           {/* Tab 3: Final Review (Reviewer) */}
-          {activeWorkflowTab === 'reviewer' && isReviewer && appraisal.status !== 'draft' && (
+          {activeWorkflowTab === 'reviewer' && isReviewer && appraisal.status !== 'draft' && appraisal.supervisorApprovedAt && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center space-x-3 mb-6">
@@ -1016,36 +1042,50 @@ export default function ViewAppraisalPage() {
                 {/* Add Reviewer Comment Form */}
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Your Final Review</h3>
-                  <textarea
-                    value={currentReviewerComment}
-                    onChange={(e) => setCurrentReviewerComment(e.target.value)}
-                    rows={6}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-                    placeholder="Provide your final review feedback and assessment..."
-                  />
-                  <div className="flex space-x-3 mt-4">
-                    <button
-                      onClick={() => handleWorkflowAction('comment', 'reviewer')}
-                      disabled={submittingWorkflow || !currentReviewerComment.trim()}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {submittingWorkflow ? 'Submitting...' : 'Add Comment'}
-                    </button>
-                    <button
-                      onClick={() => handleWorkflowAction('final_approve', 'reviewer')}
-                      disabled={submittingWorkflow}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {submittingWorkflow ? 'Processing...' : 'Final Approve'}
-                    </button>
-                    <button
-                      onClick={() => handleWorkflowAction('request_changes', 'reviewer')}
-                      disabled={submittingWorkflow || !currentReviewerComment.trim()}
-                      className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {submittingWorkflow ? 'Processing...' : 'Request Changes'}
-                    </button>
-                  </div>
+                  {appraisal.reviewerApprovedAt ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                        <p className="text-green-800 font-medium">This appraisal has been approved by you.</p>
+                      </div>
+                      <p className="text-sm text-green-700 mt-2">
+                        Approved on: {new Date(appraisal.reviewerApprovedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <textarea
+                        value={currentReviewerComment}
+                        onChange={(e) => setCurrentReviewerComment(e.target.value)}
+                        rows={6}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                        placeholder="Provide your final review feedback and assessment..."
+                      />
+                      <div className="flex space-x-3 mt-4">
+                        <button
+                          onClick={() => handleWorkflowAction('comment', 'reviewer')}
+                          disabled={submittingWorkflow || !currentReviewerComment.trim()}
+                          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {submittingWorkflow ? 'Submitting...' : 'Add Comment'}
+                        </button>
+                        <button
+                          onClick={() => handleWorkflowAction('final_approve', 'reviewer')}
+                          disabled={submittingWorkflow}
+                          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {submittingWorkflow ? 'Processing...' : 'Final Approve'}
+                        </button>
+                        <button
+                          onClick={() => handleWorkflowAction('request_changes', 'reviewer')}
+                          disabled={submittingWorkflow || !currentReviewerComment.trim()}
+                          className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {submittingWorkflow ? 'Processing...' : 'Request Changes'}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

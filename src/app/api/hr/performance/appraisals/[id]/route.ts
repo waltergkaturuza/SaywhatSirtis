@@ -236,6 +236,8 @@ export async function GET(
       status: appraisal.status,
       submittedAt: appraisal.submittedAt?.toISOString(),
       approvedAt: appraisal.approvedAt?.toISOString(),
+      supervisorApprovedAt: appraisal.supervisorApprovedAt?.toISOString(),
+      reviewerApprovedAt: appraisal.reviewerApprovedAt?.toISOString(),
       createdAt: appraisal.createdAt?.toISOString()
     };
 

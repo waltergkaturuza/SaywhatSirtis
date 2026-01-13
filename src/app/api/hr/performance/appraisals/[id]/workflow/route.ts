@@ -57,16 +57,55 @@ export async function POST(
     const userId = session.user.id;
     const isSupervisor = appraisal.supervisorId === userId;
     const isReviewer = appraisal.reviewerId === userId;
+    
+    // Check if the current user is the supervisor of the employee associated with the appraisal
+    let isEmployeeSupervisor = false
+    let isEmployeeReviewer = false
+    if (appraisal.employeeId) {
+      const appraisalEmployee = await prisma.employees.findUnique({
+        where: { id: appraisal.employeeId },
+        select: { supervisor_id: true, reviewer_id: true }
+      })
+      if (appraisalEmployee?.supervisor_id) {
+        const supervisorEmployee = await prisma.employees.findUnique({
+          where: { id: appraisalEmployee.supervisor_id },
+          select: { userId: true }
+        })
+        if (supervisorEmployee?.userId === userId) {
+          isEmployeeSupervisor = true
+        }
+      }
+      if (appraisalEmployee?.reviewer_id) {
+        const reviewerEmployee = await prisma.employees.findUnique({
+          where: { id: appraisalEmployee.reviewer_id },
+          select: { userId: true }
+        })
+        if (reviewerEmployee?.userId === userId) {
+          isEmployeeReviewer = true
+        }
+      }
+    }
+
     const isHR = session.user.roles?.some(r => [
       'HR',
       'admin',
       'SYSTEM_ADMINISTRATOR',
       'SUPERUSER',
-      // Grant elevated workflow permissions to advanced users, per org policy
       'ADVANCE_USER_1',
-      'ADVANCE_USER_2'
+      'ADVANCE_USER_2',
+      'HR_MANAGER',
+      'ADMIN'
     ].includes(r))
-    const canAct = (role === 'supervisor' && isSupervisor) || (role === 'reviewer' && isReviewer) || isHR
+    const hasHRPermission = session.user.permissions?.some(p => [
+      'hr.full_access',
+      'hr.view_all_performance'
+    ].includes(p))
+    
+    // HR/Admin users can act as supervisors/reviewers if needed
+    const canActAsSupervisor = isSupervisor || isEmployeeSupervisor || isHR || hasHRPermission
+    const canActAsReviewer = isReviewer || isEmployeeReviewer || isHR || hasHRPermission
+    
+    const canAct = (role === 'supervisor' && canActAsSupervisor) || (role === 'reviewer' && canActAsReviewer)
 
     console.log('Workflow permission check:', {
       userId: userId,
@@ -116,6 +155,13 @@ export async function POST(
       newStatus = 'revision_requested'
     } else if (action === 'approve' && role === 'supervisor') {
       newStatus = 'supervisor_approved'
+      // If there's a reviewer, push to reviewer_assessment
+      if (appraisal.reviewerId) {
+        newStatus = 'reviewer_assessment'
+      } else {
+        // If no reviewer, supervisor approval is final
+        newStatus = 'approved'
+      }
     } else if (action === 'final_approve' && role === 'reviewer') {
       newStatus = 'approved'
     }
