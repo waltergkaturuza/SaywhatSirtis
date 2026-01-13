@@ -128,7 +128,21 @@ export async function POST(
     }
 
     // Get current comments
-    const currentComments = appraisal.comments ? JSON.parse(appraisal.comments as string) : { supervisor: [], reviewer: [] }
+    // Handle both cases: comments might be a JSON string or already an object
+    let currentComments: any = { supervisor: [], reviewer: [] }
+    if (appraisal.comments) {
+      if (typeof appraisal.comments === 'string') {
+        try {
+          currentComments = JSON.parse(appraisal.comments)
+        } catch (e) {
+          console.error('Error parsing comments JSON:', e)
+          currentComments = { supervisor: [], reviewer: [] }
+        }
+      } else {
+        // Already an object
+        currentComments = appraisal.comments as any
+      }
+    }
 
     // Create new comment entry
     const newComment = {
@@ -190,7 +204,17 @@ export async function POST(
       appraisal: {
         id: updatedAppraisal.id,
         status: updatedAppraisal.status,
-        comments: JSON.parse(updatedAppraisal.comments as string),
+        comments: (() => {
+          if (!updatedAppraisal.comments) return { supervisor: [], reviewer: [] }
+          if (typeof updatedAppraisal.comments === 'string') {
+            try {
+              return JSON.parse(updatedAppraisal.comments)
+            } catch (e) {
+              return { supervisor: [], reviewer: [] }
+            }
+          }
+          return updatedAppraisal.comments as any
+        })(),
         supervisorApproval,
         reviewerApproval,
         supervisorApprovedAt: updatedAppraisal.supervisorApprovedAt?.toISOString(),
@@ -238,7 +262,21 @@ export async function GET(
       return NextResponse.json({ error: 'Performance appraisal not found' }, { status: 404 })
     }
 
-    const comments = appraisal.comments ? JSON.parse(appraisal.comments as string) : { supervisor: [], reviewer: [] }
+    // Handle both cases: comments might be a JSON string or already an object
+    let comments: any = { supervisor: [], reviewer: [] }
+    if (appraisal.comments) {
+      if (typeof appraisal.comments === 'string') {
+        try {
+          comments = JSON.parse(appraisal.comments)
+        } catch (e) {
+          console.error('Error parsing comments JSON:', e)
+          comments = { supervisor: [], reviewer: [] }
+        }
+      } else {
+        // Already an object
+        comments = appraisal.comments as any
+      }
+    }
 
     return NextResponse.json({
       success: true,
