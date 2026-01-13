@@ -304,9 +304,19 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     });
 
+    // Transform appraisals to include approval status fields (like plans)
+    const transformedAppraisals = appraisals.map((appraisal) => ({
+      ...appraisal,
+      supervisorApproval: appraisal.supervisorApprovedAt ? 'approved' : 'pending',
+      reviewerApproval: appraisal.reviewerApprovedAt ? 'approved' : 'pending',
+      // Ensure submittedAt is included
+      submittedAt: appraisal.submittedAt,
+      supervisorApprovedAt: appraisal.supervisorApprovedAt,
+      reviewerApprovedAt: appraisal.reviewerApprovedAt
+    }));
+
     // Next.js automatically serializes Date objects to ISO strings in JSON responses
-    // Return the appraisals as-is - dates will be serialized correctly
-    return NextResponse.json(appraisals);
+    return NextResponse.json(transformedAppraisals);
 
   } catch (error) {
     console.error('Error fetching performance appraisals:', error);

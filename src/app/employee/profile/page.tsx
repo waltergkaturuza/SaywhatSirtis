@@ -375,6 +375,10 @@ export default function EmployeeProfilePage() {
               overallRating: appraisal.overallRating ? (typeof appraisal.overallRating === 'string' ? parseFloat(appraisal.overallRating) : appraisal.overallRating) : null,
               submittedAt: appraisal.submittedAt,
               approvedAt: appraisal.approvedAt,
+              supervisorApproval: appraisal.supervisorApproval || (appraisal.supervisorApprovedAt ? 'approved' : 'pending'),
+              reviewerApproval: appraisal.reviewerApproval || (appraisal.reviewerApprovedAt ? 'approved' : 'pending'),
+              supervisorApprovedAt: appraisal.supervisorApprovedAt,
+              reviewerApprovedAt: appraisal.reviewerApprovedAt,
               createdAt: appraisal.createdAt,
               updatedAt: appraisal.updatedAt
             };
@@ -1364,10 +1368,13 @@ export default function EmployeeProfilePage() {
                                   Status
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                  Submitted
+                                  Supervisor Approval
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                  Approved
+                                  Reviewer Approval
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                  Submitted
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                                   Created
@@ -1417,7 +1424,7 @@ export default function EmployeeProfilePage() {
                                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                                       appraisal.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
                                       appraisal.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                      appraisal.status === 'supervisor_review' ? 'bg-yellow-100 text-yellow-800' :
+                                      appraisal.status === 'supervisor_approved' || appraisal.status === 'supervisor_review' ? 'bg-yellow-100 text-yellow-800' :
                                       appraisal.status === 'reviewer_assessment' ? 'bg-purple-100 text-purple-800' :
                                       appraisal.status === 'revision_requested' ? 'bg-orange-100 text-orange-800' :
                                       appraisal.status === 'completed' ? 'bg-green-100 text-green-800' :
@@ -1427,19 +1434,44 @@ export default function EmployeeProfilePage() {
                                     </span>
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-900">
-                                      {appraisal.status === 'submitted' || appraisal.status === 'approved' || appraisal.status === 'supervisor_approved' || appraisal.status === 'reviewer_approved' || appraisal.status === 'completed'
-                                        ? (appraisal.submittedAt 
-                                            ? new Date(appraisal.submittedAt).toLocaleDateString() 
-                                            : (appraisal.updatedAt ? new Date(appraisal.updatedAt).toLocaleDateString() : 'Submitted'))
-                                        : 'Not submitted'}
+                                    <div className="flex flex-col">
+                                      <span className={`px-2 py-1 text-xs font-medium rounded-full mb-1 ${
+                                        appraisal.supervisorApproval === 'approved' ? 'bg-green-100 text-green-800' :
+                                        appraisal.supervisorApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-gray-100 text-gray-800'
+                                      }`}>
+                                        {appraisal.supervisorApproval || 'pending'}
+                                      </span>
+                                      {appraisal.supervisorApprovedAt && (
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(appraisal.supervisorApprovedAt).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="flex flex-col">
+                                      <span className={`px-2 py-1 text-xs font-medium rounded-full mb-1 ${
+                                        appraisal.reviewerApproval === 'approved' ? 'bg-green-100 text-green-800' :
+                                        appraisal.reviewerApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-gray-100 text-gray-800'
+                                      }`}>
+                                        {appraisal.reviewerApproval || 'pending'}
+                                      </span>
+                                      {appraisal.reviewerApprovedAt && (
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(appraisal.reviewerApprovedAt).toLocaleDateString()}
+                                        </span>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap">
                                     <div className="text-sm text-gray-900">
-                                      {appraisal.approvedAt
-                                        ? new Date(appraisal.approvedAt).toLocaleDateString()
-                                        : 'Not approved'}
+                                      {appraisal.status === 'submitted' || appraisal.status === 'approved' || appraisal.status === 'supervisor_approved' || appraisal.status === 'reviewer_assessment' || appraisal.status === 'completed' || appraisal.status === 'supervisor_review'
+                                        ? (appraisal.submittedAt 
+                                            ? new Date(appraisal.submittedAt).toLocaleDateString() 
+                                            : (appraisal.updatedAt ? new Date(appraisal.updatedAt).toLocaleDateString() : 'Submitted'))
+                                        : 'Not submitted'}
                                     </div>
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap">
