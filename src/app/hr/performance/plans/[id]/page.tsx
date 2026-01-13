@@ -159,6 +159,17 @@ export default function ViewPlanPage() {
             const isSupervisorRole = planData.supervisorId === session.user.id
             const isReviewerRole = planData.reviewerId === session.user.id
             
+            console.log('🔍 Supervisor/Reviewer Check:', {
+              userId: session.user.id,
+              supervisorId: planData.supervisorId,
+              reviewerId: planData.reviewerId,
+              isSupervisorRole,
+              isReviewerRole,
+              planStatus: planData.status,
+              supervisorApproval: planData.supervisorApproval,
+              reviewerApproval: planData.reviewerApproval
+            })
+            
             setIsSupervisor(isSupervisorRole)
             setIsReviewer(isReviewerRole)
             
