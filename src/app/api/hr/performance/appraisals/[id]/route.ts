@@ -238,6 +238,8 @@ export async function GET(
       approvedAt: appraisal.approvedAt?.toISOString(),
       supervisorApprovedAt: appraisal.supervisorApprovedAt?.toISOString(),
       reviewerApprovedAt: appraisal.reviewerApprovedAt?.toISOString(),
+      supervisorApproval: appraisal.supervisorApprovedAt ? 'approved' : 'pending',
+      reviewerApproval: appraisal.reviewerApprovedAt ? 'approved' : 'pending',
       createdAt: appraisal.createdAt?.toISOString()
     };
 

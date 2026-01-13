@@ -54,6 +54,8 @@ interface AppraisalData {
   reviewedAt: string | null
   supervisorApprovedAt?: string | null
   reviewerApprovedAt?: string | null
+  supervisorApproval?: string
+  reviewerApproval?: string
   supervisor: string
   reviewer: string
   planProgress: number
@@ -175,6 +177,10 @@ export default function ViewAppraisalPage() {
             status: apiData.status || 'draft',
             submittedAt: apiData.submittedAt || null,
             reviewedAt: apiData.approvedAt || apiData.reviewedAt || null,
+            supervisorApprovedAt: apiData.supervisorApprovedAt || null,
+            reviewerApprovedAt: apiData.reviewerApprovedAt || null,
+            supervisorApproval: apiData.supervisorApproval || (apiData.supervisorApprovedAt ? 'approved' : 'pending'),
+            reviewerApproval: apiData.reviewerApproval || (apiData.reviewerApprovedAt ? 'approved' : 'pending'),
             supervisor: apiData.employee?.manager || apiData.supervisor || '',
             reviewer: apiData.employee?.reviewer || apiData.reviewer || '',
             planProgress: apiData.planProgress || 0,
@@ -241,8 +247,8 @@ export default function ViewAppraisalPage() {
             
             // Set default tab based on user role and appraisal status (after loading comments)
             if (normalizedData.status !== 'draft') {
-              // Check if supervisor has already approved by checking supervisorApprovedAt
-              const hasSupervisorApproved = normalizedData.supervisorApprovedAt !== null && normalizedData.supervisorApprovedAt !== undefined
+              // Check if supervisor has already approved
+              const hasSupervisorApproved = normalizedData.supervisorApproval === 'approved'
               
               if (isSupervisorRole && !hasSupervisorApproved) {
                 setActiveWorkflowTab('supervisor')
@@ -320,8 +326,23 @@ export default function ViewAppraisalPage() {
           })
         }
 
+        // Update approval fields from API response
+        if (apiData.supervisorApproval) {
+          normalizedData.supervisorApproval = apiData.supervisorApproval
+        }
+        if (apiData.reviewerApproval) {
+          normalizedData.reviewerApproval = apiData.reviewerApproval
+        }
+        if (apiData.supervisorApprovedAt) {
+          normalizedData.supervisorApprovedAt = apiData.supervisorApprovedAt
+        }
+        if (apiData.reviewerApprovedAt) {
+          normalizedData.reviewerApprovedAt = apiData.reviewerApprovedAt
+        }
+        setAppraisal(normalizedData)
+
         // If supervisor approved, and user is reviewer, move to reviewer tab
-        if (action === 'approve' && role === 'supervisor' && normalizedData.supervisorApprovedAt) {
+        if (action === 'approve' && role === 'supervisor' && normalizedData.supervisorApproval === 'approved') {
           const isReviewerRole = apiData.reviewerId === session?.user?.id
           if (isReviewerRole || isReviewer) {
             setActiveWorkflowTab('reviewer')
@@ -709,7 +730,7 @@ export default function ViewAppraisalPage() {
                     <span>Supervisor Review</span>
                   </button>
                 )}
-                {isReviewer && appraisal.status !== 'draft' && appraisal.supervisorApprovedAt && (
+                {isReviewer && appraisal.status !== 'draft' && appraisal.supervisorApproval === 'approved' && (
                   <button
                     onClick={() => setActiveWorkflowTab('reviewer')}
                     className={`flex-1 py-4 px-6 border-b-2 font-medium text-sm transition-colors flex items-center justify-center space-x-2 ${
@@ -838,6 +859,55 @@ export default function ViewAppraisalPage() {
                 </div>
               </div>
             </div>
+
+            {/* Approval Status */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Approval Status</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Supervisor Approval</span>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded ${
+                        (appraisal.supervisorApproval === 'approved' || appraisal.status === 'supervisor_approved')
+                          ? 'bg-green-100 text-green-800'
+                          : (appraisal.supervisorApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
+                      }`}
+                    >
+                      {(appraisal.supervisorApproval === 'approved' || appraisal.status === 'supervisor_approved')
+                        ? 'approved'
+                        : (appraisal.supervisorApproval || 'pending')}
+                    </span>
+                  </div>
+                  {appraisal.supervisorApprovedAt && (
+                    <p className="text-xs text-gray-500">
+                      Approved: {new Date(appraisal.supervisorApprovedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">Reviewer Approval</span>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded ${
+                        (appraisal.reviewerApproval === 'approved' || appraisal.status === 'approved')
+                          ? 'bg-green-100 text-green-800'
+                          : (appraisal.reviewerApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
+                      }`}
+                    >
+                      {(appraisal.reviewerApproval === 'approved' || appraisal.status === 'approved')
+                        ? 'approved'
+                        : (appraisal.reviewerApproval || 'pending')}
+                    </span>
+                  </div>
+                  {appraisal.reviewerApprovedAt && (
+                    <p className="text-xs text-gray-500">
+                      Approved: {new Date(appraisal.reviewerApprovedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           )}
 
@@ -920,15 +990,17 @@ export default function ViewAppraisalPage() {
                 {/* Add Supervisor Comment Form */}
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Your Review</h3>
-                  {appraisal.supervisorApprovedAt ? (
+                  {appraisal.supervisorApproval === 'approved' ? (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                       <div className="flex items-center space-x-2">
                         <CheckCircleIcon className="h-5 w-5 text-green-600" />
                         <p className="text-green-800 font-medium">This appraisal has been approved by you.</p>
                       </div>
-                      <p className="text-sm text-green-700 mt-2">
-                        Approved on: {new Date(appraisal.supervisorApprovedAt).toLocaleString()}
-                      </p>
+                      {appraisal.supervisorApprovedAt && (
+                        <p className="text-sm text-green-700 mt-2">
+                          Approved on: {new Date(appraisal.supervisorApprovedAt).toLocaleString()}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -949,14 +1021,18 @@ export default function ViewAppraisalPage() {
                         </button>
                         <button
                           onClick={() => handleWorkflowAction('approve', 'supervisor')}
-                          disabled={submittingWorkflow}
-                          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          disabled={submittingWorkflow || appraisal.supervisorApproval === 'approved'}
+                          className={`px-6 py-2 rounded-lg transition-colors ${
+                            appraisal.supervisorApproval === 'approved'
+                              ? 'bg-gray-400 text-white cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                          }`}
                         >
-                          {submittingWorkflow ? 'Processing...' : 'Approve'}
+                          {submittingWorkflow ? 'Processing...' : appraisal.supervisorApproval === 'approved' ? '✓ Approved' : 'Approve'}
                         </button>
                         <button
                           onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
-                          disabled={submittingWorkflow || !currentSupervisorComment.trim()}
+                          disabled={submittingWorkflow || !currentSupervisorComment.trim() || appraisal.supervisorApproval === 'approved'}
                           className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           {submittingWorkflow ? 'Processing...' : 'Request Changes'}
@@ -970,7 +1046,7 @@ export default function ViewAppraisalPage() {
           )}
 
           {/* Tab 3: Final Review (Reviewer) */}
-          {activeWorkflowTab === 'reviewer' && isReviewer && appraisal.status !== 'draft' && appraisal.supervisorApprovedAt && (
+          {activeWorkflowTab === 'reviewer' && isReviewer && appraisal.status !== 'draft' && appraisal.supervisorApproval === 'approved' && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center space-x-3 mb-6">
@@ -1000,9 +1076,9 @@ export default function ViewAppraisalPage() {
                     <div>
                       <span className="text-gray-600">Supervisor:</span>
                       <p className={`font-medium ${
-                        workflowComments.supervisor && workflowComments.supervisor.some((c: any) => c.action === 'approve') ? 'text-green-600' : 'text-yellow-600'
+                        appraisal.supervisorApproval === 'approved' ? 'text-green-600' : 'text-yellow-600'
                       }`}>
-                        {workflowComments.supervisor && workflowComments.supervisor.some((c: any) => c.action === 'approve') ? 'Approved' : 'Pending'}
+                        {appraisal.supervisorApproval === 'approved' ? 'Approved' : 'Pending'}
                       </p>
                     </div>
                   </div>
@@ -1042,15 +1118,17 @@ export default function ViewAppraisalPage() {
                 {/* Add Reviewer Comment Form */}
                 <div className="border-t pt-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Your Final Review</h3>
-                  {appraisal.reviewerApprovedAt ? (
+                  {appraisal.reviewerApproval === 'approved' ? (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                       <div className="flex items-center space-x-2">
                         <CheckCircleIcon className="h-5 w-5 text-green-600" />
                         <p className="text-green-800 font-medium">This appraisal has been approved by you.</p>
                       </div>
-                      <p className="text-sm text-green-700 mt-2">
-                        Approved on: {new Date(appraisal.reviewerApprovedAt).toLocaleString()}
-                      </p>
+                      {appraisal.reviewerApprovedAt && (
+                        <p className="text-sm text-green-700 mt-2">
+                          Approved on: {new Date(appraisal.reviewerApprovedAt).toLocaleString()}
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <>

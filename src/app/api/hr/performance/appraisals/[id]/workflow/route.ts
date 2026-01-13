@@ -181,12 +181,20 @@ export async function POST(
     // TODO: Send notification to employee if changes requested
     // TODO: Send notification to reviewer if supervisor approved
 
+    // Determine approval status based on timestamps
+    const supervisorApproval = updatedAppraisal.supervisorApprovedAt ? 'approved' : 'pending'
+    const reviewerApproval = updatedAppraisal.reviewerApprovedAt ? 'approved' : 'pending'
+
     return NextResponse.json({
       success: true,
       appraisal: {
         id: updatedAppraisal.id,
         status: updatedAppraisal.status,
-        comments: JSON.parse(updatedAppraisal.comments as string)
+        comments: JSON.parse(updatedAppraisal.comments as string),
+        supervisorApproval,
+        reviewerApproval,
+        supervisorApprovedAt: updatedAppraisal.supervisorApprovedAt?.toISOString(),
+        reviewerApprovedAt: updatedAppraisal.reviewerApprovedAt?.toISOString()
       },
       message: `Successfully ${action.replace('_', ' ')}`
     })
