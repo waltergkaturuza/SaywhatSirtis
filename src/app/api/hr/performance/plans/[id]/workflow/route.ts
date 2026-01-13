@@ -55,26 +55,76 @@ export async function POST(
     // Verify permissions
     // Note: supervisorId and reviewerId are USER IDs, not employee IDs
     const userId = session.user.id;
-    const isSupervisor = plan.supervisorId === userId;
-    const isReviewer = plan.reviewerId === userId;
+    let isSupervisor = plan.supervisorId === userId;
+    let isReviewer = plan.reviewerId === userId;
+    
+    // Also check if user is supervisor via employee relationship
+    // This handles cases where the plan's supervisorId might not match but the employee's supervisor does
+    if (!isSupervisor && plan.employeeId) {
+      const planEmployee = await prisma.employees.findUnique({
+        where: { id: plan.employeeId },
+        select: {
+          supervisor_id: true,
+          reviewer_id: true
+        }
+      })
+      
+      if (planEmployee?.supervisor_id) {
+        // Get the supervisor employee record
+        const supervisorEmployee = await prisma.employees.findUnique({
+          where: { id: planEmployee.supervisor_id },
+          select: { userId: true }
+        })
+        
+        // Check if supervisor's userId matches current user
+        if (supervisorEmployee?.userId === userId) {
+          isSupervisor = true
+        }
+      }
+      
+      // Similar check for reviewer
+      if (!isReviewer && planEmployee?.reviewer_id) {
+        const reviewerEmployee = await prisma.employees.findUnique({
+          where: { id: planEmployee.reviewer_id },
+          select: { userId: true }
+        })
+        
+        if (reviewerEmployee?.userId === userId) {
+          isReviewer = true
+        }
+      }
+    }
     
     console.log('Workflow permission check:', {
       userId: userId,
       planSupervisorId: plan.supervisorId,
       planReviewerId: plan.reviewerId,
+      planEmployeeId: plan.employeeId,
       isSupervisor,
       isReviewer,
       employeeId: employee.id
     });
+    
     const isHR = session.user.roles?.some(r => [
       'HR',
       'admin',
       'SYSTEM_ADMINISTRATOR',
       'SUPERUSER',
       'ADVANCE_USER_1',
-      'ADVANCE_USER_2'
+      'ADVANCE_USER_2',
+      'HR_MANAGER',
+      'ADMIN'
     ].includes(r))
-    const canAct = (role === 'supervisor' && isSupervisor) || (role === 'reviewer' && isReviewer) || isHR
+    const hasHRPermission = session.user.permissions?.some(p => [
+      'hr.full_access',
+      'hr.view_all_performance'
+    ].includes(p))
+    
+    // HR/Admin users can act as supervisors/reviewers if needed
+    const canActAsSupervisor = isSupervisor || isHR || hasHRPermission
+    const canActAsReviewer = isReviewer || isHR || hasHRPermission
+    
+    const canAct = (role === 'supervisor' && canActAsSupervisor) || (role === 'reviewer' && canActAsReviewer)
 
     if (!canAct) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
