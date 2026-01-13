@@ -295,7 +295,7 @@ export default function ViewPlanPage() {
 
       const result = await response.json()
       
-      // Reload plan data to get updated comments
+      // Reload plan data to get updated comments and approval status
       const updatedPlan = await fetchPlanData(planId)
       if (updatedPlan) {
         setPlan(updatedPlan)
@@ -304,6 +304,17 @@ export default function ViewPlanPage() {
             supervisor: Array.isArray(updatedPlan.comments.supervisor) ? updatedPlan.comments.supervisor : [],
             reviewer: Array.isArray(updatedPlan.comments.reviewer) ? updatedPlan.comments.reviewer : []
           })
+        }
+        
+        // If supervisor approved, switch to reviewer tab if user is reviewer
+        if (action === 'approve' && role === 'supervisor' && updatedPlan.supervisorApproval === 'approved') {
+          // Check if user is reviewer
+          const isReviewerRole = updatedPlan.reviewerId === session?.user?.id
+          if (isReviewerRole || isReviewer) {
+            setActiveWorkflowTab('reviewer')
+          } else {
+            setActiveWorkflowTab('submitted')
+          }
         }
       }
       
@@ -1080,7 +1091,7 @@ export default function ViewPlanPage() {
                   <span>Supervisor Review</span>
                 </button>
               )}
-              {isReviewer && plan.status !== 'draft' && (
+              {isReviewer && plan.status !== 'draft' && plan.supervisorApproval === 'approved' && (
                 <button
                   onClick={() => setActiveWorkflowTab('reviewer')}
                   className={`flex-1 py-4 px-6 border-b-2 font-medium text-sm transition-colors flex items-center justify-center space-x-2 ${
@@ -1397,43 +1408,63 @@ export default function ViewPlanPage() {
               {/* Add Supervisor Comment Form */}
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Your Review</h3>
-                <textarea
-                  value={currentSupervisorComment}
-                  onChange={(e) => setCurrentSupervisorComment(e.target.value)}
-                  rows={6}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-                  placeholder="Provide your feedback and comments on this performance plan..."
-                />
-                <div className="flex space-x-3 mt-4">
-                  <button
-                    onClick={() => handleWorkflowAction('comment', 'supervisor')}
-                    disabled={submittingWorkflow || !currentSupervisorComment.trim()}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {submittingWorkflow ? 'Submitting...' : 'Add Comment'}
-                  </button>
-                  <button
-                    onClick={() => handleWorkflowAction('approve', 'supervisor')}
-                    disabled={submittingWorkflow}
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {submittingWorkflow ? 'Processing...' : 'Approve'}
-                  </button>
-                  <button
-                    onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
-                    disabled={submittingWorkflow || !currentSupervisorComment.trim()}
-                    className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {submittingWorkflow ? 'Processing...' : 'Request Changes'}
-                  </button>
-                </div>
+                {plan.supervisorApproval === 'approved' ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                      <p className="text-green-800 font-medium">This plan has been approved by you.</p>
+                    </div>
+                    {plan.supervisorApprovedAt && (
+                      <p className="text-sm text-green-700 mt-2">
+                        Approved on: {new Date(plan.supervisorApprovedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <textarea
+                      value={currentSupervisorComment}
+                      onChange={(e) => setCurrentSupervisorComment(e.target.value)}
+                      rows={6}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                      placeholder="Provide your feedback and comments on this performance plan..."
+                    />
+                    <div className="flex space-x-3 mt-4">
+                      <button
+                        onClick={() => handleWorkflowAction('comment', 'supervisor')}
+                        disabled={submittingWorkflow || !currentSupervisorComment.trim()}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {submittingWorkflow ? 'Submitting...' : 'Add Comment'}
+                      </button>
+                      <button
+                        onClick={() => handleWorkflowAction('approve', 'supervisor')}
+                        disabled={submittingWorkflow || plan.supervisorApproval === 'approved'}
+                        className={`px-6 py-2 rounded-lg transition-colors ${
+                          plan.supervisorApproval === 'approved'
+                            ? 'bg-gray-400 text-white cursor-not-allowed'
+                            : 'bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                        }`}
+                      >
+                        {submittingWorkflow ? 'Processing...' : plan.supervisorApproval === 'approved' ? '✓ Approved' : 'Approve'}
+                      </button>
+                      <button
+                        onClick={() => handleWorkflowAction('request_changes', 'supervisor')}
+                        disabled={submittingWorkflow || !currentSupervisorComment.trim() || plan.supervisorApproval === 'approved'}
+                        className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {submittingWorkflow ? 'Processing...' : 'Request Changes'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
         )}
 
         {/* Tab 3: Final Review (Reviewer) */}
-        {activeWorkflowTab === 'reviewer' && isReviewer && plan.status !== 'draft' && (
+        {activeWorkflowTab === 'reviewer' && isReviewer && plan.status !== 'draft' && plan.supervisorApproval === 'approved' && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center space-x-3 mb-6">

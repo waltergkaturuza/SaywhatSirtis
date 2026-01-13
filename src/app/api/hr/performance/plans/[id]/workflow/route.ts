@@ -152,14 +152,32 @@ export async function POST(
       currentComments.reviewer.push(newComment)
     }
 
-    // Determine new workflow status
+    // Determine new workflow status and approval status
     let newStatus = plan.status
+    let newWorkflowStatus = plan.workflowStatus || plan.status
+    let supervisorApproval = plan.supervisorApproval
+    let reviewerApproval = plan.reviewerApproval
+    
     if (action === 'request_changes') {
       newStatus = 'revision_requested'
+      newWorkflowStatus = 'revision_requested'
+      if (role === 'supervisor') {
+        supervisorApproval = 'revision_requested'
+      } else if (role === 'reviewer') {
+        reviewerApproval = 'revision_requested'
+      }
     } else if (action === 'approve' && role === 'supervisor') {
       newStatus = 'supervisor_approved'
+      newWorkflowStatus = 'supervisor_approved'
+      supervisorApproval = 'approved'
+      // Move to reviewer stage
+      if (plan.reviewerId) {
+        newWorkflowStatus = 'reviewer_assessment'
+      }
     } else if (action === 'final_approve' && role === 'reviewer') {
       newStatus = 'approved'
+      newWorkflowStatus = 'approved'
+      reviewerApproval = 'approved'
     }
 
     // Update the plan
@@ -167,7 +185,10 @@ export async function POST(
       where: { id: planId },
       data: {
         status: newStatus,
+        workflowStatus: newWorkflowStatus,
         comments: JSON.stringify(currentComments),
+        supervisorApproval: supervisorApproval,
+        reviewerApproval: reviewerApproval,
         supervisorApprovedAt: action === 'approve' && role === 'supervisor' ? new Date() : plan.supervisorApprovedAt,
         reviewerApprovedAt: action === 'final_approve' && role === 'reviewer' ? new Date() : plan.reviewerApprovedAt,
         updatedAt: new Date()
