@@ -153,12 +153,20 @@ export async function POST(request: NextRequest) {
         updateData.planPeriod = planPeriod;
       }
       
-      // Update date fields
-      if (formData.startDate) {
-        updateData.startDate = new Date(formData.startDate);
+      // Update date fields - check multiple sources
+      const startDate = formData.startDate || formData.reviewPeriod?.startDate || formData.planPeriod?.startDate
+      const endDate = formData.endDate || formData.reviewPeriod?.endDate || formData.planPeriod?.endDate
+      
+      if (startDate) {
+        updateData.startDate = new Date(startDate);
       }
-      if (formData.endDate) {
-        updateData.endDate = new Date(formData.endDate);
+      if (endDate) {
+        updateData.endDate = new Date(endDate);
+      }
+      
+      // Also update planPeriod string if dates are provided and planPeriod wasn't already set
+      if (startDate && endDate && !updateData.planPeriod) {
+        updateData.planPeriod = `${startDate} - ${endDate}`;
       }
 
       // Save JSON fields (deliverables, valueGoals, competencies, developmentNeeds, comments)
@@ -362,12 +370,20 @@ export async function POST(request: NextRequest) {
         planYear: planYear
       };
       
-      // Add date fields if provided
-      if (formData.startDate) {
-        updateData.startDate = new Date(formData.startDate);
+      // Add date fields if provided - check multiple sources
+      const startDate = formData.startDate || formData.reviewPeriod?.startDate || formData.planPeriod?.startDate
+      const endDate = formData.endDate || formData.reviewPeriod?.endDate || formData.planPeriod?.endDate
+      
+      if (startDate) {
+        updateData.startDate = new Date(startDate);
       }
-      if (formData.endDate) {
-        updateData.endDate = new Date(formData.endDate);
+      if (endDate) {
+        updateData.endDate = new Date(endDate);
+      }
+      
+      // Also update planPeriod string if dates are provided
+      if (startDate && endDate && !updateData.planPeriod) {
+        updateData.planPeriod = `${startDate} - ${endDate}`;
       }
       
       // Save JSON fields (deliverables, valueGoals, competencies, developmentNeeds, comments)

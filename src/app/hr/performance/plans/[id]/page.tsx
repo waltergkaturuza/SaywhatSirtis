@@ -45,6 +45,7 @@ interface PlanData {
   planYear: string
   startDate: string
   endDate: string
+  planPeriod?: string
   reviewPeriod: {
     startDate: string
     endDate: string
@@ -269,8 +270,8 @@ export default function ViewPlanPage() {
           position: plan.position,
           manager: plan.supervisorId || '',
           planPeriod: {
-            startDate: plan.reviewPeriod?.startDate || plan.startDate || '',
-            endDate: plan.reviewPeriod?.endDate || plan.endDate || ''
+            startDate: plan.reviewPeriod?.startDate || plan.startDate || (plan.planPeriod && typeof plan.planPeriod === 'string' ? plan.planPeriod.split(' - ')[0]?.trim() : '') || '',
+            endDate: plan.reviewPeriod?.endDate || plan.endDate || (plan.planPeriod && typeof plan.planPeriod === 'string' ? plan.planPeriod.split(' - ')[1]?.trim() : '') || ''
           }
         },
         planType: plan.planType || 'annual',
@@ -283,8 +284,8 @@ export default function ViewPlanPage() {
         startDate: plan.startDate || '',
         endDate: plan.endDate || '',
         planPeriod: {
-          startDate: plan.reviewPeriod?.startDate || plan.startDate || '',
-          endDate: plan.reviewPeriod?.endDate || plan.endDate || ''
+          startDate: plan.reviewPeriod?.startDate || plan.startDate || (plan.planPeriod && typeof plan.planPeriod === 'string' ? plan.planPeriod.split(' - ')[0]?.trim() : '') || '',
+          endDate: plan.reviewPeriod?.endDate || plan.endDate || (plan.planPeriod && typeof plan.planPeriod === 'string' ? plan.planPeriod.split(' - ')[1]?.trim() : '') || ''
         },
         keyResponsibilities: Array.isArray(plan.deliverables) && plan.deliverables.length > 0
           ? plan.deliverables.map((del: any) => ({

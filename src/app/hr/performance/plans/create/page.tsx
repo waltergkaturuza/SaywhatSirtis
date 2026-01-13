@@ -226,6 +226,48 @@ function CreatePerformancePlanPageContent() {
             }
           }
           
+          // Get supervisor and reviewer user IDs from their employee records
+          let supervisorUserId = null
+          let reviewerUserId = null
+          
+          // Fetch supervisor user ID if supervisor_id exists
+          if (fullEmployeeData.supervisor_id) {
+            try {
+              const supervisorResponse = await fetch(`/api/hr/employees/${fullEmployeeData.supervisor_id}`)
+              if (supervisorResponse.ok) {
+                const supervisorData = await supervisorResponse.json()
+                const supervisorEmployee = supervisorData.data || supervisorData
+                // Get the user ID from the supervisor employee
+                if (supervisorEmployee.userId) {
+                  supervisorUserId = supervisorEmployee.userId
+                } else if (supervisorEmployee.user?.id) {
+                  supervisorUserId = supervisorEmployee.user.id
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching supervisor user ID:', error)
+            }
+          }
+          
+          // Fetch reviewer user ID if reviewer_id exists
+          if (fullEmployeeData.reviewer_id) {
+            try {
+              const reviewerResponse = await fetch(`/api/hr/employees/${fullEmployeeData.reviewer_id}`)
+              if (reviewerResponse.ok) {
+                const reviewerData = await reviewerResponse.json()
+                const reviewerEmployee = reviewerData.data || reviewerData
+                // Get the user ID from the reviewer employee
+                if (reviewerEmployee.userId) {
+                  reviewerUserId = reviewerEmployee.userId
+                } else if (reviewerEmployee.user?.id) {
+                  reviewerUserId = reviewerEmployee.user.id
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching reviewer user ID:', error)
+            }
+          }
+          
           // Auto-populate employee details and key responsibilities
           setFormData(prev => ({
             ...prev,
@@ -241,8 +283,8 @@ function CreatePerformancePlanPageContent() {
                 endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
               }
             },
-            supervisor: fullEmployeeData.supervisorId || '',
-            reviewerId: fullEmployeeData.reviewerId || '',
+            supervisor: supervisorUserId || '',
+            reviewerId: reviewerUserId || '',
             keyResponsibilities: keyResponsibilities.length > 0 ? keyResponsibilities : [{
               id: '1',
               description: '',
@@ -280,7 +322,8 @@ function CreatePerformancePlanPageContent() {
             endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
           }
         },
-        supervisor: employee.supervisorId || ''
+        supervisor: employee.supervisorId || '',
+        reviewerId: employee.reviewerId || ''
       }))
       }
     }
@@ -408,8 +451,8 @@ function CreatePerformancePlanPageContent() {
           startDate: planData.startDate || planData.reviewPeriod?.startDate || '',
           endDate: planData.endDate || planData.reviewPeriod?.endDate || '',
           planPeriod: {
-            startDate: planData.startDate || planData.reviewPeriod?.startDate || '',
-            endDate: planData.endDate || planData.reviewPeriod?.endDate || ''
+            startDate: planData.startDate || planData.reviewPeriod?.startDate || (planData.planPeriod && typeof planData.planPeriod === 'string' ? planData.planPeriod.split(' - ')[0]?.trim() : '') || '',
+            endDate: planData.endDate || planData.reviewPeriod?.endDate || (planData.planPeriod && typeof planData.planPeriod === 'string' ? planData.planPeriod.split(' - ')[1]?.trim() : '') || ''
           },
           // Map deliverables/performance_responsibilities to keyResponsibilities
           // Priority: keyResponsibilities from API > performance_responsibilities > deliverables JSON field
@@ -550,6 +593,46 @@ function CreatePerformancePlanPageContent() {
               }
             }
             
+            // Get supervisor and reviewer user IDs from their employee records
+            let supervisorUserId = null
+            let reviewerUserId = null
+            
+            // Fetch supervisor user ID if supervisor_id exists
+            if (employeeData.supervisor_id) {
+              try {
+                const supervisorResponse = await fetch(`/api/hr/employees/${employeeData.supervisor_id}`)
+                if (supervisorResponse.ok) {
+                  const supervisorData = await supervisorResponse.json()
+                  const supervisorEmployee = supervisorData.data || supervisorData
+                  if (supervisorEmployee.userId) {
+                    supervisorUserId = supervisorEmployee.userId
+                  } else if (supervisorEmployee.user?.id) {
+                    supervisorUserId = supervisorEmployee.user.id
+                  }
+                }
+              } catch (error) {
+                console.error('Error fetching supervisor user ID:', error)
+              }
+            }
+            
+            // Fetch reviewer user ID if reviewer_id exists
+            if (employeeData.reviewer_id) {
+              try {
+                const reviewerResponse = await fetch(`/api/hr/employees/${employeeData.reviewer_id}`)
+                if (reviewerResponse.ok) {
+                  const reviewerData = await reviewerResponse.json()
+                  const reviewerEmployee = reviewerData.data || reviewerData
+                  if (reviewerEmployee.userId) {
+                    reviewerUserId = reviewerEmployee.userId
+                  } else if (reviewerEmployee.user?.id) {
+                    reviewerUserId = reviewerEmployee.user.id
+                  }
+                }
+              } catch (error) {
+                console.error('Error fetching reviewer user ID:', error)
+              }
+            }
+            
             // Auto-populate the form with current user's details
             setFormData(prev => ({
               ...prev,
@@ -565,8 +648,8 @@ function CreatePerformancePlanPageContent() {
                   endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
                 }
               },
-              supervisor: employeeData.supervisorId || '',
-              reviewerId: employeeData.reviewerId || '',
+              supervisor: supervisorUserId || '',
+              reviewerId: reviewerUserId || '',
               keyResponsibilities: keyResponsibilities.length > 0 ? keyResponsibilities : [{
                 id: '1',
                 description: '',
