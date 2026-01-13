@@ -131,16 +131,23 @@ export async function POST(
     // Handle both cases: comments might be a JSON string or already an object
     let currentComments: any = { supervisor: [], reviewer: [] }
     if (appraisal.comments) {
-      if (typeof appraisal.comments === 'string') {
-        try {
+      try {
+        if (typeof appraisal.comments === 'string') {
           currentComments = JSON.parse(appraisal.comments)
-        } catch (e) {
-          console.error('Error parsing comments JSON:', e)
+        } else if (typeof appraisal.comments === 'object' && appraisal.comments !== null) {
+          // Already an object (Prisma returns JSON fields as objects)
+          currentComments = appraisal.comments
+        } else {
+          // Fallback for other types
           currentComments = { supervisor: [], reviewer: [] }
         }
-      } else {
-        // Already an object
-        currentComments = appraisal.comments as any
+        
+        // Ensure the structure is correct
+        if (!currentComments.supervisor) currentComments.supervisor = []
+        if (!currentComments.reviewer) currentComments.reviewer = []
+      } catch (e) {
+        console.error('Error processing comments:', e, 'Comments value:', appraisal.comments)
+        currentComments = { supervisor: [], reviewer: [] }
       }
     }
 
@@ -205,15 +212,18 @@ export async function POST(
         id: updatedAppraisal.id,
         status: updatedAppraisal.status,
         comments: (() => {
-          if (!updatedAppraisal.comments) return { supervisor: [], reviewer: [] }
-          if (typeof updatedAppraisal.comments === 'string') {
-            try {
+          try {
+            if (!updatedAppraisal.comments) return { supervisor: [], reviewer: [] }
+            if (typeof updatedAppraisal.comments === 'string') {
               return JSON.parse(updatedAppraisal.comments)
-            } catch (e) {
-              return { supervisor: [], reviewer: [] }
+            } else if (typeof updatedAppraisal.comments === 'object' && updatedAppraisal.comments !== null) {
+              return updatedAppraisal.comments as any
             }
+            return { supervisor: [], reviewer: [] }
+          } catch (e) {
+            console.error('Error processing updated comments:', e)
+            return { supervisor: [], reviewer: [] }
           }
-          return updatedAppraisal.comments as any
         })(),
         supervisorApproval,
         reviewerApproval,
@@ -265,16 +275,22 @@ export async function GET(
     // Handle both cases: comments might be a JSON string or already an object
     let comments: any = { supervisor: [], reviewer: [] }
     if (appraisal.comments) {
-      if (typeof appraisal.comments === 'string') {
-        try {
+      try {
+        if (typeof appraisal.comments === 'string') {
           comments = JSON.parse(appraisal.comments)
-        } catch (e) {
-          console.error('Error parsing comments JSON:', e)
+        } else if (typeof appraisal.comments === 'object' && appraisal.comments !== null) {
+          // Already an object (Prisma returns JSON fields as objects)
+          comments = appraisal.comments
+        } else {
           comments = { supervisor: [], reviewer: [] }
         }
-      } else {
-        // Already an object
-        comments = appraisal.comments as any
+        
+        // Ensure the structure is correct
+        if (!comments.supervisor) comments.supervisor = []
+        if (!comments.reviewer) comments.reviewer = []
+      } catch (e) {
+        console.error('Error processing comments in GET:', e, 'Comments value:', appraisal.comments)
+        comments = { supervisor: [], reviewer: [] }
       }
     }
 
