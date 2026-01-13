@@ -155,29 +155,84 @@ export default function ViewPlanPage() {
           
           // Check if current user is supervisor or reviewer
           // Note: supervisorId and reviewerId are user IDs
+          // Also check if user is supervisor via employee relationship
           if (session?.user?.id) {
-            const isSupervisorRole = planData.supervisorId === session.user.id
-            const isReviewerRole = planData.reviewerId === session.user.id
+            let isSupervisorRole = planData.supervisorId === session.user.id
+            let isReviewerRole = planData.reviewerId === session.user.id
+            
+            // Also check if user is supervisor via employee relationship
+            // This handles cases where the plan's supervisorId might not match but the employee's supervisor does
+            if (!isSupervisorRole && planData.employeeId) {
+              try {
+                const employeeResponse = await fetch(`/api/hr/employees/${planData.employeeId}`)
+                if (employeeResponse.ok) {
+                  const employeeData = await employeeResponse.json()
+                  const employee = employeeData.data || employeeData
+                  
+                  // Check if employee has a supervisor and if that supervisor's userId matches current user
+                  if (employee.supervisor_id) {
+                    const supervisorResponse = await fetch(`/api/hr/employees/${employee.supervisor_id}`)
+                    if (supervisorResponse.ok) {
+                      const supervisorData = await supervisorResponse.json()
+                      const supervisor = supervisorData.data || supervisorData
+                      
+                      // Check if supervisor's userId matches current user
+                      if (supervisor.userId === session.user.id) {
+                        isSupervisorRole = true
+                      }
+                    }
+                  }
+                  
+                  // Similar check for reviewer
+                  if (!isReviewerRole && employee.reviewer_id) {
+                    const reviewerResponse = await fetch(`/api/hr/employees/${employee.reviewer_id}`)
+                    if (reviewerResponse.ok) {
+                      const reviewerData = await reviewerResponse.json()
+                      const reviewer = reviewerData.data || reviewerData
+                      
+                      if (reviewer.userId === session.user.id) {
+                        isReviewerRole = true
+                      }
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('Error checking employee supervisor relationship:', error)
+              }
+            }
+            
+            // Also check if user is HR/admin - they can review plans too
+            const isHR = session.user.roles?.some((r: string) => ['HR', 'ADMIN', 'HR_MANAGER', 'SUPERUSER', 'admin'].includes(r))
+            const hasHRPermission = session.user.permissions?.some((p: string) => ['hr.full_access', 'hr.view_all_performance'].includes(p))
+            
+            // HR/Admin users can act as supervisors/reviewers if needed
+            const canActAsSupervisor = isHR || hasHRPermission || isSupervisorRole
+            const canActAsReviewer = isHR || hasHRPermission || isReviewerRole
             
             console.log('🔍 Supervisor/Reviewer Check:', {
               userId: session.user.id,
               supervisorId: planData.supervisorId,
               reviewerId: planData.reviewerId,
+              employeeId: planData.employeeId,
               isSupervisorRole,
               isReviewerRole,
+              isHR,
+              hasHRPermission,
+              canActAsSupervisor,
+              canActAsReviewer,
               planStatus: planData.status,
               supervisorApproval: planData.supervisorApproval,
               reviewerApproval: planData.reviewerApproval
             })
             
-            setIsSupervisor(isSupervisorRole)
-            setIsReviewer(isReviewerRole)
+            setIsSupervisor(canActAsSupervisor)
+            setIsReviewer(canActAsReviewer)
             
             // Set default tab based on user role and plan status
             if (planData.status !== 'draft') {
-              if (isSupervisorRole && planData.supervisorApproval !== 'approved') {
+              if (canActAsSupervisor && planData.supervisorApproval !== 'approved') {
                 setActiveWorkflowTab('supervisor')
-              } else if (isReviewerRole && planData.reviewerApproval !== 'approved' && planData.supervisorApproval === 'approved') {
+              } else if (canActAsReviewer && planData.reviewerApproval !== 'approved' && planData.supervisorApproval === 'approved') {
                 setActiveWorkflowTab('reviewer')
               } else {
                 setActiveWorkflowTab('submitted')
