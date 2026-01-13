@@ -132,21 +132,29 @@ export async function POST(
     let currentComments: any = { supervisor: [], reviewer: [] }
     if (appraisal.comments) {
       try {
+        // Log the type and value for debugging
+        console.log('Processing comments - type:', typeof appraisal.comments, 'isArray:', Array.isArray(appraisal.comments))
+        
         if (typeof appraisal.comments === 'string') {
+          // It's a string, parse it
           currentComments = JSON.parse(appraisal.comments)
-        } else if (typeof appraisal.comments === 'object' && appraisal.comments !== null) {
+        } else if (appraisal.comments && typeof appraisal.comments === 'object') {
           // Already an object (Prisma returns JSON fields as objects)
-          currentComments = appraisal.comments
+          // Deep clone to avoid any reference issues
+          currentComments = JSON.parse(JSON.stringify(appraisal.comments))
         } else {
           // Fallback for other types
+          console.warn('Unexpected comments type:', typeof appraisal.comments, appraisal.comments)
           currentComments = { supervisor: [], reviewer: [] }
         }
         
         // Ensure the structure is correct
-        if (!currentComments.supervisor) currentComments.supervisor = []
-        if (!currentComments.reviewer) currentComments.reviewer = []
+        if (!Array.isArray(currentComments.supervisor)) currentComments.supervisor = []
+        if (!Array.isArray(currentComments.reviewer)) currentComments.reviewer = []
       } catch (e) {
-        console.error('Error processing comments:', e, 'Comments value:', appraisal.comments)
+        console.error('Error processing comments:', e)
+        console.error('Comments value type:', typeof appraisal.comments)
+        console.error('Comments value:', appraisal.comments)
         currentComments = { supervisor: [], reviewer: [] }
       }
     }
