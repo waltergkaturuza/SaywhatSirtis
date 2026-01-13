@@ -1152,7 +1152,7 @@ export default function EmployeeProfilePage() {
                 </div>
 
                 {/* Performance History Section - Inside left column next to sidebar */}
-                <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                <div id="performance-history" className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
                   <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
                     <h3 className="text-xl font-bold text-white flex items-center">
                       <ClipboardDocumentCheckIcon className="mr-3 h-6 w-6" />
@@ -1295,10 +1295,10 @@ export default function EmployeeProfilePage() {
                                   </td>
                                   <td className="px-4 py-4 whitespace-nowrap">
                                     <div className="text-sm text-gray-900">
-                                      {plan.status === 'submitted' || plan.status === 'approved' || plan.status === 'supervisor_review' || plan.status === 'reviewer_assessment' || plan.status === 'completed' 
+                                      {plan.status !== 'draft' 
                                         ? (plan.submittedAt 
-                                            ? new Date(plan.submittedAt).toLocaleDateString() 
-                                            : (plan.updatedAt ? new Date(plan.updatedAt).toLocaleDateString() : 'Submitted'))
+                                            ? new Date(plan.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                            : (plan.updatedAt ? new Date(plan.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Submitted'))
                                         : 'Not submitted'}
                                     </div>
                                   </td>
@@ -1565,16 +1565,25 @@ export default function EmployeeProfilePage() {
                   </h3>
                 </div>
                 <div className="p-4 space-y-3">
-                  <Link
-                    href="/employee/performance"
-                    className="group flex items-center p-3 bg-gradient-to-br from-saywhat-orange/10 via-saywhat-orange/5 to-transparent rounded-lg border-2 border-saywhat-orange/20 hover:border-saywhat-orange/40 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                  <a
+                    href="#performance-history"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setPerformanceHistoryTab('plans')
+                      // Scroll to performance history section
+                      const element = document.getElementById('performance-history')
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }
+                    }}
+                    className="group flex items-center p-3 bg-gradient-to-br from-saywhat-orange/10 via-saywhat-orange/5 to-transparent rounded-lg border-2 border-saywhat-orange/20 hover:border-saywhat-orange/40 hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer"
                   >
                     <ChartBarIcon className="h-5 w-5 text-saywhat-orange mr-2 group-hover:scale-110 transition-transform duration-200" />
                     <div>
                       <p className="text-sm font-bold text-gray-900">Performance</p>
                       <p className="text-xs text-gray-600">View plans & appraisals</p>
                     </div>
-                  </Link>
+                  </a>
                   
                   <Link
                     href="/hr/performance/plans/create?self=true"
