@@ -395,6 +395,30 @@ export async function POST(request: NextRequest) {
           data: updateData
         });
 
+        // Update performance plan with review period dates if provided
+        if (employee?.reviewPeriod?.startDate || employee?.reviewPeriod?.endDate) {
+          try {
+            const plan = await prisma.performance_plans.findUnique({
+              where: { id: existingAppraisal.planId }
+            });
+            
+            if (plan) {
+              await prisma.performance_plans.update({
+                where: { id: plan.id },
+                data: {
+                  reviewStartDate: employee.reviewPeriod.startDate ? new Date(employee.reviewPeriod.startDate) : plan.reviewStartDate,
+                  reviewEndDate: employee.reviewPeriod.endDate ? new Date(employee.reviewPeriod.endDate) : plan.reviewEndDate,
+                  updatedAt: new Date()
+                }
+              });
+              console.log('✅ Updated performance plan review period dates');
+            }
+          } catch (planError) {
+            console.error('⚠️ Failed to update performance plan review period:', planError);
+            // Don't fail the appraisal update if plan update fails
+          }
+        }
+
         return NextResponse.json({
           success: true,
           appraisal: {
@@ -584,6 +608,30 @@ export async function POST(request: NextRequest) {
         where: { id: existingDraft.id },
         data: updateData
       });
+
+      // Update performance plan with review period dates if provided
+      if (employee?.reviewPeriod?.startDate || employee?.reviewPeriod?.endDate) {
+        try {
+          const plan = await prisma.performance_plans.findUnique({
+            where: { id: existingDraft.planId }
+          });
+          
+          if (plan) {
+            await prisma.performance_plans.update({
+              where: { id: plan.id },
+              data: {
+                reviewStartDate: employee.reviewPeriod.startDate ? new Date(employee.reviewPeriod.startDate) : plan.reviewStartDate,
+                reviewEndDate: employee.reviewPeriod.endDate ? new Date(employee.reviewPeriod.endDate) : plan.reviewEndDate,
+                updatedAt: new Date()
+              }
+            });
+            console.log('✅ Updated performance plan review period dates');
+          }
+        } catch (planError) {
+          console.error('⚠️ Failed to update performance plan review period:', planError);
+          // Don't fail the appraisal update if plan update fails
+        }
+      }
     } else {
       // Validate appraisal data if submitting (not draft)
       if (status === 'submitted') {
@@ -675,6 +723,24 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date()
         }
       });
+
+      // Update performance plan with review period dates if provided
+      if (employee?.reviewPeriod?.startDate || employee?.reviewPeriod?.endDate) {
+        try {
+          await prisma.performance_plans.update({
+            where: { id: performancePlan.id },
+            data: {
+              reviewStartDate: employee.reviewPeriod.startDate ? new Date(employee.reviewPeriod.startDate) : performancePlan.reviewStartDate,
+              reviewEndDate: employee.reviewPeriod.endDate ? new Date(employee.reviewPeriod.endDate) : performancePlan.reviewEndDate,
+              updatedAt: new Date()
+            }
+          });
+          console.log('✅ Updated performance plan review period dates');
+        } catch (planError) {
+          console.error('⚠️ Failed to update performance plan review period:', planError);
+          // Don't fail the appraisal creation if plan update fails
+        }
+      }
     }
 
     console.log('Appraisal created successfully:', appraisal.id);

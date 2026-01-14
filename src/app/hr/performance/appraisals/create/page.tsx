@@ -188,6 +188,33 @@ function CreateAppraisalContent() {
           }
         }
         
+        // Fetch performance plan to get review period dates
+        let reviewPeriodStart = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
+        let reviewPeriodEnd = new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
+        
+        try {
+          const planResponse = await fetch(`/api/hr/performance/plans?employeeId=${profileData.id}&year=${new Date().getFullYear()}`)
+          if (planResponse.ok) {
+            const planData = await planResponse.json()
+            const currentPlan = planData.plans?.[0] // Get the most recent plan
+            if (currentPlan) {
+              // Use reviewStartDate/reviewEndDate if available, otherwise use startDate/endDate
+              if (currentPlan.reviewStartDate || currentPlan.startDate) {
+                reviewPeriodStart = currentPlan.reviewStartDate 
+                  ? new Date(currentPlan.reviewStartDate).toISOString().split('T')[0]
+                  : (currentPlan.startDate ? new Date(currentPlan.startDate).toISOString().split('T')[0] : reviewPeriodStart)
+              }
+              if (currentPlan.reviewEndDate || currentPlan.endDate) {
+                reviewPeriodEnd = currentPlan.reviewEndDate 
+                  ? new Date(currentPlan.reviewEndDate).toISOString().split('T')[0]
+                  : (currentPlan.endDate ? new Date(currentPlan.endDate).toISOString().split('T')[0] : reviewPeriodEnd)
+              }
+            }
+          }
+        } catch (planError) {
+          console.warn('Could not fetch performance plan for review period:', planError)
+        }
+        
         updateFormData({
           employee: {
             id: profileData.id || '',
@@ -197,10 +224,10 @@ function CreateAppraisalContent() {
             position: profileData.position || '',
             manager: profileData.supervisor ? `${profileData.supervisor.firstName} ${profileData.supervisor.lastName}` : '',
             reviewer: profileData.reviewer ? `${profileData.reviewer.firstName} ${profileData.reviewer.lastName}` : '',
-            hireDate: profileData.hireDate || profileData.startDate || '',
+            hireDate: profileData.hireDate || '', // Use hireDate from employee details, no fallback
             reviewPeriod: {
-              startDate: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-              endDate: new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
+              startDate: reviewPeriodStart,
+              endDate: reviewPeriodEnd
             }
           },
           achievements: {
@@ -340,7 +367,13 @@ function CreateAppraisalContent() {
           setFormData({
             ...formData,
             id: appraisalDataForForm.id,
-            employee: appraisalDataForForm.employee || formData.employee,
+            employee: {
+              ...(appraisalDataForForm.employee || formData.employee),
+              // Ensure review period is loaded from API response
+              reviewPeriod: appraisalDataForForm.employee?.reviewPeriod || formData.employee.reviewPeriod,
+              // Ensure hire date is from employee details
+              hireDate: appraisalDataForForm.employee?.hireDate || formData.employee.hireDate || ''
+            },
             achievements: parsedAchievements,
             development: parsedDevelopment,
             performance: parsedPerformance,
