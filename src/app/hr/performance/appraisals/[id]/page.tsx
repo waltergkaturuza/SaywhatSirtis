@@ -456,17 +456,17 @@ export default function ViewAppraisalPage() {
           const fullData = await fetchAppraisalData(appraisalId)
           if (fullData) {
             const apiData = fullData as any
-            
+
             const transformedData: AppraisalFormData = {
-              id: apiData.id?.toString() || appraisal.id?.toString(),
+              id: apiData.id?.toString() || appraisal?.id?.toString(),
               employee: {
-                id: apiData.employee?.id || appraisal.employeeId || '',
-                name: apiData.employee?.name || appraisal.employeeName || '',
+                id: apiData.employee?.id || appraisal?.employeeId || '',
+                name: apiData.employee?.name || appraisal?.employeeName || '',
                 email: apiData.employee?.email || '',
-                department: apiData.employee?.department || appraisal.department || '',
-                position: apiData.employee?.position || appraisal.position || '',
-                manager: apiData.employee?.manager || appraisal.supervisor || '',
-                reviewer: apiData.employee?.reviewer || appraisal.reviewer || '',
+                department: apiData.employee?.department || appraisal?.department || '',
+                position: apiData.employee?.position || appraisal?.position || '',
+                manager: apiData.employee?.manager || appraisal?.supervisor || '',
+                reviewer: apiData.employee?.reviewer || appraisal?.reviewer || '',
                 hireDate: apiData.employee?.hireDate || '',
                 reviewPeriod: {
                   startDate: apiData.employee?.reviewPeriod?.startDate || (apiData.period ? apiData.period.split(' - ')[0] : ''),
@@ -474,11 +474,11 @@ export default function ViewAppraisalPage() {
                 }
               },
               performance: {
-                overallRating: apiData.performance?.overallRating || apiData.ratings?.finalRating || appraisal.overallRating || 0,
+                overallRating: apiData.performance?.overallRating || apiData.ratings?.finalRating || appraisal?.overallRating || 0,
                 categories: Array.isArray(apiData.performance?.categories) && apiData.performance.categories.length > 0
                   ? apiData.performance.categories
-                  : (Array.isArray(appraisal.performanceAreas) && appraisal.performanceAreas.length > 0
-                      ? appraisal.performanceAreas.map((area: any) => ({
+                  : (Array.isArray(appraisal?.performanceAreas) && appraisal!.performanceAreas.length > 0
+                      ? appraisal!.performanceAreas.map((area: any) => ({
                           id: area.id || Date.now().toString(),
                           name: area.name || area.area || '',
                           rating: area.rating || 0,
@@ -495,16 +495,16 @@ export default function ViewAppraisalPage() {
                         ]),
                 strengths: Array.isArray(apiData.performance?.strengths)
                   ? apiData.performance.strengths
-                  : (appraisal.strengths ? appraisal.strengths.split(',').map(s => s.trim()).filter(s => s) : []),
+                  : (appraisal?.strengths ? appraisal.strengths.split(',').map(s => s.trim()).filter(s => s) : []),
                 areasForImprovement: Array.isArray(apiData.performance?.areasForImprovement)
                   ? apiData.performance.areasForImprovement
-                  : (appraisal.areasImprovement ? appraisal.areasImprovement.split(',').map(s => s.trim()).filter(s => s) : [])
+                  : (appraisal?.areasImprovement ? appraisal.areasImprovement.split(',').map(s => s.trim()).filter(s => s) : [])
               },
               achievements: {
                 keyResponsibilities: Array.isArray(apiData.achievements?.keyResponsibilities) && apiData.achievements.keyResponsibilities.length > 0
                   ? apiData.achievements.keyResponsibilities
-                  : (Array.isArray(appraisal.achievements) && appraisal.achievements.length > 0
-                      ? appraisal.achievements.map((ach: any, index: number) => ({
+                  : (Array.isArray(appraisal?.achievements) && appraisal!.achievements.length > 0
+                      ? appraisal!.achievements.map((ach: any, index: number) => ({
                           id: ach.id || Date.now().toString() + index,
                           description: ach.achievement || ach.description || '',
                           tasks: ach.tasks || '',
@@ -527,8 +527,8 @@ export default function ViewAppraisalPage() {
                   : [],
                 developmentPlan: Array.isArray(apiData.development?.developmentPlan) && apiData.development.developmentPlan.length > 0
                   ? apiData.development.developmentPlan
-                  : (Array.isArray(appraisal.developmentPlans) && appraisal.developmentPlans.length > 0
-                      ? appraisal.developmentPlans.map((plan: any) => ({
+                  : (Array.isArray(appraisal?.developmentPlans) && appraisal!.developmentPlans.length > 0
+                      ? appraisal!.developmentPlans.map((plan: any) => ({
                           objective: plan.area || plan.objective || '',
                           actions: Array.isArray(plan.actions) ? plan.actions : [],
                           timeline: plan.timeline || '',
@@ -537,12 +537,12 @@ export default function ViewAppraisalPage() {
                       : [])
               },
               comments: {
-                employeeComments: apiData.comments?.employeeComments || appraisal.employeeComments || '',
-                managerComments: apiData.comments?.managerComments || apiData.comments?.supervisorComments || appraisal.supervisorComments || '',
+                employeeComments: apiData.comments?.employeeComments || appraisal?.employeeComments || '',
+                managerComments: apiData.comments?.managerComments || apiData.comments?.supervisorComments || appraisal?.supervisorComments || '',
                 hrComments: apiData.comments?.hrComments || ''
               },
               ratings: {
-                finalRating: apiData.ratings?.finalRating || apiData.performance?.overallRating || appraisal.overallRating || 0,
+                finalRating: apiData.ratings?.finalRating || apiData.performance?.overallRating || appraisal?.overallRating || 0,
                 actualPoints: apiData.ratings?.actualPoints || 0,
                 maxPoints: apiData.ratings?.maxPoints || 0,
                 percentage: apiData.ratings?.percentage || 0,
@@ -560,13 +560,13 @@ export default function ViewAppraisalPage() {
                 reviewerMeetingDate: apiData.signatures?.reviewerMeetingDate,
                 reviewerMeetingConfirmed: apiData.signatures?.reviewerMeetingConfirmed || false
               },
-              status: apiData.status || appraisal.status,
-              workflowStatus: apiData.workflowStatus || appraisal.status,
+              status: apiData.status || appraisal?.status || 'draft',
+              workflowStatus: apiData.workflowStatus || appraisal?.status || 'draft',
               appraisalType: apiData.appraisalType || 'annual',
               recommendations: apiData.recommendations || {},
-              submittedAt: apiData.submittedAt || appraisal.submittedAt || undefined,
-              approvedAt: apiData.approvedAt || appraisal.reviewedAt || undefined,
-              createdAt: apiData.createdAt || appraisal.lastUpdated || undefined
+              submittedAt: apiData.submittedAt || appraisal?.submittedAt || undefined,
+              approvedAt: apiData.approvedAt || appraisal?.reviewedAt || undefined,
+              createdAt: apiData.createdAt || appraisal?.lastUpdated || undefined
             }
             setFormData(transformedData)
           }
