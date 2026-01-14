@@ -58,55 +58,20 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Helper function to calculate overall rating from categories
-    const calculateOverallRatingFromCategories = (comments: any): number | null => {
-      if (!comments) return null;
-      
-      try {
-        let parsedComments = comments;
-        if (typeof comments === 'string') {
-          parsedComments = JSON.parse(comments);
-        }
-        
-        // Check if categories are in ratings.categories or performance.categories
-        const categories = parsedComments?.ratings?.categories || parsedComments?.performance?.categories;
-        
-        if (!Array.isArray(categories) || categories.length === 0) {
-          return null;
-        }
-        
-        // Calculate weighted average: sum((rating * weight)) / sum(weights)
-        const totalWeight = categories.reduce((sum: number, cat: any) => sum + (cat.weight || 0), 0);
-        const weightedScore = categories.reduce((sum: number, cat: any) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0);
-        
-        if (totalWeight > 0) {
-          return parseFloat((weightedScore / totalWeight).toFixed(2));
-        }
-      } catch (error) {
-        console.error('Error calculating overall rating from categories:', error);
-      }
-      
-      return null;
-    };
-
     // Get latest completed appraisal rating
+    // Use stored overallRating directly - it should already be calculated and saved
     const latestAppraisal = await prisma.performance_appraisals.findFirst({
       where: {
         employeeId: employee.id,
+        overallRating: { not: null, gt: 0 }, // Only get appraisals with a valid stored rating
         status: { in: ['approved', 'completed', 'supervisor_approved', 'reviewer_approved', 'submitted'] }
       },
       orderBy: { createdAt: 'desc' },
-      select: { overallRating: true, approvedAt: true, comments: true }
+      select: { overallRating: true, approvedAt: true }
     });
     
-    // Calculate overall rating from categories if overallRating is 0 or null
-    let calculatedOverallRating = latestAppraisal?.overallRating || 0;
-    if (!calculatedOverallRating || calculatedOverallRating === 0) {
-      const categoryRating = calculateOverallRatingFromCategories(latestAppraisal?.comments);
-      if (categoryRating !== null) {
-        calculatedOverallRating = categoryRating;
-      }
-    }
+    // Use stored overallRating - it's already calculated when ratings are saved
+    const calculatedOverallRating = latestAppraisal?.overallRating || 0;
 
     // Get performance responsibilities stats
     const totalGoals = await prisma.performance_responsibilities.count({

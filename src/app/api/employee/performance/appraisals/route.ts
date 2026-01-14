@@ -304,7 +304,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Helper function to calculate overall rating from categories
+    // Helper function to calculate overall rating from categories (only as fallback)
     const calculateOverallRatingFromCategories = (comments: any): number | null => {
       if (!comments) return null;
       
@@ -337,18 +337,18 @@ export async function GET() {
 
     // Transform appraisals to include approval status fields (like plans)
     const transformedAppraisals = appraisals.map((appraisal) => {
-      // Calculate overall rating from categories if overallRating is 0, null, or missing
-      let calculatedOverallRating = appraisal.overallRating;
-      if (!calculatedOverallRating || calculatedOverallRating === 0) {
+      // Use stored overallRating if it exists and is > 0, otherwise calculate from categories as fallback
+      let finalOverallRating = appraisal.overallRating;
+      if (!finalOverallRating || finalOverallRating === 0) {
         const categoryRating = calculateOverallRatingFromCategories(appraisal.comments);
-        if (categoryRating !== null) {
-          calculatedOverallRating = categoryRating;
+        if (categoryRating !== null && categoryRating > 0) {
+          finalOverallRating = categoryRating;
         }
       }
       
       return {
         ...appraisal,
-        overallRating: calculatedOverallRating, // Use calculated rating if available
+        overallRating: finalOverallRating, // Use stored value if available, otherwise calculated fallback
         supervisorApproval: appraisal.supervisorApprovedAt ? 'approved' : 'pending',
         reviewerApproval: appraisal.reviewerApprovedAt ? 'approved' : 'pending',
         // Ensure submittedAt is included
