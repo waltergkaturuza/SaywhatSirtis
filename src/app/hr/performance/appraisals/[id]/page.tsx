@@ -1052,12 +1052,12 @@ export default function ViewAppraisalPage() {
                     <span className="text-sm font-medium text-gray-700">Reviewer Approval</span>
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded ${
-                        (appraisal.reviewerApproval === 'approved' || appraisal.status === 'approved')
+                        (appraisal.reviewerApproval === 'approved' || appraisal.reviewerApprovedAt)
                           ? 'bg-green-100 text-green-800'
                           : (appraisal.reviewerApproval === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800')
                       }`}
                     >
-                      {(appraisal.reviewerApproval === 'approved' || appraisal.status === 'approved')
+                      {(appraisal.reviewerApproval === 'approved' || appraisal.reviewerApprovedAt)
                         ? 'approved'
                         : (appraisal.reviewerApproval || 'pending')}
                     </span>
