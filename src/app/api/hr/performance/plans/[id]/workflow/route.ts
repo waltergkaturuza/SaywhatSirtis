@@ -95,14 +95,18 @@ export async function POST(
       }
     }
     
+    // Check if current user is the employee themselves (cannot review own plan)
+    const isPlanOwner = plan.employeeId === employee.id
+    
     console.log('Workflow permission check:', {
       userId: userId,
       planSupervisorId: plan.supervisorId,
       planReviewerId: plan.reviewerId,
       planEmployeeId: plan.employeeId,
+      employeeId: employee.id,
+      isPlanOwner,
       isSupervisor,
-      isReviewer,
-      employeeId: employee.id
+      isReviewer
     });
     
     const isHR = session.user.roles?.some(r => [
@@ -120,9 +124,10 @@ export async function POST(
       'hr.view_all_performance'
     ].includes(p))
     
-    // HR/Admin users can act as supervisors/reviewers if needed
-    const canActAsSupervisor = isSupervisor || isHR || hasHRPermission
-    const canActAsReviewer = isReviewer || isHR || hasHRPermission
+    // HR/Admin users can act as supervisors/reviewers if needed, BUT NOT for their own plans
+    // Employees cannot review their own plans, even if they have HR permissions
+    const canActAsSupervisor = !isPlanOwner && (isSupervisor || (isHR && !isPlanOwner) || (hasHRPermission && !isPlanOwner))
+    const canActAsReviewer = !isPlanOwner && (isReviewer || (isHR && !isPlanOwner) || (hasHRPermission && !isPlanOwner))
     
     const canAct = (role === 'supervisor' && canActAsSupervisor) || (role === 'reviewer' && canActAsReviewer)
 

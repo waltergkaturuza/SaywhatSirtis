@@ -86,6 +86,9 @@ export async function POST(
       }
     }
 
+    // Check if current user is the employee themselves (cannot review own appraisal)
+    const isAppraisalOwner = appraisal.employeeId === employee.id
+    
     const isHR = session.user.roles?.some(r => [
       'HR',
       'admin',
@@ -101,15 +104,18 @@ export async function POST(
       'hr.view_all_performance'
     ].includes(p))
     
-    // HR/Admin users can act as supervisors/reviewers if needed
-    const canActAsSupervisor = isSupervisor || isEmployeeSupervisor || isHR || hasHRPermission
-    const canActAsReviewer = isReviewer || isEmployeeReviewer || isHR || hasHRPermission
+    // HR/Admin users can act as supervisors/reviewers if needed, BUT NOT for their own appraisals
+    // Employees cannot review their own appraisals, even if they have HR permissions
+    const canActAsSupervisor = !isAppraisalOwner && (isSupervisor || isEmployeeSupervisor || (isHR && !isAppraisalOwner) || (hasHRPermission && !isAppraisalOwner))
+    const canActAsReviewer = !isAppraisalOwner && (isReviewer || isEmployeeReviewer || (isHR && !isAppraisalOwner) || (hasHRPermission && !isAppraisalOwner))
     
     const canAct = (role === 'supervisor' && canActAsSupervisor) || (role === 'reviewer' && canActAsReviewer)
 
     console.log('Workflow permission check:', {
       userId: userId,
       employeeId: employee.id,
+      appraisalEmployeeId: appraisal.employeeId,
+      isAppraisalOwner,
       appraisalSupervisorId: appraisal.supervisorId,
       appraisalReviewerId: appraisal.reviewerId,
       isSupervisor,
