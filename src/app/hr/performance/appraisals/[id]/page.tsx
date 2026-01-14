@@ -449,7 +449,7 @@ export default function ViewAppraisalPage() {
 
   // Transform appraisal data to formData format
   useEffect(() => {
-    if (appraisal) {
+    if (appraisalId) {
       // Fetch full appraisal data from API to get complete structure
       const loadFullAppraisalData = async () => {
         try {
@@ -577,7 +577,7 @@ export default function ViewAppraisalPage() {
       
       loadFullAppraisalData()
     }
-  }, [appraisal, appraisalId])
+  }, [appraisalId])
 
   // Step navigation
   const handleNext = () => {
