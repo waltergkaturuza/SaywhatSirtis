@@ -244,7 +244,48 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, employee, achievements, development, ratings, comments, recommendations, status, workflowStatus } = body;
+    const { id, employee, achievements, development, performance, ratings, comments, recommendations, status, workflowStatus } = body;
+    
+    // Helper function to calculate overall rating from categories
+    const calculateOverallRatingFromCategories = (categories: any[]): number => {
+      if (!Array.isArray(categories) || categories.length === 0) return 0;
+      const totalWeight = categories.reduce((sum, cat) => sum + (cat.weight || 0), 0);
+      const weightedScore = categories.reduce((sum, cat) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0);
+      return totalWeight > 0 ? parseFloat((weightedScore / totalWeight).toFixed(2)) : 0;
+    };
+    
+    // Merge performance.categories into ratings if provided
+    let finalRatings = ratings || {};
+    let finalOverallRating = ratings?.overall;
+    
+    if (performance?.categories) {
+      // Use performance.categories as the source of truth
+      finalRatings = {
+        ...finalRatings,
+        categories: performance.categories
+      };
+      
+      // Calculate overall rating from categories if not explicitly provided
+      if (finalOverallRating === undefined || finalOverallRating === null) {
+        finalOverallRating = performance.overallRating || calculateOverallRatingFromCategories(performance.categories);
+      }
+    } else if (ratings?.categories) {
+      // Fallback to ratings.categories if performance.categories not provided
+      if (finalOverallRating === undefined || finalOverallRating === null) {
+        finalOverallRating = calculateOverallRatingFromCategories(ratings.categories);
+      }
+    }
+    
+    // Ensure overallRating is set
+    if (finalOverallRating === undefined || finalOverallRating === null) {
+      finalOverallRating = performance?.overallRating || 0;
+    }
+    
+    // Update ratings object with calculated overall
+    finalRatings = {
+      ...finalRatings,
+      overall: finalOverallRating
+    };
 
     // If ID is provided, update existing appraisal
     if (id) {
@@ -275,8 +316,18 @@ export async function POST(request: NextRequest) {
 
         // Combine comments, ratings, and recommendations first (needed for validation)
         const combinedComments = comments || {};
-        if (ratings) {
-          combinedComments.ratings = ratings;
+        // Store ratings with categories and overall rating
+        if (finalRatings) {
+          combinedComments.ratings = finalRatings;
+        }
+        // Also store performance data if provided
+        if (performance) {
+          combinedComments.performance = {
+            categories: performance.categories || finalRatings.categories || [],
+            overallRating: finalOverallRating,
+            strengths: performance.strengths || [],
+            areasForImprovement: performance.areasForImprovement || []
+          };
         }
         if (recommendations) {
           combinedComments.recommendations = recommendations;
@@ -330,12 +381,12 @@ export async function POST(request: NextRequest) {
             },
             achievements: achievements || existingAchievements,
             performance: {
-              categories: ratings?.categories || [],
-              overallRating: ratings?.overall !== undefined ? ratings.overall : (existingAppraisal.overallRating || 0)
+              categories: performance?.categories || finalRatings?.categories || ratings?.categories || [],
+              overallRating: finalOverallRating || existingAppraisal.overallRating || 0
             },
             development: development || existingDevelopment,
             comments: combinedComments,
-            ratings: ratings || {}
+            ratings: finalRatings || ratings || {}
           };
           
           const validation = validatePerformanceAppraisal(fullAppraisalData);
@@ -355,9 +406,13 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date()
         };
 
-        // Update overall rating if provided
-        if (ratings?.overall !== undefined) {
+        // Update overall rating - use calculated value
+        if (finalOverallRating !== undefined && finalOverallRating !== null) {
+          updateData.overallRating = finalOverallRating;
+        } else if (ratings?.overall !== undefined) {
           updateData.overallRating = ratings.overall;
+        } else if (performance?.overallRating !== undefined) {
+          updateData.overallRating = performance.overallRating;
         }
 
         // Update assessments if provided
@@ -554,9 +609,13 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       };
       
-      // Always update these fields if provided, otherwise keep existing
-      if (ratings?.overall !== undefined) {
+      // Always update overall rating - use calculated value
+      if (finalOverallRating !== undefined && finalOverallRating !== null) {
+        updateData.overallRating = finalOverallRating;
+      } else if (ratings?.overall !== undefined) {
         updateData.overallRating = ratings.overall;
+      } else if (performance?.overallRating !== undefined) {
+        updateData.overallRating = performance.overallRating;
       } else if (existingDraft.overallRating !== null) {
         updateData.overallRating = existingDraft.overallRating;
       }
@@ -585,8 +644,18 @@ export async function POST(request: NextRequest) {
       
       // Combine comments, ratings, and recommendations
       const combinedComments = comments || {};
-      if (ratings) {
-        combinedComments.ratings = ratings;
+      // Store ratings with categories and overall rating
+      if (finalRatings) {
+        combinedComments.ratings = finalRatings;
+      }
+      // Also store performance data if provided
+      if (performance) {
+        combinedComments.performance = {
+          categories: performance.categories || finalRatings.categories || [],
+          overallRating: finalOverallRating,
+          strengths: performance.strengths || [],
+          areasForImprovement: performance.areasForImprovement || []
+        };
       }
       if (recommendations) {
         combinedComments.recommendations = recommendations;
@@ -646,12 +715,12 @@ export async function POST(request: NextRequest) {
           },
           achievements: achievements || {},
           performance: {
-            categories: ratings?.categories || [],
-            overallRating: ratings?.overall || 0
+            categories: performance?.categories || finalRatings?.categories || ratings?.categories || [],
+            overallRating: finalOverallRating || 0
           },
           development: development || {},
           comments: comments || {},
-          ratings: ratings || {}
+          ratings: finalRatings || ratings || {}
         };
         
         const validation = validatePerformanceAppraisal(fullAppraisalData);
@@ -697,13 +766,23 @@ export async function POST(request: NextRequest) {
       const valueGoalsAssessmentsData = development
         ? (typeof development === 'string' ? development : JSON.stringify(development))
         : '{}';
-      const commentsData = comments || ratings || recommendations
-        ? JSON.stringify({ 
-            ...(typeof comments === 'object' ? comments : {}), 
-            ratings: ratings || {}, 
-            recommendations: recommendations || {} 
-          })
-        : '{}';
+      // Build comments data with ratings and performance
+      const commentsObj: any = typeof comments === 'object' ? comments : {};
+      if (finalRatings) {
+        commentsObj.ratings = finalRatings;
+      }
+      if (performance) {
+        commentsObj.performance = {
+          categories: performance.categories || finalRatings.categories || [],
+          overallRating: finalOverallRating,
+          strengths: performance.strengths || [],
+          areasForImprovement: performance.areasForImprovement || []
+        };
+      }
+      if (recommendations) {
+        commentsObj.recommendations = recommendations;
+      }
+      const commentsData = Object.keys(commentsObj).length > 0 ? JSON.stringify(commentsObj) : '{}';
 
       appraisal = await prisma.performance_appraisals.create({
         data: {
@@ -714,7 +793,7 @@ export async function POST(request: NextRequest) {
           reviewerId: reviewerUser?.id || null,
           appraisalType: appraisalType,
           status: status || 'draft',
-          overallRating: ratings?.overall || 0,
+          overallRating: finalOverallRating || 0,
           selfAssessments: selfAssessmentsData,
           supervisorAssessments: '{}',
           valueGoalsAssessments: valueGoalsAssessmentsData,

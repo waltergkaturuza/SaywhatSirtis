@@ -159,21 +159,33 @@ export async function GET(
             parsedComments = {};
           }
           
-          // Extract categories from ratings
-          if (parsedComments.ratings?.categories) {
+          // Extract categories from ratings or performance (check both locations)
+          if (parsedComments.performance?.categories) {
+            categories = Array.isArray(parsedComments.performance.categories) 
+              ? parsedComments.performance.categories 
+              : [];
+          } else if (parsedComments.ratings?.categories) {
             categories = Array.isArray(parsedComments.ratings.categories) 
               ? parsedComments.ratings.categories 
               : [];
           }
           
-          // Extract strengths and areas for improvement
-          if (parsedComments.strengths) {
+          // Extract strengths and areas for improvement (check both locations)
+          if (parsedComments.performance?.strengths) {
+            strengths = Array.isArray(parsedComments.performance.strengths) 
+              ? parsedComments.performance.strengths 
+              : (typeof parsedComments.performance.strengths === 'string' ? parsedComments.performance.strengths.split(',').map((s: string) => s.trim()) : []);
+          } else if (parsedComments.strengths) {
             strengths = Array.isArray(parsedComments.strengths) 
               ? parsedComments.strengths 
               : (typeof parsedComments.strengths === 'string' ? parsedComments.strengths.split(',').map((s: string) => s.trim()) : []);
           }
           
-          if (parsedComments.areasForImprovement) {
+          if (parsedComments.performance?.areasForImprovement) {
+            areasForImprovement = Array.isArray(parsedComments.performance.areasForImprovement) 
+              ? parsedComments.performance.areasForImprovement 
+              : (typeof parsedComments.performance.areasForImprovement === 'string' ? parsedComments.performance.areasForImprovement.split(',').map((s: string) => s.trim()) : []);
+          } else if (parsedComments.areasForImprovement) {
             areasForImprovement = Array.isArray(parsedComments.areasForImprovement) 
               ? parsedComments.areasForImprovement 
               : (typeof parsedComments.areasForImprovement === 'string' ? parsedComments.areasForImprovement.split(',').map((s: string) => s.trim()) : []);
