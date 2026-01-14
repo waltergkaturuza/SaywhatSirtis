@@ -124,6 +124,8 @@ export default function ViewAppraisalPage() {
   const appraisalContentRef = useRef<HTMLDivElement>(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<AppraisalFormData | null>(null)
+  const [isSavingRatings, setIsSavingRatings] = useState(false)
+  const [isEmployee, setIsEmployee] = useState(false)
 
   // Export appraisal to PDF
   const handleExportPDF = async () => {
@@ -298,6 +300,19 @@ export default function ViewAppraisalPage() {
             
             setIsSupervisor(canActAsSupervisor)
             setIsReviewer(canActAsReviewer)
+            
+            // Check if user is the employee (cannot edit submitted appraisals)
+            try {
+              const userEmployeeResponse = await fetch(`/api/hr/employees/by-email/${encodeURIComponent(session.user.email || '')}`)
+              if (userEmployeeResponse.ok) {
+                const userEmployee = await userEmployeeResponse.json()
+                const isEmployeeOwner = userEmployee?.id === normalizedData.employeeId
+                setIsEmployee(isEmployeeOwner)
+              }
+            } catch (err) {
+              console.error('Error checking employee ownership:', err)
+              setIsEmployee(false)
+            }
             
             // Load workflow comments if they exist
             let comments = { supervisor: [] as any[], reviewer: [] as any[] }
@@ -577,28 +592,111 @@ export default function ViewAppraisalPage() {
     }
   }
 
-  // Render step content in read-only mode
+  // Save supervisor ratings
+  const handleSaveRatings = async () => {
+    if (!formData || !appraisal) return
+    
+    setIsSavingRatings(true)
+    try {
+      const response = await fetch(`/api/hr/performance/appraisals/${appraisalId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ratings: {
+            overall: formData.performance.overallRating,
+            categories: formData.performance.categories
+          },
+          performance: {
+            overallRating: formData.performance.overallRating,
+            categories: formData.performance.categories,
+            strengths: formData.performance.strengths,
+            areasForImprovement: formData.performance.areasForImprovement
+          }
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to save ratings')
+      }
+      
+      alert('Ratings saved successfully')
+    } catch (error) {
+      console.error('Error saving ratings:', error)
+      alert('Failed to save ratings. Please try again.')
+    } finally {
+      setIsSavingRatings(false)
+    }
+  }
+
+  // Render step content - allow editing for supervisors on step 4 (Performance Assessment)
   const renderStepContent = () => {
     if (!formData) return null
 
-    // Create a read-only update function
-    const readOnlyUpdate = () => {
-      // No-op for read-only mode
+    // Determine if this step can be edited
+    // Supervisors can edit step 4 (Performance Assessment) on submitted appraisals
+    // Employees cannot edit submitted appraisals
+    const canEditStep = (step: number) => {
+      if (isEmployee && appraisal && appraisal.status !== 'draft') {
+        return false // Employees cannot edit submitted appraisals
+      }
+      if (step === 4 && isSupervisor && appraisal && appraisal.status !== 'draft' && appraisal.supervisorApproval !== 'approved') {
+        return true // Supervisors can edit ratings on submitted appraisals (before approval)
+      }
+      return false // All other cases are read-only
+    }
+
+    // Create update function - only allow updates if step is editable
+    const createUpdateFunction = (step: number) => {
+      if (canEditStep(step)) {
+        return (updates: Partial<AppraisalFormData>) => {
+          setFormData(prev => prev ? { ...prev, ...updates } : null)
+        }
+      }
+      return () => {
+        // No-op for read-only mode
+      }
     }
 
     switch (currentStep) {
       case 1:
-        return <EmployeeDetailsStep formData={formData} updateFormData={readOnlyUpdate} />
+        return <EmployeeDetailsStep formData={formData} updateFormData={createUpdateFunction(1)} />
       case 2:
-        return <AchievementsGoalsStep formData={formData} updateFormData={readOnlyUpdate} />
+        return <AchievementsGoalsStep formData={formData} updateFormData={createUpdateFunction(2)} />
       case 3:
-        return <DevelopmentPlanningStep formData={formData} updateFormData={readOnlyUpdate} />
+        return <DevelopmentPlanningStep formData={formData} updateFormData={createUpdateFunction(3)} />
       case 4:
-        return <PerformanceAssessmentStep formData={formData} updateFormData={readOnlyUpdate} />
+        return (
+          <div>
+            <PerformanceAssessmentStep formData={formData} updateFormData={createUpdateFunction(4)} />
+            {canEditStep(4) && (
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={handleSaveRatings}
+                  disabled={isSavingRatings}
+                  className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {isSavingRatings ? (
+                    <>
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircleIcon className="h-4 w-4" />
+                      <span>Save Ratings</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )
       case 5:
-        return <CommentsReviewStep formData={formData} updateFormData={readOnlyUpdate} />
+        return <CommentsReviewStep formData={formData} updateFormData={createUpdateFunction(5)} />
       case 6:
-        return <FinalReviewStep formData={formData} updateFormData={readOnlyUpdate} />
+        return <FinalReviewStep formData={formData} updateFormData={createUpdateFunction(6)} />
       default:
         return null
     }

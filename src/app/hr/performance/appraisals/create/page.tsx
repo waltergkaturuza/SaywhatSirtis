@@ -293,17 +293,15 @@ function CreateAppraisalContent() {
               }
             }
             
-            // If user is supervisor/reviewer (but not HR/admin or owner), redirect to view page IMMEDIATELY
-            if ((isSupervisor || isReviewer) && !isHR && !isOwner) {
-              console.log('🔀 Redirecting supervisor/reviewer to view page for submitted appraisal')
-              console.log('   Appraisal status:', appraisalData.status)
-              console.log('   Is supervisor:', isSupervisor)
-              console.log('   Is reviewer:', isReviewer)
-              console.log('   Is HR:', isHR)
-              console.log('   Is owner:', isOwner)
+            // If user is employee (owner) and appraisal is submitted, redirect to view page (cannot edit)
+            if (isOwner && appraisalData.status !== 'draft') {
+              console.log('🔀 Redirecting employee to view page for submitted appraisal (cannot edit)')
               router.push(`/hr/performance/appraisals/${appraisalId}`)
               return
             }
+            
+            // Supervisors/reviewers can edit submitted appraisals (to add ratings), so allow them to continue
+            // They will be able to edit ratings in the view page
           }
           
           const appraisalDataForForm = result.appraisal || result.data
