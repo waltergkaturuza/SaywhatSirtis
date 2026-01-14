@@ -64,27 +64,70 @@ export async function GET(request: NextRequest) {
       yearsOfService = Math.round(yearsOfService * 10) / 10;
     }
 
+    // Helper function to calculate overall rating from categories
+    const calculateOverallRatingFromCategories = (comments: any): number | null => {
+      if (!comments) return null;
+      
+      try {
+        let parsedComments = comments;
+        if (typeof comments === 'string') {
+          parsedComments = JSON.parse(comments);
+        }
+        
+        // Check if categories are in ratings.categories or performance.categories
+        const categories = parsedComments?.ratings?.categories || parsedComments?.performance?.categories;
+        
+        if (!Array.isArray(categories) || categories.length === 0) {
+          return null;
+        }
+        
+        // Calculate weighted average: sum((rating * weight)) / sum(weights)
+        const totalWeight = categories.reduce((sum: number, cat: any) => sum + (cat.weight || 0), 0);
+        const weightedScore = categories.reduce((sum: number, cat: any) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0);
+        
+        if (totalWeight > 0) {
+          return parseFloat((weightedScore / totalWeight).toFixed(2));
+        }
+      } catch (error) {
+        console.error('Error calculating overall rating from categories:', error);
+      }
+      
+      return null;
+    };
+
     // Get last appraisal score (from performance_appraisals or performance_reviews)
     let performanceScore = null;
+    let overallRating = null;
     try {
       // Try performance_appraisals first (newer system)
       const lastAppraisal = await prisma.performance_appraisals.findFirst({
         where: {
           employeeId: employee.id,
-          overallRating: { not: null },
-          status: { in: ['completed', 'approved', 'supervisor_approved', 'reviewer_approved'] }
+          status: { in: ['completed', 'approved', 'supervisor_approved', 'reviewer_approved', 'submitted'] }
         },
         orderBy: {
           updatedAt: 'desc'
         },
         select: {
-          overallRating: true
+          overallRating: true,
+          comments: true
         }
       });
 
-      if (lastAppraisal?.overallRating) {
-        // Convert to percentage (assuming 5-point scale)
-        performanceScore = Math.round((lastAppraisal.overallRating / 5) * 100);
+      if (lastAppraisal) {
+        // Use stored overallRating if available, otherwise calculate from categories
+        overallRating = lastAppraisal.overallRating;
+        if (!overallRating || overallRating === 0) {
+          const categoryRating = calculateOverallRatingFromCategories(lastAppraisal.comments);
+          if (categoryRating !== null) {
+            overallRating = categoryRating;
+          }
+        }
+        
+        if (overallRating) {
+          // Convert to percentage (assuming 5-point scale)
+          performanceScore = Math.round((overallRating / 5) * 100);
+        }
       } else {
         // Fallback to performance_reviews (older system)
         const lastReview = await prisma.performance_reviews.findFirst({

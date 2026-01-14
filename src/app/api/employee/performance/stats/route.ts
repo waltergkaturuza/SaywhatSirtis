@@ -58,15 +58,55 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // Helper function to calculate overall rating from categories
+    const calculateOverallRatingFromCategories = (comments: any): number | null => {
+      if (!comments) return null;
+      
+      try {
+        let parsedComments = comments;
+        if (typeof comments === 'string') {
+          parsedComments = JSON.parse(comments);
+        }
+        
+        // Check if categories are in ratings.categories or performance.categories
+        const categories = parsedComments?.ratings?.categories || parsedComments?.performance?.categories;
+        
+        if (!Array.isArray(categories) || categories.length === 0) {
+          return null;
+        }
+        
+        // Calculate weighted average: sum((rating * weight)) / sum(weights)
+        const totalWeight = categories.reduce((sum: number, cat: any) => sum + (cat.weight || 0), 0);
+        const weightedScore = categories.reduce((sum: number, cat: any) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0);
+        
+        if (totalWeight > 0) {
+          return parseFloat((weightedScore / totalWeight).toFixed(2));
+        }
+      } catch (error) {
+        console.error('Error calculating overall rating from categories:', error);
+      }
+      
+      return null;
+    };
+
     // Get latest completed appraisal rating
     const latestAppraisal = await prisma.performance_appraisals.findFirst({
       where: {
         employeeId: employee.id,
-        status: 'approved'
+        status: { in: ['approved', 'completed', 'supervisor_approved', 'reviewer_approved', 'submitted'] }
       },
       orderBy: { createdAt: 'desc' },
-      select: { overallRating: true, approvedAt: true }
+      select: { overallRating: true, approvedAt: true, comments: true }
     });
+    
+    // Calculate overall rating from categories if overallRating is 0 or null
+    let calculatedOverallRating = latestAppraisal?.overallRating || 0;
+    if (!calculatedOverallRating || calculatedOverallRating === 0) {
+      const categoryRating = calculateOverallRatingFromCategories(latestAppraisal?.comments);
+      if (categoryRating !== null) {
+        calculatedOverallRating = categoryRating;
+      }
+    }
 
     // Get performance responsibilities stats
     const totalGoals = await prisma.performance_responsibilities.count({
@@ -101,7 +141,7 @@ export async function GET(request: NextRequest) {
       totalGoals,
       lastReviewDate: lastReviewDate?.toISOString() || null,
       nextReviewDate,
-      overallRating: latestAppraisal?.overallRating || 0,
+      overallRating: calculatedOverallRating,
       totalReviews: totalAppraisals,
       completedReviews: completedAppraisals,
       activeGoals: totalGoals - completedGoals,

@@ -304,16 +304,59 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     });
 
+    // Helper function to calculate overall rating from categories
+    const calculateOverallRatingFromCategories = (comments: any): number | null => {
+      if (!comments) return null;
+      
+      try {
+        let parsedComments = comments;
+        if (typeof comments === 'string') {
+          parsedComments = JSON.parse(comments);
+        }
+        
+        // Check if categories are in ratings.categories or performance.categories
+        const categories = parsedComments?.ratings?.categories || parsedComments?.performance?.categories;
+        
+        if (!Array.isArray(categories) || categories.length === 0) {
+          return null;
+        }
+        
+        // Calculate weighted average: sum((rating * weight)) / sum(weights)
+        const totalWeight = categories.reduce((sum: number, cat: any) => sum + (cat.weight || 0), 0);
+        const weightedScore = categories.reduce((sum: number, cat: any) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0);
+        
+        if (totalWeight > 0) {
+          return parseFloat((weightedScore / totalWeight).toFixed(2));
+        }
+      } catch (error) {
+        console.error('Error calculating overall rating from categories:', error);
+      }
+      
+      return null;
+    };
+
     // Transform appraisals to include approval status fields (like plans)
-    const transformedAppraisals = appraisals.map((appraisal) => ({
-      ...appraisal,
-      supervisorApproval: appraisal.supervisorApprovedAt ? 'approved' : 'pending',
-      reviewerApproval: appraisal.reviewerApprovedAt ? 'approved' : 'pending',
-      // Ensure submittedAt is included
-      submittedAt: appraisal.submittedAt,
-      supervisorApprovedAt: appraisal.supervisorApprovedAt,
-      reviewerApprovedAt: appraisal.reviewerApprovedAt
-    }));
+    const transformedAppraisals = appraisals.map((appraisal) => {
+      // Calculate overall rating from categories if overallRating is 0, null, or missing
+      let calculatedOverallRating = appraisal.overallRating;
+      if (!calculatedOverallRating || calculatedOverallRating === 0) {
+        const categoryRating = calculateOverallRatingFromCategories(appraisal.comments);
+        if (categoryRating !== null) {
+          calculatedOverallRating = categoryRating;
+        }
+      }
+      
+      return {
+        ...appraisal,
+        overallRating: calculatedOverallRating, // Use calculated rating if available
+        supervisorApproval: appraisal.supervisorApprovedAt ? 'approved' : 'pending',
+        reviewerApproval: appraisal.reviewerApprovedAt ? 'approved' : 'pending',
+        // Ensure submittedAt is included
+        submittedAt: appraisal.submittedAt,
+        supervisorApprovedAt: appraisal.supervisorApprovedAt,
+        reviewerApprovedAt: appraisal.reviewerApprovedAt
+      };
+    });
 
     // Next.js automatically serializes Date objects to ISO strings in JSON responses
     return NextResponse.json(transformedAppraisals);
