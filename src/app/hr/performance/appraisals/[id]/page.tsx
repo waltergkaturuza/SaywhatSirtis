@@ -620,6 +620,20 @@ export default function ViewAppraisalPage() {
       if (!response.ok) {
         throw new Error('Failed to save ratings')
       }
+
+      const result = await response.json()
+      const newOverall = result?.appraisal?.overallRating ?? formData.performance.overallRating
+
+      // Update local appraisal header (Overall Rating 0.0/5)
+      setAppraisal(prev => prev ? { ...prev, overallRating: newOverall } : prev)
+      // Keep formData in sync with the saved rating
+      setFormData(prev => prev ? {
+        ...prev,
+        performance: {
+          ...prev.performance,
+          overallRating: newOverall
+        }
+      } : prev)
       
       alert('Ratings saved successfully')
     } catch (error) {
