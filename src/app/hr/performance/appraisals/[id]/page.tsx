@@ -598,6 +598,16 @@ export default function ViewAppraisalPage() {
     
     setIsSavingRatings(true)
     try {
+      // Calculate overall rating from categories before saving
+      const categories = formData.performance.categories || []
+      let calculatedOverallRating = 0
+      
+      if (categories.length > 0) {
+        const totalWeight = categories.reduce((sum, cat) => sum + (cat.weight || 0), 0)
+        const weightedScore = categories.reduce((sum, cat) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0)
+        calculatedOverallRating = totalWeight > 0 ? parseFloat((weightedScore / totalWeight).toFixed(2)) : 0
+      }
+      
       const response = await fetch(`/api/hr/performance/appraisals/${appraisalId}`, {
         method: 'PATCH',
         headers: {
@@ -605,11 +615,11 @@ export default function ViewAppraisalPage() {
         },
         body: JSON.stringify({
           ratings: {
-            overall: formData.performance.overallRating,
+            overall: calculatedOverallRating,
             categories: formData.performance.categories
           },
           performance: {
-            overallRating: formData.performance.overallRating,
+            overallRating: calculatedOverallRating,
             categories: formData.performance.categories,
             strengths: formData.performance.strengths,
             areasForImprovement: formData.performance.areasForImprovement
@@ -622,7 +632,7 @@ export default function ViewAppraisalPage() {
       }
 
       const result = await response.json()
-      const newOverall = result?.appraisal?.overallRating ?? formData.performance.overallRating
+      const newOverall = result?.appraisal?.overallRating ?? calculatedOverallRating
 
       // Update local appraisal header (Overall Rating 0.0/5)
       setAppraisal(prev => prev ? { ...prev, overallRating: newOverall } : prev)
@@ -797,10 +807,24 @@ export default function ViewAppraisalPage() {
   }
 
   const calculateOverallRating = () => {
-    if (!appraisal?.performanceAreas || !Array.isArray(appraisal.performanceAreas) || appraisal.performanceAreas.length === 0) return 0
-    const totalWeight = appraisal.performanceAreas.reduce((sum, area) => sum + (area.weight || 0), 0)
-    const weightedScore = appraisal.performanceAreas.reduce((sum, area) => sum + ((area.rating || 0) * (area.weight || 0)), 0)
-    return totalWeight > 0 ? (weightedScore / totalWeight).toFixed(1) : "0.0"
+    // First try to use formData.performance.categories (most up-to-date)
+    if (formData?.performance?.categories && Array.isArray(formData.performance.categories) && formData.performance.categories.length > 0) {
+      const totalWeight = formData.performance.categories.reduce((sum, cat) => sum + (cat.weight || 0), 0)
+      const weightedScore = formData.performance.categories.reduce((sum, cat) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0)
+      if (totalWeight > 0) {
+        // Convert weighted score to 0-5 scale: (weightedScore / totalWeight) gives us the average rating
+        return (weightedScore / totalWeight).toFixed(1)
+      }
+    }
+    
+    // Fallback to appraisal.performanceAreas if formData not available
+    if (appraisal?.performanceAreas && Array.isArray(appraisal.performanceAreas) && appraisal.performanceAreas.length > 0) {
+      const totalWeight = appraisal.performanceAreas.reduce((sum, area) => sum + (area.weight || 0), 0)
+      const weightedScore = appraisal.performanceAreas.reduce((sum, area) => sum + ((area.rating || 0) * (area.weight || 0)), 0)
+      return totalWeight > 0 ? (weightedScore / totalWeight).toFixed(1) : "0.0"
+    }
+    
+    return "0.0"
   }
 
   if (loading) {
@@ -1138,7 +1162,15 @@ export default function ViewAppraisalPage() {
                     </div>
                     <div>
                       <span className="text-gray-600">Overall Rating:</span>
-                      <p className="font-medium text-gray-900">{appraisal.overallRating || calculateOverallRating()}/5</p>
+                      <p className="font-medium text-gray-900">
+                        {(() => {
+                          const calculated = calculateOverallRating()
+                          const stored = appraisal.overallRating
+                          // Prefer calculated from formData (most up-to-date), then stored, then fallback
+                          const displayRating = calculated !== "0.0" ? calculated : (stored || "0.0")
+                          return `${displayRating}/5`
+                        })()}
+                      </p>
                     </div>
                     <div>
                       <span className="text-gray-600">Status:</span>
@@ -1264,7 +1296,15 @@ export default function ViewAppraisalPage() {
                     </div>
                     <div>
                       <span className="text-gray-600">Overall Rating:</span>
-                      <p className="font-medium text-gray-900">{appraisal.overallRating || calculateOverallRating()}/5</p>
+                      <p className="font-medium text-gray-900">
+                        {(() => {
+                          const calculated = calculateOverallRating()
+                          const stored = appraisal.overallRating
+                          // Prefer calculated from formData (most up-to-date), then stored, then fallback
+                          const displayRating = calculated !== "0.0" ? calculated : (stored || "0.0")
+                          return `${displayRating}/5`
+                        })()}
+                      </p>
                     </div>
                     <div>
                       <span className="text-gray-600">Status:</span>
