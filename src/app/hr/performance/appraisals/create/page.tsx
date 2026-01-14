@@ -528,13 +528,31 @@ function CreateAppraisalContent() {
     try {
       console.log('Submitting appraisal data:', formData)
       
+      // Calculate overall rating from categories if not already set
+      let calculatedOverallRating = formData.performance?.overallRating || 0
+      if (formData.performance?.categories && formData.performance.categories.length > 0) {
+        const totalWeight = formData.performance.categories.reduce((sum, cat) => sum + (cat.weight || 0), 0)
+        const weightedScore = formData.performance.categories.reduce((sum, cat) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0)
+        if (totalWeight > 0) {
+          calculatedOverallRating = parseFloat((weightedScore / totalWeight).toFixed(2))
+        }
+      }
+      
       // Prepare the data in the format the API expects
       const submitPayload = {
         id: formData.id || appraisalId || undefined, // Include ID if it exists
         employee: formData.employee,
         achievements: formData.achievements,
         development: formData.development,
-        ratings: formData.ratings,
+        performance: {
+          ...formData.performance,
+          overallRating: calculatedOverallRating
+        },
+        ratings: {
+          ...formData.ratings,
+          overall: calculatedOverallRating,
+          categories: formData.performance?.categories || []
+        },
         comments: formData.comments,
         recommendations: formData.recommendations || {},
         status: 'submitted',
@@ -595,13 +613,31 @@ function CreateAppraisalContent() {
     try {
       console.log('Saving draft data:', formData)
       
+      // Calculate overall rating from categories if not already set
+      let calculatedOverallRating = formData.performance?.overallRating || 0
+      if (formData.performance?.categories && formData.performance.categories.length > 0) {
+        const totalWeight = formData.performance.categories.reduce((sum, cat) => sum + (cat.weight || 0), 0)
+        const weightedScore = formData.performance.categories.reduce((sum, cat) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0)
+        if (totalWeight > 0) {
+          calculatedOverallRating = parseFloat((weightedScore / totalWeight).toFixed(2))
+        }
+      }
+      
       // Prepare the data in the format the API expects
       const payload = {
         id: formData.id || appraisalId || undefined, // Include ID if it exists
         employee: formData.employee,
         achievements: formData.achievements,
         development: formData.development,
-        ratings: formData.ratings,
+        performance: {
+          ...formData.performance,
+          overallRating: calculatedOverallRating
+        },
+        ratings: {
+          ...formData.ratings,
+          overall: calculatedOverallRating,
+          categories: formData.performance?.categories || []
+        },
         comments: formData.comments,
         recommendations: formData.recommendations || {},
         status: 'draft',
