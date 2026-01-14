@@ -158,18 +158,31 @@ export async function POST(
     let supervisorApproval = plan.supervisorApproval
     let reviewerApproval = plan.reviewerApproval
     
+    let supervisorApprovedAt = plan.supervisorApprovedAt
+    let reviewerApprovedAt = plan.reviewerApprovedAt
+    
     if (action === 'request_changes') {
       newStatus = 'revision_requested'
       newWorkflowStatus = 'revision_requested'
       if (role === 'supervisor') {
         supervisorApproval = 'revision_requested'
+        // Reset to submitted so employee can edit
+        newStatus = 'submitted'
+        newWorkflowStatus = 'submitted'
       } else if (role === 'reviewer') {
         reviewerApproval = 'revision_requested'
+        // If reviewer requests changes, reset supervisor approval if it was approved
+        // This allows supervisor to edit again (e.g., to add missing ratings)
+        if (plan.supervisorApprovedAt) {
+          supervisorApproval = 'pending'
+          supervisorApprovedAt = null
+        }
       }
     } else if (action === 'approve' && role === 'supervisor') {
       newStatus = 'supervisor_approved'
       newWorkflowStatus = 'supervisor_approved'
       supervisorApproval = 'approved'
+      supervisorApprovedAt = new Date()
       // Move to reviewer stage
       if (plan.reviewerId) {
         newWorkflowStatus = 'reviewer_assessment'
@@ -178,6 +191,7 @@ export async function POST(
       newStatus = 'approved'
       newWorkflowStatus = 'approved'
       reviewerApproval = 'approved'
+      reviewerApprovedAt = new Date()
     }
 
     // Update the plan
@@ -189,8 +203,8 @@ export async function POST(
         comments: JSON.stringify(currentComments),
         supervisorApproval: supervisorApproval,
         reviewerApproval: reviewerApproval,
-        supervisorApprovedAt: action === 'approve' && role === 'supervisor' ? new Date() : plan.supervisorApprovedAt,
-        reviewerApprovedAt: action === 'final_approve' && role === 'reviewer' ? new Date() : plan.reviewerApprovedAt,
+        supervisorApprovedAt: supervisorApprovedAt,
+        reviewerApprovedAt: reviewerApprovedAt,
         updatedAt: new Date()
       }
     })

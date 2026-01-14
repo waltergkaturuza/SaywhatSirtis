@@ -638,12 +638,33 @@ export default function ViewAppraisalPage() {
     // Supervisors can edit step 4 (Performance Assessment) on submitted appraisals
     // Employees cannot edit submitted appraisals
     const canEditStep = (step: number) => {
-      if (isEmployee && appraisal && appraisal.status !== 'draft') {
-        return false // Employees cannot edit submitted appraisals
+      if (!appraisal) return false
+      
+      // If status is revision_requested, determine who can edit
+      if (appraisal.status === 'revision_requested') {
+        // If supervisor approval was reset (reviewer requested changes), supervisor can edit
+        if (step === 4 && isSupervisor && !appraisal.supervisorApprovedAt) {
+          return true // Supervisor can edit ratings when reviewer requested changes
+        }
+        // If status is revision_requested and supervisor requested changes, employee can edit
+        if (isEmployee) {
+          return true // Employee can edit when supervisor requested changes
+        }
       }
-      if (step === 4 && isSupervisor && appraisal && appraisal.status !== 'draft' && appraisal.supervisorApproval !== 'approved') {
-        return true // Supervisors can edit ratings on submitted appraisals (before approval)
+      
+      // Employees cannot edit submitted appraisals (unless revision_requested)
+      if (isEmployee && appraisal.status !== 'draft' && appraisal.status !== 'revision_requested') {
+        return false
       }
+      
+      // Supervisors can edit ratings on submitted appraisals (before approval or after revision request)
+      if (step === 4 && isSupervisor && appraisal.status !== 'draft') {
+        // Can edit if: not approved yet, or approval was reset (revision_requested)
+        if (!appraisal.supervisorApprovedAt || appraisal.status === 'revision_requested') {
+          return true
+        }
+      }
+      
       return false // All other cases are read-only
     }
 
@@ -892,7 +913,7 @@ export default function ViewAppraisalPage() {
                     <span>Supervisor Review</span>
                   </button>
                 )}
-                {isReviewer && appraisal.status !== 'draft' && appraisal.supervisorApproval === 'approved' && (
+                {isReviewer && appraisal.status !== 'draft' && (appraisal.supervisorApproval === 'approved' || (appraisal.status === 'revision_requested' && appraisal.supervisorApprovedAt)) && (
                   <button
                     onClick={() => setActiveWorkflowTab('reviewer')}
                     className={`flex-1 py-4 px-6 border-b-2 font-medium text-sm transition-colors flex items-center justify-center space-x-2 ${
@@ -1208,7 +1229,7 @@ export default function ViewAppraisalPage() {
           )}
 
           {/* Tab 3: Final Review (Reviewer) */}
-          {activeWorkflowTab === 'reviewer' && isReviewer && appraisal.status !== 'draft' && appraisal.supervisorApproval === 'approved' && (
+          {activeWorkflowTab === 'reviewer' && isReviewer && appraisal.status !== 'draft' && (appraisal.supervisorApproval === 'approved' || (appraisal.status === 'revision_requested' && appraisal.supervisorApprovedAt)) && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center space-x-3 mb-6">

@@ -178,12 +178,27 @@ export async function POST(
       currentComments.reviewer.push(newComment)
     }
 
-    // Determine new workflow status
+    // Determine new workflow status and reset approvals if needed
     let newStatus = appraisal.status
+    let supervisorApprovedAt = appraisal.supervisorApprovedAt
+    let reviewerApprovedAt = appraisal.reviewerApprovedAt
+    
     if (action === 'request_changes') {
       newStatus = 'revision_requested'
+      
+      // If reviewer requests changes, reset supervisor approval if it was approved
+      // This allows supervisor to edit again (e.g., to add missing ratings)
+      if (role === 'reviewer' && appraisal.supervisorApprovedAt) {
+        supervisorApprovedAt = null
+      }
+      
+      // If supervisor requests changes, reset to submitted status so employee can edit
+      if (role === 'supervisor') {
+        newStatus = 'submitted' // Allow employee to edit
+      }
     } else if (action === 'approve' && role === 'supervisor') {
       newStatus = 'supervisor_approved'
+      supervisorApprovedAt = new Date()
       // If there's a reviewer, push to reviewer_assessment
       if (appraisal.reviewerId) {
         newStatus = 'reviewer_assessment'
@@ -193,6 +208,7 @@ export async function POST(
       }
     } else if (action === 'final_approve' && role === 'reviewer') {
       newStatus = 'approved'
+      reviewerApprovedAt = new Date()
     }
 
     // Update the appraisal
@@ -201,8 +217,8 @@ export async function POST(
       data: {
         status: newStatus,
         comments: JSON.stringify(currentComments),
-        supervisorApprovedAt: action === 'approve' && role === 'supervisor' ? new Date() : appraisal.supervisorApprovedAt,
-        reviewerApprovedAt: action === 'final_approve' && role === 'reviewer' ? new Date() : appraisal.reviewerApprovedAt,
+        supervisorApprovedAt: supervisorApprovedAt,
+        reviewerApprovedAt: reviewerApprovedAt,
         updatedAt: new Date()
       }
     })

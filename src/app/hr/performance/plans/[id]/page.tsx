@@ -230,7 +230,10 @@ export default function ViewPlanPage() {
             
             // Set default tab based on user role and plan status
             if (planData.status !== 'draft') {
-              if (canActAsSupervisor && planData.supervisorApproval !== 'approved') {
+              // If revision requested and supervisor approval was reset, show supervisor tab
+              if (planData.status === 'revision_requested' && canActAsSupervisor && !planData.supervisorApprovedAt) {
+                setActiveWorkflowTab('supervisor')
+              } else if (canActAsSupervisor && planData.supervisorApproval !== 'approved') {
                 setActiveWorkflowTab('supervisor')
               } else if (canActAsReviewer && planData.reviewerApproval !== 'approved' && planData.supervisorApproval === 'approved') {
                 setActiveWorkflowTab('reviewer')
@@ -1091,7 +1094,7 @@ export default function ViewPlanPage() {
                   <span>Supervisor Review</span>
                 </button>
               )}
-              {isReviewer && plan.status !== 'draft' && plan.supervisorApproval === 'approved' && (
+              {isReviewer && plan.status !== 'draft' && (plan.supervisorApproval === 'approved' || (plan.status === 'revision_requested' && plan.supervisorApprovedAt)) && (
                 <button
                   onClick={() => setActiveWorkflowTab('reviewer')}
                   className={`flex-1 py-4 px-6 border-b-2 font-medium text-sm transition-colors flex items-center justify-center space-x-2 ${
