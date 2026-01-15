@@ -493,3 +493,86 @@ export async function PATCH(
     );
   }
 }
+
+// DELETE - Delete a performance appraisal (Admin/HR only)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    // Check if user has admin or HR permissions
+    const isAdmin = session.user.roles?.some(r => [
+      'ADMIN',
+      'SYSTEM_ADMINISTRATOR',
+      'SUPERUSER',
+      'admin'
+    ].includes(r));
+    
+    const isHR = session.user.roles?.some(r => [
+      'HR',
+      'HR_MANAGER',
+      'ADVANCE_USER_1',
+      'ADVANCE_USER_2'
+    ].includes(r));
+    
+    const hasHRPermission = session.user.permissions?.some(p => [
+      'hr.full_access',
+      'hr.view_all_performance',
+      'hr.delete_performance'
+    ].includes(p));
+
+    if (!isAdmin && !isHR && !hasHRPermission) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions. Only administrators and HR staff can delete appraisals.' },
+        { status: 403 }
+      );
+    }
+
+    // Check if appraisal exists
+    const appraisal = await prisma.performance_appraisals.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        employeeId: true
+      }
+    });
+
+    if (!appraisal) {
+      return NextResponse.json(
+        { error: 'Performance appraisal not found' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the appraisal (cascading deletes will handle related records)
+    await prisma.performance_appraisals.delete({
+      where: { id }
+    });
+
+    console.log(`✅ Appraisal ${id} deleted by ${session.user.email}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Performance appraisal deleted successfully',
+      deletedId: id
+    });
+
+  } catch (error) {
+    console.error('Error deleting performance appraisal:', error);
+    return NextResponse.json(
+      { 
+        error: 'Failed to delete performance appraisal',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}

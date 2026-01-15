@@ -432,3 +432,87 @@ export async function PUT(
     )
   }
 }
+
+// DELETE - Delete a performance plan (Admin/HR only)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id: planId } = await params
+
+    // Check if user has admin or HR permissions
+    const isAdmin = session.user.roles?.some(r => [
+      'ADMIN',
+      'SYSTEM_ADMINISTRATOR',
+      'SUPERUSER',
+      'admin'
+    ].includes(r))
+    
+    const isHR = session.user.roles?.some(r => [
+      'HR',
+      'HR_MANAGER',
+      'ADVANCE_USER_1',
+      'ADVANCE_USER_2'
+    ].includes(r))
+    
+    const hasHRPermission = session.user.permissions?.some(p => [
+      'hr.full_access',
+      'hr.view_all_performance',
+      'hr.delete_performance'
+    ].includes(p))
+
+    if (!isAdmin && !isHR && !hasHRPermission) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions. Only administrators and HR staff can delete performance plans.' },
+        { status: 403 }
+      )
+    }
+
+    // Check if plan exists
+    const plan = await prisma.performance_plans.findUnique({
+      where: { id: planId },
+      select: {
+        id: true,
+        status: true,
+        employeeId: true,
+        planYear: true
+      }
+    })
+
+    if (!plan) {
+      return NextResponse.json(
+        { error: 'Performance plan not found' },
+        { status: 404 }
+      )
+    }
+
+    // Delete the plan (cascading deletes will handle related records like appraisals, responsibilities, etc.)
+    await prisma.performance_plans.delete({
+      where: { id: planId }
+    })
+
+    console.log(`✅ Performance plan ${planId} deleted by ${session.user.email}`)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Performance plan deleted successfully',
+      deletedId: planId
+    })
+
+  } catch (error) {
+    console.error('Error deleting performance plan:', error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to delete performance plan',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}
