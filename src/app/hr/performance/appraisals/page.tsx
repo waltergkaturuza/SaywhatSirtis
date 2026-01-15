@@ -14,6 +14,7 @@ import {
   DocumentTextIcon,
   EyeIcon,
   PencilIcon,
+  TrashIcon,
   UserIcon,
   ChartBarIcon,
   BuildingOfficeIcon,
@@ -82,9 +83,55 @@ export default function PerformanceAppraisalsPage() {
 
   // Check user permissions for HR access
   const userPermissions = session?.user?.permissions || []
+  const userRoles = session?.user?.roles || []
   const isHRStaff = userPermissions.includes('hr.full_access')
   const isSecretariatMember = userPermissions.includes('hr.secretariat_access')
   const canViewAllAppraisals = isHRStaff || userPermissions.includes('hr.view_all_performance')
+  
+  // Check if user can delete (Admin or HR)
+  const isAdmin = userRoles.some((r: string) => ['ADMIN', 'SYSTEM_ADMINISTRATOR', 'SUPERUSER', 'admin'].includes(r))
+  const isHR = userRoles.some((r: string) => ['HR', 'HR_MANAGER', 'ADVANCE_USER_1', 'ADVANCE_USER_2'].includes(r))
+  const hasHRPermission = userPermissions.some((p: string) => ['hr.full_access', 'hr.view_all_performance', 'hr.delete_performance'].includes(p))
+  const canDelete = isAdmin || isHR || hasHRPermission
+  
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; appraisalId: string | null; appraisalName: string }>({
+    show: false,
+    appraisalId: null,
+    appraisalName: ''
+  })
+  
+  const [isDeleting, setIsDeleting] = useState(false)
+  
+  // Handle delete appraisal
+  const handleDeleteAppraisal = async (appraisalId: string) => {
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/hr/performance/appraisals/${appraisalId}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete appraisal')
+      }
+      
+      // Remove from list
+      setPerformanceAppraisals(prev => prev.filter(a => a.id !== appraisalId))
+      setDeleteConfirm({ show: false, appraisalId: null, appraisalName: '' })
+      
+      // Refresh statistics
+      const statisticsRes = await fetch('/api/hr/performance/appraisals/analytics')
+      if (statisticsRes.ok) {
+        const statsData = await statisticsRes.json()
+        setStatistics(statsData.statistics || statistics)
+      }
+    } catch (error) {
+      console.error('Error deleting appraisal:', error)
+      alert(error instanceof Error ? error.message : 'Failed to delete appraisal')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   // Fetch performance appraisals data
   useEffect(() => {
@@ -637,6 +684,20 @@ export default function PerformanceAppraisalsPage() {
                                   </button>
                                 </Link>
                               )}
+                              {/* Delete button - only for Admin/HR */}
+                              {canDelete && (
+                                <button
+                                  onClick={() => setDeleteConfirm({
+                                    show: true,
+                                    appraisalId: appraisal.id,
+                                    appraisalName: `${appraisal.employeeName || 'Appraisal'} - ${appraisal.period || 'N/A'}`
+                                  })}
+                                  className="text-red-600 hover:text-red-900 transition-colors"
+                                  title="Delete Appraisal"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -826,6 +887,34 @@ export default function PerformanceAppraisalsPage() {
           </div>
         </div>
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Appraisal</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{deleteConfirm.appraisalName}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeleteConfirm({ show: false, appraisalId: null, appraisalName: '' })}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteConfirm.appraisalId && handleDeleteAppraisal(deleteConfirm.appraisalId)}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ModulePage>
   )
 }
