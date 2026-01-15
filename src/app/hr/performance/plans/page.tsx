@@ -331,6 +331,20 @@ function PerformancePlansContent() {
   const hasHRPermission = userPermissions.some((p: string) => ['hr.full_access', 'hr.view_all_performance', 'hr.delete_performance'].includes(p))
   const canDelete = isAdmin || isHR || hasHRPermission
   
+  // Debug: Log delete permission
+  useEffect(() => {
+    if (session?.user) {
+      console.log('🔍 Delete Permission Check:', {
+        userRoles,
+        userPermissions,
+        isAdmin,
+        isHR,
+        hasHRPermission,
+        canDelete
+      })
+    }
+  }, [session?.user, userRoles, userPermissions, isAdmin, isHR, hasHRPermission, canDelete])
+  
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; planId: string | null; planName: string }>({
     show: false,
     planId: null,
@@ -996,7 +1010,7 @@ function PerformancePlansContent() {
                                 </Link>
                               )}
                               {/* Delete button - only for Admin/HR */}
-                              {canDelete && (
+                              {canDelete ? (
                                 <button
                                   onClick={() => setDeleteConfirm({
                                     show: true,
@@ -1008,7 +1022,7 @@ function PerformancePlansContent() {
                                 >
                                   <TrashIcon className="h-4 w-4" />
                                 </button>
-                              )}
+                              ) : null}
                               {plan.canUserAct && (
                                 <button
                                   onClick={() => handleWorkflowAction(plan, getActionFromNextAction(plan.nextAction))}
