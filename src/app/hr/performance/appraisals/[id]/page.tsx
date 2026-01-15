@@ -1001,7 +1001,7 @@ export default function ViewAppraisalPage() {
 
   return (
     <ModulePage metadata={metadata} actions={actions}>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-[95%] xl:max-w-[98%] mx-auto space-y-6 px-2">
         {/* Header with Export PDF Button */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">

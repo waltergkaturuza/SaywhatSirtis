@@ -29,6 +29,8 @@ interface SupervisorReviewTableProps {
       weight: number
       progress?: number
       achievementPercentage?: number
+      totalScore?: number
+      achievedScore?: number
     }>
   }
   onSave: (ratings: Array<{
@@ -174,27 +176,99 @@ export function SupervisorReviewTable({
             </div>
           </div>
 
+          {/* Key Responsibilities Section */}
+          {formData.achievements?.keyResponsibilities && formData.achievements.keyResponsibilities.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Key Responsibility Areas & Achievements</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 border border-gray-300 mb-6">
+                  <thead className="bg-gradient-to-r from-blue-100 to-blue-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                        Key Responsibility
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                        Weight
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                        Achievement %
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                        Score
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {formData.achievements.keyResponsibilities.map((resp) => {
+                      const achievementPct = resp.achievementPercentage || 0
+                      const totalScore = resp.totalScore || resp.weight || 0
+                      const achievedScore = resp.achievedScore || 0
+                      
+                      return (
+                        <tr key={resp.id} className="hover:bg-blue-50 transition-colors">
+                          <td className="px-4 py-4 border-r border-gray-300">
+                            <div className="text-sm font-medium text-gray-900">{resp.description}</div>
+                            {resp.tasks && (
+                              <div className="text-xs text-gray-500 mt-1">{resp.tasks}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300">
+                            <Badge className="bg-blue-500 text-white font-bold">
+                              {resp.weight}%
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300">
+                            <div className="text-sm font-medium text-gray-900">{achievementPct}%</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300">
+                            <div className="text-sm font-semibold text-gray-900">
+                              {achievedScore.toFixed(1)} / {totalScore.toFixed(1)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center">
+                            <Badge className={
+                              resp.achievementStatus === 'achieved' ? 'bg-green-500 text-white' :
+                              resp.achievementStatus === 'partially-achieved' ? 'bg-yellow-500 text-white' :
+                              'bg-red-500 text-white'
+                            }>
+                              {resp.achievementStatus === 'achieved' ? 'Achieved' :
+                               resp.achievementStatus === 'partially-achieved' ? 'Partial' :
+                               'Not Achieved'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Performance Categories Table */}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
               <thead className="bg-gradient-to-r from-orange-100 to-orange-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300 w-64">
                     Performance Category
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300 w-20">
                     Weight
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300 w-28">
                     Achievement %
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300 w-40">
                     Employee Self-Rating
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300 w-32">
                     Your Rating
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider min-w-96">
                     Your Comments
                   </th>
                 </tr>
@@ -208,10 +282,10 @@ export function SupervisorReviewTable({
 
                   return (
                     <tr key={category.id} className="hover:bg-orange-50 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap border-r border-gray-300">
+                      <td className="px-4 py-4 border-r border-gray-300">
                         <div className="text-sm font-medium text-gray-900">{category.name}</div>
                         {category.description && (
-                          <div className="text-xs text-gray-500 mt-1">{category.description}</div>
+                          <div className="text-xs text-gray-500 mt-1 max-w-xs">{category.description}</div>
                         )}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300">
@@ -253,13 +327,13 @@ export function SupervisorReviewTable({
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 min-w-96">
                         <Textarea
                           value={supervisorData.comment}
                           onChange={(e) => handleCommentChange(category.id, e.target.value)}
                           placeholder={`Explain why you gave ${supervisorData.rating || 'this'} rating...`}
-                          className="w-full text-sm border-gray-300 focus:border-orange-500 focus:ring-orange-200"
-                          rows={3}
+                          className="w-full text-sm border-gray-300 focus:border-orange-500 focus:ring-orange-200 min-w-96"
+                          rows={4}
                         />
                       </td>
                     </tr>
