@@ -16,6 +16,8 @@ import { AchievementsGoalsStep } from "@/components/hr/performance/achievements-
 import { DevelopmentPlanningStep } from "@/components/hr/performance/development-planning-step"
 import { CommentsReviewStep } from "@/components/hr/performance/comments-review-step"
 import { FinalReviewStep } from "@/components/hr/performance/final-review-step"
+import { SupervisorReviewTable } from "@/components/hr/performance/supervisor-review-table"
+import { ReviewerComparisonTable } from "@/components/hr/performance/reviewer-comparison-table"
 import {
   DocumentCheckIcon,
   CalendarIcon,
@@ -125,6 +127,7 @@ export default function ViewAppraisalPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<AppraisalFormData | null>(null)
   const [isSavingRatings, setIsSavingRatings] = useState(false)
+  const [performancePlan, setPerformancePlan] = useState<any>(null)
   const [isEmployee, setIsEmployee] = useState(false)
 
   // Export appraisal to PDF
@@ -223,6 +226,19 @@ export default function ViewAppraisalPage() {
             improvementPlan: apiData.improvementPlan || ''
           }
           setAppraisal(normalizedData)
+          
+          // Fetch performance plan for supervisor review table
+          if (apiData.planId) {
+            try {
+              const planResponse = await fetch(`/api/hr/performance/plans/${apiData.planId}`)
+              if (planResponse.ok) {
+                const planData = await planResponse.json()
+                setPerformancePlan(planData)
+              }
+            } catch (error) {
+              console.error('Error fetching performance plan:', error)
+            }
+          }
           
           // Check if current user is supervisor or reviewer
           // Note: supervisorId and reviewerId are user IDs
@@ -593,18 +609,33 @@ export default function ViewAppraisalPage() {
   }
 
   // Save supervisor ratings
-  const handleSaveRatings = async () => {
+  const handleSaveSupervisorRatings = async (ratings: Array<{
+    categoryId: string
+    supervisorRating: number
+    supervisorComment: string
+  }>) => {
     if (!formData || !appraisal) return
     
     setIsSavingRatings(true)
     try {
-      // Calculate overall rating from categories before saving
-      const categories = formData.performance.categories || []
-      let calculatedOverallRating = 0
+      // Update formData with supervisor ratings
+      const updatedCategories = formData.performance.categories.map(cat => {
+        const ratingData = ratings.find(r => r.categoryId === cat.id)
+        if (ratingData) {
+          return {
+            ...cat,
+            supervisorRating: ratingData.supervisorRating,
+            supervisorComment: ratingData.supervisorComment
+          }
+        }
+        return cat
+      })
       
-      if (categories.length > 0) {
-        const totalWeight = categories.reduce((sum, cat) => sum + (cat.weight || 0), 0)
-        const weightedScore = categories.reduce((sum, cat) => sum + ((cat.rating || 0) * (cat.weight || 0)), 0)
+      // Calculate overall rating from supervisor ratings
+      let calculatedOverallRating = 0
+      if (updatedCategories.length > 0) {
+        const totalWeight = updatedCategories.reduce((sum, cat) => sum + (cat.weight || 0), 0)
+        const weightedScore = updatedCategories.reduce((sum, cat) => sum + (((cat.supervisorRating || 0) / 5) * (cat.weight || 0)), 0)
         calculatedOverallRating = totalWeight > 0 ? parseFloat((weightedScore / totalWeight).toFixed(2)) : 0
       }
       
@@ -614,41 +645,107 @@ export default function ViewAppraisalPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ratings: {
-            overall: calculatedOverallRating,
-            categories: formData.performance.categories
-          },
           performance: {
-            overallRating: calculatedOverallRating,
-            categories: formData.performance.categories,
-            strengths: formData.performance.strengths,
-            areasForImprovement: formData.performance.areasForImprovement
+            ...formData.performance,
+            categories: updatedCategories,
+            overallRating: calculatedOverallRating
           }
         })
       })
       
       if (!response.ok) {
-        throw new Error('Failed to save ratings')
+        throw new Error('Failed to save supervisor ratings')
       }
 
       const result = await response.json()
-      const newOverall = result?.appraisal?.overallRating ?? calculatedOverallRating
-
-      // Update local appraisal header (Overall Rating 0.0/5)
-      setAppraisal(prev => prev ? { ...prev, overallRating: newOverall } : prev)
-      // Keep formData in sync with the saved rating
+      
+      // Update local state
       setFormData(prev => prev ? {
         ...prev,
         performance: {
           ...prev.performance,
-          overallRating: newOverall
+          categories: updatedCategories,
+          overallRating: calculatedOverallRating
         }
       } : prev)
       
-      alert('Ratings saved successfully')
+      alert('Supervisor ratings saved successfully')
     } catch (error) {
-      console.error('Error saving ratings:', error)
-      alert('Failed to save ratings. Please try again.')
+      console.error('Error saving supervisor ratings:', error)
+      alert('Failed to save supervisor ratings. Please try again.')
+      throw error
+    } finally {
+      setIsSavingRatings(false)
+    }
+  }
+
+  // Save reviewer ratings (final ratings that override both)
+  const handleSaveReviewerRatings = async (ratings: Array<{
+    categoryId: string
+    reviewerRating: number
+    reviewerComment?: string
+  }>) => {
+    if (!formData || !appraisal) return
+    
+    setIsSavingRatings(true)
+    try {
+      // Update formData with reviewer ratings
+      const updatedCategories = formData.performance.categories.map(cat => {
+        const ratingData = ratings.find(r => r.categoryId === cat.id)
+        if (ratingData) {
+          return {
+            ...cat,
+            reviewerRating: ratingData.reviewerRating,
+            reviewerComment: ratingData.reviewerComment || ''
+          }
+        }
+        return cat
+      })
+      
+      // Calculate overall rating from reviewer ratings (final rating)
+      let calculatedOverallRating = 0
+      if (updatedCategories.length > 0) {
+        const totalWeight = updatedCategories.reduce((sum, cat) => sum + (cat.weight || 0), 0)
+        const weightedScore = updatedCategories.reduce((sum, cat) => sum + (((cat.reviewerRating || 0) / 5) * (cat.weight || 0)), 0)
+        calculatedOverallRating = totalWeight > 0 ? parseFloat((weightedScore / totalWeight).toFixed(2)) : 0
+      }
+      
+      const response = await fetch(`/api/hr/performance/appraisals/${appraisalId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          performance: {
+            ...formData.performance,
+            categories: updatedCategories,
+            overallRating: calculatedOverallRating // Reviewer's final rating overrides
+          }
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to save reviewer ratings')
+      }
+
+      const result = await response.json()
+      
+      // Update local state
+      setAppraisal(prev => prev ? { ...prev, overallRating: calculatedOverallRating } : prev)
+      setFormData(prev => prev ? {
+        ...prev,
+        performance: {
+          ...prev.performance,
+          categories: updatedCategories,
+          overallRating: calculatedOverallRating
+        }
+      } : prev)
+      
+      alert('Final ratings saved successfully')
+    } catch (error) {
+      console.error('Error saving reviewer ratings:', error)
+      alert('Failed to save final ratings. Please try again.')
+      throw error
     } finally {
       setIsSavingRatings(false)
     }
@@ -715,10 +812,26 @@ export default function ViewAppraisalPage() {
         return (
           <div>
             <PerformanceAssessmentStep formData={formData} updateFormData={createUpdateFunction(4)} />
-            {canEditStep(4) && (
+            {canEditStep(4) && isSupervisor && (
               <div className="mt-6 flex justify-end">
                 <button
-                  onClick={handleSaveRatings}
+                  onClick={async () => {
+                    if (!formData) return
+                    setIsSavingRatings(true)
+                    try {
+                      // Save supervisor ratings from formData
+                      const supervisorRatings = formData.performance.categories.map(cat => ({
+                        categoryId: cat.id,
+                        supervisorRating: cat.supervisorRating || 0,
+                        supervisorComment: cat.supervisorComment || ''
+                      }))
+                      await handleSaveSupervisorRatings(supervisorRatings)
+                    } catch (error) {
+                      console.error('Error saving ratings:', error)
+                    } finally {
+                      setIsSavingRatings(false)
+                    }
+                  }}
                   disabled={isSavingRatings}
                   className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                 >
@@ -1141,47 +1254,33 @@ export default function ViewAppraisalPage() {
           )}
 
           {/* Tab 2: Supervisor Review */}
-          {activeWorkflowTab === 'supervisor' && isSupervisor && appraisal.status !== 'draft' && (
+          {activeWorkflowTab === 'supervisor' && isSupervisor && appraisal.status !== 'draft' && formData && (
             <div className="space-y-6">
+              <SupervisorReviewTable
+                appraisal={{
+                  id: appraisalId,
+                  employeeName: appraisal.employeeName,
+                  employeeId: appraisal.employeeId,
+                  department: appraisal.department,
+                  position: appraisal.position,
+                  reviewPeriod: {
+                    startDate: appraisal.period?.split(' - ')[0] || '',
+                    endDate: appraisal.period?.split(' - ')[1] || ''
+                  }
+                }}
+                formData={formData}
+                performancePlan={performancePlan}
+                onSave={handleSaveSupervisorRatings}
+                isSaving={isSavingRatings}
+              />
+              
+              {/* Supervisor Comments and Actions */}
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center space-x-3 mb-6">
                   <UserCircleIcon className="h-6 w-6 text-orange-600" />
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Supervisor Review</h2>
-                    <p className="text-sm text-gray-600">Review and provide feedback on {appraisal.employeeName}'s performance appraisal</p>
-                  </div>
-                </div>
-
-                {/* Appraisal Summary */}
-                <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Appraisal Summary</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Period:</span>
-                      <p className="font-medium text-gray-900">{appraisal.period}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Overall Rating:</span>
-                      <p className="font-medium text-gray-900">
-                        {(() => {
-                          const calculated = calculateOverallRating()
-                          const stored = appraisal.overallRating
-                          // Prefer calculated from formData (most up-to-date), then stored, then fallback
-                          const displayRating = calculated !== "0.0" ? calculated : (stored || "0.0")
-                          return `${displayRating}/5`
-                        })()}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Status:</span>
-                      <p className="font-medium text-gray-900">{appraisal.status}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Submitted:</span>
-                      <p className="font-medium text-gray-900">
-                        {appraisal.submittedAt ? new Date(appraisal.submittedAt).toLocaleDateString() : 'Not submitted'}
-                      </p>
-                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">Additional Comments & Actions</h2>
+                    <p className="text-sm text-gray-600">Provide overall feedback and approve or request changes</p>
                   </div>
                 </div>
 
@@ -1275,49 +1374,32 @@ export default function ViewAppraisalPage() {
           )}
 
           {/* Tab 3: Final Review (Reviewer) */}
-          {activeWorkflowTab === 'reviewer' && isReviewer && appraisal.status !== 'draft' && (appraisal.supervisorApproval === 'approved' || (appraisal.status === 'revision_requested' && appraisal.supervisorApprovedAt)) && (
+          {activeWorkflowTab === 'reviewer' && isReviewer && appraisal.status !== 'draft' && (appraisal.supervisorApproval === 'approved' || (appraisal.status === 'revision_requested' && appraisal.supervisorApprovedAt)) && formData && (
             <div className="space-y-6">
+              <ReviewerComparisonTable
+                appraisal={{
+                  id: appraisalId,
+                  employeeName: appraisal.employeeName,
+                  employeeId: appraisal.employeeId,
+                  department: appraisal.department,
+                  position: appraisal.position,
+                  reviewPeriod: {
+                    startDate: appraisal.period?.split(' - ')[0] || '',
+                    endDate: appraisal.period?.split(' - ')[1] || ''
+                  }
+                }}
+                formData={formData}
+                onSave={handleSaveReviewerRatings}
+                isSaving={isSavingRatings}
+              />
+              
+              {/* Reviewer Comments and Actions */}
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center space-x-3 mb-6">
                   <ShieldCheckIcon className="h-6 w-6 text-green-600" />
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Final Review</h2>
-                    <p className="text-sm text-gray-600">Final reviewer assessment for {appraisal.employeeName}'s performance appraisal</p>
-                  </div>
-                </div>
-
-                {/* Appraisal Summary */}
-                <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Appraisal Summary</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Period:</span>
-                      <p className="font-medium text-gray-900">{appraisal.period}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Overall Rating:</span>
-                      <p className="font-medium text-gray-900">
-                        {(() => {
-                          const calculated = calculateOverallRating()
-                          const stored = appraisal.overallRating
-                          // Prefer calculated from formData (most up-to-date), then stored, then fallback
-                          const displayRating = calculated !== "0.0" ? calculated : (stored || "0.0")
-                          return `${displayRating}/5`
-                        })()}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Status:</span>
-                      <p className="font-medium text-gray-900">{appraisal.status}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Supervisor:</span>
-                      <p className={`font-medium ${
-                        appraisal.supervisorApproval === 'approved' ? 'text-green-600' : 'text-yellow-600'
-                      }`}>
-                        {appraisal.supervisorApproval === 'approved' ? 'Approved' : 'Pending'}
-                      </p>
-                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">Additional Comments & Actions</h2>
+                    <p className="text-sm text-gray-600">Provide overall feedback and final approval</p>
                   </div>
                 </div>
 

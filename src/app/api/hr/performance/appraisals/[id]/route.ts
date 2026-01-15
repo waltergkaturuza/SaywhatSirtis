@@ -121,6 +121,7 @@ export async function GET(
     // Transform the data for the frontend
     const transformedAppraisal = {
       id: appraisal.id,
+      planId: appraisal.planId || null,
       supervisorId: appraisal.supervisorId || null,
       reviewerId: appraisal.reviewerId || null,
       employeeId: appraisal.employeeId || '',
@@ -434,8 +435,25 @@ export async function PATCH(
       }
 
       // Update comments with new ratings
+      // Preserve existing supervisor and reviewer ratings if not being updated
+      const existingRatings = existingComments.ratings || {};
+      const existingCategories = existingRatings.categories || [];
+      
+      // Merge new categories with existing ones, preserving supervisor/reviewer ratings
+      const mergedCategories = categories.map((newCat: any) => {
+        const existingCat = existingCategories.find((ec: any) => ec.id === newCat.id);
+        return {
+          ...newCat,
+          // Preserve supervisor/reviewer ratings if not being updated
+          supervisorRating: newCat.supervisorRating !== undefined ? newCat.supervisorRating : (existingCat?.supervisorRating || 0),
+          supervisorComment: newCat.supervisorComment !== undefined ? newCat.supervisorComment : (existingCat?.supervisorComment || ''),
+          reviewerRating: newCat.reviewerRating !== undefined ? newCat.reviewerRating : (existingCat?.reviewerRating || 0),
+          reviewerComment: newCat.reviewerComment !== undefined ? newCat.reviewerComment : (existingCat?.reviewerComment || '')
+        };
+      });
+      
       existingComments.ratings = {
-        categories: categories,
+        categories: mergedCategories,
         overall: updateData.overallRating || appraisal.overallRating || 0
       };
 

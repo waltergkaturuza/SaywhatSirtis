@@ -29,10 +29,16 @@ export interface AppraisalFormData {
     categories: {
       id: string
       name: string
-      rating: number
-      comment: string
+      rating: number // Employee's self-rating
+      comment: string // Employee's comment
       weight: number
       description?: string
+      // Supervisor's rating and comment
+      supervisorRating?: number
+      supervisorComment?: string
+      // Reviewer's final rating (overrides both)
+      reviewerRating?: number
+      reviewerComment?: string
     }[]
     strengths: string[]
     areasForImprovement: string[]

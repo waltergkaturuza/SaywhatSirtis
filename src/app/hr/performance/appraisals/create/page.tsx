@@ -46,6 +46,9 @@ function CreateAppraisalContent() {
   const [currentReviewerComment, setCurrentReviewerComment] = useState('')
   const [submittingWorkflow, setSubmittingWorkflow] = useState(false)
   
+  // Check if employee is locked from editing (submitted appraisals)
+  const [isEmployeeLocked, setIsEmployeeLocked] = useState(false)
+  
   const [formData, setFormData] = useState<AppraisalFormData>({
     id: undefined,
     employee: {
@@ -293,15 +296,9 @@ function CreateAppraisalContent() {
               }
             }
             
-            // If user is employee (owner) and appraisal is submitted, redirect to view page (cannot edit)
-            if (isOwner && appraisalData.status !== 'draft') {
-              console.log('🔀 Redirecting employee to view page for submitted appraisal (cannot edit)')
-              router.push(`/hr/performance/appraisals/${appraisalId}`)
-              return
-            }
-            
-            // Supervisors/reviewers can edit submitted appraisals (to add ratings), so allow them to continue
-            // They will be able to edit ratings in the view page
+            // Employees can complete the entire form including Stage 4 (Performance Assessment)
+            // Once submitted, they will be locked from editing (handled in the form)
+            // Supervisors/reviewers will use the view page to add their ratings
           }
           
           const appraisalDataForForm = result.appraisal || result.data
@@ -401,6 +398,26 @@ function CreateAppraisalContent() {
           })
           
           setWorkflowStatus(appraisalDataForForm.status || 'draft')
+          
+          // Check if employee is locked (submitted and user is the employee owner)
+          if (appraisalDataForForm.status && appraisalDataForForm.status !== 'draft' && session?.user?.id) {
+            const appraisalEmployeeId = appraisalDataForForm.employeeId || appraisalDataForForm.employee?.id
+            if (appraisalEmployeeId) {
+              try {
+                const employeeResponse = await fetch(`/api/hr/employees/by-email/${encodeURIComponent(session.user.email || '')}`)
+                if (employeeResponse.ok) {
+                  const employeeData = await employeeResponse.json()
+                  if (employeeData.id === appraisalEmployeeId) {
+                    setIsEmployeeLocked(true)
+                    console.log('🔒 Employee locked from editing submitted appraisal')
+                  }
+                }
+              } catch (err) {
+                console.error('Error checking employee ownership:', err)
+              }
+            }
+          }
+          
           console.log('✅ Form populated with existing data')
         } else {
           console.error('❌ Failed to load appraisal')
@@ -779,6 +796,7 @@ function CreateAppraisalContent() {
           <PerformanceAssessmentStep
             formData={formData}
             updateFormData={updateFormData}
+            isReadOnly={isEmployeeLocked}
           />
         )
       case 5:

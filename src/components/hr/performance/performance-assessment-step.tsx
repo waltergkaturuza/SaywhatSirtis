@@ -12,9 +12,10 @@ import { AppraisalFormData, ratingScale } from './appraisal-types'
 interface PerformanceAssessmentStepProps {
   formData: AppraisalFormData
   updateFormData: (updates: Partial<AppraisalFormData>) => void
+  isReadOnly?: boolean
 }
 
-export function PerformanceAssessmentStep({ formData, updateFormData }: PerformanceAssessmentStepProps) {
+export function PerformanceAssessmentStep({ formData, updateFormData, isReadOnly = false }: PerformanceAssessmentStepProps) {
   const handleCategoryRating = (categoryId: string, rating: number) => {
     const updatedCategories = formData.performance.categories.map(cat =>
       cat.id === categoryId ? { ...cat, rating } : cat
@@ -91,13 +92,26 @@ export function PerformanceAssessmentStep({ formData, updateFormData }: Performa
                     )}
                   </div>
                   <div className="text-right ml-4">
-                    <StarRating 
-                      rating={category.rating}
-                      onRatingChange={(rating) => handleCategoryRating(category.id, rating)}
-                    />
-                    <div className="text-xs font-semibold text-gray-500 mt-1">
-                      {category.rating} / 5 stars
-                    </div>
+                    {isReadOnly ? (
+                      <div className="flex items-center space-x-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <StarIcon key={star} className={`h-6 w-6 ${star <= category.rating ? 'text-yellow-400' : 'text-gray-300'}`} />
+                        ))}
+                        <div className="text-xs font-semibold text-gray-500 mt-1 ml-2">
+                          {category.rating} / 5 stars
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <StarRating 
+                          rating={category.rating}
+                          onRatingChange={(rating) => handleCategoryRating(category.id, rating)}
+                        />
+                        <div className="text-xs font-semibold text-gray-500 mt-1">
+                          {category.rating} / 5 stars
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
                 
@@ -117,6 +131,8 @@ export function PerformanceAssessmentStep({ formData, updateFormData }: Performa
                   onChange={(e) => handleCategoryComment(category.id, e.target.value)}
                   className="border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-lg"
                   rows={3}
+                  disabled={isReadOnly}
+                  readOnly={isReadOnly}
                 />
               </div>
             )
