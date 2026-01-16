@@ -57,10 +57,14 @@ export interface AppraisalFormData {
         id: string
         indicator: string
         target: number
-        actualValue: number
+        actualValue: number // Employee's actual value
         weight: number
         measurement: string
         achievementPercentage?: number
+        // Supervisor's actual value
+        supervisorActualValue?: number
+        // Reviewer's actual value
+        reviewerActualValue?: number
       }[]
       totalScore?: number
       achievedScore?: number

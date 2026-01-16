@@ -41,7 +41,7 @@ export function ReviewerComparisonTable({
   isSaving = false
 }: ReviewerComparisonTableProps) {
   const [reviewerRatings, setReviewerRatings] = useState<Record<string, { rating: number; comment: string }>>({})
-  const [reviewerResponsibilities, setReviewerResponsibilities] = useState<Record<string, { achievementPercentage: number; achievedScore: number }>>({})
+  const [reviewerResponsibilities, setReviewerResponsibilities] = useState<Record<string, Record<string, { actualValue: number }>>>({})
   const [isSavingRatings, setIsSavingRatings] = useState(false)
 
   // Initialize reviewer ratings from formData
@@ -55,13 +55,17 @@ export function ReviewerComparisonTable({
     })
     setReviewerRatings(ratings)
     
-    // Initialize reviewer responsibilities assessments
-    const responsibilities: Record<string, { achievementPercentage: number; achievedScore: number }> = {}
+    // Initialize reviewer responsibilities assessments - store actual values for each indicator
+    const responsibilities: Record<string, Record<string, { actualValue: number }>> = {}
     formData.achievements?.keyResponsibilities?.forEach(resp => {
-      responsibilities[resp.id] = {
-        achievementPercentage: resp.reviewerAchievementPercentage ?? resp.supervisorAchievementPercentage ?? resp.achievementPercentage ?? 0,
-        achievedScore: resp.reviewerAchievedScore ?? resp.supervisorAchievedScore ?? resp.achievedScore ?? 0
-      }
+      const indicatorValues: Record<string, { actualValue: number }> = {}
+      resp.successIndicators?.forEach(ind => {
+        // Try to get reviewer's actual value, fallback to supervisor's, then employee's
+        indicatorValues[ind.id] = {
+          actualValue: (ind as any).reviewerActualValue ?? (ind as any).supervisorActualValue ?? ind.actualValue ?? 0
+        }
+      })
+      responsibilities[resp.id] = indicatorValues
     })
     setReviewerResponsibilities(responsibilities)
   }, [formData])
@@ -86,37 +90,68 @@ export function ReviewerComparisonTable({
     }))
   }
 
-  const handleResponsibilityChange = (respId: string, field: 'achievementPercentage' | 'achievedScore', value: number) => {
-    const responsibility = formData.achievements?.keyResponsibilities?.find(r => r.id === respId)
-    const totalScore = responsibility?.totalScore || responsibility?.weight || 0
-    
-    setReviewerResponsibilities(prev => {
-      const current = prev[respId] || { achievementPercentage: 0, achievedScore: 0 }
-      
-      if (field === 'achievementPercentage') {
-        // Auto-calculate score when achievement % changes
-        // Score = (Achievement % / 100) * Total Score (Weight)
-        const calculatedScore = (value / 100) * totalScore
-        return {
-          ...prev,
-          [respId]: {
-            achievementPercentage: value,
-            achievedScore: calculatedScore
-          }
-        }
-      } else {
-        // If score is manually changed, calculate achievement % backwards
-        // Achievement % = (Score / Total Score) * 100
-        const calculatedAchievementPct = totalScore > 0 ? (value / totalScore) * 100 : 0
-        return {
-          ...prev,
-          [respId]: {
-            achievementPercentage: calculatedAchievementPct,
-            achievedScore: value
-          }
+  // Calculate achievement from indicators using the same formula as employee form
+  const calculateResponsibilityAchievement = (responsibility: any, indicatorActualValues: Record<string, number>) => {
+    if (!responsibility.successIndicators || responsibility.successIndicators.length === 0) {
+      return {
+        achievementPercentage: 0,
+        achievedScore: 0,
+        totalScore: responsibility.weight || 0
+      }
+    }
+
+    // Calculate total weight of all indicators
+    const totalIndicatorWeight = responsibility.successIndicators.reduce(
+      (sum: number, ind: any) => sum + (Number(ind.weight) || 0), 
+      0
+    )
+
+    if (totalIndicatorWeight === 0) {
+      return {
+        achievementPercentage: 0,
+        achievedScore: 0,
+        totalScore: responsibility.weight || 0
+      }
+    }
+
+    // Calculate achieved score from indicators
+    // For each indicator: score = weight * (actualValue / targetValue)
+    const achievedScore = responsibility.successIndicators.reduce((sum: number, ind: any) => {
+      const target = Number(ind.target) || 0
+      const actual = indicatorActualValues[ind.id] ?? Number(ind.actualValue) ?? 0
+      const weight = Number(ind.weight) || 0
+      const achievementPct = target > 0 ? (actual / target) : 0
+      return sum + (weight * achievementPct)
+    }, 0)
+
+    // Achievement percentage = (achieved score / total indicator weight) * 100
+    const achievementPercentage = totalIndicatorWeight > 0 
+      ? (achievedScore / totalIndicatorWeight) * 100 
+      : 0
+
+    // Total score for the responsibility = responsibility weight
+    const totalScore = responsibility.weight || 0
+
+    // Achieved score for the responsibility = (achievement percentage / 100) * total score
+    const responsibilityAchievedScore = (achievementPercentage / 100) * totalScore
+
+    return {
+      achievementPercentage: Math.round(achievementPercentage * 100) / 100,
+      achievedScore: Math.round(responsibilityAchievedScore * 100) / 100,
+      totalScore
+    }
+  }
+
+  const handleIndicatorActualValueChange = (respId: string, indicatorId: string, actualValue: number) => {
+    setReviewerResponsibilities(prev => ({
+      ...prev,
+      [respId]: {
+        ...(prev[respId] || {}),
+        [indicatorId]: {
+          actualValue
         }
       }
-    })
+    }))
   }
 
   const handleSave = async () => {
@@ -127,7 +162,33 @@ export function ReviewerComparisonTable({
         reviewerRating: data.rating,
         reviewerComment: data.comment
       }))
-      await onSave(ratingsArray)
+      
+      // Include responsibility assessments - calculate from indicator actual values
+      const responsibilitiesArray = Object.entries(reviewerResponsibilities).map(([respId, indicatorValues]) => {
+        const responsibility = formData.achievements?.keyResponsibilities?.find(r => r.id === respId)
+        if (!responsibility) return null
+        
+        // Convert indicator values to actual values map
+        const actualValues: Record<string, number> = {}
+        Object.entries(indicatorValues).forEach(([indId, data]) => {
+          actualValues[indId] = data.actualValue
+        })
+        
+        // Calculate achievement using same formula as employee
+        const calculated = calculateResponsibilityAchievement(responsibility, actualValues)
+        
+        return {
+          responsibilityId: respId,
+          reviewerAchievementPercentage: calculated.achievementPercentage,
+          reviewerAchievedScore: calculated.achievedScore,
+          reviewerIndicators: Object.entries(indicatorValues).map(([indId, data]) => ({
+            indicatorId: indId,
+            actualValue: data.actualValue
+          }))
+        }
+      }).filter(Boolean) as any[]
+      
+      await onSave(ratingsArray, responsibilitiesArray)
     } finally {
       setIsSavingRatings(false)
     }
@@ -202,38 +263,23 @@ export function ReviewerComparisonTable({
                 <table className="min-w-full divide-y divide-gray-200 border border-gray-300 mb-6">
                   <thead className="bg-gradient-to-r from-purple-100 to-purple-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
-                        Key Responsibility
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
-                        Weight
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-blue-700 uppercase tracking-wider border-r border-gray-300 bg-blue-50">
-                        Employee Achievement %
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-blue-700 uppercase tracking-wider border-r border-gray-300 bg-blue-50">
-                        Employee Score
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-orange-700 uppercase tracking-wider border-r border-gray-300 bg-orange-50">
-                        Supervisor Achievement %
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-orange-700 uppercase tracking-wider border-r border-gray-300 bg-orange-50">
-                        Supervisor Score
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-purple-700 uppercase tracking-wider border-r border-gray-300 bg-purple-50">
-                        Reviewer Achievement %
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-purple-700 uppercase tracking-wider border-r border-gray-300 bg-purple-50">
-                        Reviewer Score
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Status
-                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase border-r border-gray-300">Indicator</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase border-r border-gray-300">Weight</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase border-r border-gray-300">Target</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-blue-700 uppercase border-r border-gray-300 bg-blue-50">Employee Actual</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-blue-700 uppercase border-r border-gray-300 bg-blue-50">Employee Achievement</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-blue-700 uppercase border-r border-gray-300 bg-blue-50">Employee Score</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-orange-700 uppercase border-r border-gray-300 bg-orange-50">Supervisor Actual</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-orange-700 uppercase border-r border-gray-300 bg-orange-50">Supervisor Achievement</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-orange-700 uppercase border-r border-gray-300 bg-orange-50">Supervisor Score</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-purple-700 uppercase border-r border-gray-300 bg-purple-50">Your Actual</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-purple-700 uppercase border-r border-gray-300 bg-purple-50">Your Achievement</th>
+                      <th className="px-3 py-2 text-center text-xs font-bold text-purple-700 uppercase bg-purple-50">Your Score</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {formData.achievements.keyResponsibilities.map((resp) => {
-                      // Employee's achievement data
+                      // Employee's achievement data (calculated from indicators)
                       const employeeAchievementPct = resp.achievementPercentage || 0
                       const employeeTotalScore = resp.totalScore || resp.weight || 0
                       const employeeAchievedScore = resp.achievedScore || 0
@@ -243,85 +289,157 @@ export function ReviewerComparisonTable({
                       const supervisorTotalScore = resp.totalScore || resp.weight || 0
                       const supervisorAchievedScore = resp.supervisorAchievedScore ?? resp.achievedScore ?? 0
                       
-                      // Reviewer's achievement data (editable)
-                      const reviewerData = reviewerResponsibilities[resp.id] || { achievementPercentage: 0, achievedScore: 0 }
-                      const reviewerAchievementPct = reviewerData.achievementPercentage
-                      const reviewerTotalScore = resp.totalScore || resp.weight || 0
-                      const reviewerAchievedScore = reviewerData.achievedScore
+                      // Reviewer's indicator actual values
+                      const reviewerIndicatorValues = reviewerResponsibilities[resp.id] || {}
+                      const reviewerActualValues: Record<string, number> = {}
+                      Object.entries(reviewerIndicatorValues).forEach(([indId, data]) => {
+                        reviewerActualValues[indId] = data.actualValue
+                      })
+                      
+                      // Calculate reviewer's achievement using same formula
+                      const reviewerCalculated = calculateResponsibilityAchievement(resp, reviewerActualValues)
+                      const reviewerAchievementPct = reviewerCalculated.achievementPercentage
+                      const reviewerAchievedScore = reviewerCalculated.achievedScore
+                      const reviewerTotalScore = reviewerCalculated.totalScore
                       
                       return (
-                        <tr key={resp.id} className="hover:bg-purple-50 transition-colors">
-                          <td className="px-4 py-4 border-r border-gray-300">
-                            <div className="text-sm font-medium text-gray-900">{resp.description}</div>
-                            {resp.tasks && (
-                              <div className="text-xs text-gray-500 mt-1">{resp.tasks}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300">
-                            <Badge className="bg-purple-500 text-white font-bold">
-                              {resp.weight}%
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-blue-50">
-                            <div className="text-sm font-medium text-blue-700">{employeeAchievementPct}%</div>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-blue-50">
-                            <div className="text-sm font-semibold text-blue-700">
-                              {employeeAchievedScore.toFixed(1)} / {employeeTotalScore.toFixed(1)}
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
-                            <div className="text-sm font-medium text-orange-700">{supervisorAchievementPct}%</div>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
-                            <div className="text-sm font-semibold text-orange-700">
-                              {supervisorAchievedScore.toFixed(1)} / {supervisorTotalScore.toFixed(1)}
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-purple-50">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={reviewerAchievementPct}
-                              onChange={(e) => handleResponsibilityChange(resp.id, 'achievementPercentage', parseFloat(e.target.value) || 0)}
-                              className="w-20 px-2 py-1 text-sm text-center border border-purple-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                            />
-                            <span className="text-xs text-gray-500 ml-1">%</span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-purple-50">
-                            <div className="flex items-center justify-center space-x-1">
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.1"
-                                value={reviewerAchievedScore}
-                                onChange={(e) => handleResponsibilityChange(resp.id, 'achievedScore', parseFloat(e.target.value) || 0)}
-                                className="w-16 px-2 py-1 text-sm text-center border border-purple-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                              />
-                              <span className="text-sm text-gray-600">/</span>
-                              <span className="text-sm font-semibold text-gray-700">{reviewerTotalScore.toFixed(1)}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center">
-                            <Badge className={
-                              reviewerAchievementPct >= 100 ? 'bg-green-500 text-white' :
-                              reviewerAchievementPct >= 50 ? 'bg-yellow-500 text-white' :
-                              'bg-red-500 text-white'
-                            }>
-                              {reviewerAchievementPct >= 100 ? 'Achieved' :
-                               reviewerAchievementPct >= 50 ? 'Partial' :
-                               'Not Achieved'}
-                            </Badge>
-                          </td>
-                        </tr>
+                        <React.Fragment key={resp.id}>
+                          {/* Responsibility Summary Row */}
+                          <tr className="bg-gray-100 hover:bg-gray-200">
+                            <td colSpan={12} className="px-4 py-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="text-base font-bold text-gray-900">{resp.description}</h4>
+                                  {resp.tasks && (
+                                    <p className="text-xs text-gray-600 mt-1">{resp.tasks}</p>
+                                  )}
+                                </div>
+                                <Badge className="bg-purple-500 text-white font-bold">
+                                  Weight: {resp.weight}%
+                                </Badge>
+                              </div>
+                            </td>
+                          </tr>
+                          
+                          {/* Success Indicators Rows */}
+                          {resp.successIndicators && resp.successIndicators.map((ind, indIndex) => {
+                            const target = Number(ind.target) || 0
+                            const employeeActual = Number(ind.actualValue) || 0
+                            const supervisorActual = (ind as any).supervisorActualValue ?? employeeActual
+                            const reviewerActual = reviewerActualValues[ind.id] ?? supervisorActual
+                            const weight = Number(ind.weight) || 0
+                            
+                            // Employee calculations
+                            const employeeAchievementPct = target > 0 ? Math.round((employeeActual / target) * 100) : 0
+                            const employeeIndicatorScore = weight * (employeeAchievementPct / 100)
+                            
+                            // Supervisor calculations
+                            const supervisorAchievementPct = target > 0 ? Math.round((supervisorActual / target) * 100) : 0
+                            const supervisorIndicatorScore = weight * (supervisorAchievementPct / 100)
+                            
+                            // Reviewer calculations
+                            const reviewerAchievementPct = target > 0 ? Math.round((reviewerActual / target) * 100) : 0
+                            const reviewerIndicatorScore = weight * (reviewerAchievementPct / 100)
+                            
+                            return (
+                              <tr key={`${resp.id}-${ind.id}`} className="hover:bg-purple-50">
+                                <td className="px-4 py-3 border-r border-gray-300">
+                                  <div className="text-sm font-medium text-gray-900">{ind.indicator}</div>
+                                  <div className="text-xs text-gray-500">{ind.measurement}</div>
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300">
+                                  <Badge className="bg-gray-500 text-white font-bold">{weight}%</Badge>
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300">
+                                  <span className="text-sm font-medium">{target}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300 bg-blue-50">
+                                  <span className="text-sm font-medium text-blue-700">{employeeActual}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300 bg-blue-50">
+                                  <Badge className={`${employeeAchievementPct >= 100 ? 'bg-green-500' : employeeAchievementPct >= 75 ? 'bg-blue-500' : employeeAchievementPct >= 50 ? 'bg-yellow-500' : 'bg-red-500'} text-white font-bold`}>
+                                    {employeeAchievementPct}%
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300 bg-blue-50">
+                                  <Badge className="bg-purple-500 text-white font-bold">
+                                    {employeeIndicatorScore.toFixed(2)} / {weight}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300 bg-orange-50">
+                                  <span className="text-sm font-medium text-orange-700">{supervisorActual}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300 bg-orange-50">
+                                  <Badge className={`${supervisorAchievementPct >= 100 ? 'bg-green-500' : supervisorAchievementPct >= 75 ? 'bg-blue-500' : supervisorAchievementPct >= 50 ? 'bg-yellow-500' : 'bg-red-500'} text-white font-bold`}>
+                                    {supervisorAchievementPct}%
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300 bg-orange-50">
+                                  <Badge className="bg-purple-500 text-white font-bold">
+                                    {supervisorIndicatorScore.toFixed(2)} / {weight}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300 bg-purple-50">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.1"
+                                    value={reviewerActual}
+                                    onChange={(e) => handleIndicatorActualValueChange(resp.id, ind.id, parseFloat(e.target.value) || 0)}
+                                    className="w-20 px-2 py-1 text-sm text-center border border-purple-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-center border-r border-gray-300 bg-purple-50">
+                                  <Badge className={`${reviewerAchievementPct >= 100 ? 'bg-green-500' : reviewerAchievementPct >= 75 ? 'bg-blue-500' : reviewerAchievementPct >= 50 ? 'bg-yellow-500' : 'bg-red-500'} text-white font-bold`}>
+                                    {reviewerAchievementPct}%
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-center bg-purple-50">
+                                  <Badge className="bg-purple-500 text-white font-bold">
+                                    {reviewerIndicatorScore.toFixed(2)} / {weight}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                          
+                          {/* Responsibility Summary Row */}
+                          <tr className="bg-gradient-to-r from-purple-50 to-pink-50 border-t-2 border-purple-200">
+                            <td colSpan={3} className="px-4 py-3 font-bold text-gray-900">
+                              Responsibility Summary
+                            </td>
+                            <td colSpan={3} className="px-4 py-3 text-center bg-blue-50">
+                              <div className="text-sm">
+                                <span className="text-gray-600">Employee: </span>
+                                <span className="font-bold text-blue-700">{employeeAchievementPct.toFixed(1)}%</span>
+                                <div className="text-xs text-blue-600">
+                                  {employeeAchievedScore.toFixed(2)} / {employeeTotalScore.toFixed(1)}
+                                </div>
+                              </div>
+                            </td>
+                            <td colSpan={3} className="px-4 py-3 text-center bg-orange-50">
+                              <div className="text-sm">
+                                <span className="text-gray-600">Supervisor: </span>
+                                <span className="font-bold text-orange-700">{supervisorAchievementPct.toFixed(1)}%</span>
+                                <div className="text-xs text-orange-600">
+                                  {supervisorAchievedScore.toFixed(2)} / {supervisorTotalScore.toFixed(1)}
+                                </div>
+                              </div>
+                            </td>
+                            <td colSpan={3} className="px-4 py-3 text-center bg-purple-50">
+                              <div className="text-sm">
+                                <span className="text-gray-600">Your Final: </span>
+                                <span className="font-bold text-purple-700">{reviewerAchievementPct.toFixed(1)}%</span>
+                                <div className="text-xs text-purple-600">
+                                  {reviewerAchievedScore.toFixed(2)} / {reviewerTotalScore.toFixed(1)}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        </React.Fragment>
                       )
                     })}
                   </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {/* Comparison Table */}
           <div className="overflow-x-auto">

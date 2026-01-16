@@ -651,11 +651,24 @@ export default function ViewAppraisalPage() {
           keyResponsibilities: formData.achievements.keyResponsibilities.map(resp => {
             const respData = responsibilities.find(r => r.responsibilityId === resp.id)
             if (respData) {
+              // Update success indicators with supervisor actual values
+              const updatedIndicators = resp.successIndicators?.map(ind => {
+                const indData = respData.supervisorIndicators?.find((si: any) => si.indicatorId === ind.id)
+                if (indData) {
+                  return {
+                    ...ind,
+                    supervisorActualValue: indData.actualValue
+                  }
+                }
+                return ind
+              }) || resp.successIndicators
+              
               return {
                 ...resp,
                 supervisorAchievementPercentage: respData.supervisorAchievementPercentage,
                 supervisorAchievedScore: respData.supervisorAchievedScore,
-                supervisorTotalScore: resp.totalScore || resp.weight
+                supervisorTotalScore: resp.totalScore || resp.weight,
+                successIndicators: updatedIndicators
               }
             }
             return resp
@@ -748,11 +761,24 @@ export default function ViewAppraisalPage() {
           keyResponsibilities: formData.achievements.keyResponsibilities.map(resp => {
             const respData = responsibilities.find(r => r.responsibilityId === resp.id)
             if (respData) {
+              // Update success indicators with reviewer actual values
+              const updatedIndicators = resp.successIndicators?.map(ind => {
+                const indData = respData.reviewerIndicators?.find((ri: any) => ri.indicatorId === ind.id)
+                if (indData) {
+                  return {
+                    ...ind,
+                    reviewerActualValue: indData.actualValue
+                  }
+                }
+                return ind
+              }) || resp.successIndicators
+              
               return {
                 ...resp,
                 reviewerAchievementPercentage: respData.reviewerAchievementPercentage,
                 reviewerAchievedScore: respData.reviewerAchievedScore,
-                reviewerTotalScore: resp.totalScore || resp.weight
+                reviewerTotalScore: resp.totalScore || resp.weight,
+                successIndicators: updatedIndicators
               }
             }
             return resp

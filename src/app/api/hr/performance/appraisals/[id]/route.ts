@@ -542,7 +542,20 @@ export async function PATCH(
               : (existingResp?.reviewerAchievedScore),
             reviewerTotalScore: newResp.reviewerTotalScore !== undefined 
               ? newResp.reviewerTotalScore 
-              : (existingResp?.reviewerTotalScore || newResp.totalScore || newResp.weight || 0)
+              : (existingResp?.reviewerTotalScore || newResp.totalScore || newResp.weight || 0),
+            // Update success indicators with supervisor/reviewer actual values
+            successIndicators: newResp.successIndicators?.map((newInd: any) => {
+              const existingInd = existingResp?.successIndicators?.find((ei: any) => ei.id === newInd.id)
+              return {
+                ...newInd,
+                supervisorActualValue: newInd.supervisorActualValue !== undefined 
+                  ? newInd.supervisorActualValue 
+                  : (existingInd?.supervisorActualValue),
+                reviewerActualValue: newInd.reviewerActualValue !== undefined 
+                  ? newInd.reviewerActualValue 
+                  : (existingInd?.reviewerActualValue)
+              }
+            }) || existingResp?.successIndicators || newResp.successIndicators
           };
         });
 

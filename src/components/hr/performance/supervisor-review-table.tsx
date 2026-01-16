@@ -53,7 +53,7 @@ export function SupervisorReviewTable({
   isSaving = false
 }: SupervisorReviewTableProps) {
   const [supervisorRatings, setSupervisorRatings] = useState<Record<string, { rating: number; comment: string }>>({})
-  const [supervisorResponsibilities, setSupervisorResponsibilities] = useState<Record<string, { achievementPercentage: number; achievedScore: number }>>({})
+  const [supervisorResponsibilities, setSupervisorResponsibilities] = useState<Record<string, Record<string, { actualValue: number }>>>({})
   const [isSavingRatings, setIsSavingRatings] = useState(false)
 
   // Initialize supervisor ratings from formData
@@ -67,13 +67,17 @@ export function SupervisorReviewTable({
     })
     setSupervisorRatings(ratings)
     
-    // Initialize supervisor responsibilities assessments
-    const responsibilities: Record<string, { achievementPercentage: number; achievedScore: number }> = {}
+    // Initialize supervisor responsibilities assessments - store actual values for each indicator
+    const responsibilities: Record<string, Record<string, { actualValue: number }>> = {}
     formData.achievements?.keyResponsibilities?.forEach(resp => {
-      responsibilities[resp.id] = {
-        achievementPercentage: resp.supervisorAchievementPercentage ?? resp.achievementPercentage ?? 0,
-        achievedScore: resp.supervisorAchievedScore ?? resp.achievedScore ?? 0
-      }
+      const indicatorValues: Record<string, { actualValue: number }> = {}
+      resp.successIndicators?.forEach(ind => {
+        // Try to get supervisor's actual value, fallback to employee's actual value
+        indicatorValues[ind.id] = {
+          actualValue: (ind as any).supervisorActualValue ?? ind.actualValue ?? 0
+        }
+      })
+      responsibilities[resp.id] = indicatorValues
     })
     setSupervisorResponsibilities(responsibilities)
   }, [formData])
@@ -98,37 +102,68 @@ export function SupervisorReviewTable({
     }))
   }
 
-  const handleResponsibilityChange = (respId: string, field: 'achievementPercentage' | 'achievedScore', value: number) => {
-    const responsibility = formData.achievements?.keyResponsibilities?.find(r => r.id === respId)
-    const totalScore = responsibility?.totalScore || responsibility?.weight || 0
-    
-    setSupervisorResponsibilities(prev => {
-      const current = prev[respId] || { achievementPercentage: 0, achievedScore: 0 }
-      
-      if (field === 'achievementPercentage') {
-        // Auto-calculate score when achievement % changes
-        // Score = (Achievement % / 100) * Total Score (Weight)
-        const calculatedScore = (value / 100) * totalScore
-        return {
-          ...prev,
-          [respId]: {
-            achievementPercentage: value,
-            achievedScore: calculatedScore
-          }
-        }
-      } else {
-        // If score is manually changed, calculate achievement % backwards
-        // Achievement % = (Score / Total Score) * 100
-        const calculatedAchievementPct = totalScore > 0 ? (value / totalScore) * 100 : 0
-        return {
-          ...prev,
-          [respId]: {
-            achievementPercentage: calculatedAchievementPct,
-            achievedScore: value
-          }
+  // Calculate achievement from indicators using the same formula as employee form
+  const calculateResponsibilityAchievement = (responsibility: any, indicatorActualValues: Record<string, number>) => {
+    if (!responsibility.successIndicators || responsibility.successIndicators.length === 0) {
+      return {
+        achievementPercentage: 0,
+        achievedScore: 0,
+        totalScore: responsibility.weight || 0
+      }
+    }
+
+    // Calculate total weight of all indicators
+    const totalIndicatorWeight = responsibility.successIndicators.reduce(
+      (sum: number, ind: any) => sum + (Number(ind.weight) || 0), 
+      0
+    )
+
+    if (totalIndicatorWeight === 0) {
+      return {
+        achievementPercentage: 0,
+        achievedScore: 0,
+        totalScore: responsibility.weight || 0
+      }
+    }
+
+    // Calculate achieved score from indicators
+    // For each indicator: score = weight * (actualValue / targetValue)
+    const achievedScore = responsibility.successIndicators.reduce((sum: number, ind: any) => {
+      const target = Number(ind.target) || 0
+      const actual = indicatorActualValues[ind.id] ?? Number(ind.actualValue) ?? 0
+      const weight = Number(ind.weight) || 0
+      const achievementPct = target > 0 ? (actual / target) : 0
+      return sum + (weight * achievementPct)
+    }, 0)
+
+    // Achievement percentage = (achieved score / total indicator weight) * 100
+    const achievementPercentage = totalIndicatorWeight > 0 
+      ? (achievedScore / totalIndicatorWeight) * 100 
+      : 0
+
+    // Total score for the responsibility = responsibility weight
+    const totalScore = responsibility.weight || 0
+
+    // Achieved score for the responsibility = (achievement percentage / 100) * total score
+    const responsibilityAchievedScore = (achievementPercentage / 100) * totalScore
+
+    return {
+      achievementPercentage: Math.round(achievementPercentage * 100) / 100,
+      achievedScore: Math.round(responsibilityAchievedScore * 100) / 100,
+      totalScore
+    }
+  }
+
+  const handleIndicatorActualValueChange = (respId: string, indicatorId: string, actualValue: number) => {
+    setSupervisorResponsibilities(prev => ({
+      ...prev,
+      [respId]: {
+        ...(prev[respId] || {}),
+        [indicatorId]: {
+          actualValue
         }
       }
-    })
+    }))
   }
 
   const handleSave = async () => {
@@ -140,12 +175,30 @@ export function SupervisorReviewTable({
         supervisorComment: data.comment
       }))
       
-      // Include responsibility assessments
-      const responsibilitiesArray = Object.entries(supervisorResponsibilities).map(([respId, data]) => ({
-        responsibilityId: respId,
-        supervisorAchievementPercentage: data.achievementPercentage,
-        supervisorAchievedScore: data.achievedScore
-      }))
+      // Include responsibility assessments - calculate from indicator actual values
+      const responsibilitiesArray = Object.entries(supervisorResponsibilities).map(([respId, indicatorValues]) => {
+        const responsibility = formData.achievements?.keyResponsibilities?.find(r => r.id === respId)
+        if (!responsibility) return null
+        
+        // Convert indicator values to actual values map
+        const actualValues: Record<string, number> = {}
+        Object.entries(indicatorValues).forEach(([indId, data]) => {
+          actualValues[indId] = data.actualValue
+        })
+        
+        // Calculate achievement using same formula as employee
+        const calculated = calculateResponsibilityAchievement(responsibility, actualValues)
+        
+        return {
+          responsibilityId: respId,
+          supervisorAchievementPercentage: calculated.achievementPercentage,
+          supervisorAchievedScore: calculated.achievedScore,
+          supervisorIndicators: Object.entries(indicatorValues).map(([indId, data]) => ({
+            indicatorId: indId,
+            actualValue: data.actualValue
+          }))
+        }
+      }).filter(Boolean) as any[]
       
       await onSave(ratingsArray, responsibilitiesArray)
     } finally {
@@ -236,108 +289,167 @@ export function SupervisorReviewTable({
           {formData.achievements?.keyResponsibilities && formData.achievements.keyResponsibilities.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Key Responsibility Areas & Achievements</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-300 mb-6">
-                  <thead className="bg-gradient-to-r from-blue-100 to-blue-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
-                        Key Responsibility
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
-                        Weight
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-blue-700 uppercase tracking-wider border-r border-gray-300 bg-blue-50">
-                        Employee Achievement %
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-blue-700 uppercase tracking-wider border-r border-gray-300 bg-blue-50">
-                        Employee Score
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-orange-700 uppercase tracking-wider border-r border-gray-300 bg-orange-50">
-                        Supervisor Achievement %
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-orange-700 uppercase tracking-wider border-r border-gray-300 bg-orange-50">
-                        Supervisor Score
-                      </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Final Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {formData.achievements.keyResponsibilities.map((resp) => {
-                      // Employee's achievement data
-                      const employeeAchievementPct = resp.achievementPercentage || 0
-                      const employeeTotalScore = resp.totalScore || resp.weight || 0
-                      const employeeAchievedScore = resp.achievedScore || 0
+              <div className="space-y-6">
+                {formData.achievements.keyResponsibilities.map((resp) => {
+                  // Employee's achievement data (calculated from indicators)
+                  const employeeAchievementPct = resp.achievementPercentage || 0
+                  const employeeTotalScore = resp.totalScore || resp.weight || 0
+                  const employeeAchievedScore = resp.achievedScore || 0
+                  
+                  // Supervisor's indicator actual values
+                  const supervisorIndicatorValues = supervisorResponsibilities[resp.id] || {}
+                  const supervisorActualValues: Record<string, number> = {}
+                  Object.entries(supervisorIndicatorValues).forEach(([indId, data]) => {
+                    supervisorActualValues[indId] = data.actualValue
+                  })
+                  
+                  // Calculate supervisor's achievement using same formula
+                  const supervisorCalculated = calculateResponsibilityAchievement(resp, supervisorActualValues)
+                  const supervisorAchievementPct = supervisorCalculated.achievementPercentage
+                  const supervisorAchievedScore = supervisorCalculated.achievedScore
+                  const supervisorTotalScore = supervisorCalculated.totalScore
+                  
+                  return (
+                    <div key={resp.id} className="bg-white border-2 border-gray-200 rounded-lg p-4 shadow-sm">
+                      {/* Responsibility Header */}
+                      <div className="flex items-center justify-between mb-4 pb-3 border-b-2 border-gray-200">
+                        <div>
+                          <h4 className="text-lg font-bold text-gray-900">{resp.description}</h4>
+                          {resp.tasks && (
+                            <p className="text-sm text-gray-600 mt-1">{resp.tasks}</p>
+                          )}
+                        </div>
+                        <Badge className="bg-blue-500 text-white font-bold text-lg px-3 py-1">
+                          Weight: {resp.weight}%
+                        </Badge>
+                      </div>
                       
-                      // Supervisor's achievement data (editable)
-                      const supervisorData = supervisorResponsibilities[resp.id] || { achievementPercentage: 0, achievedScore: 0 }
-                      const supervisorAchievementPct = supervisorData.achievementPercentage
-                      const supervisorTotalScore = resp.totalScore || resp.weight || 0
-                      const supervisorAchievedScore = supervisorData.achievedScore
-                      
-                      return (
-                        <tr key={resp.id} className="hover:bg-blue-50 transition-colors">
-                          <td className="px-4 py-4 border-r border-gray-300">
-                            <div className="text-sm font-medium text-gray-900">{resp.description}</div>
-                            {resp.tasks && (
-                              <div className="text-xs text-gray-500 mt-1">{resp.tasks}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300">
-                            <Badge className="bg-blue-500 text-white font-bold">
-                              {resp.weight}%
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-blue-50">
-                            <div className="text-sm font-medium text-blue-700">{employeeAchievementPct}%</div>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-blue-50">
-                            <div className="text-sm font-semibold text-blue-700">
-                              {employeeAchievedScore.toFixed(1)} / {employeeTotalScore.toFixed(1)}
+                      {/* Success Indicators Table */}
+                      {resp.successIndicators && resp.successIndicators.length > 0 && (
+                        <div className="mb-4">
+                          <h5 className="text-sm font-bold text-gray-700 mb-3 flex items-center">
+                            <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Success Indicators
+                          </h5>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
+                              <thead className="bg-gradient-to-r from-green-100 to-green-50">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase border-r border-gray-300">Indicator</th>
+                                  <th className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase border-r border-gray-300">Weight</th>
+                                  <th className="px-3 py-2 text-center text-xs font-bold text-gray-700 uppercase border-r border-gray-300">Target</th>
+                                  <th className="px-3 py-2 text-center text-xs font-bold text-blue-700 uppercase border-r border-gray-300 bg-blue-50">Employee Actual</th>
+                                  <th className="px-3 py-2 text-center text-xs font-bold text-blue-700 uppercase border-r border-gray-300 bg-blue-50">Employee Achievement</th>
+                                  <th className="px-3 py-2 text-center text-xs font-bold text-blue-700 uppercase border-r border-gray-300 bg-blue-50">Employee Score</th>
+                                  <th className="px-3 py-2 text-center text-xs font-bold text-orange-700 uppercase border-r border-gray-300 bg-orange-50">Your Actual</th>
+                                  <th className="px-3 py-2 text-center text-xs font-bold text-orange-700 uppercase border-r border-gray-300 bg-orange-50">Your Achievement</th>
+                                  <th className="px-3 py-2 text-center text-xs font-bold text-orange-700 uppercase bg-orange-50">Your Score</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {resp.successIndicators.map((ind) => {
+                                  const target = Number(ind.target) || 0
+                                  const employeeActual = Number(ind.actualValue) || 0
+                                  const supervisorActual = supervisorActualValues[ind.id] ?? employeeActual
+                                  const weight = Number(ind.weight) || 0
+                                  
+                                  // Employee calculations
+                                  const employeeAchievementPct = target > 0 ? Math.round((employeeActual / target) * 100) : 0
+                                  const employeeIndicatorScore = weight * (employeeAchievementPct / 100)
+                                  
+                                  // Supervisor calculations
+                                  const supervisorAchievementPct = target > 0 ? Math.round((supervisorActual / target) * 100) : 0
+                                  const supervisorIndicatorScore = weight * (supervisorAchievementPct / 100)
+                                  
+                                  return (
+                                    <tr key={ind.id} className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 border-r border-gray-300">
+                                        <div className="text-sm font-medium text-gray-900">{ind.indicator}</div>
+                                        <div className="text-xs text-gray-500">{ind.measurement}</div>
+                                      </td>
+                                      <td className="px-3 py-2 text-center border-r border-gray-300">
+                                        <Badge className="bg-gray-500 text-white font-bold">{weight}%</Badge>
+                                      </td>
+                                      <td className="px-3 py-2 text-center border-r border-gray-300">
+                                        <span className="text-sm font-medium">{target}</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-center border-r border-gray-300 bg-blue-50">
+                                        <span className="text-sm font-medium text-blue-700">{employeeActual}</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-center border-r border-gray-300 bg-blue-50">
+                                        <Badge className={`${employeeAchievementPct >= 100 ? 'bg-green-500' : employeeAchievementPct >= 75 ? 'bg-blue-500' : employeeAchievementPct >= 50 ? 'bg-yellow-500' : 'bg-red-500'} text-white font-bold`}>
+                                          {employeeAchievementPct}%
+                                        </Badge>
+                                      </td>
+                                      <td className="px-3 py-2 text-center border-r border-gray-300 bg-blue-50">
+                                        <Badge className="bg-purple-500 text-white font-bold">
+                                          {employeeIndicatorScore.toFixed(2)} / {weight}
+                                        </Badge>
+                                      </td>
+                                      <td className="px-3 py-2 text-center border-r border-gray-300 bg-orange-50">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step="0.1"
+                                          value={supervisorActual}
+                                          onChange={(e) => handleIndicatorActualValueChange(resp.id, ind.id, parseFloat(e.target.value) || 0)}
+                                          className="w-20 px-2 py-1 text-sm text-center border border-orange-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2 text-center border-r border-gray-300 bg-orange-50">
+                                        <Badge className={`${supervisorAchievementPct >= 100 ? 'bg-green-500' : supervisorAchievementPct >= 75 ? 'bg-blue-500' : supervisorAchievementPct >= 50 ? 'bg-yellow-500' : 'bg-red-500'} text-white font-bold`}>
+                                          {supervisorAchievementPct}%
+                                        </Badge>
+                                      </td>
+                                      <td className="px-3 py-2 text-center bg-orange-50">
+                                        <Badge className="bg-purple-500 text-white font-bold">
+                                          {supervisorIndicatorScore.toFixed(2)} / {weight}
+                                        </Badge>
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                          
+                          {/* Responsibility Summary */}
+                          <div className="mt-4 bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg border-2 border-orange-200">
+                            <h5 className="font-bold text-gray-900 mb-3">Responsibility Summary</h5>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-600">Total Indicators:</span>
+                                <span className="ml-2 font-bold text-gray-900">{resp.successIndicators.length}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Total Weight:</span>
+                                <span className="ml-2 font-bold text-gray-900">
+                                  {resp.successIndicators.reduce((sum, ind) => sum + (Number(ind.weight) || 0), 0)}%
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Employee Achievement:</span>
+                                <span className="ml-2 font-bold text-blue-700">{employeeAchievementPct.toFixed(1)}%</span>
+                                <div className="text-xs text-blue-600">
+                                  Score: {employeeAchievedScore.toFixed(2)} / {employeeTotalScore.toFixed(1)}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Your Achievement:</span>
+                                <span className="ml-2 font-bold text-orange-700">{supervisorAchievementPct.toFixed(1)}%</span>
+                                <div className="text-xs text-orange-600">
+                                  Score: {supervisorAchievedScore.toFixed(2)} / {supervisorTotalScore.toFixed(1)}
+                                </div>
+                              </div>
                             </div>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={supervisorAchievementPct}
-                              onChange={(e) => handleResponsibilityChange(resp.id, 'achievementPercentage', parseFloat(e.target.value) || 0)}
-                              className="w-20 px-2 py-1 text-sm text-center border border-orange-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
-                            />
-                            <span className="text-xs text-gray-500 ml-1">%</span>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
-                            <div className="flex items-center justify-center space-x-1">
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.1"
-                                value={supervisorAchievedScore}
-                                onChange={(e) => handleResponsibilityChange(resp.id, 'achievedScore', parseFloat(e.target.value) || 0)}
-                                className="w-16 px-2 py-1 text-sm text-center border border-orange-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
-                              />
-                              <span className="text-sm text-gray-600">/</span>
-                              <span className="text-sm font-semibold text-gray-700">{supervisorTotalScore.toFixed(1)}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center">
-                            <Badge className={
-                              supervisorAchievementPct >= 100 ? 'bg-green-500 text-white' :
-                              supervisorAchievementPct >= 50 ? 'bg-yellow-500 text-white' :
-                              'bg-red-500 text-white'
-                            }>
-                              {supervisorAchievementPct >= 100 ? 'Achieved' :
-                               supervisorAchievementPct >= 50 ? 'Partial' :
-                               'Not Achieved'}
-                            </Badge>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
