@@ -146,6 +146,117 @@ export function ReviewerComparisonTable({
             </div>
           </div>
 
+          {/* Key Responsibilities Section */}
+          {formData.achievements?.keyResponsibilities && formData.achievements.keyResponsibilities.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Key Responsibility Areas & Achievements</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 border border-gray-300 mb-6">
+                  <thead className="bg-gradient-to-r from-purple-100 to-purple-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                        Key Responsibility
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
+                        Weight
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-blue-700 uppercase tracking-wider border-r border-gray-300 bg-blue-50">
+                        Employee Achievement %
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-blue-700 uppercase tracking-wider border-r border-gray-300 bg-blue-50">
+                        Employee Score
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-orange-700 uppercase tracking-wider border-r border-gray-300 bg-orange-50">
+                        Supervisor Achievement %
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-orange-700 uppercase tracking-wider border-r border-gray-300 bg-orange-50">
+                        Supervisor Score
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-purple-700 uppercase tracking-wider border-r border-gray-300 bg-purple-50">
+                        Reviewer Achievement %
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-purple-700 uppercase tracking-wider border-r border-gray-300 bg-purple-50">
+                        Reviewer Score
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {formData.achievements.keyResponsibilities.map((resp) => {
+                      // Employee's achievement data
+                      const employeeAchievementPct = resp.achievementPercentage || 0
+                      const employeeTotalScore = resp.totalScore || resp.weight || 0
+                      const employeeAchievedScore = resp.achievedScore || 0
+                      
+                      // Supervisor's achievement data (same as employee for now)
+                      const supervisorAchievementPct = resp.achievementPercentage || 0
+                      const supervisorTotalScore = resp.totalScore || resp.weight || 0
+                      const supervisorAchievedScore = resp.achievedScore || 0
+                      
+                      // Reviewer's achievement data (will be updated when reviewer reviews)
+                      const reviewerAchievementPct = resp.achievementPercentage || 0 // Will be updated when reviewer reviews
+                      const reviewerTotalScore = resp.totalScore || resp.weight || 0
+                      const reviewerAchievedScore = resp.achievedScore || 0 // Will be updated when reviewer reviews
+                      
+                      return (
+                        <tr key={resp.id} className="hover:bg-purple-50 transition-colors">
+                          <td className="px-4 py-4 border-r border-gray-300">
+                            <div className="text-sm font-medium text-gray-900">{resp.description}</div>
+                            {resp.tasks && (
+                              <div className="text-xs text-gray-500 mt-1">{resp.tasks}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300">
+                            <Badge className="bg-purple-500 text-white font-bold">
+                              {resp.weight}%
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-blue-50">
+                            <div className="text-sm font-medium text-blue-700">{employeeAchievementPct}%</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-blue-50">
+                            <div className="text-sm font-semibold text-blue-700">
+                              {employeeAchievedScore.toFixed(1)} / {employeeTotalScore.toFixed(1)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
+                            <div className="text-sm font-medium text-orange-700">{supervisorAchievementPct}%</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
+                            <div className="text-sm font-semibold text-orange-700">
+                              {supervisorAchievedScore.toFixed(1)} / {supervisorTotalScore.toFixed(1)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-purple-50">
+                            <div className="text-sm font-medium text-purple-700">{reviewerAchievementPct}%</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-purple-50">
+                            <div className="text-sm font-semibold text-purple-700">
+                              {reviewerAchievedScore.toFixed(1)} / {reviewerTotalScore.toFixed(1)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center">
+                            <Badge className={
+                              resp.achievementStatus === 'achieved' ? 'bg-green-500 text-white' :
+                              resp.achievementStatus === 'partially-achieved' ? 'bg-yellow-500 text-white' :
+                              'bg-red-500 text-white'
+                            }>
+                              {resp.achievementStatus === 'achieved' ? 'Achieved' :
+                               resp.achievementStatus === 'partially-achieved' ? 'Partial' :
+                               'Not Achieved'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Comparison Table */}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 border border-gray-300">
@@ -164,10 +275,10 @@ export function ReviewerComparisonTable({
                     Supervisor Rating
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-bold text-purple-700 uppercase tracking-wider border-r border-gray-300 bg-purple-50">
-                    Your Final Rating
+                    Reviewer Rating
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                    Comments (Optional)
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider min-w-96">
+                    Reviewer Comments
                   </th>
                 </tr>
               </thead>
@@ -237,13 +348,13 @@ export function ReviewerComparisonTable({
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 min-w-96">
                         <Textarea
                           value={reviewerData.comment}
                           onChange={(e) => handleCommentChange(category.id, e.target.value)}
                           placeholder="Optional comments..."
-                          className="w-full text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-200"
-                          rows={2}
+                          className="w-full text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-200 min-w-96"
+                          rows={4}
                         />
                       </td>
                     </tr>
@@ -269,7 +380,7 @@ export function ReviewerComparisonTable({
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600 mb-1">Your Final Rating</div>
+                <div className="text-sm text-gray-600 mb-1">Reviewer Rating</div>
                 <div className="text-2xl font-bold text-purple-600">
                   {formData.performance.categories.reduce((sum, cat) => {
                     const revData = reviewerRatings[cat.id] || { rating: 0 }

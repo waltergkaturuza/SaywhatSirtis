@@ -190,11 +190,17 @@ export function SupervisorReviewTable({
                       <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
                         Weight
                       </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
-                        Achievement %
+                      <th className="px-4 py-3 text-center text-xs font-bold text-blue-700 uppercase tracking-wider border-r border-gray-300 bg-blue-50">
+                        Employee Achievement %
                       </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300">
-                        Score
+                      <th className="px-4 py-3 text-center text-xs font-bold text-blue-700 uppercase tracking-wider border-r border-gray-300 bg-blue-50">
+                        Employee Score
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-orange-700 uppercase tracking-wider border-r border-gray-300 bg-orange-50">
+                        Supervisor Achievement %
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-orange-700 uppercase tracking-wider border-r border-gray-300 bg-orange-50">
+                        Supervisor Score
                       </th>
                       <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
                         Status
@@ -203,9 +209,16 @@ export function SupervisorReviewTable({
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {formData.achievements.keyResponsibilities.map((resp) => {
-                      const achievementPct = resp.achievementPercentage || 0
-                      const totalScore = resp.totalScore || resp.weight || 0
-                      const achievedScore = resp.achievedScore || 0
+                      // Employee's achievement data
+                      const employeeAchievementPct = resp.achievementPercentage || 0
+                      const employeeTotalScore = resp.totalScore || resp.weight || 0
+                      const employeeAchievedScore = resp.achievedScore || 0
+                      
+                      // Supervisor's achievement data (for now, same as employee until supervisor updates it)
+                      // TODO: Store supervisor's assessment separately when they review
+                      const supervisorAchievementPct = resp.achievementPercentage || 0 // Will be updated when supervisor reviews
+                      const supervisorTotalScore = resp.totalScore || resp.weight || 0
+                      const supervisorAchievedScore = resp.achievedScore || 0 // Will be updated when supervisor reviews
                       
                       return (
                         <tr key={resp.id} className="hover:bg-blue-50 transition-colors">
@@ -220,12 +233,20 @@ export function SupervisorReviewTable({
                               {resp.weight}%
                             </Badge>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300">
-                            <div className="text-sm font-medium text-gray-900">{achievementPct}%</div>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-blue-50">
+                            <div className="text-sm font-medium text-blue-700">{employeeAchievementPct}%</div>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300">
-                            <div className="text-sm font-semibold text-gray-900">
-                              {achievedScore.toFixed(1)} / {totalScore.toFixed(1)}
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-blue-50">
+                            <div className="text-sm font-semibold text-blue-700">
+                              {employeeAchievedScore.toFixed(1)} / {employeeTotalScore.toFixed(1)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
+                            <div className="text-sm font-medium text-orange-700">{supervisorAchievementPct}%</div>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
+                            <div className="text-sm font-semibold text-orange-700">
+                              {supervisorAchievedScore.toFixed(1)} / {supervisorTotalScore.toFixed(1)}
                             </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center">
@@ -266,10 +287,10 @@ export function SupervisorReviewTable({
                     Employee Self-Rating
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-300 w-32">
-                    Your Rating
+                    Supervisor Rating
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider min-w-96">
-                    Your Comments
+                    Supervisor Comments
                   </th>
                 </tr>
               </thead>
@@ -353,7 +374,7 @@ export function SupervisorReviewTable({
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600 mb-1">Your Rating</div>
+                <div className="text-sm text-gray-600 mb-1">Supervisor Rating</div>
                 <div className="text-2xl font-bold text-orange-600">
                   {formData.performance.categories.reduce((sum, cat) => {
                     const supData = supervisorRatings[cat.id] || { rating: 0 }
