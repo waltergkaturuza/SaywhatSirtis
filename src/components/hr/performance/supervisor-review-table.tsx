@@ -49,6 +49,7 @@ export function SupervisorReviewTable({
   isSaving = false
 }: SupervisorReviewTableProps) {
   const [supervisorRatings, setSupervisorRatings] = useState<Record<string, { rating: number; comment: string }>>({})
+  const [supervisorResponsibilities, setSupervisorResponsibilities] = useState<Record<string, { achievementPercentage: number; achievedScore: number }>>({})
   const [isSavingRatings, setIsSavingRatings] = useState(false)
 
   // Initialize supervisor ratings from formData
@@ -61,6 +62,16 @@ export function SupervisorReviewTable({
       }
     })
     setSupervisorRatings(ratings)
+    
+    // Initialize supervisor responsibilities assessments
+    const responsibilities: Record<string, { achievementPercentage: number; achievedScore: number }> = {}
+    formData.achievements?.keyResponsibilities?.forEach(resp => {
+      responsibilities[resp.id] = {
+        achievementPercentage: resp.supervisorAchievementPercentage ?? resp.achievementPercentage ?? 0,
+        achievedScore: resp.supervisorAchievedScore ?? resp.achievedScore ?? 0
+      }
+    })
+    setSupervisorResponsibilities(responsibilities)
   }, [formData])
 
   const handleRatingChange = (categoryId: string, rating: number) => {
@@ -79,6 +90,16 @@ export function SupervisorReviewTable({
       [categoryId]: {
         ...prev[categoryId],
         comment
+      }
+    }))
+  }
+
+  const handleResponsibilityChange = (respId: string, field: 'achievementPercentage' | 'achievedScore', value: number) => {
+    setSupervisorResponsibilities(prev => ({
+      ...prev,
+      [respId]: {
+        ...prev[respId] || { achievementPercentage: 0, achievedScore: 0 },
+        [field]: value
       }
     }))
   }
@@ -203,7 +224,7 @@ export function SupervisorReviewTable({
                         Supervisor Score
                       </th>
                       <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">
-                        Status
+                        Final Status
                       </th>
                     </tr>
                   </thead>
@@ -214,11 +235,11 @@ export function SupervisorReviewTable({
                       const employeeTotalScore = resp.totalScore || resp.weight || 0
                       const employeeAchievedScore = resp.achievedScore || 0
                       
-                      // Supervisor's achievement data (for now, same as employee until supervisor updates it)
-                      // TODO: Store supervisor's assessment separately when they review
-                      const supervisorAchievementPct = resp.achievementPercentage || 0 // Will be updated when supervisor reviews
+                      // Supervisor's achievement data (editable)
+                      const supervisorData = supervisorResponsibilities[resp.id] || { achievementPercentage: 0, achievedScore: 0 }
+                      const supervisorAchievementPct = supervisorData.achievementPercentage
                       const supervisorTotalScore = resp.totalScore || resp.weight || 0
-                      const supervisorAchievedScore = resp.achievedScore || 0 // Will be updated when supervisor reviews
+                      const supervisorAchievedScore = supervisorData.achievedScore
                       
                       return (
                         <tr key={resp.id} className="hover:bg-blue-50 transition-colors">
@@ -242,21 +263,38 @@ export function SupervisorReviewTable({
                             </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
-                            <div className="text-sm font-medium text-orange-700">{supervisorAchievementPct}%</div>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={supervisorAchievementPct}
+                              onChange={(e) => handleResponsibilityChange(resp.id, 'achievementPercentage', parseFloat(e.target.value) || 0)}
+                              className="w-20 px-2 py-1 text-sm text-center border border-orange-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                            />
+                            <span className="text-xs text-gray-500 ml-1">%</span>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-orange-50">
-                            <div className="text-sm font-semibold text-orange-700">
-                              {supervisorAchievedScore.toFixed(1)} / {supervisorTotalScore.toFixed(1)}
+                            <div className="flex items-center justify-center space-x-1">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                value={supervisorAchievedScore}
+                                onChange={(e) => handleResponsibilityChange(resp.id, 'achievedScore', parseFloat(e.target.value) || 0)}
+                                className="w-16 px-2 py-1 text-sm text-center border border-orange-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                              />
+                              <span className="text-sm text-gray-600">/</span>
+                              <span className="text-sm font-semibold text-gray-700">{supervisorTotalScore.toFixed(1)}</span>
                             </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center">
                             <Badge className={
-                              resp.achievementStatus === 'achieved' ? 'bg-green-500 text-white' :
-                              resp.achievementStatus === 'partially-achieved' ? 'bg-yellow-500 text-white' :
+                              supervisorAchievementPct >= 100 ? 'bg-green-500 text-white' :
+                              supervisorAchievementPct >= 50 ? 'bg-yellow-500 text-white' :
                               'bg-red-500 text-white'
                             }>
-                              {resp.achievementStatus === 'achieved' ? 'Achieved' :
-                               resp.achievementStatus === 'partially-achieved' ? 'Partial' :
+                              {supervisorAchievementPct >= 100 ? 'Achieved' :
+                               supervisorAchievementPct >= 50 ? 'Partial' :
                                'Not Achieved'}
                             </Badge>
                           </td>
@@ -352,7 +390,7 @@ export function SupervisorReviewTable({
                         <Textarea
                           value={supervisorData.comment}
                           onChange={(e) => handleCommentChange(category.id, e.target.value)}
-                          placeholder={`Explain why you gave ${supervisorData.rating || 'this'} rating...`}
+                          placeholder={`Explain why you gave this supervisor rating...`}
                           className="w-full text-sm border-gray-300 focus:border-orange-500 focus:ring-orange-200 min-w-96"
                           rows={4}
                         />

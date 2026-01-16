@@ -37,6 +37,7 @@ export function ReviewerComparisonTable({
   isSaving = false
 }: ReviewerComparisonTableProps) {
   const [reviewerRatings, setReviewerRatings] = useState<Record<string, { rating: number; comment: string }>>({})
+  const [reviewerResponsibilities, setReviewerResponsibilities] = useState<Record<string, { achievementPercentage: number; achievedScore: number }>>({})
   const [isSavingRatings, setIsSavingRatings] = useState(false)
 
   // Initialize reviewer ratings from formData
@@ -49,6 +50,16 @@ export function ReviewerComparisonTable({
       }
     })
     setReviewerRatings(ratings)
+    
+    // Initialize reviewer responsibilities assessments
+    const responsibilities: Record<string, { achievementPercentage: number; achievedScore: number }> = {}
+    formData.achievements?.keyResponsibilities?.forEach(resp => {
+      responsibilities[resp.id] = {
+        achievementPercentage: resp.reviewerAchievementPercentage ?? resp.supervisorAchievementPercentage ?? resp.achievementPercentage ?? 0,
+        achievedScore: resp.reviewerAchievedScore ?? resp.supervisorAchievedScore ?? resp.achievedScore ?? 0
+      }
+    })
+    setReviewerResponsibilities(responsibilities)
   }, [formData])
 
   const handleRatingChange = (categoryId: string, rating: number) => {
@@ -67,6 +78,16 @@ export function ReviewerComparisonTable({
       [categoryId]: {
         ...prev[categoryId],
         comment
+      }
+    }))
+  }
+
+  const handleResponsibilityChange = (respId: string, field: 'achievementPercentage' | 'achievedScore', value: number) => {
+    setReviewerResponsibilities(prev => ({
+      ...prev,
+      [respId]: {
+        ...prev[respId] || { achievementPercentage: 0, achievedScore: 0 },
+        [field]: value
       }
     }))
   }
@@ -190,15 +211,16 @@ export function ReviewerComparisonTable({
                       const employeeTotalScore = resp.totalScore || resp.weight || 0
                       const employeeAchievedScore = resp.achievedScore || 0
                       
-                      // Supervisor's achievement data (same as employee for now)
-                      const supervisorAchievementPct = resp.achievementPercentage || 0
+                      // Supervisor's achievement data
+                      const supervisorAchievementPct = resp.supervisorAchievementPercentage ?? resp.achievementPercentage ?? 0
                       const supervisorTotalScore = resp.totalScore || resp.weight || 0
-                      const supervisorAchievedScore = resp.achievedScore || 0
+                      const supervisorAchievedScore = resp.supervisorAchievedScore ?? resp.achievedScore ?? 0
                       
-                      // Reviewer's achievement data (will be updated when reviewer reviews)
-                      const reviewerAchievementPct = resp.achievementPercentage || 0 // Will be updated when reviewer reviews
+                      // Reviewer's achievement data (editable)
+                      const reviewerData = reviewerResponsibilities[resp.id] || { achievementPercentage: 0, achievedScore: 0 }
+                      const reviewerAchievementPct = reviewerData.achievementPercentage
                       const reviewerTotalScore = resp.totalScore || resp.weight || 0
-                      const reviewerAchievedScore = resp.achievedScore || 0 // Will be updated when reviewer reviews
+                      const reviewerAchievedScore = reviewerData.achievedScore
                       
                       return (
                         <tr key={resp.id} className="hover:bg-purple-50 transition-colors">
@@ -230,21 +252,38 @@ export function ReviewerComparisonTable({
                             </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-purple-50">
-                            <div className="text-sm font-medium text-purple-700">{reviewerAchievementPct}%</div>
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={reviewerAchievementPct}
+                              onChange={(e) => handleResponsibilityChange(resp.id, 'achievementPercentage', parseFloat(e.target.value) || 0)}
+                              className="w-20 px-2 py-1 text-sm text-center border border-purple-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                            />
+                            <span className="text-xs text-gray-500 ml-1">%</span>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center border-r border-gray-300 bg-purple-50">
-                            <div className="text-sm font-semibold text-purple-700">
-                              {reviewerAchievedScore.toFixed(1)} / {reviewerTotalScore.toFixed(1)}
+                            <div className="flex items-center justify-center space-x-1">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                value={reviewerAchievedScore}
+                                onChange={(e) => handleResponsibilityChange(resp.id, 'achievedScore', parseFloat(e.target.value) || 0)}
+                                className="w-16 px-2 py-1 text-sm text-center border border-purple-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                              />
+                              <span className="text-sm text-gray-600">/</span>
+                              <span className="text-sm font-semibold text-gray-700">{reviewerTotalScore.toFixed(1)}</span>
                             </div>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-center">
                             <Badge className={
-                              resp.achievementStatus === 'achieved' ? 'bg-green-500 text-white' :
-                              resp.achievementStatus === 'partially-achieved' ? 'bg-yellow-500 text-white' :
+                              reviewerAchievementPct >= 100 ? 'bg-green-500 text-white' :
+                              reviewerAchievementPct >= 50 ? 'bg-yellow-500 text-white' :
                               'bg-red-500 text-white'
                             }>
-                              {resp.achievementStatus === 'achieved' ? 'Achieved' :
-                               resp.achievementStatus === 'partially-achieved' ? 'Partial' :
+                              {reviewerAchievementPct >= 100 ? 'Achieved' :
+                               reviewerAchievementPct >= 50 ? 'Partial' :
                                'Not Achieved'}
                             </Badge>
                           </td>

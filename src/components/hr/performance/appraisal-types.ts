@@ -65,6 +65,14 @@ export interface AppraisalFormData {
       totalScore?: number
       achievedScore?: number
       achievementPercentage?: number
+      // Supervisor's assessment
+      supervisorAchievementPercentage?: number
+      supervisorAchievedScore?: number
+      supervisorTotalScore?: number
+      // Reviewer's final assessment
+      reviewerAchievementPercentage?: number
+      reviewerAchievedScore?: number
+      reviewerTotalScore?: number
     }[]
   }
   development: {
