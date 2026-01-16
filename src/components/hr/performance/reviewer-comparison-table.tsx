@@ -26,6 +26,10 @@ interface ReviewerComparisonTableProps {
     categoryId: string
     reviewerRating: number
     reviewerComment?: string
+  }>, responsibilities?: Array<{
+    responsibilityId: string
+    reviewerAchievementPercentage: number
+    reviewerAchievedScore: number
   }>) => Promise<void>
   isSaving?: boolean
 }
@@ -83,13 +87,36 @@ export function ReviewerComparisonTable({
   }
 
   const handleResponsibilityChange = (respId: string, field: 'achievementPercentage' | 'achievedScore', value: number) => {
-    setReviewerResponsibilities(prev => ({
-      ...prev,
-      [respId]: {
-        ...prev[respId] || { achievementPercentage: 0, achievedScore: 0 },
-        [field]: value
+    const responsibility = formData.achievements?.keyResponsibilities?.find(r => r.id === respId)
+    const totalScore = responsibility?.totalScore || responsibility?.weight || 0
+    
+    setReviewerResponsibilities(prev => {
+      const current = prev[respId] || { achievementPercentage: 0, achievedScore: 0 }
+      
+      if (field === 'achievementPercentage') {
+        // Auto-calculate score when achievement % changes
+        // Score = (Achievement % / 100) * Total Score (Weight)
+        const calculatedScore = (value / 100) * totalScore
+        return {
+          ...prev,
+          [respId]: {
+            achievementPercentage: value,
+            achievedScore: calculatedScore
+          }
+        }
+      } else {
+        // If score is manually changed, calculate achievement % backwards
+        // Achievement % = (Score / Total Score) * 100
+        const calculatedAchievementPct = totalScore > 0 ? (value / totalScore) * 100 : 0
+        return {
+          ...prev,
+          [respId]: {
+            achievementPercentage: calculatedAchievementPct,
+            achievedScore: value
+          }
+        }
       }
-    }))
+    })
   }
 
   const handleSave = async () => {

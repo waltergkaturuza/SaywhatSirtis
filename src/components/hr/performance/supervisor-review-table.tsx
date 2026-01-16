@@ -37,6 +37,10 @@ interface SupervisorReviewTableProps {
     categoryId: string
     supervisorRating: number
     supervisorComment: string
+  }>, responsibilities?: Array<{
+    responsibilityId: string
+    supervisorAchievementPercentage: number
+    supervisorAchievedScore: number
   }>) => Promise<void>
   isSaving?: boolean
 }
@@ -95,13 +99,36 @@ export function SupervisorReviewTable({
   }
 
   const handleResponsibilityChange = (respId: string, field: 'achievementPercentage' | 'achievedScore', value: number) => {
-    setSupervisorResponsibilities(prev => ({
-      ...prev,
-      [respId]: {
-        ...prev[respId] || { achievementPercentage: 0, achievedScore: 0 },
-        [field]: value
+    const responsibility = formData.achievements?.keyResponsibilities?.find(r => r.id === respId)
+    const totalScore = responsibility?.totalScore || responsibility?.weight || 0
+    
+    setSupervisorResponsibilities(prev => {
+      const current = prev[respId] || { achievementPercentage: 0, achievedScore: 0 }
+      
+      if (field === 'achievementPercentage') {
+        // Auto-calculate score when achievement % changes
+        // Score = (Achievement % / 100) * Total Score (Weight)
+        const calculatedScore = (value / 100) * totalScore
+        return {
+          ...prev,
+          [respId]: {
+            achievementPercentage: value,
+            achievedScore: calculatedScore
+          }
+        }
+      } else {
+        // If score is manually changed, calculate achievement % backwards
+        // Achievement % = (Score / Total Score) * 100
+        const calculatedAchievementPct = totalScore > 0 ? (value / totalScore) * 100 : 0
+        return {
+          ...prev,
+          [respId]: {
+            achievementPercentage: calculatedAchievementPct,
+            achievedScore: value
+          }
+        }
       }
-    }))
+    })
   }
 
   const handleSave = async () => {
@@ -112,7 +139,15 @@ export function SupervisorReviewTable({
         supervisorRating: data.rating,
         supervisorComment: data.comment
       }))
-      await onSave(ratingsArray)
+      
+      // Include responsibility assessments
+      const responsibilitiesArray = Object.entries(supervisorResponsibilities).map(([respId, data]) => ({
+        responsibilityId: respId,
+        supervisorAchievementPercentage: data.achievementPercentage,
+        supervisorAchievedScore: data.achievedScore
+      }))
+      
+      await onSave(ratingsArray, responsibilitiesArray)
     } finally {
       setIsSavingRatings(false)
     }

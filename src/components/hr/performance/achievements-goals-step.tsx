@@ -29,13 +29,75 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
     })
   }
 
+  // Calculate achievement percentage and score for a responsibility from its success indicators
+  const calculateResponsibilityAchievement = (responsibility: any) => {
+    if (!responsibility.successIndicators || responsibility.successIndicators.length === 0) {
+      return {
+        achievementPercentage: 0,
+        achievedScore: 0,
+        totalScore: responsibility.weight || 0
+      }
+    }
+
+    // Calculate total weight of all indicators
+    const totalIndicatorWeight = responsibility.successIndicators.reduce(
+      (sum: number, ind: any) => sum + (Number(ind.weight) || 0), 
+      0
+    )
+
+    if (totalIndicatorWeight === 0) {
+      return {
+        achievementPercentage: 0,
+        achievedScore: 0,
+        totalScore: responsibility.weight || 0
+      }
+    }
+
+    // Calculate achieved score from indicators
+    // For each indicator: score = weight * (actualValue / targetValue)
+    const achievedScore = responsibility.successIndicators.reduce((sum: number, ind: any) => {
+      const target = Number(ind.target) || 0
+      const actual = Number(ind.actualValue) || 0
+      const weight = Number(ind.weight) || 0
+      const achievementPct = target > 0 ? (actual / target) : 0
+      return sum + (weight * achievementPct)
+    }, 0)
+
+    // Achievement percentage = (achieved score / total indicator weight) * 100
+    const achievementPercentage = totalIndicatorWeight > 0 
+      ? (achievedScore / totalIndicatorWeight) * 100 
+      : 0
+
+    // Total score for the responsibility = responsibility weight
+    const totalScore = responsibility.weight || 0
+
+    // Achieved score for the responsibility = (achievement percentage / 100) * total score
+    const responsibilityAchievedScore = (achievementPercentage / 100) * totalScore
+
+    return {
+      achievementPercentage: Math.round(achievementPercentage * 100) / 100, // Round to 2 decimal places
+      achievedScore: Math.round(responsibilityAchievedScore * 100) / 100,
+      totalScore
+    }
+  }
+
   const updateSuccessIndicator = (respId: string, indicatorId: string, field: string, value: any) => {
     const updatedResponsibilities = formData.achievements.keyResponsibilities.map(resp => {
       if (resp.id === respId) {
         const updatedIndicators = resp.successIndicators.map(ind =>
           ind.id === indicatorId ? { ...ind, [field]: value } : ind
         )
-        return { ...resp, successIndicators: updatedIndicators }
+        const updatedResp = { ...resp, successIndicators: updatedIndicators }
+        
+        // Recalculate achievement percentage and score when indicators change
+        const calculated = calculateResponsibilityAchievement(updatedResp)
+        
+        return {
+          ...updatedResp,
+          achievementPercentage: calculated.achievementPercentage,
+          achievedScore: calculated.achievedScore,
+          totalScore: calculated.totalScore
+        }
       }
       return resp
     })

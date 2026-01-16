@@ -334,7 +334,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { ratings, performance } = body;
+    const { ratings, performance, achievements } = body;
 
     console.log('🔧 PATCH /api/hr/performance/appraisals/[id]');
     console.log('   Appraisal ID:', id);
@@ -484,6 +484,72 @@ export async function PATCH(
       }
 
       updateData.comments = JSON.stringify(existingComments);
+    }
+
+    // Update achievements with supervisor/reviewer assessments
+    if (achievements) {
+      // Get existing selfAssessments
+      let existingSelfAssessments: any = {};
+      if (appraisal.selfAssessments) {
+        try {
+          if (typeof appraisal.selfAssessments === 'string') {
+            existingSelfAssessments = JSON.parse(appraisal.selfAssessments);
+          } else if (typeof appraisal.selfAssessments === 'object') {
+            existingSelfAssessments = appraisal.selfAssessments;
+          }
+        } catch {
+          existingSelfAssessments = {};
+        }
+      }
+
+      // Merge new achievements with existing ones, preserving employee data
+      if (achievements.keyResponsibilities) {
+        const existingResponsibilities = existingSelfAssessments.keyResponsibilities || [];
+        
+        const mergedResponsibilities = achievements.keyResponsibilities.map((newResp: any) => {
+          const existingResp = existingResponsibilities.find((er: any) => er.id === newResp.id);
+          
+          // Preserve employee's calculated achievement data if not being updated
+          // Only update supervisor/reviewer assessments if provided
+          return {
+            ...(existingResp || {}), // Start with existing data
+            ...newResp, // Override with new data
+            // Preserve employee's original achievement data unless explicitly updating
+            achievementPercentage: newResp.achievementPercentage !== undefined 
+              ? newResp.achievementPercentage 
+              : (existingResp?.achievementPercentage || 0),
+            achievedScore: newResp.achievedScore !== undefined 
+              ? newResp.achievedScore 
+              : (existingResp?.achievedScore || 0),
+            totalScore: newResp.totalScore !== undefined 
+              ? newResp.totalScore 
+              : (existingResp?.totalScore || newResp.weight || 0),
+            // Update supervisor/reviewer assessments if provided
+            supervisorAchievementPercentage: newResp.supervisorAchievementPercentage !== undefined 
+              ? newResp.supervisorAchievementPercentage 
+              : (existingResp?.supervisorAchievementPercentage),
+            supervisorAchievedScore: newResp.supervisorAchievedScore !== undefined 
+              ? newResp.supervisorAchievedScore 
+              : (existingResp?.supervisorAchievedScore),
+            supervisorTotalScore: newResp.supervisorTotalScore !== undefined 
+              ? newResp.supervisorTotalScore 
+              : (existingResp?.supervisorTotalScore || newResp.totalScore || newResp.weight || 0),
+            reviewerAchievementPercentage: newResp.reviewerAchievementPercentage !== undefined 
+              ? newResp.reviewerAchievementPercentage 
+              : (existingResp?.reviewerAchievementPercentage),
+            reviewerAchievedScore: newResp.reviewerAchievedScore !== undefined 
+              ? newResp.reviewerAchievedScore 
+              : (existingResp?.reviewerAchievedScore),
+            reviewerTotalScore: newResp.reviewerTotalScore !== undefined 
+              ? newResp.reviewerTotalScore 
+              : (existingResp?.reviewerTotalScore || newResp.totalScore || newResp.weight || 0)
+          };
+        });
+
+        existingSelfAssessments.keyResponsibilities = mergedResponsibilities;
+      }
+
+      updateData.selfAssessments = JSON.stringify(existingSelfAssessments);
     }
 
     // Update the appraisal

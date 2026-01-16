@@ -613,6 +613,10 @@ export default function ViewAppraisalPage() {
     categoryId: string
     supervisorRating: number
     supervisorComment: string
+  }>, responsibilities?: Array<{
+    responsibilityId: string
+    supervisorAchievementPercentage: number
+    supervisorAchievedScore: number
   }>) => {
     if (!formData || !appraisal) return
     
@@ -639,6 +643,26 @@ export default function ViewAppraisalPage() {
         calculatedOverallRating = totalWeight > 0 ? parseFloat((weightedScore / totalWeight).toFixed(2)) : 0
       }
       
+      // Update achievements with supervisor responsibility assessments
+      let updatedAchievements = formData.achievements
+      if (responsibilities && responsibilities.length > 0) {
+        updatedAchievements = {
+          ...formData.achievements,
+          keyResponsibilities: formData.achievements.keyResponsibilities.map(resp => {
+            const respData = responsibilities.find(r => r.responsibilityId === resp.id)
+            if (respData) {
+              return {
+                ...resp,
+                supervisorAchievementPercentage: respData.supervisorAchievementPercentage,
+                supervisorAchievedScore: respData.supervisorAchievedScore,
+                supervisorTotalScore: resp.totalScore || resp.weight
+              }
+            }
+            return resp
+          })
+        }
+      }
+      
       const response = await fetch(`/api/hr/performance/appraisals/${appraisalId}`, {
         method: 'PATCH',
         headers: {
@@ -649,7 +673,8 @@ export default function ViewAppraisalPage() {
             ...formData.performance,
             categories: updatedCategories,
             overallRating: calculatedOverallRating
-          }
+          },
+          achievements: updatedAchievements
         })
       })
       
@@ -666,7 +691,8 @@ export default function ViewAppraisalPage() {
           ...prev.performance,
           categories: updatedCategories,
           overallRating: calculatedOverallRating
-        }
+        },
+        achievements: updatedAchievements
       } : prev)
       
       alert('Supervisor ratings saved successfully')
@@ -684,6 +710,10 @@ export default function ViewAppraisalPage() {
     categoryId: string
     reviewerRating: number
     reviewerComment?: string
+  }>, responsibilities?: Array<{
+    responsibilityId: string
+    reviewerAchievementPercentage: number
+    reviewerAchievedScore: number
   }>) => {
     if (!formData || !appraisal) return
     
@@ -710,6 +740,26 @@ export default function ViewAppraisalPage() {
         calculatedOverallRating = totalWeight > 0 ? parseFloat((weightedScore / totalWeight).toFixed(2)) : 0
       }
       
+      // Update achievements with reviewer responsibility assessments
+      let updatedAchievements = formData.achievements
+      if (responsibilities && responsibilities.length > 0) {
+        updatedAchievements = {
+          ...formData.achievements,
+          keyResponsibilities: formData.achievements.keyResponsibilities.map(resp => {
+            const respData = responsibilities.find(r => r.responsibilityId === resp.id)
+            if (respData) {
+              return {
+                ...resp,
+                reviewerAchievementPercentage: respData.reviewerAchievementPercentage,
+                reviewerAchievedScore: respData.reviewerAchievedScore,
+                reviewerTotalScore: resp.totalScore || resp.weight
+              }
+            }
+            return resp
+          })
+        }
+      }
+      
       const response = await fetch(`/api/hr/performance/appraisals/${appraisalId}`, {
         method: 'PATCH',
         headers: {
@@ -720,7 +770,8 @@ export default function ViewAppraisalPage() {
             ...formData.performance,
             categories: updatedCategories,
             overallRating: calculatedOverallRating // Reviewer's final rating overrides
-          }
+          },
+          achievements: updatedAchievements
         })
       })
       
@@ -738,7 +789,8 @@ export default function ViewAppraisalPage() {
           ...prev.performance,
           categories: updatedCategories,
           overallRating: calculatedOverallRating
-        }
+        },
+        achievements: updatedAchievements
       } : prev)
       
       alert('Final ratings saved successfully')
