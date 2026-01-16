@@ -256,7 +256,7 @@ export function ReviewerComparisonTable({
           </div>
 
           {/* Key Responsibilities Section */}
-          {formData.achievements?.keyResponsibilities && formData.achievements.keyResponsibilities.length > 0 && (
+          {formData.achievements?.keyResponsibilities && formData.achievements.keyResponsibilities.length > 0 ? (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Key Responsibility Areas & Achievements</h3>
               <div className="overflow-x-auto">
@@ -440,6 +440,10 @@ export function ReviewerComparisonTable({
                       )
                     })}
                   </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
 
           {/* Comparison Table */}
           <div className="overflow-x-auto">

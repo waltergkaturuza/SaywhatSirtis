@@ -617,6 +617,10 @@ export default function ViewAppraisalPage() {
     responsibilityId: string
     supervisorAchievementPercentage: number
     supervisorAchievedScore: number
+    supervisorIndicators?: Array<{
+      indicatorId: string
+      actualValue: number
+    }>
   }>) => {
     if (!formData || !appraisal) return
     
@@ -727,6 +731,10 @@ export default function ViewAppraisalPage() {
     responsibilityId: string
     reviewerAchievementPercentage: number
     reviewerAchievedScore: number
+    reviewerIndicators?: Array<{
+      indicatorId: string
+      actualValue: number
+    }>
   }>) => {
     if (!formData || !appraisal) return
     
