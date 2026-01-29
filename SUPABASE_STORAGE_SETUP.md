@@ -325,9 +325,9 @@ async function migrateDocument(documentId: string) {
 2. ✅ Configure RLS policies
 3. ✅ Set environment variables
 4. ✅ Test file upload/download
-5. ⏳ Migrate existing files (optional)
-6. ⏳ Set up monitoring/alerts
-7. ⏳ Configure backup strategy
+5. ✅ Migrate existing files (optional) - See `scripts/migrate-files-to-supabase.ts`
+6. ✅ Set up monitoring/alerts - See `/api/admin/storage/monitor`
+7. ✅ Configure backup strategy - See `/api/admin/storage/backup` and `STORAGE_MONITORING_AND_BACKUP.md`
 
 ## Support
 
