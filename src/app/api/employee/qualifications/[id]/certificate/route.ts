@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { uploadToSupabaseStorage, ensureBucketExists } from '@/lib/storage/supabase-storage';
 
 // POST: Upload qualification certificate
 export async function POST(
@@ -81,23 +82,71 @@ export async function POST(
     const fileExtension = file.name.split('.').pop();
     const fileName = `certificate-${qualification.id}-${randomUUID()}.${fileExtension}`;
     
-    // Create upload directory if it doesn't exist
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'certificates');
-    try {
-      await mkdir(uploadDir, { recursive: true });
-    } catch (error) {
-      console.log('Upload directory already exists or created');
-    }
-
-    // Save file
-    const filePath = join(uploadDir, fileName);
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // Determine storage strategy: Use Supabase Storage if configured, otherwise fallback to filesystem
+    const useSupabaseStorage = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+    let certificateUrl: string;
+    let storageProvider: 'supabase' | 'filesystem' = 'filesystem';
     
-    await writeFile(filePath, buffer);
-
-    // Update qualification with certificate URL
-    const certificateUrl = `/uploads/certificates/${fileName}`;
+    if (useSupabaseStorage) {
+      try {
+        // Use 'documents' bucket with certificates subfolder for organization
+        const bucket = 'documents';
+        const storagePath = `certificates/${employee.id}/${qualification.id}/${fileName}`;
+        
+        // Ensure bucket exists
+        await ensureBucketExists(bucket);
+        
+        // Upload to Supabase Storage
+        const uploadResult = await uploadToSupabaseStorage({
+          bucket,
+          path: storagePath,
+          file,
+          contentType: file.type,
+          upsert: false
+        });
+        
+        if (!uploadResult.success) {
+          throw new Error(`Supabase upload failed: ${uploadResult.error}`);
+        }
+        
+        // Store signed URL or public URL
+        certificateUrl = uploadResult.signedUrl || uploadResult.publicUrl || uploadResult.url || '';
+        storageProvider = 'supabase';
+        
+        console.log(`✅ Certificate uploaded to Supabase Storage: ${storagePath}`);
+      } catch (supabaseError) {
+        console.error('❌ Supabase Storage upload failed, falling back to filesystem:', supabaseError);
+        // Fallback to filesystem
+        const uploadDir = join(process.cwd(), 'public', 'uploads', 'certificates');
+        try {
+          await mkdir(uploadDir, { recursive: true });
+        } catch (error) {
+          console.log('Upload directory already exists or created');
+        }
+        
+        const filePath = join(uploadDir, fileName);
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        await writeFile(filePath, buffer);
+        
+        certificateUrl = `/uploads/certificates/${fileName}`;
+      }
+    } else {
+      // Filesystem fallback for local development
+      const uploadDir = join(process.cwd(), 'public', 'uploads', 'certificates');
+      try {
+        await mkdir(uploadDir, { recursive: true });
+      } catch (error) {
+        console.log('Upload directory already exists or created');
+      }
+      
+      const filePath = join(uploadDir, fileName);
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      await writeFile(filePath, buffer);
+      
+      certificateUrl = `/uploads/certificates/${fileName}`;
+    }
     
     const updatedQualification = await prisma.qualifications.update({
       where: { id: qualification.id },

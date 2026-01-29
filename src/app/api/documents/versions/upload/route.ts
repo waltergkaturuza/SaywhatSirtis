@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { uploadToSupabaseStorage, ensureBucketExists, getSignedUrl } from '@/lib/storage/supabase-storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,19 +42,72 @@ export async function POST(request: NextRequest) {
     const randomString = Math.random().toString(36).substring(2, 11);
     const newFilename = `${timestamp}${randomString}_${file.name}`;
     
-    // Use same folder structure as parent
-    const folderPath = path.dirname(currentDocument.path);
-    const newFilePath = `${folderPath}/${newFilename}`;
-    const fullPath = path.join(process.cwd(), 'public', newFilePath);
-
-    // Save file to disk
-    try {
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      await fs.writeFile(fullPath, buffer);
-    } catch (fileError) {
-      console.error('File save error:', fileError);
-      return NextResponse.json({ error: 'Failed to save file' }, { status: 500 });
+    // Determine storage strategy: Use Supabase Storage if configured, otherwise fallback to filesystem
+    const useSupabaseStorage = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+    let newFilePath: string;
+    let storageUrl: string | null = null;
+    let storageProvider: 'supabase' | 'filesystem' = 'filesystem';
+    let storagePath: string = '';
+    
+    // Check if parent document uses Supabase Storage
+    const parentCustomMetadata = currentDocument.customMetadata as any;
+    const parentUsesSupabase = parentCustomMetadata?.storageProvider === 'supabase';
+    const parentStorageBucket = parentCustomMetadata?.storageBucket || 'documents';
+    const parentStoragePath = parentCustomMetadata?.storagePath || currentDocument.path;
+    
+    if (useSupabaseStorage && parentUsesSupabase) {
+      // Use same bucket and folder structure as parent
+      try {
+        const bucket = parentStorageBucket;
+        const parentFolder = path.dirname(parentStoragePath);
+        storagePath = `${parentFolder}/${newFilename}`;
+        
+        // Ensure bucket exists
+        await ensureBucketExists(bucket);
+        
+        // Upload to Supabase Storage
+        const uploadResult = await uploadToSupabaseStorage({
+          bucket,
+          path: storagePath,
+          file,
+          contentType: file.type,
+          upsert: false
+        });
+        
+        if (!uploadResult.success) {
+          throw new Error(`Supabase upload failed: ${uploadResult.error}`);
+        }
+        
+        storageUrl = uploadResult.signedUrl || uploadResult.publicUrl || uploadResult.url || null;
+        storageProvider = 'supabase';
+        newFilePath = storagePath; // Use storage path for consistency
+        
+        console.log(`✅ Document version uploaded to Supabase Storage: ${storagePath}`);
+      } catch (supabaseError) {
+        console.error('❌ Supabase Storage upload failed, falling back to filesystem:', supabaseError);
+        // Fallback to filesystem
+        const folderPath = path.dirname(currentDocument.path);
+        newFilePath = `${folderPath}/${newFilename}`;
+        const fullPath = path.join(process.cwd(), 'public', newFilePath);
+        
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        await fs.writeFile(fullPath, buffer);
+      }
+    } else {
+      // Filesystem fallback
+      const folderPath = path.dirname(currentDocument.path);
+      newFilePath = `${folderPath}/${newFilename}`;
+      const fullPath = path.join(process.cwd(), 'public', newFilePath);
+      
+      try {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        await fs.writeFile(fullPath, buffer);
+      } catch (fileError) {
+        console.error('File save error:', fileError);
+        return NextResponse.json({ error: 'Failed to save file' }, { status: 500 });
+      }
     }
 
     // Mark current version as not latest
@@ -62,6 +116,17 @@ export async function POST(request: NextRequest) {
       data: { isLatestVersion: false }
     });
 
+    // Prepare custom metadata for storage tracking
+    const customMetadata: any = {
+      ...(currentDocument.customMetadata as any || {}),
+      storageProvider: storageProvider,
+      storageBucket: storageProvider === 'supabase' ? (parentCustomMetadata?.storageBucket || 'documents') : null,
+      storagePath: storageProvider === 'supabase' ? storagePath : null,
+      version: newVersionNum,
+      parentDocumentId: currentDocument.parentDocumentId || documentId,
+      uploadedAt: new Date().toISOString()
+    };
+    
     // Create new version
     const newVersion = await prisma.documents.create({
       data: {
@@ -69,7 +134,7 @@ export async function POST(request: NextRequest) {
         filename: newFilename,
         originalName: file.name,
         path: newFilePath,
-        url: null,
+        url: storageUrl || null,
         mimeType: file.type,
         size: file.size,
         category: currentDocument.category,
@@ -88,6 +153,7 @@ export async function POST(request: NextRequest) {
         uploadedBy: session.user.id || session.user.email,
         isPersonalRepo: false,
         approvalStatus: 'APPROVED',
+        customMetadata: customMetadata,
         createdAt: new Date(),
         updatedAt: new Date()
       }

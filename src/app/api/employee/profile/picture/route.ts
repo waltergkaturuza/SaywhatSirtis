@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { uploadToSupabaseStorage, ensureBucketExists } from '@/lib/storage/supabase-storage';
 
 // POST: Upload profile picture
 export async function POST(request: NextRequest) {
@@ -62,23 +63,71 @@ export async function POST(request: NextRequest) {
     const fileExtension = file.name.split('.').pop();
     const fileName = `profile-${employee.id}-${randomUUID()}.${fileExtension}`;
     
-    // Create upload directory if it doesn't exist
-    const uploadDir = join(process.cwd(), 'public', 'uploads', 'profiles');
-    try {
-      await mkdir(uploadDir, { recursive: true });
-    } catch (error) {
-      console.log('Upload directory already exists or created');
-    }
-
-    // Save file
-    const filePath = join(uploadDir, fileName);
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // Determine storage strategy: Use Supabase Storage if configured, otherwise fallback to filesystem
+    const useSupabaseStorage = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+    let profilePictureUrl: string;
+    let storageProvider: 'supabase' | 'filesystem' = 'filesystem';
     
-    await writeFile(filePath, buffer);
-
-    // Update user profile with new picture URL
-    const profilePictureUrl = `/uploads/profiles/${fileName}`;
+    if (useSupabaseStorage) {
+      try {
+        // Use 'documents' bucket with profiles subfolder for organization
+        const bucket = 'documents';
+        const storagePath = `profiles/${employee.id}/${fileName}`;
+        
+        // Ensure bucket exists
+        await ensureBucketExists(bucket);
+        
+        // Upload to Supabase Storage
+        const uploadResult = await uploadToSupabaseStorage({
+          bucket,
+          path: storagePath,
+          file,
+          contentType: file.type,
+          upsert: true // Allow overwriting existing profile pictures
+        });
+        
+        if (!uploadResult.success) {
+          throw new Error(`Supabase upload failed: ${uploadResult.error}`);
+        }
+        
+        // Store signed URL or public URL
+        profilePictureUrl = uploadResult.signedUrl || uploadResult.publicUrl || uploadResult.url || '';
+        storageProvider = 'supabase';
+        
+        console.log(`✅ Profile picture uploaded to Supabase Storage: ${storagePath}`);
+      } catch (supabaseError) {
+        console.error('❌ Supabase Storage upload failed, falling back to filesystem:', supabaseError);
+        // Fallback to filesystem
+        const uploadDir = join(process.cwd(), 'public', 'uploads', 'profiles');
+        try {
+          await mkdir(uploadDir, { recursive: true });
+        } catch (error) {
+          console.log('Upload directory already exists or created');
+        }
+        
+        const filePath = join(uploadDir, fileName);
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        await writeFile(filePath, buffer);
+        
+        profilePictureUrl = `/uploads/profiles/${fileName}`;
+      }
+    } else {
+      // Filesystem fallback for local development
+      const uploadDir = join(process.cwd(), 'public', 'uploads', 'profiles');
+      try {
+        await mkdir(uploadDir, { recursive: true });
+      } catch (error) {
+        console.log('Upload directory already exists or created');
+      }
+      
+      const filePath = join(uploadDir, fileName);
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      await writeFile(filePath, buffer);
+      
+      profilePictureUrl = `/uploads/profiles/${fileName}`;
+    }
     
     const updatedUser = await prisma.users.update({
       where: { email: session.user.email },
