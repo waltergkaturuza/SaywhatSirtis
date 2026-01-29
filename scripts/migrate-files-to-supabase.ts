@@ -24,22 +24,34 @@
  * The script will automatically load environment variables from .env.local or .env files.
  */
 
-import { config } from 'dotenv'
-import { resolve } from 'path'
+// Try to load dotenv if available (optional dependency)
+let dotenvLoaded = false
+try {
+  const { config } = require('dotenv')
+  const { resolve } = require('path')
+  const fs = require('fs')
+  
+  // Load environment variables from .env files
+  // Try .env.local first, then .env
+  const envLocalPath = resolve(process.cwd(), '.env.local')
+  const envPath = resolve(process.cwd(), '.env')
+  
+  if (fs.existsSync(envLocalPath)) {
+    config({ path: envLocalPath })
+    console.log('📄 Loaded environment from .env.local')
+    dotenvLoaded = true
+  } else if (fs.existsSync(envPath)) {
+    config({ path: envPath })
+    console.log('📄 Loaded environment from .env')
+    dotenvLoaded = true
+  }
+} catch (error) {
+  // dotenv not installed, that's okay - will use system env vars
+}
 
-// Load environment variables from .env files
-// Try .env.local first, then .env
-const envLocalPath = resolve(process.cwd(), '.env.local')
-const envPath = resolve(process.cwd(), '.env')
-
-if (require('fs').existsSync(envLocalPath)) {
-  config({ path: envLocalPath })
-  console.log('📄 Loaded environment from .env.local')
-} else if (require('fs').existsSync(envPath)) {
-  config({ path: envPath })
-  console.log('📄 Loaded environment from .env')
-} else {
-  console.log('⚠️  No .env file found, using system environment variables')
+if (!dotenvLoaded) {
+  console.log('📄 Using system environment variables (dotenv not installed or no .env file found)')
+  console.log('💡 Tip: Create .env.local with SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY for easier setup')
 }
 
 import { PrismaClient } from '@prisma/client'
