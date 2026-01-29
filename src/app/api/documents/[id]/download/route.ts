@@ -5,6 +5,7 @@ import path from 'path';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { randomUUID } from 'crypto';
+import { getSignedUrl } from '@/lib/storage/supabase-storage';
 
 export async function GET(
   request: NextRequest,
@@ -36,7 +37,8 @@ export async function GET(
         path: true,
         url: true,
         classification: true,
-        isPublic: true
+        isPublic: true,
+        customMetadata: true
       }
     });
 
@@ -89,24 +91,31 @@ export async function GET(
       }
     };
 
-    if (document.path) {
-      const normalizedPath = document.path.startsWith('uploads')
-        ? document.path
-        : `uploads/${document.path.replace(/^\/+/, '')}`;
-      const filePath = path.join(process.cwd(), 'public', normalizedPath);
+    // Check storage provider from customMetadata
+    const customMetadata = document.customMetadata as any;
+    const storageProvider = customMetadata?.storageProvider || 'filesystem';
+    const storageBucket = customMetadata?.storageBucket || 'documents';
 
+    // If stored in Supabase Storage, get signed URL
+    if (storageProvider === 'supabase' && document.path) {
       try {
-        await fs.access(filePath);
-        const fileBuffer = await fs.readFile(filePath);
-        return respondWithFile(new Uint8Array(fileBuffer));
-      } catch (error) {
-        console.warn('File not found on disk, attempting remote fetch if available:', {
-          filePath,
-          error: String(error)
-        });
+        const signedUrlResult = await getSignedUrl(storageBucket, document.path, 3600); // 1 hour expiry
+        
+        if (signedUrlResult.success && signedUrlResult.url) {
+          // Redirect to signed URL
+          const redirectResponse = NextResponse.redirect(signedUrlResult.url, 302);
+          redirectResponse.headers.set('Cache-Control', 'no-cache');
+          return redirectResponse;
+        } else {
+          console.warn('Failed to generate Supabase signed URL, falling back to direct URL:', signedUrlResult.error);
+        }
+      } catch (supabaseError) {
+        console.error('Supabase Storage error:', supabaseError);
+        // Fall through to other methods
       }
     }
 
+    // If document has a direct URL (Supabase public URL or other), use it
     if (document.url) {
       const remoteResponse = await fetchRemoteFile(document.url);
       if (remoteResponse) {
@@ -119,6 +128,25 @@ export async function GET(
         return redirectResponse;
       } catch (redirectError) {
         console.error('Remote document redirect failed:', redirectError);
+      }
+    }
+
+    // Fallback to filesystem (for legacy files or local development)
+    if (document.path && storageProvider === 'filesystem') {
+      const normalizedPath = document.path.startsWith('uploads')
+        ? document.path
+        : `uploads/${document.path.replace(/^\/+/, '')}`;
+      const filePath = path.join(process.cwd(), 'public', normalizedPath);
+
+      try {
+        await fs.access(filePath);
+        const fileBuffer = await fs.readFile(filePath);
+        return respondWithFile(new Uint8Array(fileBuffer));
+      } catch (error) {
+        console.warn('File not found on disk:', {
+          filePath,
+          error: String(error)
+        });
       }
     }
 

@@ -160,13 +160,66 @@ export const buildFolderPath = ({
   subunit,
   categoryDisplay,
   fallbackDepartment = 'General',
+  projectId,
+  projectName,
+  projectCode,
+  year,
+  date,
+  version,
 }: {
   department?: string | null;
   subunit?: string | null;
   categoryDisplay?: string | null;
   fallbackDepartment?: string;
-}) => {
+  projectId?: string | null;
+  projectName?: string | null;
+  projectCode?: string | null;
+  year?: number | string | null;
+  date?: string | Date | null;
+  version?: string | null;
+} = {}) => {
   const segments: string[] = [];
+  
+  // For Programs/Projects: Use year/project/date/version structure
+  if (projectId || projectName || projectCode) {
+    // Year: Extract from date or use current year
+    let yearSegment = '';
+    if (year) {
+      yearSegment = String(year);
+    } else if (date) {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      yearSegment = dateObj.getFullYear().toString();
+    } else {
+      yearSegment = new Date().getFullYear().toString();
+    }
+    segments.push(yearSegment);
+
+    // Project: Use project code, name, or ID
+    const projectSegment = sanitizeFolderSegment(projectCode || projectName || projectId);
+    if (projectSegment) {
+      segments.push(projectSegment);
+    }
+
+    // Date: Format as YYYY-MM-DD or use upload date
+    if (date) {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      const dateSegment = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD format
+      segments.push(dateSegment);
+    } else {
+      const today = new Date().toISOString().split('T')[0];
+      segments.push(today);
+    }
+
+    // Version: Add version folder if provided
+    if (version) {
+      const versionSegment = sanitizeFolderSegment(`v${version}`.replace(/^v+/, 'v'));
+      segments.push(versionSegment);
+    }
+
+    return segments.join('/');
+  }
+
+  // Default structure: department/subunit/category
   const departmentSegment = sanitizeFolderSegment(department) || fallbackDepartment;
   segments.push(departmentSegment);
 

@@ -4,6 +4,7 @@ import { join } from 'path'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { uploadToSupabaseStorage, ensureBucketExists } from '@/lib/storage/supabase-storage'
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,24 +73,73 @@ export async function POST(request: NextRequest) {
     const extension = originalName.substring(originalName.lastIndexOf('.'))
     const filename = `${riskId}_${timestamp}${extension}`
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'uploads', 'risk-documents')
-    
+    let storageUrl: string | null = null
+    let storagePath: string = ''
+    let storageProvider: 'supabase' | 'filesystem' = 'supabase'
+
+    // Determine storage strategy: Use Supabase Storage if configured, otherwise fallback to filesystem
+    let useSupabaseStorage = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+
+    if (useSupabaseStorage) {
+      try {
+        const bucket = 'risk-documents'
+        const storageFilePath = `risk-documents/${riskId}/${filename}`
+
+        // Ensure bucket exists
+        await ensureBucketExists(bucket)
+
+        // Upload file to Supabase Storage
+        const uploadResult = await uploadToSupabaseStorage({
+          bucket,
+          path: storageFilePath,
+          file,
+          contentType: file.type,
+          upsert: false
+        })
+
+        if (!uploadResult.success) {
+          console.error('❌ Supabase Storage upload failed:', uploadResult.error)
+          throw new Error(`Supabase upload failed: ${uploadResult.error}`)
+        }
+
+        storageUrl = uploadResult.url || uploadResult.publicUrl || null
+        storagePath = storageFilePath
+        storageProvider = 'supabase'
+
+        console.log(`✅ Risk document uploaded to Supabase Storage: ${storagePath}`)
+      } catch (supabaseError) {
+        console.error('❌ Supabase Storage error, falling back to filesystem:', supabaseError)
+        useSupabaseStorage = false
+      }
+    }
+
+    // Fallback to filesystem storage
+    if (!useSupabaseStorage || !storageUrl) {
+      const uploadsDir = join(process.cwd(), 'uploads', 'risk-documents')
+      storagePath = join('uploads', 'risk-documents', filename)
+      storageProvider = 'filesystem'
+
+      try {
+        // Create uploads directory if it doesn't exist
+        await writeFile(join(uploadsDir, filename), Buffer.from(await file.arrayBuffer()))
+        console.log(`✅ Risk document saved to filesystem: ${storagePath}`)
+      } catch (fileError) {
+        console.error('❌ File save error:', fileError)
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to save file to storage'
+        }, { status: 500 })
+      }
+    }
+
+    // Save document record to database
     try {
-      // Convert file to buffer
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-
-      // Save file to filesystem (in production, you'd upload to cloud storage)
-      await writeFile(join(uploadsDir, filename), buffer)
-      
-      // Save document record to database
       const document = await prisma.risk_documents.create({
         data: {
           id: crypto.randomUUID(),
           filename: filename,
           originalName: originalName,
-          filePath: join('uploads', 'risk-documents', filename),
+          filePath: storagePath,
           fileSize: file.size,
           mimeType: file.type,
           riskId: riskId,
@@ -109,40 +159,18 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        data: document
-      })
-
-    } catch (fileError) {
-      console.error('File operation error:', fileError)
-      // Fallback: save document record without file (for demo purposes)
-      const document = await prisma.risk_documents.create({
         data: {
-          id: crypto.randomUUID(),
-          filename: filename,
-          originalName: originalName,
-          filePath: `/uploads/risk-documents/${filename}`,
-          fileSize: file.size,
-          mimeType: file.type,
-          riskId: riskId,
-          uploadedById: user.id
-        },
-        include: {
-          users: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
+          ...document,
+          storageProvider,
+          storageUrl
         }
       })
-
+    } catch (dbError) {
+      console.error('❌ Database error:', dbError)
       return NextResponse.json({
-        success: true,
-        data: document,
-        message: 'Document record created (file storage unavailable in demo)'
-      })
+        success: false,
+        error: 'Failed to save document record'
+      }, { status: 500 })
     }
 
   } catch (error) {
