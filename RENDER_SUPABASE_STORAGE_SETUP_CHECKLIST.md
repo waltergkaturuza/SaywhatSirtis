@@ -19,42 +19,44 @@
    - `SUPABASE_URL` ✅ Set in `render.yaml`
    - Value: `https://yuwwqupyqpmkbqzvqiee.supabase.co`
 
+### ✅ Already Configured in Render
+
+1. **Supabase Service Role Key** - ✅ SET
+   - `SUPABASE_SERVICE_ROLE_KEY` ✅ Already configured in Render
+   - This enables file uploads/downloads to Supabase Storage
+
+2. **Supabase Anon Key** - ✅ SET
+   - `SUPABASE_ANON_KEY` ✅ Already configured
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` ✅ Also set for client-side
+
+3. **Supabase URL** - ✅ SET
+   - `SUPABASE_URL` ✅ Already configured
+   - `NEXT_PUBLIC_SUPABASE_URL` ✅ Also set for client-side
+
 ### ⚠️ Needs Configuration
 
-1. **Supabase Service Role Key** - ❌ NEEDS TO BE SET IN RENDER DASHBOARD
-   - `SUPABASE_SERVICE_ROLE_KEY` is marked as `sync: false` in `render.yaml`
-   - **Action Required**: Set this manually in Render Dashboard
-
-2. **Supabase Anon Key** - ⚠️ OPTIONAL (for client-side operations)
-   - `SUPABASE_ANON_KEY` is marked as `sync: false` in `render.yaml`
-   - **Action Required**: Set this manually if needed
-
-3. **RLS Policies** - ❌ NEEDS TO BE SET UP IN SUPABASE
+1. **RLS Policies** - ❌ NEEDS TO BE SET UP IN SUPABASE
    - Storage buckets need Row Level Security policies
    - **Action Required**: Run SQL policies in Supabase SQL Editor
+   - **Status**: Without these, file operations will fail with permission errors
 
-4. **Old Documents Migration** - ❌ NOT YET MIGRATED
+2. **Old Documents Migration** - ❌ NOT YET MIGRATED
    - Existing filesystem files need to be migrated
-   - **Action Required**: Run migration script
+   - **Action Required**: Run migration script (optional, can be done gradually)
 
 ---
 
 ## Step-by-Step Setup Instructions
 
-### Step 1: Set Supabase Service Role Key in Render ⚠️ **REQUIRED**
+### Step 1: Verify Environment Variables ✅ **ALREADY DONE**
 
-1. Go to [Render Dashboard](https://dashboard.render.com)
-2. Select your service: `saywhat-sirtis`
-3. Go to **Environment** tab
-4. Find or add: `SUPABASE_SERVICE_ROLE_KEY`
-5. Get the value from [Supabase Dashboard](https://supabase.com/dashboard):
-   - Go to your project: `yuwwqupyqpmkbqzvqiee`
-   - Go to **Settings** → **API**
-   - Copy the **`service_role`** key (⚠️ Keep this secret!)
-6. Paste it into Render Environment Variables
-7. Save
+All required environment variables are already set in Render:
+- ✅ `SUPABASE_URL` - Set
+- ✅ `SUPABASE_SERVICE_ROLE_KEY` - Set
+- ✅ `SUPABASE_ANON_KEY` - Set
+- ✅ `DATABASE_URL` - Set
 
-**Why this is needed**: The service role key allows your Render app to upload/download files to Supabase Storage buckets.
+**Status**: ✅ All environment variables are configured correctly!
 
 ### Step 2: Set Up RLS Policies in Supabase ⚠️ **REQUIRED**
 
@@ -91,7 +93,20 @@ USING (bucket_id = 'risk-documents');
 
 **Why this is needed**: RLS policies control who can upload/read files. Without these, file operations will fail.
 
-### Step 3: Migrate Old Documents ⏳ **OPTIONAL BUT RECOMMENDED**
+### Step 3: Test File Upload/Download ✅ **VERIFY IT WORKS**
+
+Before migrating old documents, test that new uploads work:
+
+1. Go to your app: https://sirtis-saywhat.onrender.com
+2. Upload a test document
+3. Check Supabase Dashboard → Storage → `documents` bucket
+4. Verify the file appears ✅
+5. Download the document
+6. Verify it downloads correctly ✅
+
+If this works, your setup is complete! If you get permission errors, complete Step 2 (RLS Policies) first.
+
+### Step 4: Migrate Old Documents ⏳ **OPTIONAL BUT RECOMMENDED**
 
 Old documents stored on filesystem need to be migrated to Supabase Storage.
 
@@ -115,7 +130,7 @@ npx tsx scripts/migrate-files-to-supabase.ts --limit=100 --batch-size=10
 
 **Note**: Since Render doesn't have persistent filesystem, filesystem-stored files will be lost on container restart. Migration is recommended.
 
-### Step 4: Increase File Size Limits (Optional)
+### Step 5: Increase File Size Limits (Optional)
 
 If you need to upload files larger than 50MB:
 
@@ -131,9 +146,11 @@ If you need to upload files larger than 50MB:
 
 After completing the setup, verify everything works:
 
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` is set in Render Dashboard
-- [ ] RLS policies are created in Supabase SQL Editor
-- [ ] Test upload: Upload a new document via the app
+- [x] `SUPABASE_SERVICE_ROLE_KEY` is set in Render Dashboard ✅ **DONE**
+- [x] `SUPABASE_URL` is set in Render Dashboard ✅ **DONE**
+- [x] `SUPABASE_ANON_KEY` is set in Render Dashboard ✅ **DONE**
+- [ ] RLS policies are created in Supabase SQL Editor ⚠️ **NEEDS TO BE DONE**
+- [ ] Test upload: Upload a new document via the app → **TEST THIS**
 - [ ] Check Supabase Dashboard → Storage → `documents` bucket → File appears ✅
 - [ ] Test download: Download the document → Works ✅
 - [ ] Check monitoring: Visit `/api/admin/storage/monitor` → Shows storage stats ✅
@@ -160,20 +177,23 @@ After completing the setup, verify everything works:
 
 ### What You Need to Do:
 
-1. **Set `SUPABASE_SERVICE_ROLE_KEY` in Render Dashboard** ⚠️ **REQUIRED**
-   - Without this, file uploads/downloads won't work
-
-2. **Set up RLS Policies in Supabase** ⚠️ **REQUIRED**
+1. **Set up RLS Policies in Supabase** ⚠️ **REQUIRED** (Only missing piece!)
    - Without these, file operations will fail with permission errors
+   - See Step 2 in the instructions above
+
+2. **Test File Upload/Download** ✅ **VERIFY**
+   - Upload a test document to confirm everything works
+   - If you get permission errors, complete RLS policies first
 
 3. **Migrate Old Documents** ⏳ **OPTIONAL**
    - Old files will work until container restarts
-   - Migration script is ready to use
+   - Migration script is ready to use when needed
 
 ### What's Already Done:
 
 - ✅ Buckets created in Supabase
 - ✅ Database connected to Render
+- ✅ All environment variables set in Render (including `SUPABASE_SERVICE_ROLE_KEY`)
 - ✅ Code deployed and live
 - ✅ New uploads go to Supabase Storage automatically
 
@@ -181,10 +201,12 @@ After completing the setup, verify everything works:
 
 ## Quick Reference
 
-**Render Environment Variables Needed**:
+**Render Environment Variables Status**:
 - `SUPABASE_URL` ✅ Already set
-- `SUPABASE_SERVICE_ROLE_KEY` ❌ **NEEDS TO BE SET**
-- `SUPABASE_ANON_KEY` ⚠️ Optional
+- `SUPABASE_SERVICE_ROLE_KEY` ✅ **ALREADY SET** (Great!)
+- `SUPABASE_ANON_KEY` ✅ Already set
+- `NEXT_PUBLIC_SUPABASE_URL` ✅ Already set
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` ✅ Already set
 
 **Supabase Configuration Needed**:
 - RLS Policies ❌ **NEEDS TO BE SET**
