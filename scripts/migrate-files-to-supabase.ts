@@ -15,7 +15,32 @@
  *   --batch-size=N     Process N documents at a time (default: 10)
  *   --skip-existing    Skip documents already in Supabase Storage
  *   --project-id=ID    Migrate only documents for a specific project
+ * 
+ * Environment Variables:
+ *   SUPABASE_URL              - Supabase project URL (required)
+ *   SUPABASE_SERVICE_ROLE_KEY - Supabase service role key (required)
+ *   DATABASE_URL              - Database connection string (required)
+ * 
+ * The script will automatically load environment variables from .env.local or .env files.
  */
+
+import { config } from 'dotenv'
+import { resolve } from 'path'
+
+// Load environment variables from .env files
+// Try .env.local first, then .env
+const envLocalPath = resolve(process.cwd(), '.env.local')
+const envPath = resolve(process.cwd(), '.env')
+
+if (require('fs').existsSync(envLocalPath)) {
+  config({ path: envLocalPath })
+  console.log('📄 Loaded environment from .env.local')
+} else if (require('fs').existsSync(envPath)) {
+  config({ path: envPath })
+  console.log('📄 Loaded environment from .env')
+} else {
+  console.log('⚠️  No .env file found, using system environment variables')
+}
 
 import { PrismaClient } from '@prisma/client'
 import { uploadToSupabaseStorage, ensureBucketExists } from '../src/lib/storage/supabase-storage'
@@ -257,8 +282,29 @@ async function main() {
   // Check Supabase configuration
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.error('❌ Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set')
+    console.error('\n💡 To fix this:')
+    console.error('   1. Create a .env.local file in the project root')
+    console.error('   2. Add these variables:')
+    console.error('      SUPABASE_URL=https://yuwwqupyqpmkbqzvqiee.supabase.co')
+    console.error('      SUPABASE_SERVICE_ROLE_KEY=your-service-role-key')
+    console.error('      DATABASE_URL=your-database-url')
+    console.error('\n   Or set them as environment variables before running the script.')
+    console.error('\n   Get SUPABASE_SERVICE_ROLE_KEY from:')
+    console.error('   https://supabase.com/dashboard → Your Project → Settings → API → service_role key')
     process.exit(1)
   }
+
+  // Check database configuration
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ Error: DATABASE_URL must be set')
+    console.error('\n💡 Add DATABASE_URL to your .env.local file')
+    process.exit(1)
+  }
+
+  console.log('✅ Environment variables loaded')
+  console.log(`   SUPABASE_URL: ${process.env.SUPABASE_URL?.substring(0, 30)}...`)
+  console.log(`   DATABASE_URL: ${process.env.DATABASE_URL?.substring(0, 30)}...`)
+  console.log('')
 
   try {
     const stats = await migrateDocuments(options)
