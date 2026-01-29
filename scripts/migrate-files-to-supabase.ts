@@ -90,12 +90,12 @@ async function checkFileExists(filePath: string): Promise<boolean> {
 async function migrateDocument(
   document: any,
   options: MigrationOptions
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; skipped?: boolean }> {
   const metadata = document.customMetadata as any || {}
   
   // Skip if already migrated (unless --skip-existing is false)
   if (options.skipExisting && metadata.storageProvider === 'supabase') {
-    return { success: true } // Already migrated
+    return { success: true, skipped: true } // Already migrated
   }
 
   // Skip if no path
@@ -116,6 +116,11 @@ async function migrateDocument(
   // Check if file exists
   const fileExists = await checkFileExists(filePath)
   if (!fileExists) {
+    // Check if file might already be in Supabase Storage (has URL)
+    if (document.url && document.url.includes('supabase')) {
+      console.log(`ℹ️  File not found locally but has Supabase URL: ${document.originalName}`)
+      return { success: true, skipped: true, error: 'File already in Supabase Storage (no local copy)' }
+    }
     return { success: false, error: `File not found: ${filePath}` }
   }
 
@@ -241,8 +246,11 @@ async function migrateDocuments(options: MigrationOptions): Promise<MigrationSta
         const result = await migrateDocument(document, options)
 
         if (result.success) {
-          if (options.dryRun || (document.customMetadata as any)?.storageProvider === 'supabase') {
+          if (result.skipped || options.dryRun || (document.customMetadata as any)?.storageProvider === 'supabase') {
             stats.skipped++
+            if (result.error && result.error.includes('already in Supabase')) {
+              console.log(`⏭️  Skipped (already in Supabase): ${document.originalName}`)
+            }
           } else {
             stats.migrated++
           }
