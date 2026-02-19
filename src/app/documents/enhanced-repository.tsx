@@ -351,9 +351,12 @@ interface Document {
   uploadedByEmail?: string | null;
   createdAt?: string;
   uploadedBy: string;
+  uploadedById?: string | null;
   department?: string;
   subunit?: string | null;
   folderPath?: string | null;
+  projectId?: string | null;
+  projectName?: string | null;
   modifiedAt: string;
   modifiedBy: string;
   url?: string;
@@ -502,6 +505,18 @@ export default function DocumentRepositoryPage() {
   const [deletedDocs, setDeletedDocs] = useState<Document[]>([]);
   const [loadingTrash, setLoadingTrash] = useState(false);
   const hasReconciledRef = useRef(false);
+  // Advanced search filters
+  const [searchFilterCategory, setSearchFilterCategory] = useState('');
+  const [searchFilterDepartment, setSearchFilterDepartment] = useState('');
+  const [searchFilterFileType, setSearchFilterFileType] = useState('all');
+  const [searchFilterTimeRange, setSearchFilterTimeRange] = useState('all');
+  const [searchFilterDateFrom, setSearchFilterDateFrom] = useState('');
+  const [searchFilterDateTo, setSearchFilterDateTo] = useState('');
+  const [searchFilterMonth, setSearchFilterMonth] = useState('');
+  const [searchFilterUploadedBy, setSearchFilterUploadedBy] = useState('');
+  const [searchFilterProject, setSearchFilterProject] = useState('');
+  const [searchFilterClassification, setSearchFilterClassification] = useState('');
+  const [projectsList, setProjectsList] = useState<{ id: string; name: string }[]>([]);
   const normalizedRoles = [
     ...(Array.isArray(session?.user?.roles) ? session?.user?.roles : []),
   ]
@@ -761,13 +776,16 @@ export default function DocumentRepositoryPage() {
   };
 
   // Load documents and statistics from API
-  const loadDocuments = async () => {
+  const loadDocuments = async (searchParams?: Record<string, string>) => {
     try {
       setLoading(true);
       setError('');
-      
+      const url = new URL('/api/documents', window.location.origin);
+      if (searchParams) {
+        Object.entries(searchParams).forEach(([k, v]) => { if (v) url.searchParams.set(k, v); });
+      }
       const [docsResponse, favoritesResponse] = await Promise.all([
-        fetch('/api/documents'),
+        fetch(url.toString()),
         session?.user ? fetch('/api/documents/favorites') : Promise.resolve(null)
       ]);
       
@@ -1216,13 +1234,78 @@ export default function DocumentRepositoryPage() {
     if (!rawDocuments || rawDocuments.length === 0) {
       setDocuments([]);
       setFileTypes([]);
+      setProjectsList([]);
       return;
     }
     
     const normalized = normalizeDocumentRecords(rawDocuments, departmentLookup);
     setDocuments(normalized);
     setFileTypes(calculateFileTypeStats(normalized));
+    const projectMap = new Map<string, string>();
+    rawDocuments.forEach((d: any) => {
+      const pid = d.projectId || d.customMetadata?.projectId;
+      const pname = d.projectName || d.customMetadata?.projectName;
+      if (pid || pname) projectMap.set(pid || pname || '', pname || pid || 'Unknown Project');
+    });
+    setProjectsList([...projectMap.entries()].filter(([id]) => id).map(([id, name]) => ({ id, name })));
   }, [rawDocuments, departmentLookup]);
+
+  useEffect(() => {
+    if (activeTab !== 'search') return;
+    fetch('/api/programs/projects')
+      .then(r => r.json())
+      .then(data => {
+        const list = (data?.data || data || [])
+          .filter((p: any) => p?.id)
+          .map((p: any) => ({ id: p.id, name: p.name || p.code || p.id }));
+        if (list.length > 0) setProjectsList(prev => {
+          const merged = new Map(prev.map(p => [p.id, p]));
+          list.forEach((p: any) => merged.set(p.id, p));
+          return Array.from(merged.values());
+        });
+      })
+      .catch(() => {});
+  }, [activeTab]);
+
+  const runSearch = () => {
+    const params: Record<string, string> = {};
+    if (searchQuery) params.search = searchQuery;
+    if (searchFilterDepartment) params.department = searchFilterDepartment;
+    if (searchFilterProject) params.projectId = searchFilterProject;
+    if (searchFilterClassification) params.classification = searchFilterClassification;
+    if (searchFilterUploadedBy) params.uploadedBy = searchFilterUploadedBy;
+    if (searchFilterDateFrom) params.dateFrom = searchFilterDateFrom;
+    if (searchFilterDateTo) params.dateTo = searchFilterDateTo;
+    if (searchFilterTimeRange && searchFilterTimeRange !== 'all') {
+      const now = new Date();
+      const d = new Date(now);
+      if (searchFilterTimeRange === '7') d.setDate(d.getDate() - 7);
+      else if (searchFilterTimeRange === '30') d.setDate(d.getDate() - 30);
+      else if (searchFilterTimeRange === '90') d.setDate(d.getDate() - 90);
+      else if (searchFilterTimeRange === '180') d.setDate(d.getDate() - 180);
+      else if (searchFilterTimeRange === '365') d.setDate(d.getDate() - 365);
+      params.dateFrom = d.toISOString().split('T')[0];
+      params.dateTo = now.toISOString().split('T')[0];
+    }
+    if (searchFilterMonth) params.categoryDisplay = `Monthly Reports/${searchFilterMonth}`;
+    else if (searchFilterCategory) params.categoryDisplay = searchFilterCategory;
+    loadDocuments(Object.keys(params).length ? params : undefined);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchFilterCategory('');
+    setSearchFilterDepartment('');
+    setSearchFilterFileType('all');
+    setSearchFilterTimeRange('all');
+    setSearchFilterDateFrom('');
+    setSearchFilterDateTo('');
+    setSearchFilterMonth('');
+    setSearchFilterUploadedBy('');
+    setSearchFilterProject('');
+    setSearchFilterClassification('');
+    loadDocuments();
+  };
 
   useEffect(() => {
     if (!rawPersonalDocuments || rawPersonalDocuments.length === 0) {
@@ -1520,7 +1603,7 @@ export default function DocumentRepositoryPage() {
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <p className="text-sm text-red-600">{error}</p>
           <button 
-            onClick={loadDocuments}
+            onClick={() => loadDocuments()}
             className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
           >
             Try again
@@ -2114,6 +2197,13 @@ export default function DocumentRepositoryPage() {
   );
 
   const renderSearch = () => {
+    const uploaderMap = new Map<string, string>();
+    documents.forEach(d => {
+      if (d.uploadedBy && (d as any).uploadedById) uploaderMap.set(d.uploadedBy, (d as any).uploadedById);
+    });
+    const uniqueUploaders = Array.from(new Set(documents.map(d => d.uploadedBy).filter(Boolean))).sort();
+    const uploadersWithIds = uniqueUploaders.filter(name => uploaderMap.has(name));
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const filteredResults = documents.filter(doc => {
       const queryLower = searchQuery.toLowerCase();
       const matchesQuery = !searchQuery || 
@@ -2121,13 +2211,23 @@ export default function DocumentRepositoryPage() {
         doc.fileName?.toLowerCase().includes(queryLower) ||
         doc.description?.toLowerCase().includes(queryLower) ||
         doc.department?.toLowerCase().includes(queryLower) ||
-        doc.category?.toLowerCase().includes(queryLower);
-      return matchesQuery;
+        (doc.categoryDisplay || doc.category || '').toLowerCase().includes(queryLower);
+      const matchesFileType = searchFilterFileType === 'all' || 
+        (searchFilterFileType === 'documents' && ['pdf','doc','docx','txt','rtf','odt'].includes((doc.type||'').toLowerCase())) ||
+        (searchFilterFileType === 'spreadsheets' && ['xls','xlsx','csv','ods'].includes((doc.type||'').toLowerCase())) ||
+        (searchFilterFileType === 'presentations' && ['ppt','pptx','odp'].includes((doc.type||'').toLowerCase())) ||
+        (searchFilterFileType === 'images' && ['jpg','jpeg','png','gif','bmp','tiff','svg','webp'].includes((doc.type||'').toLowerCase())) ||
+        (searchFilterFileType === 'videos' && ['mp4','avi','mov','wmv','mkv'].includes((doc.type||'').toLowerCase()));
+      const uploadDate = doc.uploadDate || doc.createdAt;
+      const docDate = uploadDate ? new Date(uploadDate) : null;
+      const matchesDateFrom = !searchFilterDateFrom || (docDate && docDate >= new Date(searchFilterDateFrom + 'T00:00:00'));
+      const matchesDateTo = !searchFilterDateTo || (docDate && docDate <= new Date(searchFilterDateTo + 'T23:59:59'));
+      return matchesQuery && matchesFileType && matchesDateFrom && matchesDateTo;
     });
 
     return (
       <div className="space-y-4">
-        {/* Compact Search Section */}
+        {/* Advanced Search Section */}
         <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
             <div className="flex items-center space-x-2">
@@ -2135,28 +2235,69 @@ export default function DocumentRepositoryPage() {
                 <MagnifyingGlassIcon className="h-4 w-4 text-white" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">Advanced Search</h3>
+              <span className="text-xs text-gray-500 ml-2">(Excludes deleted documents)</span>
             </div>
           </div>
           <div className="p-4">
             <div className="space-y-4">
-              {/* Main Search Input - Compact */}
+              {/* Main Search Input */}
               <div>
                 <input
                   type="text"
                   placeholder="Search documents, content, and metadata..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && runSearch()}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-all duration-200"
                 />
               </div>
 
-              {/* Search Filters - Compact Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              {/* Row 1: Category, Department, File Type */}
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Category</label>
+                  <select 
+                    value={searchFilterCategory}
+                    onChange={(e) => setSearchFilterCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
+                  >
+                    <option value="">All Categories</option>
+                    {documentCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Month (Monthly Reports)</label>
+                  <select 
+                    value={searchFilterMonth}
+                    onChange={(e) => setSearchFilterMonth(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
+                  >
+                    <option value="">Any month</option>
+                    {months.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Department</label>
+                  <select 
+                    value={searchFilterDepartment}
+                    onChange={(e) => setSearchFilterDepartment(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
+                  >
+                    <option value="">All Departments</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.name}>{dept.name} ({dept.fileCount})</option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">File Type</label>
                   <select 
-                    value={selectedFilter}
-                    onChange={(e) => setSelectedFilter(e.target.value)}
+                    value={searchFilterFileType}
+                    onChange={(e) => setSearchFilterFileType(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
                   >
                     <option value="all">All File Types</option>
@@ -2165,35 +2306,102 @@ export default function DocumentRepositoryPage() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Row 2: Timeframe, Dates, Uploaded By, Project, Security */}
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Department</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
-                    <option>All Departments</option>
-                    {departments.map(dept => (
-                      <option key={dept.id} value={dept.id}>{dept.name} ({dept.fileCount})</option>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Time Range</label>
+                  <select 
+                    value={searchFilterTimeRange}
+                    onChange={(e) => setSearchFilterTimeRange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="7">Last 7 days</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="180">Last 6 months</option>
+                    <option value="365">Last year</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">From Date</label>
+                  <input
+                    type="date"
+                    value={searchFilterDateFrom}
+                    onChange={(e) => setSearchFilterDateFrom(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">To Date</label>
+                  <input
+                    type="date"
+                    value={searchFilterDateTo}
+                    onChange={(e) => setSearchFilterDateTo(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Uploaded By</label>
+                  <select 
+                    value={searchFilterUploadedBy}
+                    onChange={(e) => setSearchFilterUploadedBy(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
+                  >
+                    <option value="">All users</option>
+                    {uploadersWithIds.map(name => (
+                      <option key={name} value={uploaderMap.get(name)!}>{name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Time Range</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm">
-                    <option>All Time</option>
-                    <option>Last 7 days</option>
-                    <option>Last 30 days</option>
-                    <option>Last 90 days</option>
-                    <option>Last 6 months</option>
-                    <option>Last year</option>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Project</label>
+                  <select 
+                    value={searchFilterProject}
+                    onChange={(e) => setSearchFilterProject(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
+                  >
+                    <option value="">All projects</option>
+                    {projectsList.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
                   </select>
                 </div>
-                <div className="flex items-end">
-                  <button 
-                    onClick={() => setSearchQuery('')}
-                    className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 transition-all duration-200"
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Security Classification</label>
+                  <select 
+                    value={searchFilterClassification}
+                    onChange={(e) => setSearchFilterClassification(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-sm"
                   >
-                    <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
-                    Clear
-                  </button>
+                    <option value="">All classifications</option>
+                    <option value="PUBLIC">Public</option>
+                    <option value="INTERNAL">Internal</option>
+                    <option value="CONFIDENTIAL">Confidential</option>
+                    <option value="SECRET">Secret</option>
+                    <option value="TOP_SECRET">Top Secret</option>
+                  </select>
                 </div>
+              </div>
+
+              {/* Search & Clear */}
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => runSearch()}
+                  className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 transition-all duration-200"
+                >
+                  <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
+                  Search
+                </button>
+                <button 
+                  onClick={clearSearch}
+                  className="inline-flex items-center justify-center px-5 py-2.5 border border-gray-300 text-sm font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200"
+                >
+                  <XMarkIcon className="h-4 w-4 mr-2" />
+                  Clear
+                </button>
               </div>
             </div>
           </div>

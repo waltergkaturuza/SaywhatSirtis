@@ -28,11 +28,18 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
+    const categoryDisplay = searchParams.get('categoryDisplay') // e.g. "Monthly Reports/January"
     const search = searchParams.get('search')
     const eventId = searchParams.get('eventId')
-    const employeeId = searchParams.get('employeeId') // Add employee filter
+    const employeeId = searchParams.get('employeeId')
+    const projectId = searchParams.get('projectId')
+    const uploadedBy = searchParams.get('uploadedBy') // userId
+    const classification = searchParams.get('classification') // PUBLIC, INTERNAL, CONFIDENTIAL, etc.
+    const dateFrom = searchParams.get('dateFrom') // YYYY-MM-DD
+    const dateTo = searchParams.get('dateTo') // YYYY-MM-DD
+    const department = searchParams.get('department')
 
-    // Build filter
+    // Build filter - always exclude deleted documents
     const where: any = {
       isDeleted: false
     }
@@ -41,42 +48,58 @@ export async function GET(request: NextRequest) {
       where.category = category
     }
 
+    if (categoryDisplay) {
+      where.OR = [
+        { folderPath: { contains: categoryDisplay, mode: 'insensitive' as const } },
+        { customMetadata: { path: ['categoryDisplay'], equals: categoryDisplay } }
+      ]
+    }
+
     if (eventId) {
-      where.customMetadata = {
-        path: ['eventId'],
-        equals: eventId
+      where.AND = [...(where.AND || []), { customMetadata: { path: ['eventId'], equals: eventId } }]
+    }
+
+    if (employeeId) {
+      where.AND = [...(where.AND || []), { customMetadata: { path: ['relatedEmployeeId'], equals: employeeId } }]
+    }
+
+    if (projectId) {
+      where.projectId = projectId
+    }
+
+    if (uploadedBy) {
+      where.uploadedBy = uploadedBy
+    }
+
+    if (classification) {
+      const cls = classification.toUpperCase()
+      if (['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED', 'TOP_SECRET', 'SECRET'].includes(cls)) {
+        where.classification = cls === 'SECRET' ? 'RESTRICTED' : cls
       }
     }
 
-    // Add employee filter using custom metadata
-    if (employeeId) {
-      where.customMetadata = {
-        path: ['relatedEmployeeId'],
-        equals: employeeId
-      }
+    if (department) {
+      where.department = department
+    }
+
+    if (dateFrom || dateTo) {
+      where.createdAt = {}
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom + 'T00:00:00.000Z')
+      if (dateTo) where.createdAt.lte = new Date(dateTo + 'T23:59:59.999Z')
     }
 
     if (search) {
-      where.OR = [
-        {
-          filename: {
-            contains: search,
-            mode: 'insensitive'
-          }
-        },
-        {
-          originalName: {
-            contains: search,
-            mode: 'insensitive'
-          }
-        },
-        {
-          description: {
-            contains: search,
-            mode: 'insensitive'
-          }
-        }
+      const searchConditions = [
+        { filename: { contains: search, mode: 'insensitive' as const } },
+        { originalName: { contains: search, mode: 'insensitive' as const } },
+        { description: { contains: search, mode: 'insensitive' as const } }
       ]
+      if (where.OR) {
+        where.AND = [...(where.AND || []), { OR: where.OR }, { OR: searchConditions }]
+        delete where.OR
+      } else {
+        where.OR = searchConditions
+      }
     }
 
     // Fetch documents from database with safe query
@@ -98,11 +121,13 @@ export async function GET(request: NextRequest) {
         tags: true,
         url: true,
         uploadedBy: true,
+        projectId: true,
         createdAt: true,
         updatedAt: true,
         customMetadata: true,
         department: true,
-        folderPath: true
+        folderPath: true,
+        projects: { select: { name: true } }
       }
     }).catch((error) => {
       console.error('Database query error:', error)
@@ -195,21 +220,25 @@ export async function GET(request: NextRequest) {
           resolvedCategory = 'General'
         }
 
+        const projectInfo = (doc as any).projects
         return {
           id: doc.id,
           title: doc.originalName,
           fileName: doc.filename,
           description: doc.description,
-          classification: doc.accessLevel?.toUpperCase() || 'INTERNAL',
+          classification: (doc.classification || doc.accessLevel || 'INTERNAL').toString(),
           category: resolvedCategory,
           type: extension,
           mimeType: doc.mimeType,
           size: formatFileSize(doc.size),
           uploadDate: uploadDateIso,
           uploadedBy: uploadedByDisplay,
+          uploadedById: doc.uploadedBy,
           uploadedByEmail: uploaderInfo?.email || null,
           url: doc.url,
           department: resolvedDepartment,
+          projectId: doc.projectId,
+          projectName: projectInfo?.name || customMetadata.projectName || null,
           folderPath: doc.folderPath || (resolvedDepartment && resolvedCategory ? `${resolvedDepartment}/${resolvedCategory}` : null),
           customMetadata: doc.customMetadata,
           tags: doc.tags,
