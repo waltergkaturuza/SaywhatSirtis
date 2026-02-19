@@ -2204,6 +2204,20 @@ export default function DocumentRepositoryPage() {
     const uniqueUploaders = Array.from(new Set(documents.map(d => d.uploadedBy).filter(Boolean))).sort();
     const uploadersWithIds = uniqueUploaders.filter(name => uploaderMap.has(name));
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const now = new Date();
+    let effectiveDateFrom = searchFilterDateFrom;
+    let effectiveDateTo = searchFilterDateTo;
+    if (searchFilterTimeRange && searchFilterTimeRange !== 'all') {
+      const d = new Date(now);
+      if (searchFilterTimeRange === '7') d.setDate(d.getDate() - 7);
+      else if (searchFilterTimeRange === '30') d.setDate(d.getDate() - 30);
+      else if (searchFilterTimeRange === '90') d.setDate(d.getDate() - 90);
+      else if (searchFilterTimeRange === '180') d.setDate(d.getDate() - 180);
+      else if (searchFilterTimeRange === '365') d.setDate(d.getDate() - 365);
+      effectiveDateFrom = effectiveDateFrom || d.toISOString().split('T')[0];
+      effectiveDateTo = effectiveDateTo || now.toISOString().split('T')[0];
+    }
+    const categoryToMatch = searchFilterMonth ? `Monthly Reports/${searchFilterMonth}` : searchFilterCategory;
     const filteredResults = documents.filter(doc => {
       const queryLower = searchQuery.toLowerCase();
       const matchesQuery = !searchQuery || 
@@ -2220,9 +2234,19 @@ export default function DocumentRepositoryPage() {
         (searchFilterFileType === 'videos' && ['mp4','avi','mov','wmv','mkv'].includes((doc.type||'').toLowerCase()));
       const uploadDate = doc.uploadDate || doc.createdAt;
       const docDate = uploadDate ? new Date(uploadDate) : null;
-      const matchesDateFrom = !searchFilterDateFrom || (docDate && docDate >= new Date(searchFilterDateFrom + 'T00:00:00'));
-      const matchesDateTo = !searchFilterDateTo || (docDate && docDate <= new Date(searchFilterDateTo + 'T23:59:59'));
-      return matchesQuery && matchesFileType && matchesDateFrom && matchesDateTo;
+      const matchesDateFrom = !effectiveDateFrom || (docDate && docDate >= new Date(effectiveDateFrom + 'T00:00:00'));
+      const matchesDateTo = !effectiveDateTo || (docDate && docDate <= new Date(effectiveDateTo + 'T23:59:59'));
+      const matchesCategory = !categoryToMatch || 
+        (doc.categoryDisplay || doc.category || '') === categoryToMatch ||
+        (doc.folderPath || '').toLowerCase().includes(categoryToMatch.toLowerCase());
+      const matchesDepartment = !searchFilterDepartment || (doc.department || '') === searchFilterDepartment;
+      const matchesUploadedBy = !searchFilterUploadedBy || 
+        (uploaderMap.get(doc.uploadedBy) === searchFilterUploadedBy || doc.uploadedBy === searchFilterUploadedBy);
+      const matchesProject = !searchFilterProject || (doc as any).projectId === searchFilterProject;
+      const docClassification = (doc.classification || doc.accessLevel || '').toUpperCase();
+      const matchesClassification = !searchFilterClassification || docClassification === searchFilterClassification.toUpperCase();
+      return matchesQuery && matchesFileType && matchesDateFrom && matchesDateTo &&
+        matchesCategory && matchesDepartment && matchesUploadedBy && matchesProject && matchesClassification;
     });
 
     return (
