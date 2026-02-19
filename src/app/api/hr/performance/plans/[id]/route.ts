@@ -42,6 +42,9 @@ export async function GET(
           }
         },
         performance_responsibilities: {
+          include: {
+            performance_activities: true
+          },
           orderBy: {
             createdAt: 'asc'
           }
@@ -81,7 +84,9 @@ export async function GET(
       employeeName: `${plan.employees.firstName} ${plan.employees.lastName}`,
       employeeEmail: plan.employees.email,
       position: plan.employees.position,
-      department: plan.employees.department,
+      department: typeof plan.employees.department === 'object' && plan.employees.department !== null
+        ? (plan.employees.department as any)?.name ?? ''
+        : (plan.employees.department ?? ''),
       supervisorId: plan.supervisorId,
       reviewerId: plan.reviewerId,
       status: plan.status,
@@ -98,25 +103,8 @@ export async function GET(
         jobTitle: plan.employees.job_descriptions.jobTitle,
         keyResponsibilities: plan.employees.job_descriptions.keyResponsibilities,
       } : null,
-      // Map deliverables to keyResponsibilities structure - handle both JSON objects and strings
-      // First try to use performance_responsibilities table, then fall back to deliverables JSON field
+      // Parse deliverables JSON - this stores the FULL form structure (successIndicators, etc.)
       deliverables: (() => {
-        // If we have performance_responsibilities, use those
-        if (plan.performance_responsibilities && plan.performance_responsibilities.length > 0) {
-          return plan.performance_responsibilities.map((resp: any) => ({
-            id: resp.id,
-            title: resp.title || '',
-            description: resp.description || '',
-            tasks: resp.description || '', // Use description as tasks
-            weight: resp.weight || 0,
-            targetDate: resp.targetDate || '',
-            status: resp.status || 'not-started',
-            progress: resp.progress || 0,
-            successIndicators: resp.successIndicators || []
-          }));
-        }
-        
-        // Fall back to deliverables JSON field
         if (!plan.deliverables) return [];
         if (typeof plan.deliverables === 'string') {
           try {
@@ -129,19 +117,61 @@ export async function GET(
         return Array.isArray(plan.deliverables) ? plan.deliverables : (typeof plan.deliverables === 'object' ? Object.values(plan.deliverables) : []);
       })(),
       performance_responsibilities: plan.performance_responsibilities || [],
+      // keyResponsibilities: PREFER deliverables JSON (has full structure with successIndicators)
+      // Merge with performance_responsibilities when deliverables is empty/incomplete
       keyResponsibilities: (() => {
-        // If we have performance_responsibilities, use those
-        if (plan.performance_responsibilities && plan.performance_responsibilities.length > 0) {
-          return plan.performance_responsibilities.map((resp: any) => ({
-            id: resp.id,
-            description: resp.description || resp.title || '',
-            tasks: resp.description || resp.tasks || '',
-            weight: resp.weight || 0,
-            targetDate: resp.targetDate || '',
-            status: resp.status || 'not-started',
-            progress: resp.progress || 0,
-            successIndicators: resp.successIndicators || []
+        const deliverablesArr = (() => {
+          if (!plan.deliverables) return [];
+          if (typeof plan.deliverables === 'string') {
+            try {
+              const p = JSON.parse(plan.deliverables);
+              return Array.isArray(p) ? p : (typeof p === 'object' ? Object.values(p) : []);
+            } catch { return []; }
+          }
+          return Array.isArray(plan.deliverables) ? plan.deliverables : (typeof plan.deliverables === 'object' ? Object.values(plan.deliverables) : []);
+        })();
+        
+        // Prefer deliverables when it has full structure (successIndicators, etc.)
+        if (deliverablesArr.length > 0) {
+          return deliverablesArr.map((item: any, idx: number) => ({
+            id: item.id || `resp-${idx}`,
+            description: item.description || item.title || '',
+            tasks: item.tasks ?? item.description ?? '',
+            weight: item.weight ?? 0,
+            targetDate: item.targetDate || item.dueDate || '',
+            status: item.status || 'not-started',
+            progress: item.progress ?? 0,
+            successIndicators: Array.isArray(item.successIndicators) ? item.successIndicators.map((si: any, i: number) => ({
+              id: si.id || `si-${i}`,
+              indicator: si.indicator ?? si.title ?? '',
+              target: si.target ?? '',
+              measurement: si.measurement ?? ''
+            })) : [],
+            comments: item.comments ?? ''
           }));
+        }
+        
+        // Fallback: build from performance_responsibilities + performance_activities
+        if (plan.performance_responsibilities && plan.performance_responsibilities.length > 0) {
+          return plan.performance_responsibilities.map((resp: any, idx: number) => {
+            const activities = resp.performance_activities || [];
+            return {
+              id: resp.id,
+              description: resp.description || resp.title || '',
+              tasks: resp.description || '',
+              weight: resp.weight || 0,
+              targetDate: '',
+              status: 'not-started',
+              progress: 0,
+              successIndicators: activities.map((a: any, i: number) => ({
+                id: a.id || `si-${i}`,
+                indicator: a.title || a.description || '',
+                target: '',
+                measurement: ''
+              })),
+              comments: ''
+            };
+          });
         }
         return [];
       })(),
@@ -336,32 +366,25 @@ export async function PUT(
       }
     }
 
-    // Save JSON fields (deliverables, valueGoals, competencies, developmentNeeds, comments)
-    // Always update these if provided, otherwise keep existing
-    if (body.deliverables !== undefined) {
-      updateData.deliverables = typeof body.deliverables === 'string' 
-        ? body.deliverables 
-        : JSON.stringify(body.deliverables)
+    // Save JSON fields - PRESERVE existing when incoming would wipe (empty overwriting content)
+    const hasContent = (val: any) => {
+      const arr = typeof val === 'string' ? (() => { try { return JSON.parse(val); } catch { return []; } })() : val
+      return Array.isArray(arr) ? arr.length > 0 : false
     }
-    if (body.valueGoals !== undefined) {
-      updateData.valueGoals = typeof body.valueGoals === 'string'
-        ? body.valueGoals
-        : JSON.stringify(body.valueGoals)
+    if (body.deliverables !== undefined && (hasContent(body.deliverables) || !existingPlan.deliverables)) {
+      updateData.deliverables = typeof body.deliverables === 'string' ? body.deliverables : JSON.stringify(body.deliverables ?? [])
     }
-    if (body.competencies !== undefined) {
-      updateData.competencies = typeof body.competencies === 'string'
-        ? body.competencies
-        : JSON.stringify(body.competencies)
+    if (body.valueGoals !== undefined && (hasContent(body.valueGoals) || !existingPlan.valueGoals)) {
+      updateData.valueGoals = typeof body.valueGoals === 'string' ? body.valueGoals : JSON.stringify(body.valueGoals ?? [])
     }
-    if (body.developmentNeeds !== undefined) {
-      updateData.developmentNeeds = typeof body.developmentNeeds === 'string'
-        ? body.developmentNeeds
-        : JSON.stringify(body.developmentNeeds)
+    if (body.competencies !== undefined && (hasContent(body.competencies) || !existingPlan.competencies)) {
+      updateData.competencies = typeof body.competencies === 'string' ? body.competencies : JSON.stringify(body.competencies ?? [])
+    }
+    if (body.developmentNeeds !== undefined && (hasContent(body.developmentNeeds) || !existingPlan.developmentNeeds)) {
+      updateData.developmentNeeds = typeof body.developmentNeeds === 'string' ? body.developmentNeeds : JSON.stringify(body.developmentNeeds ?? [])
     }
     if (body.comments !== undefined) {
-      updateData.comments = typeof body.comments === 'string'
-        ? body.comments
-        : JSON.stringify(body.comments)
+      updateData.comments = typeof body.comments === 'string' ? body.comments : JSON.stringify(body.comments ?? [])
     }
 
     // Update approval fields

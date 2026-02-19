@@ -435,7 +435,7 @@ function CreatePerformancePlanPageContent() {
             name: planData.employeeName || '',
             email: planData.employeeEmail || '',
             position: planData.position || '',
-            department: planData.department || '',
+            department: (typeof planData.department === 'object' && planData.department !== null ? (planData.department as any)?.name : planData.department) || '',
             manager: supervisorName,
             planPeriod: {
               startDate: planData.reviewPeriod?.startDate || planData.startDate || '',
@@ -454,50 +454,94 @@ function CreatePerformancePlanPageContent() {
             startDate: planData.startDate || planData.reviewPeriod?.startDate || (planData.planPeriod && typeof planData.planPeriod === 'string' ? planData.planPeriod.split(' - ')[0]?.trim() : '') || '',
             endDate: planData.endDate || planData.reviewPeriod?.endDate || (planData.planPeriod && typeof planData.planPeriod === 'string' ? planData.planPeriod.split(' - ')[1]?.trim() : '') || ''
           },
-          // Map deliverables/performance_responsibilities to keyResponsibilities
-          // Priority: keyResponsibilities from API > performance_responsibilities > deliverables JSON field
+          // Map keyResponsibilities - API now returns full structure with successIndicators
           keyResponsibilities: (() => {
-            // First try to use keyResponsibilities directly from API (if provided)
-            if (planData.keyResponsibilities && Array.isArray(planData.keyResponsibilities) && planData.keyResponsibilities.length > 0) {
-              return planData.keyResponsibilities;
-            }
-            
-            // Then try to use performance_responsibilities from the API
-            if (planData.performance_responsibilities && Array.isArray(planData.performance_responsibilities) && planData.performance_responsibilities.length > 0) {
-              return planData.performance_responsibilities.map((item: any, index: number) => ({
-                id: item.id || `resp-${index}`,
-                description: item.description || item.title || '',
-                tasks: item.description || item.tasks || '',
-                weight: item.weight || 0,
-                targetDate: item.targetDate || item.dueDate || '',
-                status: item.status || 'not-started',
-                progress: item.progress || 0,
-                successIndicators: item.successIndicators || []
-              }));
-            }
-            
-            // Fall back to deliverables array
-            if (planData.deliverables && Array.isArray(planData.deliverables) && planData.deliverables.length > 0) {
-              return planData.deliverables.map((item: any, index: number) => ({
-                id: item.id || `deliverable-${index}`,
-                description: item.description || item.title || '',
-                tasks: item.tasks || '',
-                weight: item.weight || 0,
-                targetDate: item.targetDate || item.dueDate || '',
-                status: item.status || 'not-started',
-                progress: item.progress || 0,
-                successIndicators: item.successIndicators || []
-              }));
-            }
-            
-            // Return previous if nothing found
-            return prev.keyResponsibilities;
+            const src = planData.keyResponsibilities || planData.deliverables || planData.performance_responsibilities;
+            if (!src || !Array.isArray(src) || src.length === 0) return prev.keyResponsibilities;
+            return src.map((item: any, index: number) => ({
+              id: item.id || `resp-${index}`,
+              description: item.description || item.title || '',
+              tasks: item.tasks ?? item.description ?? '',
+              weight: item.weight ?? 0,
+              targetDate: item.targetDate || item.dueDate || '',
+              status: item.status || 'not-started',
+              progress: item.progress ?? 0,
+              successIndicators: Array.isArray(item.successIndicators) && item.successIndicators.length > 0
+                ? item.successIndicators.map((si: any, i: number) => ({
+                    id: si.id || `si-${i}`,
+                    indicator: si.indicator ?? si.title ?? '',
+                    target: si.target ?? '',
+                    measurement: si.measurement ?? ''
+                  }))
+                : [{ id: '1', indicator: '', target: '', measurement: '' }],
+              comments: item.comments ?? ''
+            }));
           })(),
-          deliverables: Array.isArray(planData.deliverables) ? planData.deliverables : (planData.deliverables ? [planData.deliverables] : []),
-          valueGoals: Array.isArray(planData.valueGoals) ? planData.valueGoals : (planData.valueGoals ? [planData.valueGoals] : []),
-          competencies: Array.isArray(planData.competencies) ? planData.competencies : (planData.competencies ? [planData.competencies] : prev.competencies || []),
-          developmentNeeds: Array.isArray(planData.developmentNeeds) ? planData.developmentNeeds : (planData.developmentNeeds ? [planData.developmentNeeds] : []),
-          comments: planData.comments || prev.comments || { employeeComments: '', supervisorComments: '', reviewerComments: '', supervisor: [], reviewer: [] }
+          deliverables: (() => {
+            const d = planData.deliverables;
+            if (Array.isArray(d)) return d;
+            if (d && typeof d === 'object') return Object.values(d);
+            return [];
+          })(),
+          valueGoals: (() => {
+            const v = planData.valueGoals;
+            if (Array.isArray(v)) return v;
+            if (v && typeof v === 'object') return Object.values(v);
+            return [];
+          })(),
+          competencies: (() => {
+            const c = planData.competencies;
+            if (Array.isArray(c)) return c;
+            if (c && typeof c === 'object') return Object.values(c);
+            return prev.competencies || [];
+          })(),
+          developmentNeeds: (() => {
+            const dn = planData.developmentNeeds;
+            if (Array.isArray(dn)) return dn;
+            if (dn && typeof dn === 'object') return Object.values(dn);
+            return [];
+          })(),
+          comments: (() => {
+            const c = planData.comments;
+            if (!c) return prev.comments || { employeeComments: '', supervisorComments: '', reviewerComments: '', supervisor: [], reviewer: [] };
+            const parsed = typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : c;
+            return {
+              employeeComments: parsed.employeeComments ?? '',
+              supervisorComments: parsed.supervisorComments ?? '',
+              reviewerComments: parsed.reviewerComments ?? '',
+              supervisor: Array.isArray(parsed.supervisor) ? parsed.supervisor : [],
+              reviewer: Array.isArray(parsed.reviewer) ? parsed.reviewer : []
+            };
+          })(),
+          // Preload development fields from developmentNeeds/competencies if structured
+          developmentObjectives: (() => {
+            const dn = planData.developmentNeeds;
+            if (!dn) return prev.developmentObjectives || [];
+            const arr = Array.isArray(dn) ? dn : (typeof dn === 'object' ? Object.values(dn) : []);
+            return arr.map((need: any) => ({
+              objective: need.objective || need.area || need.title || need.need || '',
+              description: need.description || '',
+              competencyArea: need.competencyArea || '',
+              developmentActivities: need.developmentActivities || need.activities || '',
+              resources: need.resources || '',
+              timeline: need.timeline || '',
+              successCriteria: need.successCriteria || '',
+              targetDate: need.targetDate || '',
+              priority: need.priority || 'medium',
+              status: need.status || 'not-started'
+            }));
+          })(),
+          planDescription: planData.planDescription ?? prev.planDescription ?? '',
+          employeeComments: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return parsed.employeeComments ?? prev.employeeComments ?? '';
+          })(),
+          supervisorComments: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return parsed.supervisorComments ?? prev.supervisorComments ?? '';
+          })()
         }))
         
         // Set workflow status
@@ -512,6 +556,17 @@ function CreatePerformancePlanPageContent() {
         // Set approval status
         setSupervisorApproval(planData.supervisorApproval || 'pending')
         setReviewerApproval(planData.reviewerApproval || 'pending')
+        
+        // Set selectedEmployee for display (fetch full details if needed for supervisor display)
+        setSelectedEmployee({
+          id: planData.employeeId,
+          firstName: planData.employeeName?.split(' ')[0] || '',
+          lastName: planData.employeeName?.split(' ').slice(1).join(' ') || '',
+          email: planData.employeeEmail,
+          position: planData.position,
+          department: typeof planData.department === 'object' ? (planData.department as any)?.name : planData.department,
+          supervisor: supervisorName !== 'Not Assigned' ? { firstName: supervisorName.split(' ')[0], lastName: supervisorName.split(' ').slice(1).join(' ') } : null
+        })
         
         console.log('Form data populated successfully')
       } catch (err) {
@@ -754,6 +809,13 @@ function CreatePerformancePlanPageContent() {
       const result = await response.json()
 
       if (response.ok) {
+        // API may return redirectToExistingDraft - redirect to edit
+        if (result.redirectToExistingDraft && result.existingPlanId) {
+          router.replace(`/hr/performance/plans/create?planId=${result.existingPlanId}&edit=true`)
+          alert('You have an existing draft. Redirecting to continue editing.')
+          return
+        }
+        
         // Clear localStorage on successful submit
         if (formData.id) {
           localStorage.removeItem(`plan-draft-${formData.id}`)
@@ -803,6 +865,15 @@ function CreatePerformancePlanPageContent() {
       const result = await response.json()
 
       if (response.ok) {
+        // API may return redirectToExistingDraft when user has existing draft - prevent data loss
+        if (result.redirectToExistingDraft && result.existingPlanId) {
+          router.replace(`/hr/performance/plans/create?planId=${result.existingPlanId}&edit=true`)
+          if (showAlert) {
+            alert('You have an existing draft. Redirecting to continue editing.')
+          }
+          return
+        }
+        
         // Update formData with the returned plan ID if it's a new plan
         if (result.plan?.id && !formData.id) {
           setFormData(prev => ({ ...prev, id: result.plan.id }))
@@ -895,8 +966,43 @@ function CreatePerformancePlanPageContent() {
           localStorage.removeItem('plan-draft-temp')
         }
       }
+      
+      // Also check for plan-draft-{id} - user may have saved draft with ID but navigated without it in URL
+      const draftKeys = Object.keys(localStorage).filter(k => k.startsWith('plan-draft-') && k !== 'plan-draft-temp')
+      for (const key of draftKeys) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || '{}')
+          if (parsed.id && parsed.lastSaved && (Date.now() - parsed.lastSaved < 7 * 24 * 60 * 60 * 1000)) {
+            // Redirect to edit this draft - prevents overwriting with empty form
+            router.replace(`/hr/performance/plans/create?planId=${parsed.id}&edit=true`)
+            return
+          }
+        } catch { /* ignore */ }
+      }
     }
   }, [planId, session?.user?.id])
+
+  // Check for existing draft on server when creating new (no planId) for self - redirect to prevent data loss
+  useEffect(() => {
+    const checkExistingDraft = async () => {
+      if (planId || !session?.user?.email || !isForCurrentUser) return
+      try {
+        const currentYear = new Date().getFullYear()
+        const response = await fetch(`/api/employee/performance/plans?year=${currentYear}`)
+        if (!response.ok) return
+        const plans = await response.json()
+        const planList = Array.isArray(plans) ? plans : (plans?.plans || plans?.data || [])
+        const myDraft = planList.find((p: any) => p.status === 'draft')
+        if (myDraft?.id) {
+          console.log('Found existing draft, redirecting to edit:', myDraft.id)
+          router.replace(`/hr/performance/plans/create?planId=${myDraft.id}&edit=true`)
+        }
+      } catch (e) {
+        console.error('Error checking existing draft:', e)
+      }
+    }
+    checkExistingDraft()
+  }, [planId, session?.user?.email, isForCurrentUser])
 
   // Workflow action handlers
   const handleWorkflowAction = async (action: 'comment' | 'request_changes' | 'approve' | 'final_approve', role: 'supervisor' | 'reviewer') => {

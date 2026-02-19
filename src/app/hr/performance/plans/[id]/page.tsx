@@ -54,6 +54,7 @@ interface PlanData {
     jobTitle: string
     keyResponsibilities: any
   } | null
+  keyResponsibilities?: any[]
   deliverables: any[]
   valueGoals: any[]
   competencies: any[]
@@ -346,7 +347,7 @@ export default function ViewPlanPage() {
           id: plan.employeeId,
           name: plan.employeeName,
           email: plan.employeeEmail,
-          department: plan.department,
+          department: typeof plan.department === 'object' && plan.department !== null ? (plan.department as any)?.name : (plan.department ?? ''),
           position: plan.position,
           manager: plan.supervisorId || '',
           planPeriod: {
@@ -367,19 +368,26 @@ export default function ViewPlanPage() {
           startDate: plan.reviewPeriod?.startDate || plan.startDate || (plan.planPeriod && typeof plan.planPeriod === 'string' ? plan.planPeriod.split(' - ')[0]?.trim() : '') || '',
           endDate: plan.reviewPeriod?.endDate || plan.endDate || (plan.planPeriod && typeof plan.planPeriod === 'string' ? plan.planPeriod.split(' - ')[1]?.trim() : '') || ''
         },
-        keyResponsibilities: Array.isArray(plan.deliverables) && plan.deliverables.length > 0
-          ? plan.deliverables.map((del: any) => ({
-              id: del.id || Date.now().toString(),
-              description: del.description || del.title || del.keyDeliverable || '',
-              tasks: del.tasks || '',
-              weight: del.weight || 0,
-              targetDate: del.targetDate || del.timeline || '',
-              status: del.status || 'not-started',
-              progress: del.progress || 0,
-              successIndicators: del.successIndicators || [],
-              comments: del.comments || ''
-            }))
-          : [],
+        keyResponsibilities: (() => {
+          const src = plan.keyResponsibilities || plan.deliverables;
+          if (!src || !Array.isArray(src) || src.length === 0) return [];
+          return src.map((del: any) => ({
+            id: del.id || Date.now().toString(),
+            description: del.description || del.title || del.keyDeliverable || '',
+            tasks: del.tasks ?? del.description ?? '',
+            weight: del.weight ?? 0,
+            targetDate: del.targetDate || del.timeline || '',
+            status: del.status || 'not-started',
+            progress: del.progress ?? 0,
+            successIndicators: Array.isArray(del.successIndicators) ? del.successIndicators.map((si: any, i: number) => ({
+              id: si.id || `si-${i}`,
+              indicator: si.indicator ?? si.title ?? '',
+              target: si.target ?? '',
+              measurement: si.measurement ?? ''
+            })) : [],
+            comments: del.comments ?? ''
+          }));
+        })(),
         development: {
           strengths: [],
           areasForImprovement: [],
@@ -1038,7 +1046,7 @@ export default function ViewPlanPage() {
                 {plan.employeeName}'s Performance Plan
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                {plan.planTitle} • {plan.planYear} • {plan.position} • {plan.department}
+                {plan.planTitle} • {plan.planYear} • {plan.position} • {typeof plan.department === 'object' && plan.department !== null ? String((plan.department as any).name ?? '') : String(plan.department ?? '')}
               </p>
             </div>
           </div>
