@@ -189,9 +189,13 @@ export async function POST(request: NextRequest) {
           updateData.competencies = typeof formData.competencies === 'string' ? formData.competencies : JSON.stringify(formData.competencies ?? []);
         }
       }
-      if (formData.developmentNeeds !== undefined) {
-        if (hasContent(formData.developmentNeeds) || !existingPlan.developmentNeeds) {
-          updateData.developmentNeeds = typeof formData.developmentNeeds === 'string' ? formData.developmentNeeds : JSON.stringify(formData.developmentNeeds ?? []);
+      // developmentObjectives (form) maps to developmentNeeds (DB)
+      const devData = formData.developmentObjectives ?? formData.developmentNeeds;
+      if (devData !== undefined) {
+        const arr = Array.isArray(devData) ? devData : (typeof devData === 'string' ? (() => { try { return JSON.parse(devData); } catch { return []; } })() : []);
+        const hasDevContent = arr.length > 0 && arr.some((x: any) => x && (x.objective || x.area || x.title || x.description));
+        if (hasDevContent || !existingPlan.developmentNeeds) {
+          updateData.developmentNeeds = typeof devData === 'string' ? devData : JSON.stringify(arr ?? []);
         }
       }
       if (formData.comments !== undefined) {
@@ -448,7 +452,13 @@ export async function POST(request: NextRequest) {
       if (v !== undefined) updateData.valueGoals = v;
       const c = safeJsonField(formData.competencies, existingDraft.competencies);
       if (c !== undefined) updateData.competencies = c;
-      const dn = safeJsonField(formData.developmentNeeds, existingDraft.developmentNeeds);
+      const devData = formData.developmentObjectives ?? formData.developmentNeeds;
+      const dn = devData !== undefined ? (() => {
+        const arr = Array.isArray(devData) ? devData : (typeof devData === 'string' ? (() => { try { return JSON.parse(devData); } catch { return []; } })() : []);
+        const hasContent = arr.length > 0 && arr.some((x: any) => x && (x.objective || x.area || x.title || x.description));
+        if (!hasContent && existingDraft.developmentNeeds) return undefined;
+        return typeof devData === 'string' ? devData : JSON.stringify(arr ?? []);
+      })() : undefined;
       if (dn !== undefined) updateData.developmentNeeds = dn;
       if (formData.comments !== undefined) {
         updateData.comments = typeof formData.comments === 'string' ? formData.comments : JSON.stringify(formData.comments || []);
@@ -568,10 +578,11 @@ export async function POST(request: NextRequest) {
           ? formData.competencies
           : JSON.stringify(formData.competencies);
       }
-      if (formData.developmentNeeds !== undefined) {
-        planData.developmentNeeds = typeof formData.developmentNeeds === 'string'
-          ? formData.developmentNeeds
-          : JSON.stringify(formData.developmentNeeds);
+      const devData = formData.developmentObjectives ?? formData.developmentNeeds;
+      if (devData !== undefined) {
+        planData.developmentNeeds = typeof devData === 'string'
+          ? devData
+          : JSON.stringify(Array.isArray(devData) ? devData : []);
       }
       
       // Set submittedAt if not draft

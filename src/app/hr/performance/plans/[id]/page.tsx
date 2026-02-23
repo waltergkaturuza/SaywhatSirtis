@@ -397,10 +397,10 @@ export default function ViewPlanPage() {
           mentorshipNeeds: ''
         },
         developmentObjectives: Array.isArray(plan.developmentNeeds) ? plan.developmentNeeds.map((need: any) => ({
-          objective: need.area || need.title || need.need || '',
+          objective: need.objective || need.area || need.title || need.need || '',
           description: need.description || '',
           competencyArea: need.competencyArea || '',
-          developmentActivities: need.activities || '',
+          developmentActivities: need.developmentActivities || need.activities || '',
           resources: need.resources || '',
           timeline: need.timeline || '',
           successCriteria: need.successCriteria || '',

@@ -945,7 +945,7 @@ function CreatePerformancePlanPageContent() {
     }, 3000) // 3 second delay
     
     return () => clearTimeout(autoSaveTimer)
-  }, [formData.planTitle, formData.keyResponsibilities, formData.valueGoals, formData.employee, formData.startDate, formData.endDate, formData.competencies, formData.developmentNeeds, formData.status, formData.id, planId])
+  }, [formData.planTitle, formData.keyResponsibilities, formData.valueGoals, formData.employee, formData.startDate, formData.endDate, formData.competencies, formData.developmentNeeds, formData.developmentObjectives, formData.status, formData.id, planId])
 
   // Restore from localStorage on mount (if not loading existing plan)
   useEffect(() => {

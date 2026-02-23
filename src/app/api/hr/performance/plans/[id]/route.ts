@@ -380,8 +380,9 @@ export async function PUT(
     if (body.competencies !== undefined && (hasContent(body.competencies) || !existingPlan.competencies)) {
       updateData.competencies = typeof body.competencies === 'string' ? body.competencies : JSON.stringify(body.competencies ?? [])
     }
-    if (body.developmentNeeds !== undefined && (hasContent(body.developmentNeeds) || !existingPlan.developmentNeeds)) {
-      updateData.developmentNeeds = typeof body.developmentNeeds === 'string' ? body.developmentNeeds : JSON.stringify(body.developmentNeeds ?? [])
+    const devData = body.developmentObjectives ?? body.developmentNeeds;
+    if (devData !== undefined && (hasContent(devData) || !existingPlan.developmentNeeds)) {
+      updateData.developmentNeeds = typeof devData === 'string' ? devData : JSON.stringify(Array.isArray(devData) ? devData : (devData ?? []))
     }
     if (body.comments !== undefined) {
       updateData.comments = typeof body.comments === 'string' ? body.comments : JSON.stringify(body.comments ?? [])
