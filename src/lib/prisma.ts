@@ -47,11 +47,11 @@ const createPrismaClient = () => {
 }
 
 // Use a singleton pattern to ensure only one Prisma client instance
-export const prisma = globalThis.prisma || createPrismaClient()
+// In serverless (Vercel), globalThis persists across warm invocations in the same instance
+export const prisma = globalThis.prisma ?? createPrismaClient()
 
-if (process.env.NODE_ENV !== 'production') {
-  globalThis.prisma = prisma
-}
+// Always cache in globalThis so warm invocations reuse the same client
+globalThis.prisma = prisma
 
 // Enhanced connection management with retry logic
 export async function connectPrisma() {
