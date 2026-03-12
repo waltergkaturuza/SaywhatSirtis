@@ -22,17 +22,10 @@ const createPrismaClient = () => {
   const parts = connectionUrl.split('?')
   if (parts[1]) {
     const params = new URLSearchParams(parts[1])
-    // Optimize connection pool for Render.com deployment
-    // Reduce connection limit to prevent pool exhaustion
-    if (!params.has('connection_limit')) {
-      params.set('connection_limit', '5') // Reduced from 10 to prevent exhaustion
-    }
-    if (!params.has('pool_timeout')) {
-      params.set('pool_timeout', '20') // Reduced timeout for faster failure detection
-    }
-    if (!params.has('connect_timeout')) {
-      params.set('connect_timeout', '10') // Faster connection timeout
-    }
+    // Serverless-safe connection settings (1 connection per function invocation)
+    params.set('connection_limit', '1')
+    params.set('pool_timeout', '10')
+    params.set('connect_timeout', '10')
     // Remove any duplicate keys implicitly handled by URLSearchParams
     connectionUrl = parts[0] + '?' + params.toString()
   }
