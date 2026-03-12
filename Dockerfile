@@ -6,14 +6,14 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
 # Generate Prisma client
-RUN npx prisma generate
+RUN ./node_modules/.bin/prisma generate
 
 # Build the application
 RUN npm run build
@@ -34,9 +34,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-# Use dynamic port from Render
-EXPOSE $PORT
+EXPOSE 8080
 
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=8080
+ENV HOSTNAME="0.0.0.0"
+ENV NODE_ENV="production"
 
 CMD ["node", "server.js"]
