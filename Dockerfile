@@ -16,6 +16,17 @@ COPY . .
 RUN ./node_modules/.bin/prisma generate
 
 # Build the application
+# DATABASE_URL is passed as a build secret so Next.js can collect page data
+# It is NOT baked into the image - only used during build
+ARG DATABASE_URL
+ARG DIRECT_URL
+ARG NEXTAUTH_SECRET
+ARG NEXTAUTH_URL="https://saywhatsirtis.fly.dev"
+ENV DATABASE_URL=$DATABASE_URL
+ENV DIRECT_URL=$DIRECT_URL
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+ENV NEXTAUTH_URL=$NEXTAUTH_URL
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Production stage

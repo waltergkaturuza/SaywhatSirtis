@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
   serverExternalPackages: ['@prisma/client'],
   // Skip static optimization for API routes during build
   trailingSlash: false,
