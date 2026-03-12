@@ -14,7 +14,7 @@
     "render:start": "node .next/standalone/server.js",
     "render:deploy": "bash scripts/deploy-render.sh",
     "render:deploy-windows": "powershell -ExecutionPolicy Bypass -File scripts/deploy-render.ps1",
-    "vercel:build": "npx prisma generate && next build",
+    "vercel:build": "./node_modules/.bin/prisma generate && next build",
     "vercel:configure": "powershell -ExecutionPolicy Bypass -File scripts/configure-vercel-db.ps1",
     "supabase:build": "npx prisma generate && next build",
     "supabase:deploy": "bash scripts/deploy-supabase.sh",
