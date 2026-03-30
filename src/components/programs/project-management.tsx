@@ -127,7 +127,7 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
           description: project.description || '',
           status: mapStatus(project.status),
           priority: (project.priority || 'MEDIUM').toString().toLowerCase(),
-          progress: calculateProgress(project),
+          progress: typeof project.progress === 'number' ? project.progress : 0,
           startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
           endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
           budget: project.budget || 0,
@@ -173,26 +173,9 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
     }
   }
 
-  // Helper function to calculate progress based on time elapsed
-  const calculateProgress = (project: any) => {
-    if (!project.startDate || !project.endDate) return 0
-    
-    const start = new Date(project.startDate).getTime()
-    const end = new Date(project.endDate).getTime()
-    const now = new Date().getTime()
-    
-    if (now < start) return 0
-    if (now > end) return 100
-    
-    const elapsed = now - start
-    const total = end - start
-    
-    return Math.round((elapsed / total) * 100)
-  }
-
-  // Helper function to calculate project health
+  // Helper function to calculate project health (uses indicator-based progress from API)
   const calculateHealth = (project: any): 'healthy' | 'at-risk' | 'critical' => {
-    const progress = calculateProgress(project)
+    const progress = typeof project.progress === 'number' ? project.progress : 0
     const budgetUtilization = project.budget > 0 ? (project.actualSpent / project.budget) * 100 : 0
     
     if (project.status === 'ON_HOLD' || budgetUtilization > 90) return 'critical'

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { buildProjectIdToIndicatorProgress } from "@/lib/programs/indicator-progress"
 
 export async function GET(request: NextRequest) {
   try {
@@ -137,39 +138,26 @@ export async function GET(request: NextRequest) {
         }
       })
 
-      // Calculate average progress (this would need a progress field in your schema)
-      // For now, we'll calculate based on time elapsed vs total time
-      const projectsWithDates = await prisma.projects.findMany({
-        select: {
-          startDate: true,
-          endDate: true,
-          status: true
-        },
-        where: {
-          startDate: { not: null },
-          endDate: { not: null }
-        }
-      })
-
-      let totalProgress = 0
-      let projectCount = 0
-      
-      projectsWithDates.forEach(project => {
-        if (project.startDate && project.endDate) {
-          const totalDuration = project.endDate.getTime() - project.startDate.getTime()
-          const elapsedDuration = Math.min(now.getTime() - project.startDate.getTime(), totalDuration)
-          const timeProgress = Math.max(0, Math.min(100, (elapsedDuration / totalDuration) * 100))
-          
-          if (project.status === 'COMPLETED') {
-            totalProgress += 100
-          } else {
-            totalProgress += timeProgress
-          }
-          projectCount++
-        }
-      })
-
-      const averageProgress = projectCount > 0 ? Math.round(totalProgress / projectCount) : 0
+      const allProjectIds = await prisma.projects.findMany({ select: { id: true } })
+      const ids = allProjectIds.map((p) => p.id)
+      const dashboardIndicators =
+        ids.length > 0
+          ? await prisma.meal_indicators.findMany({
+              where: { projectId: { in: ids } },
+              select: { projectId: true, current: true, target: true },
+            })
+          : []
+      const dashboardProgressByProject = buildProjectIdToIndicatorProgress(dashboardIndicators)
+      const progressValuesWithData: number[] = []
+      for (const agg of dashboardProgressByProject.values()) {
+        if (agg.hasData) progressValuesWithData.push(agg.percent)
+      }
+      const averageProgress =
+        progressValuesWithData.length > 0
+          ? Math.round(
+              progressValuesWithData.reduce((a, b) => a + b, 0) / progressValuesWithData.length
+            )
+          : 0
 
       // For now, set upcoming milestones to 0 since we don't have milestone/activity tables yet
       // In the future, you can implement milestone tracking:
@@ -181,7 +169,9 @@ export async function GET(request: NextRequest) {
         id: project.id,
         name: project.name,
         status: project.status?.toLowerCase() || 'planning',
-        progress: project.progress || averageProgress, // Use actual project progress if available
+        progress: dashboardProgressByProject.get(project.id)?.hasData
+          ? dashboardProgressByProject.get(project.id)!.percent
+          : 0,
         dueDate: project.endDate?.toISOString() || '',
         lead: project.users_projects_managerIdTousers ? `${project.users_projects_managerIdTousers.firstName || ''} ${project.users_projects_managerIdTousers.lastName || ''}`.trim() || 'Unassigned' : 'Unassigned',
         priority: project.priority?.toLowerCase() || 'medium', // Use actual project priority from database
