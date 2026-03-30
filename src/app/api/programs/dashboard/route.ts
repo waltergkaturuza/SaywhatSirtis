@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { buildProjectIdToIndicatorProgress } from "@/lib/programs/indicator-progress"
+import { fetchMealIndicatorsForProjectProgress } from "@/lib/programs/meal-indicators-query"
 
 export async function GET(request: NextRequest) {
   try {
@@ -140,24 +141,22 @@ export async function GET(request: NextRequest) {
 
       const allProjectIds = await prisma.projects.findMany({ select: { id: true } })
       const ids = allProjectIds.map((p) => p.id)
-      const dashboardIndicators =
-        ids.length > 0
-          ? await prisma.meal_indicators.findMany({
-              where: { projectId: { in: ids } },
-              select: { projectId: true, current: true, target: true },
-            })
-          : []
+      const dashboardIndicators = await fetchMealIndicatorsForProjectProgress(prisma, ids)
       const dashboardProgressByProject = buildProjectIdToIndicatorProgress(dashboardIndicators)
       const progressValuesWithData: number[] = []
       for (const agg of dashboardProgressByProject.values()) {
         if (agg.hasData) progressValuesWithData.push(agg.percent)
       }
+      const avgRow =
+        progressValuesWithData.length === 0
+          ? await prisma.projects.aggregate({ _avg: { progress: true } })
+          : null
       const averageProgress =
         progressValuesWithData.length > 0
           ? Math.round(
               progressValuesWithData.reduce((a, b) => a + b, 0) / progressValuesWithData.length
             )
-          : 0
+          : Math.round(avgRow?._avg.progress ?? 0)
 
       // For now, set upcoming milestones to 0 since we don't have milestone/activity tables yet
       // In the future, you can implement milestone tracking:
@@ -171,7 +170,7 @@ export async function GET(request: NextRequest) {
         status: project.status?.toLowerCase() || 'planning',
         progress: dashboardProgressByProject.get(project.id)?.hasData
           ? dashboardProgressByProject.get(project.id)!.percent
-          : 0,
+          : (project.progress ?? 0),
         dueDate: project.endDate?.toISOString() || '',
         lead: project.users_projects_managerIdTousers ? `${project.users_projects_managerIdTousers.firstName || ''} ${project.users_projects_managerIdTousers.lastName || ''}`.trim() || 'Unassigned' : 'Unassigned',
         priority: project.priority?.toLowerCase() || 'medium', // Use actual project priority from database

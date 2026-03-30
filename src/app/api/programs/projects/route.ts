@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { buildProjectIdToIndicatorProgress } from "@/lib/programs/indicator-progress"
+import { fetchMealIndicatorsForProjectProgress } from "@/lib/programs/meal-indicators-query"
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,19 +49,14 @@ export async function GET(request: NextRequest) {
     })
 
     const projectIds = projects.map((p) => p.id)
-    const mealIndicators =
-      projectIds.length > 0
-        ? await prisma.meal_indicators.findMany({
-            where: { projectId: { in: projectIds } },
-            select: { projectId: true, current: true, target: true },
-          })
-        : []
+    const mealIndicators = await fetchMealIndicatorsForProjectProgress(prisma, projectIds)
     const indicatorProgressByProject = buildProjectIdToIndicatorProgress(mealIndicators)
 
     const projectsWithIndicatorProgress = projects.map((p) => {
       const agg = indicatorProgressByProject.get(p.id)
-      const progressFromIndicators = agg?.hasData ? agg.percent : 0
-      return { ...p, progress: progressFromIndicators }
+      const fromIndicators = agg?.hasData ? agg.percent : undefined
+      const progress = fromIndicators ?? p.progress ?? 0
+      return { ...p, progress }
     })
 
     // Fetch draft projects and convert them to project-like format
