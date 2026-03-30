@@ -8,7 +8,7 @@ import { ExportButton } from "@/components/ui/export-button"
 import { ImportButton } from "@/components/ui/import-button"
 import { PrintButton } from "@/components/ui/print-button"
 import { DownloadExcelButton, DownloadPDFButton } from "@/components/ui/download-button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -704,6 +704,29 @@ export default function EmployeesPage() {
   const handleCreateEmployee = async (formData: any) => {
     setFormLoading(true)
     try {
+      const workEmail = String(formData?.email ?? "")
+        .trim()
+        .toLowerCase()
+      if (workEmail.includes("@")) {
+        const preRes = await fetch(
+          `/api/hr/employees/check-email?email=${encodeURIComponent(workEmail)}`
+        )
+        const preData = await preRes.json().catch(() => ({}))
+        if (!preRes.ok) {
+          showErrorNotification(
+            preData.error || "Could not verify the work email. Try again."
+          )
+          return
+        }
+        if (!preData.available) {
+          showErrorNotification(
+            preData.message ||
+              "This work email is already in use. Use a different email or update the existing record."
+          )
+          return
+        }
+      }
+
       const response = await fetch('/api/hr/employees', {
         method: 'POST',
         headers: {
@@ -715,11 +738,16 @@ export default function EmployeesPage() {
       const result = await response.json()
 
       if (response.ok) {
-        // Success - refresh employee list and close modal
         await fetchEmployees()
         setShowCreateModal(false)
         console.log('Employee created successfully')
-        showSuccessNotification('Employee created successfully!')
+        const linked = result?.data?.linkedExistingUserAccount
+        showSuccessNotification(
+          linked
+            ? result?.message ||
+                'Employee profile created and linked to the existing user account for this email.'
+            : result?.message || 'Employee created successfully!'
+        )
       } else {
         // Handle different error types
         if (response.status === 401) {
@@ -1098,6 +1126,9 @@ export default function EmployeesPage() {
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Employee Profile</DialogTitle>
+            <DialogDescription className="sr-only">
+              View and manage this employee&apos;s profile, employment, and documents.
+            </DialogDescription>
           </DialogHeader>
           {selectedEmployee && (
             <div className="space-y-8">
@@ -1741,6 +1772,9 @@ export default function EmployeesPage() {
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-saywhat-orange to-saywhat-red bg-clip-text text-transparent">
               Edit Employee
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Update employee details, role, and employment information.
+            </DialogDescription>
           </DialogHeader>
           {formLoading ? (
             <div className="flex justify-center items-center py-8">
@@ -1769,6 +1803,9 @@ export default function EmployeesPage() {
           <div className="p-6">
             <DialogHeader className="pb-4">
               <DialogTitle className="text-2xl font-bold text-saywhat-black">Add New Employee</DialogTitle>
+              <DialogDescription className="sr-only">
+                Create a new employee record and optional user account.
+              </DialogDescription>
             </DialogHeader>
             <EmployeeForm
               mode="create"
@@ -1785,6 +1822,9 @@ export default function EmployeesPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Archive Employee</DialogTitle>
+            <DialogDescription className="sr-only">
+              Archive this employee, revoke access, and retain historical records.
+            </DialogDescription>
           </DialogHeader>
           
           {selectedEmployee && (

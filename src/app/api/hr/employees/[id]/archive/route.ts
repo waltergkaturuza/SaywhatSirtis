@@ -16,10 +16,20 @@ export async function PATCH(
     }
 
     const { id: employeeId } = await params
-    const hasPermission = session.user?.permissions?.includes('hr.edit') ||
-                         session.user?.permissions?.includes('hr.full_access') ||
-                         session.user?.roles?.includes('admin') ||
-                         session.user?.roles?.includes('hr_manager')
+
+    const userRoles = session.user?.roles || []
+    const perms = session.user?.permissions || []
+    const hasPermission =
+      userRoles.includes('HR') ||
+      userRoles.includes('SUPERUSER') ||
+      userRoles.includes('SYSTEM_ADMINISTRATOR') ||
+      userRoles.includes('admin') ||
+      userRoles.includes('hr_manager') ||
+      userRoles.includes('hr_staff') ||
+      perms.includes('hr.view') ||
+      perms.includes('hr.full_access') ||
+      perms.includes('hr_full') ||
+      perms.includes('hr.edit')
 
     if (!hasPermission) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })

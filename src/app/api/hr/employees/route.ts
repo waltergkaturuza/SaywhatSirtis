@@ -237,10 +237,12 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status })
     }
 
+    const normalizedEmail = formData.email.toLowerCase().trim()
+
     // Check if employee email already exists
-    const existingEmployee = await executeQuery(async (prisma) => 
+    const existingEmployee = await executeQuery(async (prisma) =>
       prisma.employees.findUnique({
-        where: { email: formData.email }
+        where: { email: normalizedEmail },
       })
     )
 
@@ -253,24 +255,38 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status })
     }
 
-    // Check if user email already exists
-    const existingUser = await executeQuery(async (prisma) => 
+    const existingUser = await executeQuery(async (prisma) =>
       prisma.users.findUnique({
-        where: { email: formData.email },
+        where: { email: normalizedEmail },
         select: {
           id: true,
-          email: true
-        }
+          email: true,
+        },
       })
     )
 
+    /** Admin may create a user before HR creates the employee — link instead of conflict. */
+    let reuseUserId: string | null = null
     if (existingUser) {
-      const { response, status } = createErrorResponse(
-        'User with this email already exists',
-        HttpStatus.CONFLICT,
-        { code: ErrorCodes.DUPLICATE_ENTRY }
+      const employeeForUser = await executeQuery(async (prisma) =>
+        prisma.employees.findUnique({
+          where: { userId: existingUser.id },
+          select: { id: true },
+        })
       )
-      return NextResponse.json(response, { status })
+      if (employeeForUser) {
+        const { response, status } = createErrorResponse(
+          'This user already has an employee record',
+          HttpStatus.CONFLICT,
+          {
+            code: ErrorCodes.DUPLICATE_ENTRY,
+            message:
+              'This email is tied to a user account that already has an HR employee profile. Edit that employee instead of creating a new one.',
+          }
+        )
+        return NextResponse.json(response, { status })
+      }
+      reuseUserId = existingUser.id
     }
 
     // Handle department validation and resolution
@@ -480,10 +496,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create user and employee in a transaction
+    // Create or link user and create employee in a transaction
     const result = await executeQuery(async (prisma) => 
       prisma.$transaction(async (tx) => {
-      // Create user account first with appropriate roles
       const userRoles = ['user'] // Base role for all users
       if (sanitizedData.isSupervisor) {
         userRoles.push('supervisor')
@@ -492,11 +507,9 @@ export async function POST(request: Request) {
         userRoles.push('reviewer')
       }
       
-      // Handle role-based data from the form
       const userRole = formData.role || formData.userRole || 'BASIC_USER_1'
       const permissions = formData.permissions || {}
       
-      // Calculate access level and document security clearance based on role
       const getAccessLevelFromRole = (role: string) => {
         const roleMap: Record<string, { accessLevel: string, documentLevel: string }> = {
           'BASIC_USER_1': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
@@ -511,26 +524,49 @@ export async function POST(request: Request) {
       }
       
       const roleConfig = getAccessLevelFromRole(userRole)
-      
-      const newUser = await tx.users.create({
-        data: {
-          id: randomUUID(),
-          email: sanitizedData.email,
-          firstName: sanitizedData.firstName,
-          lastName: sanitizedData.lastName,
-          department: sanitizedData.department,
-          position: sanitizedData.position,
-          role: userRole, // Use the selected role from the form
-          supervisorId: supervisorUserId, // resolved supervisor user id (may be undefined)
-          updatedAt: new Date()
-        }
-      })
+
+      let targetUserId: string
+      let linkedExistingUser = false
+      let newUser: { id: string; email: string } | null = null
+
+      if (reuseUserId) {
+        linkedExistingUser = true
+        await tx.users.update({
+          where: { id: reuseUserId },
+          data: {
+            firstName: sanitizedData.firstName,
+            lastName: sanitizedData.lastName,
+            department: sanitizedData.department,
+            position: sanitizedData.position,
+            role: userRole as any,
+            supervisorId: supervisorUserId ?? null,
+            updatedAt: new Date(),
+          },
+        })
+        targetUserId = reuseUserId
+      } else {
+        const created = await tx.users.create({
+          data: {
+            id: randomUUID(),
+            email: sanitizedData.email,
+            firstName: sanitizedData.firstName,
+            lastName: sanitizedData.lastName,
+            department: sanitizedData.department,
+            position: sanitizedData.position,
+            role: userRole as any,
+            supervisorId: supervisorUserId,
+            updatedAt: new Date()
+          }
+        })
+        newUser = { id: created.id, email: created.email }
+        targetUserId = created.id
+      }
 
       // Create employee record
       const newEmployee = await tx.employees.create({
         data: {
           id: randomUUID(),
-          userId: newUser.id,
+          userId: targetUserId,
           employeeId: sanitizedData.employeeId,
           firstName: sanitizedData.firstName,
           lastName: sanitizedData.lastName,
@@ -673,14 +709,28 @@ export async function POST(request: Request) {
         }
       }
 
-        return { newUser, newEmployee, educationQualification, certificationQualifications, jobDescriptionRecord }
+        return {
+          newUser,
+          newEmployee,
+          educationQualification,
+          certificationQualifications,
+          jobDescriptionRecord,
+          linkedExistingUser,
+        }
       })
     )
 
-    const { newUser, newEmployee, educationQualification, certificationQualifications, jobDescriptionRecord } = result
+    const {
+      newUser,
+      newEmployee,
+      educationQualification,
+      certificationQualifications,
+      jobDescriptionRecord,
+      linkedExistingUser,
+    } = result
 
-    // Send welcome email to new employee
-    if (newUser && newEmployee.email) {
+    // Welcome email only for brand-new logins (admin-pre-created users already received credentials)
+    if (newUser && newEmployee.email && !linkedExistingUser) {
       emailService.sendWelcomeEmail(
         newEmployee.email,
         newEmployee.firstName || 'User',
@@ -691,22 +741,28 @@ export async function POST(request: Request) {
       });
     }
 
-    const response = createSuccessResponse({
-      id: newEmployee.id,
-      employeeId: newEmployee.employeeId,
-      name: `${newEmployee.firstName} ${newEmployee.lastName}`,
-      email: newEmployee.email,
-      department: newEmployee.department,
-      position: newEmployee.position,
-      status: newEmployee.status,
-      qualifications: {
-        education: educationQualification,
-        certifications: certificationQualifications,
-        jobDescription: jobDescriptionRecord
+    const response = createSuccessResponse(
+      {
+        id: newEmployee.id,
+        employeeId: newEmployee.employeeId,
+        name: `${newEmployee.firstName} ${newEmployee.lastName}`,
+        email: newEmployee.email,
+        department: newEmployee.department,
+        position: newEmployee.position,
+        status: newEmployee.status,
+        linkedExistingUserAccount: linkedExistingUser,
+        qualifications: {
+          education: educationQualification,
+          certifications: certificationQualifications,
+          jobDescription: jobDescriptionRecord,
+        },
+      },
+      {
+        message: linkedExistingUser
+          ? `Employee profile created and linked to the existing user account for ${newEmployee.email}.`
+          : `Employee ${newEmployee.firstName} ${newEmployee.lastName} created successfully with ${certificationQualifications.length} certifications`,
       }
-    }, {
-      message: `Employee ${newEmployee.firstName} ${newEmployee.lastName} created successfully with ${certificationQualifications.length} certifications`
-    })
+    )
 
     return NextResponse.json(response, { status: HttpStatus.CREATED })
   } catch (error) {

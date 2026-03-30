@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { EnhancedLayout } from "@/components/layout/enhanced-layout"
 import {
@@ -189,6 +189,14 @@ export default function AddEmployeePage() {
     roles: false,
     submitting: false
   })
+
+  /** Work email uniqueness (matches POST /api/hr/employees) */
+  const [workEmailCheck, setWorkEmailCheck] = useState<{
+    forEmail: string
+    state: "idle" | "checking" | "available" | "link" | "taken" | "error"
+    message: string
+  }>({ forEmail: "", state: "idle", message: "" })
+  const workEmailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   
   const [formData, setFormData] = useState<EmployeeFormData>({
     firstName: "",
@@ -287,6 +295,12 @@ export default function AddEmployeePage() {
     fetchReviewers()
     fetchCountries()
     fetchRoles()
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (workEmailDebounceRef.current) clearTimeout(workEmailDebounceRef.current)
+    }
   }, [])
 
   // Fetch departments
@@ -451,6 +465,65 @@ export default function AddEmployeePage() {
     }
   }
 
+  const runWorkEmailLookup = useCallback(async (email: string) => {
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed.includes("@")) {
+      setWorkEmailCheck({ forEmail: "", state: "idle", message: "" })
+      return
+    }
+    setWorkEmailCheck({ forEmail: trimmed, state: "checking", message: "" })
+    try {
+      const res = await fetch(
+        `/api/hr/employees/check-email?email=${encodeURIComponent(trimmed)}`
+      )
+      const data = (await res.json().catch(() => ({}))) as {
+        available?: boolean
+        linkExistingUser?: boolean
+        message?: string | null
+        error?: string
+      }
+      if (!res.ok) {
+        setWorkEmailCheck({
+          forEmail: trimmed,
+          state: "error",
+          message: data.error || "Could not verify this email. Try again.",
+        })
+        return
+      }
+      if (data.available) {
+        if (data.linkExistingUser) {
+          setWorkEmailCheck({
+            forEmail: trimmed,
+            state: "link",
+            message:
+              data.message ||
+              "A user account exists with no employee profile yet. Submitting will link this employee to that login.",
+          })
+        } else {
+          setWorkEmailCheck({
+            forEmail: trimmed,
+            state: "available",
+            message: "This work email is available.",
+          })
+        }
+      } else {
+        setWorkEmailCheck({
+          forEmail: trimmed,
+          state: "taken",
+          message:
+            data.message ||
+            "This work email is already used. Choose another or update the existing employee or user.",
+        })
+      }
+    } catch {
+      setWorkEmailCheck({
+        forEmail: trimmed,
+        state: "error",
+        message: "Could not verify this email. Check your connection and try again.",
+      })
+    }
+  }, [])
+
   const handleInputChange = (field: keyof EmployeeFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -461,6 +534,19 @@ export default function AddEmployeePage() {
     if (field === 'country') {
       setFormData(prev => ({ ...prev, province: '' })) // Reset province
       fetchProvinces(value)
+    }
+
+    if (field === "email") {
+      if (workEmailDebounceRef.current) clearTimeout(workEmailDebounceRef.current)
+      const s = String(value ?? "").trim().toLowerCase()
+      if (!s || !s.includes("@")) {
+        setWorkEmailCheck({ forEmail: "", state: "idle", message: "" })
+      } else {
+        setWorkEmailCheck({ forEmail: s, state: "idle", message: "" })
+        workEmailDebounceRef.current = setTimeout(() => {
+          void runWorkEmailLookup(s)
+        }, 550)
+      }
     }
   }
 
@@ -524,6 +610,46 @@ export default function AddEmployeePage() {
         return
       }
 
+      const workEmail = formData.email.trim().toLowerCase()
+      if (!workEmail.includes("@")) {
+        alert("Please enter a valid work email address.")
+        return
+      }
+      const preRes = await fetch(
+        `/api/hr/employees/check-email?email=${encodeURIComponent(workEmail)}`
+      )
+      const preData = (await preRes.json().catch(() => ({}))) as {
+        available?: boolean
+        linkExistingUser?: boolean
+        message?: string
+        error?: string
+      }
+      if (!preRes.ok) {
+        alert(preData.error || "Could not verify the work email. Try again.")
+        return
+      }
+      if (!preData.available) {
+        const msg =
+          preData.message ||
+          "This work email is already in use. Use a different email or update the existing record."
+        setWorkEmailCheck({
+          forEmail: workEmail,
+          state: "taken",
+          message: msg,
+        })
+        alert(msg)
+        return
+      }
+      if (preData.linkExistingUser) {
+        setWorkEmailCheck({
+          forEmail: workEmail,
+          state: "link",
+          message:
+            preData.message ||
+            "This will link the new employee to the existing user account for this email.",
+        })
+      }
+
       // Save employee documents to Document Repository first
       if (formData.uploadedDocuments && formData.uploadedDocuments.length > 0) {
         await saveEmployeeDocumentsToRepository()
@@ -578,12 +704,23 @@ export default function AddEmployeePage() {
       
       if (response.ok) {
         console.log("Employee created successfully:", result)
-        alert("Employee created successfully!")
-        // Redirect to employees list or show success message
+        const linked = result?.data?.linkedExistingUserAccount
+        alert(
+          linked
+            ? result?.message ||
+                "Employee profile created and linked to the existing user account (same login/password)."
+            : "Employee created successfully!"
+        )
         router.push('/hr/employees')
       } else {
         console.error("Error creating employee:", result)
-        alert(`Error creating employee: ${result.message || 'Unknown error'}`)
+        const msg =
+          result.error ||
+          result.message ||
+          (response.status === 409
+            ? "This work email is already used by an employee or user account. Change the email or update the existing record."
+            : "Unknown error")
+        alert(`Error creating employee: ${msg}`)
       }
     } catch (error) {
       console.error("Submit error:", error)
@@ -914,9 +1051,44 @@ export default function AddEmployeePage() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    onBlur={(e) => {
+                      const v = e.target.value.trim().toLowerCase()
+                      if (v.includes("@")) void runWorkEmailLookup(v)
+                    }}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                      workEmailCheck.state === "taken"
+                        ? "border-red-500"
+                        : workEmailCheck.state === "available"
+                          ? "border-green-600"
+                          : workEmailCheck.state === "link"
+                            ? "border-amber-500"
+                            : "border-gray-300"
+                    }`}
                     required
+                    autoComplete="email"
                   />
+                  {workEmailCheck.state === "checking" && (
+                    <p className="mt-1 text-sm text-gray-500">Checking if this email is available…</p>
+                  )}
+                  {workEmailCheck.state === "available" &&
+                    workEmailCheck.forEmail === formData.email.trim().toLowerCase() && (
+                      <p className="mt-1 text-sm text-green-700">{workEmailCheck.message}</p>
+                    )}
+                  {workEmailCheck.state === "link" &&
+                    workEmailCheck.forEmail === formData.email.trim().toLowerCase() &&
+                    workEmailCheck.message && (
+                      <p className="mt-1 text-sm text-amber-800 flex items-start gap-1">
+                        <ExclamationTriangleIcon className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                        <span>{workEmailCheck.message}</span>
+                      </p>
+                    )}
+                  {(workEmailCheck.state === "taken" || workEmailCheck.state === "error") &&
+                    workEmailCheck.message && (
+                      <p className="mt-1 text-sm text-red-600 flex items-start gap-1">
+                        <ExclamationTriangleIcon className="w-4 h-4 shrink-0 mt-0.5" />
+                        <span>{workEmailCheck.message}</span>
+                      </p>
+                    )}
                 </div>
                 
                 <div>
@@ -2298,7 +2470,7 @@ export default function AddEmployeePage() {
                     <>
                       <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Saving Documents & Employee...
                     </>
