@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 import { rateLimit, getClientIP } from '@/lib/production-helpers'
+import {
+  DISPLAY_AGE_GROUP_ORDER,
+  KEY_POPULATION_COLUMNS,
+  displayAgeGroupSortIndex,
+  mapStoredCallerAgeToBucket,
+} from '@/lib/call-centre/caller-demographics'
 
 export async function GET(request: NextRequest) {
   try {
@@ -202,7 +208,8 @@ export async function GET(request: NextRequest) {
     const casesByPurpose = purposeStats.map(stat => ({
       purpose: stat.purpose || 'Unknown',
       count: stat._count.id,
-      percentage: totalCases > 0 ? Math.round((stat._count.id / totalCases) * 100) : 0
+      percentage:
+        totalCases > 0 ? Math.round((stat._count.id / totalCases) * 100) : 0,
     }))
 
     // Get purpose distribution by timeframe
@@ -308,46 +315,94 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    // Get calls by age group
+    // Calls by age group (stored bands: ZERO, 1-14, 15-19, … plus legacy "-14" / numeric ages)
     const ageStats = await prisma.call_records.groupBy({
       by: ['callerAge'],
       where: {
         ...dateFilter,
-        callerAge: {
-          not: null
-        }
+        callerAge: { not: null },
       },
-      _count: {
-        id: true
-      }
+      _count: { id: true },
     })
 
-    // Categorize into age groups
-    const ageGroups = {
-      '0-17': 0,
-      '18-24': 0,
-      '25-34': 0,
-      '35-44': 0,
-      '45-54': 0,
-      '55+': 0
-    }
+    const nullOrEmptyAgeCount = await prisma.call_records.count({
+      where: {
+        ...dateFilter,
+        OR: [{ callerAge: null }, { callerAge: '' }],
+      },
+    })
+
+    const ageBuckets: Record<string, number> = Object.fromEntries(
+      DISPLAY_AGE_GROUP_ORDER.map(g => [g, 0])
+    ) as Record<string, number>
+
+    ageBuckets['Zero'] += nullOrEmptyAgeCount
 
     ageStats.forEach(stat => {
-      const age = parseInt(stat.callerAge || '0')
-      if (age <= 17) ageGroups['0-17'] += stat._count.id
-      else if (age <= 24) ageGroups['18-24'] += stat._count.id
-      else if (age <= 34) ageGroups['25-34'] += stat._count.id
-      else if (age <= 44) ageGroups['35-44'] += stat._count.id
-      else if (age <= 54) ageGroups['45-54'] += stat._count.id
-      else ageGroups['55+'] += stat._count.id
+      const raw = stat.callerAge
+      if (raw == null || String(raw).trim() === '') return
+      const bucket = mapStoredCallerAgeToBucket(raw)
+      if (bucket) ageBuckets[bucket] += stat._count.id
     })
 
-    const totalWithAge = Object.values(ageGroups).reduce((sum, count) => sum + count, 0)
-    const callsByAgeGroup = Object.entries(ageGroups).map(([ageGroup, count]) => ({
-      ageGroup,
-      count,
-      percentage: totalWithAge > 0 ? Math.round((count / totalWithAge) * 100) : 0
-    })).filter(item => item.count > 0)
+    const totalWithAge = Object.values(ageBuckets).reduce((sum, c) => sum + c, 0)
+    const callsByAgeGroup = DISPLAY_AGE_GROUP_ORDER.map(ageGroup => {
+      const count = ageBuckets[ageGroup] ?? 0
+      return {
+        ageGroup,
+        count,
+        percentage:
+          totalWithAge > 0 ? Math.round((count / totalWithAge) * 100) : 0,
+      }
+    }).filter(item => item.count > 0)
+
+    callsByAgeGroup.sort(
+      (a, b) =>
+        displayAgeGroupSortIndex(a.ageGroup) - displayAgeGroupSortIndex(b.ageGroup)
+    )
+
+    // Age × key population (invalid / unknown age → Zero ↔ Invalid in summaries)
+    const demoRows = await prisma.call_records.findMany({
+      where: dateFilter,
+      select: { callerAge: true, callerKeyPopulation: true },
+    })
+
+    type Kp = (typeof KEY_POPULATION_COLUMNS)[number]
+    const matrix: Record<string, Record<Kp, number>> = {} as Record<
+      string,
+      Record<Kp, number>
+    >
+    for (const ag of DISPLAY_AGE_GROUP_ORDER) {
+      matrix[ag] = {
+        Child: 0,
+        'Young Person': 0,
+        Adult: 0,
+        'N/A': 0,
+        Invalid: 0,
+      }
+    }
+
+    for (const row of demoRows) {
+      const bucket = mapStoredCallerAgeToBucket(row.callerAge) ?? 'Zero'
+      const rawKp = row.callerKeyPopulation?.trim() || 'N/A'
+      const kp = (KEY_POPULATION_COLUMNS as readonly string[]).includes(rawKp)
+        ? (rawKp as Kp)
+        : 'N/A'
+      matrix[bucket][kp] += 1
+    }
+
+    const ageKeyPopulationCrossTab = {
+      ageGroups: [...DISPLAY_AGE_GROUP_ORDER],
+      keyPopulations: [...KEY_POPULATION_COLUMNS],
+      rows: DISPLAY_AGE_GROUP_ORDER.map(ageGroup => {
+        const cells = KEY_POPULATION_COLUMNS.map(kp => ({
+          keyPopulation: kp,
+          count: matrix[ageGroup][kp],
+        }))
+        const rowTotal = cells.reduce((s, c) => s + c.count, 0)
+        return { ageGroup, cells, rowTotal }
+      }),
+    }
 
     // Get calls by gender
     const genderStats = await prisma.call_records.groupBy({
@@ -435,8 +490,9 @@ export async function GET(request: NextRequest) {
       purposeByTimeframe,
       callsByProvince: sortedCallsByProvince,
       callsByAgeGroup,
+      ageKeyPopulationCrossTab,
       callsByGender,
-      callsByTimeframe
+      callsByTimeframe,
     }
 
     return NextResponse.json(response)
@@ -462,6 +518,18 @@ export async function GET(request: NextRequest) {
       purposeByTimeframe: [],
       callsByProvince: [],
       callsByAgeGroup: [],
+      ageKeyPopulationCrossTab: {
+        ageGroups: [...DISPLAY_AGE_GROUP_ORDER],
+        keyPopulations: [...KEY_POPULATION_COLUMNS],
+        rows: DISPLAY_AGE_GROUP_ORDER.map(ageGroup => ({
+          ageGroup,
+          cells: KEY_POPULATION_COLUMNS.map(keyPopulation => ({
+            keyPopulation,
+            count: 0,
+          })),
+          rowTotal: 0,
+        })),
+      },
       callsByGender: [],
       callsByTimeframe: {today: 0, week: 0, month: 0, year: 0},
       error: 'Failed to fetch data'

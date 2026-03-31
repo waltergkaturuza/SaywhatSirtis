@@ -18,6 +18,7 @@ import {
   ChatBubbleBottomCenterTextIcon,
   UserIcon
 } from "@heroicons/react/24/outline";
+import { defaultKeyPopulationForStoredAge } from "@/lib/call-centre/caller-demographics";
 
 interface CallRecord {
   id: string
@@ -1369,18 +1370,28 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Age Group</label>
                 <select
                   value={formData.callerAge}
-                  onChange={(e) => setFormData({...formData, callerAge: e.target.value})}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFormData(prev => ({
+                      ...prev,
+                      callerAge: v,
+                      callerKeyPopulation: defaultKeyPopulationForStoredAge(v),
+                    }));
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
-                  <option value="-14">Under 14</option>
+                  <option value="ZERO">Zero (invalid / age not mentioned)</option>
+                  <option value="1-14">1-14</option>
+                  <option value="-14">Under 14 (legacy)</option>
                   <option value="15-19">15-19</option>
                   <option value="20-24">20-24</option>
-                  <option value="25-29">25-29</option>
-                  <option value="30-34">30-34</option>
-                  <option value="35-39">35-39</option>
-                  <option value="40-44">40-44</option>
-                  <option value="45-49">45-49</option>
-                  <option value="50+">50+</option>
+                  <option value="25+">25+</option>
+                  <option value="25-29">25-29 (legacy)</option>
+                  <option value="30-34">30-34 (legacy)</option>
+                  <option value="35-39">35-39 (legacy)</option>
+                  <option value="40-44">40-44 (legacy)</option>
+                  <option value="45-49">45-49 (legacy)</option>
+                  <option value="50+">50+ (legacy)</option>
                 </select>
               </div>
               <div>
@@ -1407,6 +1418,7 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                   <option value="Young Person">Young Person</option>
                   <option value="Adult">Adult</option>
                   <option value="N/A">N/A</option>
+                  <option value="Invalid">Invalid</option>
                 </select>
               </div>
               <div className="md:col-span-2">
@@ -1522,7 +1534,19 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Call Validity</label>
                 <select
                   value={formData.validity}
-                  onChange={(e) => setFormData({...formData, validity: e.target.value})}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "invalid") {
+                      setFormData(prev => ({
+                        ...prev,
+                        validity: v,
+                        callerAge: "ZERO",
+                        callerKeyPopulation: "Invalid",
+                      }));
+                    } else {
+                      setFormData(prev => ({ ...prev, validity: v }));
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="valid">Valid</option>
@@ -1560,7 +1584,9 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="HIV/AIDS">HIV/AIDS</option>
-                  <option value="Information and Counselling">Information and Counselling</option>
+                  <option value="Information">Information</option>
+                  <option value="Counselling">Counselling</option>
+                  <option value="Information and Counselling">Information and Counselling (legacy)</option>
                   <option value="In-house Case">In-house Case</option>
                   <option value="Cancer Screening">Cancer Screening</option>
                   <option value="Child Protection">Child Protection</option>

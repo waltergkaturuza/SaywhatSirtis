@@ -14,6 +14,7 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon
 } from "@heroicons/react/24/outline"
+import { defaultKeyPopulationForStoredAge } from "@/lib/call-centre/caller-demographics"
 
 export default function NewCallEntryPage() {
   const { data: session } = useSession()
@@ -52,8 +53,8 @@ export default function NewCallEntryPage() {
     language: 'English',
     // Caller's Details (renamed from Communication Details)
     callerFullName: '',
-    callerAge: '-14',
-    callerKeyPopulation: 'N/A',
+    callerAge: '1-14',
+    callerKeyPopulation: 'Child',
     callerGender: 'N/A',
     callerProvince: 'N/A',
     callerAddress: '',
@@ -164,8 +165,27 @@ export default function NewCallEntryPage() {
   }
 
   const handleInputChange = (field: string, value: string) => {
+    if (field === 'callerAge') {
+      setFormData(prev => ({
+        ...prev,
+        callerAge: value,
+        callerKeyPopulation: defaultKeyPopulationForStoredAge(value),
+      }))
+      return
+    }
+
+    if (field === 'callValidity' && value === 'invalid') {
+      setFormData(prev => ({
+        ...prev,
+        callValidity: 'invalid',
+        callerAge: 'ZERO',
+        callerKeyPopulation: 'Invalid',
+      }))
+      return
+    }
+
     setFormData(prev => ({ ...prev, [field]: value }))
-    
+
     // Auto-generate case number if "YES" is selected for case
     if (field === 'isCase' && value === 'YES' && !caseGenerated) {
       // Use the API-fetched case number instead of random generation
@@ -628,7 +648,10 @@ export default function NewCallEntryPage() {
                   className="w-full px-3 py-2 border border-saywhat-grey rounded-md focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange text-saywhat-dark"
                   required
                 >
-                  <option value="-14">Under 14</option>
+                  <option value="ZERO">
+                    Zero (invalid call or age not mentioned)
+                  </option>
+                  <option value="1-14">1-14</option>
                   <option value="15-19">15-19</option>
                   <option value="20-24">20-24</option>
                   <option value="25+">25+</option>
@@ -649,6 +672,7 @@ export default function NewCallEntryPage() {
                   <option value="Young Person">Young Person</option>
                   <option value="Adult">Adult</option>
                   <option value="N/A">N/A</option>
+                  <option value="Invalid">Invalid</option>
                 </select>
               </div>
 
@@ -740,7 +764,8 @@ export default function NewCallEntryPage() {
                   required
                 >
                   <option value="HIV/AIDS">HIV/AIDS</option>
-                  <option value="Information and Counselling">Information and Counselling</option>
+                  <option value="Information">Information</option>
+                  <option value="Counselling">Counselling</option>
                   <option value="In-house Case">In-house Case</option>
                   <option value="Cancer Screening">Cancer Screening</option>
                   <option value="Child Protection">Child Protection</option>

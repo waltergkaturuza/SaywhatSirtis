@@ -78,6 +78,15 @@ export default function CallCentreDataSummaryPage() {
   const [purposeByTimeframe, setPurposeByTimeframe] = useState<Array<{purpose: string, today: number, week: number, month: number, year: number, total: number}>>([])
   const [callsByProvince, setCallsByProvince] = useState<Array<{province: string, calls: number, validCalls: number}>>([])
   const [callsByAgeGroup, setCallsByAgeGroup] = useState<Array<{ageGroup: string, count: number, percentage: number}>>([])
+  const [ageKeyPopulationCrossTab, setAgeKeyPopulationCrossTab] = useState<{
+    ageGroups: string[]
+    keyPopulations: string[]
+    rows: Array<{
+      ageGroup: string
+      cells: Array<{ keyPopulation: string; count: number }>
+      rowTotal: number
+    }>
+  } | null>(null)
   const [callsByGender, setCallsByGender] = useState<Array<{gender: string, count: number, percentage: number}>>([])
   const [callsByTimeframe, setCallsByTimeframe] = useState<{today: number, week: number, month: number, year: number}>({today: 0, week: 0, month: 0, year: 0})
 
@@ -98,6 +107,7 @@ export default function CallCentreDataSummaryPage() {
       setPurposeByTimeframe(data.purposeByTimeframe || [])
       setCallsByProvince(data.callsByProvince || [])
       setCallsByAgeGroup(data.callsByAgeGroup || [])
+      setAgeKeyPopulationCrossTab(data.ageKeyPopulationCrossTab || null)
       setCallsByGender(data.callsByGender || [])
       setCallsByTimeframe(data.callsByTimeframe || {today: 0, week: 0, month: 0, year: 0})
     } catch (error) {
@@ -835,6 +845,53 @@ export default function CallCentreDataSummaryPage() {
             )}
           </div>
         </div>
+
+        {/* Age group × Key population (Zero ↔ Invalid) */}
+        {ageKeyPopulationCrossTab && ageKeyPopulationCrossTab.rows.some(r => r.rowTotal > 0) ? (
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 overflow-x-auto">
+            <h3 className="text-lg font-semibold text-black mb-2 border-b border-gray-200 pb-2">
+              Calls by Age Group and Key Population
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              &quot;Zero&quot; age (invalid call or age not stated) aligns with &quot;Invalid&quot; key population. Other age bands default to Child, Young Person, or Adult but can be edited per call.
+            </p>
+            <table className="min-w-full text-sm border border-gray-200">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="text-left py-2 px-3 font-semibold text-black border-b">
+                    Age group
+                  </th>
+                  {ageKeyPopulationCrossTab.keyPopulations.map(kp => (
+                    <th
+                      key={kp}
+                      className="text-center py-2 px-2 font-semibold text-black border-b whitespace-nowrap"
+                    >
+                      {kp}
+                    </th>
+                  ))}
+                  <th className="text-center py-2 px-3 font-semibold text-black border-b">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ageKeyPopulationCrossTab.rows.map(row => (
+                  <tr key={row.ageGroup} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-2 px-3 font-medium text-black">{row.ageGroup}</td>
+                    {row.cells.map(c => (
+                      <td key={c.keyPopulation} className="text-center py-2 px-2 text-gray-800">
+                        {c.count}
+                      </td>
+                    ))}
+                    <td className="text-center py-2 px-3 font-bold text-gray-900">
+                      {row.rowTotal}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
 
         {/* Case Management Overview */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
