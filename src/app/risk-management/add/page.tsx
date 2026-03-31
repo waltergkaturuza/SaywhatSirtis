@@ -24,17 +24,15 @@ interface RiskFormData {
   attachments?: File[]
 }
 
-interface Department {
+interface DepartmentOption {
   id: string
-  name: string
+  label: string
 }
 
-interface Employee {
-  id: string
-  firstName: string | null
-  lastName: string | null
+interface RiskOwnerOption {
+  userId: string
+  name: string
   email: string
-  department?: string
 }
 
 export default function AddRiskPage() {
@@ -44,10 +42,16 @@ export default function AddRiskPage() {
   // Check user permissions for edit access
   const userPermissions = session?.user?.permissions || []
   const userRoles = session?.user?.roles || []
-  const canEditRisks = userPermissions.includes('risks_edit') || 
-                      userPermissions.includes('risks.edit') || 
-                      userPermissions.includes('admin.access') ||
-                      userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))
+  const canEditRisks =
+    userPermissions.includes('risk.create') ||
+    userPermissions.includes('risks_edit') ||
+    userPermissions.includes('risks.edit') ||
+    userPermissions.includes('admin.access') ||
+    userRoles.some((role) =>
+      ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(
+        role.toLowerCase()
+      )
+    )
 
   // If user doesn't have permissions, show access denied
   if (session && !canEditRisks) {
@@ -71,9 +75,10 @@ export default function AddRiskPage() {
   }
   
   const [loading, setLoading] = useState(false)
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [departments, setDepartments] = useState<Department[]>([])
+  const [riskOwners, setRiskOwners] = useState<RiskOwnerOption[]>([])
+  const [departments, setDepartments] = useState<DepartmentOption[]>([])
   const [loadingDepartments, setLoadingDepartments] = useState(true)
+  const [loadingEmployees, setLoadingEmployees] = useState(true)
   const [currentTag, setCurrentTag] = useState('')
   const [formData, setFormData] = useState<RiskFormData>({
     title: '',
@@ -96,63 +101,51 @@ export default function AddRiskPage() {
   }, [])
 
   const loadEmployeesAndDepartments = async () => {
+    setLoadingDepartments(true)
+    setLoadingEmployees(true)
     try {
-      // Load employees (keeping mock data for now)
-      setEmployees([
-        {
-          id: '1',
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john.doe@saywhat.com',
-          department: 'IT'
-        },
-        {
-          id: '2',
-          firstName: 'Jane',
-          lastName: 'Smith',
-          email: 'jane.smith@saywhat.com',
-          department: 'Finance'
-        },
-        {
-          id: '3',
-          firstName: 'Mike',
-          lastName: 'Johnson',
-          email: 'mike.johnson@saywhat.com',
-          department: 'Operations'
-        }
+      const [deptRes, empRes] = await Promise.all([
+        fetch('/api/hr/departments/hierarchy'),
+        fetch('/api/hr/employees')
       ])
-      
-      // Load departments from HR API
-      try {
-        setLoadingDepartments(true)
-        const response = await fetch('/api/hr/departments/main')
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data) {
-            setDepartments(result.data.map((dept: any) => ({
-              id: dept.id,
-              name: dept.name
-            })))
-          } else {
-            console.error('Failed to fetch departments:', result.message)
-            // Fallback to empty departments
-            setDepartments([])
-          }
-        } else {
-          console.error('Department API request failed:', response.statusText)
-          // Fallback to empty departments
-          setDepartments([])
-        }
-      } catch (deptError) {
-        console.error('Error fetching departments:', deptError)
-        // Fallback to empty departments
+
+      if (deptRes.ok) {
+        const result = await deptRes.json()
+        const flat = result.success && result.data?.flat ? result.data.flat : []
+        setDepartments(
+          flat.map((d: { id: string; name: string; displayName?: string }) => ({
+            id: d.id,
+            label: d.displayName || d.name
+          }))
+        )
+      } else {
+        console.error('Department API request failed:', deptRes.statusText)
         setDepartments([])
-      } finally {
-        setLoadingDepartments(false)
       }
-      
+
+      if (empRes.ok) {
+        const result = await empRes.json()
+        const rows = result.success && Array.isArray(result.data) ? result.data : []
+        const owners: RiskOwnerOption[] = rows
+          .filter((e: { user?: { id?: string } }) => e.user?.id)
+          .map((e: { user: { id: string }; name: string; email: string }) => ({
+            userId: e.user.id,
+            name: e.name,
+            email: e.email
+          }))
+        owners.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+        setRiskOwners(owners)
+      } else {
+        console.error('Employees API request failed:', empRes.statusText)
+        setRiskOwners([])
+      }
     } catch (error) {
       console.error('Error loading data:', error)
+      setDepartments([])
+      setRiskOwners([])
+    } finally {
+      setLoadingDepartments(false)
+      setLoadingEmployees(false)
     }
   }
 
@@ -252,13 +245,14 @@ export default function AddRiskPage() {
       }
 
       const result = await response.json()
-      
+      const newRiskId = result.data?.id ?? result.id
+
       // Handle file uploads if any
-      if (formData.attachments && formData.attachments.length > 0) {
+      if (formData.attachments && formData.attachments.length > 0 && newRiskId) {
         const uploadPromises = formData.attachments.map(async (file) => {
           const formData = new FormData()
           formData.append('file', file)
-          formData.append('riskId', result.id)
+          formData.append('riskId', newRiskId)
           
           return fetch('/api/risk-management/documents/upload', {
             method: 'POST',
@@ -367,13 +361,13 @@ export default function AddRiskPage() {
                   className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
                 >
                   <option value="OPERATIONAL">Operational</option>
-                  <option value="FINANCIAL">Financial</option>
                   <option value="STRATEGIC">Strategic</option>
+                  <option value="FINANCIAL">Financial</option>
                   <option value="COMPLIANCE">Compliance</option>
-                  <option value="CYBERSECURITY">Cybersecurity</option>
                   <option value="REPUTATIONAL">Reputational</option>
                   <option value="ENVIRONMENTAL">Environmental</option>
-                  <option value="LEGAL">Legal</option>
+                  <option value="CYBERSECURITY">Cybersecurity</option>
+                  <option value="HR_PERSONNEL">HR / Personnel</option>
                 </select>
               </div>
               
@@ -384,15 +378,22 @@ export default function AddRiskPage() {
                 <select
                   value={formData.department}
                   onChange={(e) => handleInputChange('department', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
+                  disabled={loadingDepartments}
+                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black disabled:opacity-60"
                 >
-                  <option value="">Select Department</option>
                   {loadingDepartments ? (
-                    <option disabled>Loading departments...</option>
+                    <option value="">Loading departments...</option>
+                  ) : departments.length === 0 ? (
+                    <option value="">No departments available</option>
                   ) : (
-                    departments.map(dept => (
-                      <option key={dept.id} value={dept.name}>{dept.name}</option>
-                    ))
+                    <>
+                      <option value="">Select Department</option>
+                      {departments.map((dept) => (
+                        <option key={dept.id} value={dept.label}>
+                          {dept.label}
+                        </option>
+                      ))}
+                    </>
                   )}
                 </select>
               </div>
@@ -416,15 +417,26 @@ export default function AddRiskPage() {
                 </label>
                 <select
                   value={formData.ownerId || ''}
-                  onChange={(e) => handleInputChange('ownerId', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
+                  onChange={(e) => handleInputChange('ownerId', e.target.value || undefined)}
+                  disabled={loadingEmployees}
+                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black disabled:opacity-60"
                 >
                   <option value="">Select Risk Owner</option>
-                  {employees.map(employee => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName} ({employee.email})
+                  {loadingEmployees ? (
+                    <option disabled value="">
+                      Loading employees...
                     </option>
-                  ))}
+                  ) : riskOwners.length === 0 ? (
+                    <option disabled value="">
+                      No linked users available
+                    </option>
+                  ) : (
+                    riskOwners.map((o) => (
+                      <option key={o.userId} value={o.userId}>
+                        {o.name} ({o.email})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>

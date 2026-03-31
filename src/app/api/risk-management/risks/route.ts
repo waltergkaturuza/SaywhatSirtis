@@ -16,6 +16,21 @@ function calculateRiskScore(probability: RiskProbability, impact: RiskImpact): n
   return probabilityScore[probability] * impactScore[impact];
 }
 
+/** Map UI 5-level values to Prisma enum (LOW | MEDIUM | HIGH). */
+function normalizeRiskProbability(value: string): RiskProbability {
+  const v = String(value).toUpperCase();
+  if (v === 'VERY_LOW' || v === 'LOW') return 'LOW';
+  if (v === 'HIGH' || v === 'VERY_HIGH') return 'HIGH';
+  return 'MEDIUM';
+}
+
+function normalizeRiskImpact(value: string): RiskImpact {
+  const v = String(value).toUpperCase();
+  if (v === 'VERY_LOW' || v === 'LOW') return 'LOW';
+  if (v === 'HIGH' || v === 'VERY_HIGH') return 'HIGH';
+  return 'MEDIUM';
+}
+
 // Helper function to generate risk ID
 function generateRiskId(): string {
   const year = new Date().getFullYear();
@@ -167,9 +182,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate risk score
-    const riskScore = calculateRiskScore(probability, impact);
-    
+    const probabilityDb = normalizeRiskProbability(probability);
+    const impactDb = normalizeRiskImpact(impact);
+    const riskScore = calculateRiskScore(probabilityDb, impactDb);
+
     // Generate unique risk ID
     const riskId = generateRiskId();
 
@@ -181,8 +197,8 @@ export async function POST(request: NextRequest) {
         description,
         category,
         department: department || session.user.department,
-        probability,
-        impact,
+        probability: probabilityDb,
+        impact: impactDb,
         riskScore,
         ownerId: ownerId || session.user.id,
         createdById: session.user.id,
