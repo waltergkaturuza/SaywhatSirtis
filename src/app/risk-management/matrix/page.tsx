@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ArrowLeft, Download, RotateCcw, Filter, Info, Home } from 'lucide-react'
 import Link from 'next/link'
 
 interface RiskMatrixData {
   id: string
+  riskId?: string
   title: string
   category: string
   department: string
@@ -23,6 +24,46 @@ interface MatrixCell {
   risks: RiskMatrixData[]
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
   count: number
+}
+
+/** Map Prisma LOW | MEDIUM | HIGH to 5×5 matrix axes (1, 3, 5). */
+function riskEnumToAxis(v: string): number {
+  const u = String(v).toUpperCase()
+  if (u === 'LOW') return 1
+  if (u === 'HIGH') return 5
+  return 3
+}
+
+function matrixCellSurfaceClass(
+  level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+): string {
+  const base =
+    'rounded-lg p-6 text-center cursor-pointer hover:shadow-xl transition-all min-h-[100px] flex flex-col justify-center '
+  switch (level) {
+    case 'LOW':
+      return base + 'bg-green-500 border-2 border-green-700 hover:bg-green-600'
+    case 'MEDIUM':
+      return base + 'bg-yellow-500 border-2 border-yellow-700 hover:bg-yellow-600'
+    case 'HIGH':
+      return base + 'bg-orange-500 border-2 border-orange-700 hover:bg-orange-600'
+    case 'CRITICAL':
+      return base + 'bg-red-600 border-2 border-red-800 hover:bg-red-700'
+  }
+}
+
+function riskBandCounts(risks: RiskMatrixData[]) {
+  let low = 0
+  let medium = 0
+  let high = 0
+  let critical = 0
+  for (const r of risks) {
+    const s = r.probability * r.impact
+    if (s <= 4) low++
+    else if (s <= 9) medium++
+    else if (s <= 16) high++
+    else critical++
+  }
+  return { low, medium, high, critical }
 }
 
 export default function RiskMatrixPage() {
@@ -57,11 +98,6 @@ export default function RiskMatrixPage() {
     { value: 5, label: 'Very High', description: 'Severe' }
   ]
 
-  useEffect(() => {
-    loadRisksAndMatrix()
-    fetchDepartments()
-  }, [filters])
-
   const fetchDepartments = async () => {
     try {
       setLoadingDepartments(true)
@@ -89,193 +125,87 @@ export default function RiskMatrixPage() {
     }
   }
 
-  const loadRisksAndMatrix = async () => {
+  const loadRisksAndMatrix = useCallback(async () => {
     try {
       setLoading(true)
-      
-      // Enhanced sample risk data with departments
-      const sampleRisks: RiskMatrixData[] = [
-        {
-          id: '1',
-          title: 'Cybersecurity Data Breach Risk',
-          category: 'CYBERSECURITY',
-          department: 'IT',
-          probability: 3,
-          impact: 5,
-          riskScore: 15,
-          status: 'OPEN',
-          description: 'Potential unauthorized access to sensitive customer data',
-          owner: 'IT Security Team'
-        },
-        {
-          id: '2',
-          title: 'Financial Budget Overrun Risk',
-          category: 'FINANCIAL',
-          department: 'Finance',
-          probability: 4,
-          impact: 3,
-          riskScore: 12,
-          status: 'UNDER_REVIEW',
-          description: 'Risk of exceeding allocated project budgets',
-          owner: 'Finance Manager'
-        },
-        {
-          id: '3',
-          title: 'Regulatory Compliance Violation',
-          category: 'COMPLIANCE',
-          department: 'Operations',
-          probability: 2,
-          impact: 4,
-          riskScore: 8,
-          status: 'IN_PROGRESS',
-          description: 'Non-compliance with industry regulations',
-          owner: 'Compliance Officer'
-        },
-        {
-          id: '4',
-          title: 'Key Personnel Loss Risk',
-          category: 'OPERATIONAL',
-          department: 'HR',
-          probability: 3,
-          impact: 3,
-          riskScore: 9,
-          status: 'OPEN',
-          description: 'Loss of critical staff members with specialized knowledge',
-          owner: 'HR Director'
-        },
-        {
-          id: '5',
-          title: 'System Downtime Risk',
-          category: 'OPERATIONAL',
-          department: 'IT',
-          probability: 2,
-          impact: 3,
-          riskScore: 6,
-          status: 'MITIGATED',
-          description: 'Unexpected system outages affecting operations',
-          owner: 'IT Operations'
-        },
-        {
-          id: '6',
-          title: 'Supplier Dependency Risk',
-          category: 'STRATEGIC',
-          department: 'Operations',
-          probability: 2,
-          impact: 2,
-          riskScore: 4,
-          status: 'OPEN',
-          description: 'Over-reliance on single supplier for critical components',
-          owner: 'Supply Chain Manager'
-        },
-        {
-          id: '7',
-          title: 'Market Competition Risk',
-          category: 'STRATEGIC',
-          department: 'Programs',
-          probability: 4,
-          impact: 2,
-          riskScore: 8,
-          status: 'UNDER_REVIEW',
-          description: 'Increased competition affecting market share',
-          owner: 'Strategy Team'
-        },
-        {
-          id: '8',
-          title: 'Environmental Compliance Risk',
-          category: 'ENVIRONMENTAL',
-          department: 'Operations',
-          probability: 1,
-          impact: 3,
-          riskScore: 3,
-          status: 'CLOSED',
-          description: 'Environmental regulation compliance requirements',
-          owner: 'Environmental Officer'
-        },
-        {
-          id: '9',
-          title: 'Data Privacy Breach',
-          category: 'CYBERSECURITY',
-          department: 'IT',
-          probability: 2,
-          impact: 4,
-          riskScore: 8,
-          status: 'OPEN',
-          description: 'Unauthorized access to personal data',
-          owner: 'Data Protection Officer'
-        },
-        {
-          id: '10',
-          title: 'Project Delivery Delay',
-          category: 'OPERATIONAL',
-          department: 'Programs',
-          probability: 3,
-          impact: 2,
-          riskScore: 6,
-          status: 'OPEN',
-          description: 'Risk of missing project delivery deadlines',
-          owner: 'Program Manager'
-        },
-        {
-          id: '11',
-          title: 'Cash Flow Shortage',
-          category: 'FINANCIAL',
-          department: 'Finance',
-          probability: 2,
-          impact: 4,
-          riskScore: 8,
-          status: 'UNDER_REVIEW',
-          description: 'Insufficient cash flow to meet obligations',
-          owner: 'CFO'
-        },
-        {
-          id: '12',
-          title: 'Talent Acquisition Challenge',
-          category: 'OPERATIONAL',
-          department: 'HR',
-          probability: 4,
-          impact: 2,
-          riskScore: 8,
-          status: 'OPEN',
-          description: 'Difficulty recruiting qualified personnel',
-          owner: 'Talent Acquisition'
+
+      const params = new URLSearchParams()
+      params.set('limit', '500')
+      if (filters.category !== 'all') params.set('category', filters.category)
+      if (filters.status !== 'all') params.set('status', filters.status)
+      if (filters.department !== 'all' && filters.department) {
+        params.set('department', filters.department)
+      }
+
+      const res = await fetch(
+        `/api/risk-management/risks?${params.toString()}`,
+        { credentials: 'include' }
+      )
+      const json = await res.json()
+
+      if (!res.ok || json.success === false || !json.data?.risks) {
+        setRisks([])
+        setMatrix([])
+        return
+      }
+
+      type ApiOwner = {
+        firstName?: string | null
+        lastName?: string | null
+        email?: string | null
+      }
+      type ApiRisk = {
+        id: string
+        riskId: string
+        title: string
+        description: string
+        category: string
+        department: string | null
+        probability: string
+        impact: string
+        riskScore: number
+        status: string
+        owner?: ApiOwner | null
+      }
+
+      const rows: RiskMatrixData[] = (json.data.risks as ApiRisk[]).map(r => {
+        const prob = riskEnumToAxis(r.probability)
+        const imp = riskEnumToAxis(r.impact)
+        const name = [r.owner?.firstName, r.owner?.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim()
+        const ownerStr = name || r.owner?.email || ''
+        return {
+          id: r.id,
+          riskId: r.riskId,
+          title: r.title,
+          category: r.category,
+          department: r.department ?? '',
+          probability: prob,
+          impact: imp,
+          riskScore: r.riskScore ?? prob * imp,
+          status: r.status,
+          description: r.description,
+          owner: ownerStr
         }
-      ]
-      
-      // Apply filters
-      let filteredRisks = sampleRisks
-      
-      if (filters.category !== 'all') {
-        filteredRisks = filteredRisks.filter(risk => risk.category === filters.category)
-      }
-      
-      if (filters.status !== 'all') {
-        filteredRisks = filteredRisks.filter(risk => risk.status === filters.status)
-      }
-      
-      if (filters.department !== 'all') {
-        filteredRisks = filteredRisks.filter(risk => risk.department === filters.department)
-      }
-      
-      setRisks(filteredRisks)
-      
-      // Build matrix
+      })
+
+      setRisks(rows)
+
       const newMatrix: MatrixCell[][] = []
-      
       for (let prob = 5; prob >= 1; prob--) {
         const row: MatrixCell[] = []
         for (let imp = 1; imp <= 5; imp++) {
-          const cellRisks = filteredRisks.filter(risk => 
-            risk.probability === prob && risk.impact === imp
+          const cellRisks = rows.filter(
+            risk => risk.probability === prob && risk.impact === imp
           )
-          
           const riskScore = prob * imp
           let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-          
           if (riskScore <= 4) riskLevel = 'LOW'
-          else if (riskScore <= 9) riskLevel = 'MEDIUM'  
+          else if (riskScore <= 9) riskLevel = 'MEDIUM'
           else if (riskScore <= 16) riskLevel = 'HIGH'
           else riskLevel = 'CRITICAL'
-          
           row.push({
             probability: prob,
             impact: imp,
@@ -286,15 +216,23 @@ export default function RiskMatrixPage() {
         }
         newMatrix.push(row)
       }
-      
       setMatrix(newMatrix)
-      
     } catch (error) {
       console.error('Error loading risks and matrix:', error)
+      setRisks([])
+      setMatrix([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
+
+  useEffect(() => {
+    fetchDepartments()
+  }, [])
+
+  useEffect(() => {
+    loadRisksAndMatrix()
+  }, [loadRisksAndMatrix])
 
   const getCellColor = (riskLevel: string, count: number) => {
     const baseColors = {
@@ -322,6 +260,7 @@ export default function RiskMatrixPage() {
       case 'UNDER_REVIEW': return 'bg-yellow-100 text-yellow-800'
       case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800'
       case 'MITIGATED': return 'bg-green-100 text-green-800'
+      case 'ESCALATED': return 'bg-orange-100 text-orange-900'
       case 'CLOSED': return 'bg-gray-100 text-gray-800'
       case 'TRANSFERRED': return 'bg-purple-100 text-purple-800'
       default: return 'bg-gray-100 text-gray-800'
@@ -337,6 +276,7 @@ export default function RiskMatrixPage() {
       case 'STRATEGIC': return 'bg-yellow-100 text-yellow-800'
       case 'ENVIRONMENTAL': return 'bg-teal-100 text-teal-800'
       case 'REPUTATIONAL': return 'bg-pink-100 text-pink-800'
+      case 'HR_PERSONNEL': return 'bg-indigo-100 text-indigo-800'
       case 'LEGAL': return 'bg-gray-100 text-gray-800'
       default: return 'bg-gray-100 text-gray-800'
     }
@@ -376,7 +316,7 @@ export default function RiskMatrixPage() {
       ['Risk Details'],
       ['ID', 'Title', 'Category', 'Probability', 'Impact', 'Risk Score', 'Status'],
       ...risks.map(risk => [
-        risk.id,
+        risk.riskId ?? risk.id,
         risk.title,
         risk.category,
         probabilityLevels.find(p => p.value === risk.probability)?.label || '',
@@ -407,6 +347,8 @@ export default function RiskMatrixPage() {
       department: 'all'
     })
   }
+
+  const summaryBands = useMemo(() => riskBandCounts(risks), [risks])
 
   if (loading) {
     return (
@@ -464,6 +406,8 @@ export default function RiskMatrixPage() {
               <option value="COMPLIANCE">Compliance</option>
               <option value="STRATEGIC">Strategic</option>
               <option value="ENVIRONMENTAL">Environmental</option>
+              <option value="REPUTATIONAL">Reputational</option>
+              <option value="HR_PERSONNEL">HR / Personnel</option>
             </select>
             
             <select
@@ -488,9 +432,8 @@ export default function RiskMatrixPage() {
             >
               <option value="all">All Statuses</option>
               <option value="OPEN">Open</option>
-              <option value="UNDER_REVIEW">Under Review</option>
-              <option value="IN_PROGRESS">In Progress</option>
               <option value="MITIGATED">Mitigated</option>
+              <option value="ESCALATED">Escalated</option>
               <option value="CLOSED">Closed</option>
             </select>
             
@@ -517,7 +460,7 @@ export default function RiskMatrixPage() {
               </h1>
               <p className="text-gray-600 flex items-center">
                 <Info className="h-4 w-4 mr-2 text-blue-500" />
-                Click on any cell to view detailed risk information
+                Live data from the risk register. Probability and impact enums (LOW / MEDIUM / HIGH) map to matrix positions 1, 3, and 5. Click a cell for details.
               </p>
             </div>
           </div>
@@ -558,240 +501,64 @@ export default function RiskMatrixPage() {
 
               {/* Matrix Grid */}
               <div className="space-y-2">
-                {/* Very High Impact Row */}
-                <div className="grid grid-cols-6 gap-2 items-center">
-                  <div className="text-right pr-4">
-                    <div className="transform -rotate-90 text-sm font-bold text-gray-700 whitespace-nowrap">Very High</div>
-                  </div>
-                  <div 
-                    className="bg-yellow-400 border-2 border-yellow-600 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-yellow-500 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(5, 1, 'MEDIUM')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-800 mt-1 font-semibold">Score: 5</div>
-                    <div className="text-xs font-bold text-white bg-orange-600 px-2 py-1 rounded mt-1">MEDIUM</div>
-                  </div>
-                  <div 
-                    className="bg-yellow-500 border-2 border-yellow-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-yellow-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(5, 2, 'HIGH')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-800 mt-1 font-semibold">Score: 10</div>
-                    <div className="text-xs font-bold text-white bg-orange-700 px-2 py-1 rounded mt-1">HIGH</div>
-                  </div>
-                  <div 
-                    className="bg-orange-500 border-2 border-orange-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-orange-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(5, 3, 'HIGH')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 15</div>
-                    <div className="text-xs font-bold text-white bg-orange-800 px-2 py-1 rounded mt-1">HIGH</div>
-                  </div>
-                  <div 
-                    className="bg-red-500 border-2 border-red-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-red-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(5, 4, 'CRITICAL')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 20</div>
-                    <div className="text-xs font-bold text-white bg-red-800 px-2 py-1 rounded mt-1">CRITICAL</div>
-                  </div>
-                  <div 
-                    className="bg-red-600 border-2 border-red-800 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-red-700 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(5, 5, 'CRITICAL')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 25</div>
-                    <div className="text-xs font-bold text-white bg-red-900 px-2 py-1 rounded mt-1">CRITICAL</div>
-                  </div>
-                </div>
-
-                {/* High Impact Row */}
-                <div className="grid grid-cols-6 gap-2 items-center">
-                  <div className="text-right pr-4">
-                    <div className="transform -rotate-90 text-sm font-bold text-gray-700 whitespace-nowrap">High</div>
-                  </div>
-                  <div 
-                    className="bg-green-500 border-2 border-green-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-green-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(4, 1, 'LOW')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 4</div>
-                    <div className="text-xs font-bold text-white bg-green-700 px-2 py-1 rounded mt-1">LOW</div>
-                  </div>
-                  <div 
-                    className="bg-yellow-500 border-2 border-yellow-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-yellow-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(4, 2, 'MEDIUM')}
-                  >
-                    <div className="font-bold text-2xl text-white">1</div>
-                    <div className="text-xs text-gray-800 mt-1 font-semibold">Score: 8</div>
-                    <div className="text-xs font-bold text-white bg-orange-600 px-2 py-1 rounded mt-1">MEDIUM</div>
-                  </div>
-                  <div 
-                    className="bg-orange-500 border-2 border-orange-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-orange-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(4, 3, 'HIGH')}
-                  >
-                    <div className="font-bold text-2xl text-white">1</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 12</div>
-                    <div className="text-xs font-bold text-white bg-orange-800 px-2 py-1 rounded mt-1">HIGH</div>
-                  </div>
-                  <div 
-                    className="bg-orange-600 border-2 border-orange-800 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-orange-700 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(4, 4, 'HIGH')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 16</div>
-                    <div className="text-xs font-bold text-white bg-orange-900 px-2 py-1 rounded mt-1">HIGH</div>
-                  </div>
-                  <div 
-                    className="bg-red-600 border-2 border-red-800 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-red-700 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(4, 5, 'CRITICAL')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 20</div>
-                    <div className="text-xs font-bold text-white bg-red-900 px-2 py-1 rounded mt-1">CRITICAL</div>
-                  </div>
-                </div>
-
-                {/* Medium Impact Row */}  
-                <div className="grid grid-cols-6 gap-2 items-center">
-                  <div className="text-right pr-4">
-                    <div className="transform -rotate-90 text-sm font-bold text-gray-700 whitespace-nowrap">Medium</div>
-                  </div>
-                  <div 
-                    className="bg-green-500 border-2 border-green-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-green-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(3, 1, 'LOW')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 3</div>
-                    <div className="text-xs font-bold text-white bg-green-700 px-2 py-1 rounded mt-1">LOW</div>
-                  </div>
-                  <div 
-                    className="bg-yellow-400 border-2 border-yellow-600 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-yellow-500 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(3, 2, 'MEDIUM')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-800 mt-1 font-semibold">Score: 6</div>
-                    <div className="text-xs font-bold text-white bg-orange-600 px-2 py-1 rounded mt-1">MEDIUM</div>
-                  </div>
-                  <div 
-                    className="bg-yellow-500 border-2 border-yellow-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-yellow-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(3, 3, 'MEDIUM')}
-                  >
-                    <div className="font-bold text-2xl text-white">1</div>
-                    <div className="text-xs text-gray-800 mt-1 font-semibold">Score: 9</div>
-                    <div className="text-xs font-bold text-white bg-orange-600 px-2 py-1 rounded mt-1">MEDIUM</div>
-                  </div>
-                  <div 
-                    className="bg-orange-500 border-2 border-orange-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-orange-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(3, 4, 'HIGH')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 12</div>
-                    <div className="text-xs font-bold text-white bg-orange-800 px-2 py-1 rounded mt-1">HIGH</div>
-                  </div>
-                  <div 
-                    className="bg-orange-600 border-2 border-orange-800 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-orange-700 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(3, 5, 'HIGH')}
-                  >
-                    <div className="font-bold text-2xl text-white">1</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 15</div>
-                    <div className="text-xs font-bold text-white bg-orange-900 px-2 py-1 rounded mt-1">HIGH</div>
-                  </div>
-                </div>
-
-                {/* Low Impact Row */}
-                <div className="grid grid-cols-6 gap-2 items-center">
-                  <div className="text-right pr-4">
-                    <div className="transform -rotate-90 text-sm font-bold text-gray-700 whitespace-nowrap">Low</div>
-                  </div>
-                  <div 
-                    className="bg-green-400 border-2 border-green-600 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-green-500 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(2, 1, 'LOW')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 2</div>
-                    <div className="text-xs font-bold text-white bg-green-700 px-2 py-1 rounded mt-1">LOW</div>
-                  </div>
-                  <div 
-                    className="bg-green-500 border-2 border-green-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-green-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(2, 2, 'LOW')}
-                  >
-                    <div className="font-bold text-2xl text-white">1</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 4</div>
-                    <div className="text-xs font-bold text-white bg-green-700 px-2 py-1 rounded mt-1">LOW</div>
-                  </div>
-                  <div 
-                    className="bg-yellow-400 border-2 border-yellow-600 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-yellow-500 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(2, 3, 'MEDIUM')}
-                  >
-                    <div className="font-bold text-2xl text-white">1</div>
-                    <div className="text-xs text-gray-800 mt-1 font-semibold">Score: 6</div>
-                    <div className="text-xs font-bold text-white bg-orange-600 px-2 py-1 rounded mt-1">MEDIUM</div>
-                  </div>
-                  <div 
-                    className="bg-yellow-500 border-2 border-yellow-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-yellow-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(2, 4, 'MEDIUM')}
-                  >
-                    <div className="font-bold text-2xl text-white">1</div>
-                    <div className="text-xs text-gray-800 mt-1 font-semibold">Score: 8</div>
-                    <div className="text-xs font-bold text-white bg-orange-600 px-2 py-1 rounded mt-1">MEDIUM</div>
-                  </div>
-                  <div 
-                    className="bg-orange-500 border-2 border-orange-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-orange-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(2, 5, 'HIGH')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 10</div>
-                    <div className="text-xs font-bold text-white bg-orange-800 px-2 py-1 rounded mt-1">HIGH</div>
-                  </div>
-                </div>
-
-                {/* Very Low Impact Row */}
-                <div className="grid grid-cols-6 gap-2 items-center">
-                  <div className="text-right pr-4">
-                    <div className="transform -rotate-90 text-sm font-bold text-gray-700 whitespace-nowrap">Very Low</div>
-                  </div>
-                  <div 
-                    className="bg-green-300 border-2 border-green-500 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-green-400 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(1, 1, 'LOW')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 1</div>
-                    <div className="text-xs font-bold text-white bg-green-700 px-2 py-1 rounded mt-1">LOW</div>
-                  </div>
-                  <div 
-                    className="bg-green-400 border-2 border-green-600 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-green-500 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(1, 2, 'LOW')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 2</div>
-                    <div className="text-xs font-bold text-white bg-green-700 px-2 py-1 rounded mt-1">LOW</div>
-                  </div>
-                  <div 
-                    className="bg-green-500 border-2 border-green-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-green-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(1, 3, 'LOW')}
-                  >
-                    <div className="font-bold text-2xl text-white">1</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 3</div>
-                    <div className="text-xs font-bold text-white bg-green-700 px-2 py-1 rounded mt-1">LOW</div>
-                  </div>
-                  <div 
-                    className="bg-green-500 border-2 border-green-700 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-green-600 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(1, 4, 'LOW')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-100 mt-1 font-semibold">Score: 4</div>
-                    <div className="text-xs font-bold text-white bg-green-700 px-2 py-1 rounded mt-1">LOW</div>
-                  </div>
-                  <div 
-                    className="bg-yellow-400 border-2 border-yellow-600 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl hover:bg-yellow-500 transition-all min-h-[100px] flex flex-col justify-center"
-                    onClick={() => handleCellClick(1, 5, 'MEDIUM')}
-                  >
-                    <div className="font-bold text-2xl text-white">0</div>
-                    <div className="text-xs text-gray-800 mt-1 font-semibold">Score: 5</div>
-                    <div className="text-xs font-bold text-white bg-orange-600 px-2 py-1 rounded mt-1">MEDIUM</div>
-                  </div>
-                </div>
+                {matrix.map(row => {
+                  const prob = row[0]?.probability ?? 0
+                  const probMeta = probabilityLevels.find(p => p.value === prob)
+                  return (
+                    <div key={prob} className="grid grid-cols-6 gap-2 items-center">
+                      <div className="text-right pr-4">
+                        <div className="transform -rotate-90 text-sm font-bold text-gray-700 whitespace-nowrap">
+                          {probMeta?.label ?? String(prob)}
+                        </div>
+                      </div>
+                      {row.map(cell => (
+                        <div
+                          key={`${cell.probability}-${cell.impact}`}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              handleCellClick(
+                                cell.probability,
+                                cell.impact,
+                                cell.riskLevel
+                              )
+                            }
+                          }}
+                          className={matrixCellSurfaceClass(cell.riskLevel)}
+                          onClick={() =>
+                            handleCellClick(
+                              cell.probability,
+                              cell.impact,
+                              cell.riskLevel
+                            )
+                          }
+                        >
+                          <div className="font-bold text-2xl text-white">
+                            {cell.count}
+                          </div>
+                          <div className="text-xs text-gray-100 mt-1 font-semibold">
+                            Score: {cell.probability * cell.impact}
+                          </div>
+                          <div
+                            className={`text-xs font-bold text-white px-2 py-1 rounded mt-1 ${
+                              cell.riskLevel === 'LOW'
+                                ? 'bg-green-700'
+                                : cell.riskLevel === 'MEDIUM'
+                                  ? 'bg-orange-600'
+                                  : cell.riskLevel === 'HIGH'
+                                    ? 'bg-orange-800'
+                                    : 'bg-red-900'
+                            }`}
+                          >
+                            {cell.riskLevel}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
               </div>
 
               {/* Legend */}
@@ -819,28 +586,28 @@ export default function RiskMatrixPage() {
                 <div className="flex items-center justify-center p-6 bg-gradient-to-br from-red-500 to-red-700 rounded-xl border-2 border-red-800 shadow-xl">
                   <div className="w-6 h-6 bg-white rounded-full mr-4"></div>
                   <div>
-                    <div className="font-bold text-3xl text-white">0</div>
+                    <div className="font-bold text-3xl text-white">{summaryBands.critical}</div>
                     <div className="text-sm text-red-100 font-semibold">Critical</div>
                   </div>
                 </div>
                 <div className="flex items-center justify-center p-6 bg-gradient-to-br from-orange-500 to-orange-700 rounded-xl border-2 border-orange-800 shadow-xl">
                   <div className="w-6 h-6 bg-white rounded-full mr-4"></div>
                   <div>
-                    <div className="font-bold text-3xl text-white">2</div>
+                    <div className="font-bold text-3xl text-white">{summaryBands.high}</div>
                     <div className="text-sm text-orange-100 font-semibold">High</div>
                   </div>
                 </div>
                 <div className="flex items-center justify-center p-6 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl border-2 border-yellow-700 shadow-xl">
                   <div className="w-6 h-6 bg-white rounded-full mr-4"></div>
                   <div>
-                    <div className="font-bold text-3xl text-white">4</div>
+                    <div className="font-bold text-3xl text-white">{summaryBands.medium}</div>
                     <div className="text-sm text-yellow-100 font-semibold">Medium</div>
                   </div>
                 </div>
                 <div className="flex items-center justify-center p-6 bg-gradient-to-br from-green-500 to-green-700 rounded-xl border-2 border-green-800 shadow-xl">
                   <div className="w-6 h-6 bg-white rounded-full mr-4"></div>
                   <div>
-                    <div className="font-bold text-3xl text-white">2</div>
+                    <div className="font-bold text-3xl text-white">{summaryBands.low}</div>
                     <div className="text-sm text-green-100 font-semibold">Low</div>
                   </div>
                 </div>
@@ -902,8 +669,16 @@ export default function RiskMatrixPage() {
                             <h3 className="text-xl font-bold text-gray-900 mb-2">{risk.title}</h3>
                             <p className="text-gray-600 text-sm mb-3">{risk.description}</p>
                           </div>
-                          <div className="ml-4 text-right">
-                            <div className="text-2xl font-bold text-orange-600">#{risk.id}</div>
+                          <div className="ml-4 text-right space-y-2">
+                            <div className="text-2xl font-bold text-orange-600">
+                              #{risk.riskId ?? risk.id}
+                            </div>
+                            <Link
+                              href={`/risk-management/risks/${risk.id}`}
+                              className="inline-block text-sm font-semibold text-orange-600 hover:text-orange-800 underline"
+                            >
+                              View risk record
+                            </Link>
                           </div>
                         </div>
                         
@@ -920,10 +695,12 @@ export default function RiskMatrixPage() {
                             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</div>
                             <div className={`text-sm font-bold mt-1 ${
                               risk.status === 'OPEN' ? 'text-red-600' :
+                              risk.status === 'MITIGATED' ? 'text-green-600' :
+                              risk.status === 'ESCALATED' ? 'text-orange-700' :
+                              risk.status === 'CLOSED' ? 'text-gray-600' :
                               risk.status === 'IN_PROGRESS' ? 'text-orange-600' :
                               risk.status === 'UNDER_REVIEW' ? 'text-yellow-600' :
-                              risk.status === 'MITIGATED' ? 'text-blue-600' :
-                              'text-green-600'
+                              'text-gray-700'
                             }`}>
                               {risk.status.replace('_', ' ')}
                             </div>

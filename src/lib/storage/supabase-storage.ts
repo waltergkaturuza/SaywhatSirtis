@@ -98,6 +98,27 @@ export async function uploadToSupabaseStorage(options: UploadOptions): Promise<U
   }
 }
 
+/** Download file bytes from Supabase Storage (server-side). */
+export async function downloadFromSupabaseStorage(
+  bucket: string,
+  objectPath: string
+): Promise<{ success: boolean; data?: Buffer; error?: string }> {
+  try {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.storage.from(bucket).download(objectPath)
+    if (error) {
+      return { success: false, error: error.message }
+    }
+    const arrayBuffer = await data.arrayBuffer()
+    return { success: true, data: Buffer.from(arrayBuffer) }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
 /**
  * Get a signed URL for a file in Supabase Storage
  */
