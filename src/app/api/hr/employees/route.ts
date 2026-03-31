@@ -76,7 +76,7 @@ export async function GET() {
       )
 
     const employeeWhere = {
-      status: { in: ['ACTIVE', 'ON_LEAVE', 'SUSPENDED'] as const },
+      status: { in: ['ACTIVE', 'ON_LEAVE', 'SUSPENDED'] },
       ...(canSeeAllEmployeesForRiskWorkflow
         ? {}
         : { userId: currentUser.id })
