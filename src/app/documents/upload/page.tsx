@@ -33,6 +33,7 @@ import {
 } from "@heroicons/react/24/solid";
 
 import { resolveCategoryInfo, buildFolderPath } from "@/lib/documents/category-utils";
+import { isProgramsDepartmentName } from "@/lib/documents/program-department";
 
 // Document categories
 const documentCategories = [
@@ -191,6 +192,13 @@ export default function DocumentUploadPage() {
   });
   const [folderManuallyEdited, setFolderManuallyEdited] = useState(false);
 
+  /** Programs dept: link document to a real project (FK to `projects`, not drafts). */
+  const [programLinkProjects, setProgramLinkProjects] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [programsLinkLoading, setProgramsLinkLoading] = useState(false);
+  const [selectedProgramProjectId, setSelectedProgramProjectId] = useState("");
+
   const setCategorySelection = (categoryName: string) => {
     const info = resolveCategoryInfo(categoryName);
     setFormData(prev => ({
@@ -255,20 +263,24 @@ export default function DocumentUploadPage() {
             department: department
           }));
         } else {
-          // Fallback if employee not found
-          setUserDepartment('General');
-          setFormData(prev => ({
+          const sessionDept =
+            (session?.user as { department?: string } | undefined)?.department?.trim() ||
+            "";
+          setUserDepartment(sessionDept || "General");
+          setFormData((prev) => ({
             ...prev,
-            department: 'General'
+            department: sessionDept || prev.department || "General",
           }));
         }
       }
     } catch (error) {
       console.error('Error loading user department:', error);
-      setUserDepartment('General');
-      setFormData(prev => ({
+      const sessionDept =
+        (session?.user as { department?: string } | undefined)?.department?.trim() || "";
+      setUserDepartment(sessionDept || "General");
+      setFormData((prev) => ({
         ...prev,
-        department: 'General'
+        department: sessionDept || prev.department || "General",
       }));
     }
   };
@@ -383,6 +395,44 @@ export default function DocumentUploadPage() {
       loadAvailableTeams();
     }
   }, [formData.accessLevel, status, session]);
+
+  const effectiveDepartment = (formData.department || userDepartment || "").trim();
+  const showProgramsProjectField = isProgramsDepartmentName(effectiveDepartment);
+
+  useEffect(() => {
+    if (!showProgramsProjectField) {
+      setProgramLinkProjects([]);
+      setSelectedProgramProjectId("");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setProgramsLinkLoading(true);
+      try {
+        const res = await fetch("/api/programs/projects", { credentials: "include" });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.success) {
+          if (!cancelled) setProgramLinkProjects([]);
+          return;
+        }
+        const rows = (json.data || []).filter(
+          (p: { isDraft?: boolean }) => !p.isDraft
+        ) as { id: string; name: string }[];
+        if (!cancelled) {
+          setProgramLinkProjects(
+            rows.map((p) => ({ id: String(p.id), name: p.name || "Untitled project" }))
+          );
+        }
+      } catch {
+        if (!cancelled) setProgramLinkProjects([]);
+      } finally {
+        if (!cancelled) setProgramsLinkLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showProgramsProjectField]);
 
   // Check permissions and session status
   const hasAccess = session?.user?.permissions?.includes("documents.create") ||
@@ -576,6 +626,17 @@ export default function DocumentUploadPage() {
       return;
     }
 
+    if (
+      showProgramsProjectField &&
+      programLinkProjects.length > 0 &&
+      !selectedProgramProjectId
+    ) {
+      alert(
+        "Please select which program/project this document is for (Programs department)."
+      );
+      return;
+    }
+
     setUploadState("uploading");
     setUploadProgress(0);
 
@@ -595,6 +656,16 @@ export default function DocumentUploadPage() {
         uploadFormData.append('isPersonalRepo', isPersonalRepo.toString());
         uploadFormData.append('categoryEnum', formData.categoryEnum);
         uploadFormData.append('categoryDisplay', formData.categoryDisplay);
+
+        if (selectedProgramProjectId) {
+          const proj = programLinkProjects.find(
+            (p) => p.id === selectedProgramProjectId
+          );
+          uploadFormData.append("projectId", selectedProgramProjectId);
+          if (proj?.name) {
+            uploadFormData.append("projectName", proj.name);
+          }
+        }
 
         const rawFolderPath = formData.folder || '';
         const normalizedFolderPath = rawFolderPath
@@ -652,6 +723,7 @@ export default function DocumentUploadPage() {
           status: "draft"
         });
         setFolderManuallyEdited(false);
+        setSelectedProgramProjectId("");
         setAiAnalysis(null);
         setUploadProgress(0);
       }, 1500);
@@ -744,6 +816,7 @@ export default function DocumentUploadPage() {
                     status: "draft"
                   });
                   setFolderManuallyEdited(false);
+                  setSelectedProgramProjectId("");
                   setAiAnalysis(null);
                   setUploadProgress(0);
                 }}
@@ -936,6 +1009,48 @@ export default function DocumentUploadPage() {
                       ))}
                     </select>
                   </div>
+
+                  {showProgramsProjectField && (
+                    <div className="rounded-2xl p-6 border-2 border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50">
+                      <h4 className="flex items-center text-lg font-bold text-gray-900 mb-2">
+                        <BuildingOfficeIcon className="h-5 w-5 text-indigo-600 mr-2" />
+                        Program / project
+                      </h4>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Select the project this document belongs to. It will be linked for search
+                        and stored using the project folder layout when applicable.
+                      </p>
+                      {programsLinkLoading ? (
+                        <p className="text-sm text-gray-500">Loading projects…</p>
+                      ) : programLinkProjects.length === 0 ? (
+                        <p className="text-sm text-amber-800">
+                          No published projects found. You can still upload; ask an admin to add
+                          projects in Programs, or your account may need program access.
+                        </p>
+                      ) : (
+                        <div>
+                          <label className="block text-base font-bold text-gray-900 mb-3">
+                            Project *
+                          </label>
+                          <select
+                            required={programLinkProjects.length > 0}
+                            value={selectedProgramProjectId}
+                            onChange={(e) =>
+                              setSelectedProgramProjectId(e.target.value)
+                            }
+                            className="block w-full border-2 border-indigo-200 rounded-2xl shadow-lg px-6 py-4 text-base focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500 bg-white/90"
+                          >
+                            <option value="">Select a project…</option>
+                            {programLinkProjects.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* User Information - Auto-captured */}
                   <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200">
