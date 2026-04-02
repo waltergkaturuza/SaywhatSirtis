@@ -1258,6 +1258,7 @@ model risk_assessments {
   reviewedAt                               DateTime?
   reviewerId                               String?
   reviewComments                           String?
+  nextAssessmentDate                       DateTime?
   createdAt                                DateTime         @default(now())
   updatedAt                                DateTime
   users_risk_assessments_assessorIdTousers users?           @relation("risk_assessments_assessorIdTousers", fields: [assessorId], references: [id])
