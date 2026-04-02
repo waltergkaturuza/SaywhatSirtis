@@ -24,6 +24,7 @@ import { AuditManagement } from "@/components/inventory/audit-management"
 
 // Types
 import { Asset, AssetAlert, InventoryPermissions } from '@/types/inventory'
+import { calculateCurrentValue as computeBookValue } from "@/lib/inventory/depreciation"
 
 export default function InventoryManagementPage() {
   const { data: session } = useSession()
@@ -398,18 +399,7 @@ export default function InventoryManagementPage() {
     setFilteredAssets(filtered)
   }, [assets, searchQuery, statusFilter, categoryFilter, locationFilter])
 
-  // Utility functions
-  const calculateCurrentValue = (asset: Asset) => {
-    const today = new Date()
-    const procurementDate = new Date(asset.procurementDate)
-    const yearsOwned = (today.getTime() - procurementDate.getTime()) / (1000 * 60 * 60 * 24 * 365)
-    
-    if (asset.depreciationMethod === 'straight-line') {
-      const depreciation = asset.procurementValue * (asset.depreciationRate / 100) * yearsOwned
-      return Math.max(0, asset.procurementValue - depreciation)
-    }
-    return asset.currentValue
-  }
+  const calculateCurrentValue = (asset: Asset) => computeBookValue(asset)
 
   const getAssetIcon = (category: string) => {
     switch (category) {

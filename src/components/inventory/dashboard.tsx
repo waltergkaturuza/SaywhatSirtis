@@ -22,6 +22,7 @@ import {
   ChartPieIcon
 } from '@heroicons/react/24/outline'
 import { Asset, AssetAlert } from '@/types/inventory'
+import { depreciationPercentage, yearsOwned } from '@/lib/inventory/depreciation'
 
 interface DashboardProps {
   assets?: Asset[]
@@ -292,9 +293,12 @@ export const InventoryDashboard: React.FC<DashboardProps> = ({
           <div className="space-y-4">
             {assets.slice(0, 3).map(asset => {
               const currentValue = calculateCurrentValue(asset)
-              const depreciationPercentage = ((asset.procurementValue - currentValue) / asset.procurementValue) * 100
-              const ageInYears = (new Date().getTime() - new Date(asset.procurementDate).getTime()) / (1000 * 60 * 60 * 24 * 365)
-              const lifecyclePercentage = asset.expectedLifespan ? (ageInYears / asset.expectedLifespan) * 100 : 0
+              const depPct = depreciationPercentage(asset)
+              const ageInYears = yearsOwned(
+                typeof asset.procurementDate === 'string' ? asset.procurementDate : undefined
+              )
+              const life = asset.expectedLifespan && asset.expectedLifespan > 0 ? asset.expectedLifespan : 0
+              const lifecyclePercentage = life > 0 ? (ageInYears / life) * 100 : 0
               
               return (
                 <div key={asset.id} className="border rounded-lg p-4 hover:bg-gray-50">
@@ -314,7 +318,7 @@ export const InventoryDashboard: React.FC<DashboardProps> = ({
                       </span>
                       <span className="font-medium">
                         {depreciationView === 'current' ? `$${currentValue.toLocaleString()}` :
-                         depreciationView === 'depreciation' ? `${depreciationPercentage.toFixed(1)}%` :
+                         depreciationView === 'depreciation' ? `${depPct.toFixed(1)}%` :
                          `${lifecyclePercentage.toFixed(1)}%`}
                       </span>
                     </div>
@@ -329,9 +333,13 @@ export const InventoryDashboard: React.FC<DashboardProps> = ({
                         }`}
                         style={{ 
                           width: `${
-                            depreciationView === 'current' ? (currentValue / asset.procurementValue) * 100 :
-                            depreciationView === 'depreciation' ? depreciationPercentage :
-                            lifecyclePercentage
+                            depreciationView === 'current'
+                              ? (asset.procurementValue
+                                  ? (currentValue / asset.procurementValue) * 100
+                                  : 0)
+                              : depreciationView === 'depreciation'
+                                ? Math.min(100, depPct)
+                                : Math.min(100, lifecyclePercentage)
                           }%` 
                         }}
                       ></div>

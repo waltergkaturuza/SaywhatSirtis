@@ -29,6 +29,7 @@ import { DatabaseStatusIndicator } from "@/components/inventory/database-status"
 
 // Types
 import { Asset, AssetAlert, InventoryPermissions } from '@/types/inventory'
+import { calculateCurrentValue as computeBookValue } from '@/lib/inventory/depreciation'
 
 // Database status component
 const DatabaseStatus = ({ isConnected, isLoading, error }: { 
@@ -120,9 +121,7 @@ const DashboardWrapper = ({ assets, permissions, isLoading }: {
     ))
   }
 
-  const calculateCurrentValue = (asset: Asset) => {
-    return asset.currentValue || asset.procurementValue
-  }
+  const calculateCurrentValue = (asset: Asset) => computeBookValue(asset)
 
   const getAssetIcon = (category: string) => {
     switch (category.toLowerCase()) {
@@ -257,11 +256,14 @@ export default function InventoryManagementPage() {
       }
 
       const procurementVal = Number(createFormData.procurementValue) || 0
-      const lifespanRaw = createFormData.expectedLifespan
-      const lifespanNum =
-        lifespanRaw !== undefined && lifespanRaw !== '' && !Number.isNaN(Number(lifespanRaw))
-          ? Math.trunc(Number(lifespanRaw))
-          : undefined
+      const lifespanRaw = createFormData.expectedLifespan as unknown
+      let lifespanNum: number | undefined
+      if (typeof lifespanRaw === "number" && Number.isFinite(lifespanRaw) && lifespanRaw > 0) {
+        lifespanNum = Math.trunc(lifespanRaw)
+      } else if (typeof lifespanRaw === "string" && lifespanRaw.trim() !== "") {
+        const n = Number(lifespanRaw)
+        if (Number.isFinite(n) && n > 0) lifespanNum = Math.trunc(n)
+      }
 
       // Prepare data for API call with proper type conversion
       const assetData: Record<string, unknown> = {

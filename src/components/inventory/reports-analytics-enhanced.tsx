@@ -30,12 +30,14 @@ import {
   PieChart,
   Pie,
   Cell,
-  LineChart,
-  Line,
   AreaChart,
   Area,
   ResponsiveContainer
 } from "recharts"
+import {
+  calculateCurrentValue,
+  depreciationPercentage,
+} from "@/lib/inventory/depreciation"
 
 interface ReportsAnalyticsProps {
   assets: any[]
@@ -63,19 +65,6 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
     { id: "audit", name: "Audit Compliance", icon: ShieldCheckIcon },
     { id: "financial", name: "Financial Summary", icon: CurrencyDollarIcon }
   ]
-
-  // Calculate current value with depreciation
-  const calculateCurrentValue = (asset: any) => {
-    const today = new Date()
-    const procurementDate = new Date(asset.procurementDate)
-    const yearsOwned = (today.getTime() - procurementDate.getTime()) / (1000 * 60 * 60 * 24 * 365)
-    
-    if (asset.depreciationMethod === 'straight-line') {
-      const depreciation = asset.procurementValue * (asset.depreciationRate / 100) * yearsOwned
-      return Math.max(0, asset.procurementValue - depreciation)
-    }
-    return asset.currentValue || asset.procurementValue
-  }
 
   // Prepare chart data - dynamically generate categories from actual asset data
   const uniqueCategories = [...new Set(assets.map(a => a.category?.name || a.category || 'Uncategorized'))]
@@ -106,13 +95,19 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
         return procurementDate <= monthDate
       })
       
-      const totalValue = assetsAcquiredByMonth.reduce((sum, asset) => sum + (asset.procurementValue || 0), 0)
-      const totalCurrentValue = assetsAcquiredByMonth.reduce((sum, asset) => sum + calculateCurrentValue(asset), 0)
-      
+      const totalOriginal = assetsAcquiredByMonth.reduce(
+        (sum, asset) => sum + (asset.procurementValue || 0),
+        0
+      )
+      const totalBook = assetsAcquiredByMonth.reduce(
+        (sum, asset) => sum + calculateCurrentValue(asset),
+        0
+      )
+
       return {
         month,
-        value: totalValue,
-        depreciation: totalCurrentValue
+        originalCost: totalOriginal,
+        bookValue: totalBook,
       }
     })
   }
@@ -141,14 +136,14 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
     }
   }).filter(location => location.assets > 0) // Only show locations with assets
 
-  const depreciationTrendData = assets.slice(0, 10).map(asset => {
-    const currentValue = calculateCurrentValue(asset)
-    const depreciationPercentage = ((asset.procurementValue - currentValue) / asset.procurementValue) * 100
+  const depreciationTrendData = assets.slice(0, 10).map((asset) => {
+    const book = calculateCurrentValue(asset)
+    const pct = depreciationPercentage(asset)
     return {
-      name: asset.name.substring(0, 15) + '...',
+      name: asset.name.substring(0, 15) + (asset.name.length > 15 ? "..." : ""),
       original: asset.procurementValue,
-      current: currentValue,
-      depreciation: depreciationPercentage
+      current: book,
+      depreciation: pct,
     }
   })
 
@@ -225,7 +220,18 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
                 ${assets.reduce((sum, asset) => sum + calculateCurrentValue(asset), 0).toLocaleString()}
               </p>
               <p className="text-blue-100 text-xs mt-1">
-                {((assets.reduce((sum, asset) => sum + calculateCurrentValue(asset), 0) / assets.reduce((sum, asset) => sum + asset.procurementValue, 0)) * 100).toFixed(1)}% of original value
+                {(() => {
+                  const book = assets.reduce(
+                    (sum, asset) => sum + calculateCurrentValue(asset),
+                    0
+                  )
+                  const orig = assets.reduce(
+                    (sum, asset) => sum + (asset.procurementValue || 0),
+                    0
+                  )
+                  if (orig <= 0) return "—"
+                  return `${((book / orig) * 100).toFixed(1)}% of original value`
+                })()}
               </p>
             </div>
             <CurrencyDollarIcon className="h-8 w-8 text-blue-200" />
@@ -237,10 +243,17 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
             <div>
               <p className="text-green-100 text-sm">Asset Utilization</p>
               <p className="text-2xl font-bold">
-                {((assets.filter(a => a.status === 'active').length / assets.length) * 100).toFixed(1)}%
+                {assets.length > 0
+                  ? (
+                      (assets.filter((a) => a.status === "active").length / assets.length) *
+                      100
+                    ).toFixed(1)
+                  : "0.0"}
+                %
               </p>
               <p className="text-green-100 text-xs mt-1">
-                {assets.filter(a => a.status === 'active').length} of {assets.length} assets active
+                {assets.filter((a) => a.status === "active").length} of {assets.length}{" "}
+                assets active
               </p>
             </div>
             <ArrowTrendingUpIcon className="h-8 w-8 text-green-200" />
@@ -252,10 +265,18 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
             <div>
               <p className="text-purple-100 text-sm">Average Asset Age</p>
               <p className="text-2xl font-bold">
-                {(assets.reduce((sum, asset) => {
-                  const age = (new Date().getTime() - new Date(asset.procurementDate).getTime()) / (1000 * 60 * 60 * 24 * 365)
-                  return sum + age
-                }, 0) / assets.length).toFixed(1)} years
+                {assets.length > 0
+                  ? (
+                      assets.reduce((sum, asset) => {
+                        const age =
+                          (new Date().getTime() -
+                            new Date(asset.procurementDate).getTime()) /
+                          (1000 * 60 * 60 * 24 * 365)
+                        return sum + (Number.isFinite(age) && age > 0 ? age : 0)
+                      }, 0) / assets.length
+                    ).toFixed(1)
+                  : "0.0"}{" "}
+                years
               </p>
               <p className="text-purple-100 text-xs mt-1">
                 Across all categories
@@ -300,10 +321,24 @@ export function ReportsAnalytics({ assets, permissions }: ReportsAnalyticsProps)
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
-              <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Value']} />
+              <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, ""]} />
               <Legend />
-              <Area type="monotone" dataKey="value" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} name="Current Value" />
-              <Area type="monotone" dataKey="depreciation" stackId="2" stroke="#EF4444" fill="#EF4444" fillOpacity={0.6} name="Depreciated Value" />
+              <Area
+                type="monotone"
+                dataKey="originalCost"
+                stroke="#3B82F6"
+                fill="#3B82F6"
+                fillOpacity={0.35}
+                name="Cumulative purchase cost"
+              />
+              <Area
+                type="monotone"
+                dataKey="bookValue"
+                stroke="#10B981"
+                fill="#10B981"
+                fillOpacity={0.35}
+                name="Cumulative book value"
+              />
             </AreaChart>
           </ResponsiveContainer>
           <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
