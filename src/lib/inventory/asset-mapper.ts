@@ -19,11 +19,12 @@ export function mapStatusToDb(input: string): string {
   return 'ACTIVE'
 }
 
+/** Values must match inventory UI Selects (assets-management, registration). */
 export function mapStatusToApi(db: string): string {
   const u = String(db || 'ACTIVE').toUpperCase()
-  if (u === 'MAINTENANCE') return 'under-maintenance'
+  if (u === 'MAINTENANCE') return 'maintenance'
   if (u === 'INACTIVE') return 'inactive'
-  if (u === 'DISPOSED') return 'retired'
+  if (u === 'DISPOSED' || u === 'RETIRED') return 'disposed'
   return 'active'
 }
 
@@ -51,6 +52,8 @@ export function assetRowToClientApi(a: assets) {
     id: a.id,
     assetNumber: a.assetTag,
     physicalAssetTag: a.physicalAssetTag ?? '',
+    /** Alias for forms that still bind `assetTag` to the on-asset label */
+    assetTag: a.physicalAssetTag ?? '',
     name: a.name,
     description: a.description ?? '',
     category: a.category,
@@ -71,6 +74,8 @@ export function assetRowToClientApi(a: assets) {
     procurementType: a.procurementType ?? '',
     expectedLifespan: a.expectedLifespan ?? undefined,
     usageType: a.usageType ?? '',
+    assignedProgram: a.assignedProgram ?? '',
+    assignedProject: a.assignedProject ?? '',
     location: a.location ?? '',
     department: a.department ?? '',
     assignedTo: a.assignedTo ?? '',

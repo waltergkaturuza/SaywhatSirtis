@@ -256,8 +256,15 @@ export default function InventoryManagementPage() {
         return
       }
 
+      const procurementVal = Number(createFormData.procurementValue) || 0
+      const lifespanRaw = createFormData.expectedLifespan
+      const lifespanNum =
+        lifespanRaw !== undefined && lifespanRaw !== '' && !Number.isNaN(Number(lifespanRaw))
+          ? Math.trunc(Number(lifespanRaw))
+          : undefined
+
       // Prepare data for API call with proper type conversion
-      const assetData = {
+      const assetData: Record<string, unknown> = {
         name: createFormData.name.trim(),
         assetNumber: createFormData.assetNumber || generateAssetNumber(),
         type: extractedType,
@@ -266,22 +273,21 @@ export default function InventoryManagementPage() {
         model: createFormData.model || '',
         description: createFormData.description || '',
         serialNumber: createFormData.serialNumber || '',
-        procurementValue: Number(createFormData.procurementValue) || 0,
+        procurementValue: procurementVal,
         currentValue:
           typeof createFormData.currentValue === 'number' && !Number.isNaN(createFormData.currentValue)
             ? createFormData.currentValue
-            : undefined,
+            : procurementVal,
         depreciationRate: Number(createFormData.depreciationRate) || 0,
         depreciationMethod: createFormData.depreciationMethod || 'straight-line',
         procurementDate: createFormData.procurementDate || new Date().toISOString().split('T')[0],
         fundingSource: createFormData.fundingSource || '',
         procurementType: createFormData.procurementType || '',
-        expectedLifespan: createFormData.expectedLifespan,
+        ...(lifespanNum !== undefined ? { expectedLifespan: lifespanNum } : {}),
         usageType: createFormData.usageType || '',
         location: extractedLocation,
         department: createFormData.department || '',
         assignedTo: createFormData.assignedTo || '',
-        assignedEmail: createFormData.assignedEmail || '',
         custodian: createFormData.custodian || '',
         status: createFormData.status || 'active',
         condition: createFormData.condition || 'good',
@@ -294,8 +300,13 @@ export default function InventoryManagementPage() {
         physicalAssetTag: createFormData.physicalAssetTag || '',
         insuranceValue: Number(createFormData.insuranceValue) || 0,
         insurancePolicy: createFormData.insurancePolicy || '',
-        images: selectedImages.map(img => img.name), // For now, just store filenames
-        documents: selectedDocuments.map(doc => doc.name) // For now, just store filenames
+        assignedProgram: createFormData.assignedProgram || '',
+        assignedProject: createFormData.assignedProject || '',
+        images: selectedImages.map((img) => img.name),
+        documents: selectedDocuments.map((doc) => doc.name),
+      }
+      if (createFormData.assignedEmail?.trim()) {
+        assetData.assignedEmail = createFormData.assignedEmail.trim()
       }
       
       console.log('Form data before processing:', createFormData)

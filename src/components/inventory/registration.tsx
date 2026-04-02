@@ -734,7 +734,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                     {loadingData ? "Loading departments..." : "Select department"}
                   </option>
                   {departments.map(dept => (
-                    <option key={dept.id} value={dept.name}>
+                    <option key={dept.id} value={dept.id}>
                       {dept.parentId ? `└ ${dept.name}` : dept.name}
                     </option>
                   ))}

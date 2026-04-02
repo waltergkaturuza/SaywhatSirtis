@@ -330,6 +330,10 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
       try {
         setIsLoading(true)
 
+        const cat = categoryLabel(editingAsset.category as Asset['category'])
+        const loc = locationLabel(editingAsset.location as Asset['location'])
+        const typ = typeLabel(editingAsset.type as Asset['type'])
+
         const payload: Record<string, unknown> = {
           name: editingAsset.name,
           assetNumber: editingAsset.assetNumber,
@@ -337,12 +341,11 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
           model: editingAsset.model,
           serialNumber: editingAsset.serialNumber,
           description: editingAsset.description,
-          category: categoryLabel(editingAsset.category as Asset['category']),
-          type: typeLabel(editingAsset.type as Asset['type']),
-          location: locationLabel(editingAsset.location as Asset['location']),
+          ...(cat ? { category: cat } : {}),
+          ...(typ ? { type: typ } : {}),
+          ...(loc ? { location: loc } : {}),
           department: editingAsset.department,
           assignedTo: editingAsset.assignedTo,
-          assignedEmail: editingAsset.assignedEmail,
           custodian: editingAsset.custodian,
           procurementValue: editingAsset.procurementValue,
           currentValue: editingAsset.currentValue,
@@ -361,9 +364,18 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
           rfidTag: editingAsset.rfidTag,
           qrCode: editingAsset.qrCode,
           barcodeId: editingAsset.barcodeId,
-          physicalAssetTag: editingAsset.physicalAssetTag,
+          physicalAssetTag:
+            editingAsset.physicalAssetTag ?? editingAsset.assetTag,
           insuranceValue: editingAsset.insuranceValue,
           insurancePolicy: editingAsset.insurancePolicy,
+          assignedProgram: editingAsset.assignedProgram,
+          assignedProject: editingAsset.assignedProject,
+        }
+        if (editingAsset.assignedEmail !== undefined) {
+          payload.assignedEmail =
+            editingAsset.assignedEmail.trim() === ''
+              ? ''
+              : editingAsset.assignedEmail.trim()
         }
         Object.keys(payload).forEach((k) => {
           if (payload[k] === undefined) delete payload[k]
@@ -378,15 +390,24 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
         })
         
         if (!response.ok) {
-          throw new Error(`Failed to update asset: ${response.statusText}`)
+          let msg = `Failed to update asset: ${response.statusText}`
+          try {
+            const errBody = await response.json()
+            if (errBody?.error) msg = errBody.error
+            if (errBody?.details) console.error('Validation details:', errBody.details)
+          } catch {
+            /* ignore */
+          }
+          throw new Error(msg)
         }
-        
-        // Refresh assets from backend
+
         await fetchAssets()
         setShowEditModal(false)
       } catch (error) {
         console.error('Error updating asset:', error)
-        alert('Failed to update asset. Please try again.')
+        alert(
+          error instanceof Error ? error.message : 'Failed to update asset. Please try again.'
+        )
       } finally {
         setIsLoading(false)
       }
@@ -413,7 +434,9 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
       excellent: "default",
       good: "default", 
       fair: "secondary",
-      poor: "destructive"
+      poor: "destructive",
+      "needs-repair": "destructive",
+      damaged: "destructive",
     }
     return <Badge className="bg-green-500 text-white shadow-lg" variant={variants[condition] || "secondary"}>{condition}</Badge>
   }
@@ -825,6 +848,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     <div><span className="font-medium">Assigned To:</span> {selectedAsset.assignedTo || '-'}</div>
                     <div><span className="font-medium">Assigned Email:</span> {selectedAsset.assignedEmail || '-'}</div>
                     <div><span className="font-medium">Custodian:</span> {selectedAsset.custodian || '-'}</div>
+                    <div><span className="font-medium">Assigned Program:</span> {selectedAsset.assignedProgram || '-'}</div>
+                    <div><span className="font-medium">Assigned Project:</span> {selectedAsset.assignedProject || '-'}</div>
                     <div><span className="font-medium">Location:</span> {locationLabel(selectedAsset.location) || '-'}</div>
                   </div>
                 </div>
@@ -836,7 +861,11 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   <div className="mt-2 space-y-2">
                     <div><span className="font-medium">Procurement Value:</span> ${selectedAsset.procurementValue?.toLocaleString() || '0'}</div>
                     <div><span className="font-medium">Current Value:</span> ${selectedAsset.currentValue?.toLocaleString() || '0'}</div>
+                    <div><span className="font-medium">Depreciation Rate:</span> {selectedAsset.depreciationRate != null ? `${selectedAsset.depreciationRate}%` : '-'}</div>
                     <div><span className="font-medium">Depreciation Method:</span> {selectedAsset.depreciationMethod || '-'}</div>
+                    <div><span className="font-medium">Procurement Type:</span> {selectedAsset.procurementType || '-'}</div>
+                    <div><span className="font-medium">Usage Type:</span> {selectedAsset.usageType || '-'}</div>
+                    <div><span className="font-medium">Expected Lifespan (years):</span> {selectedAsset.expectedLifespan ?? '-'}</div>
                     <div><span className="font-medium">Funding Source:</span> {selectedAsset.fundingSource || '-'}</div>
                     <div><span className="font-medium">Insurance Value:</span> {selectedAsset.insuranceValue != null ? `$${Number(selectedAsset.insuranceValue).toLocaleString()}` : '-'}</div>
                     <div><span className="font-medium">Insurance Policy:</span> {selectedAsset.insurancePolicy || '-'}</div>
@@ -860,6 +889,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     <div><span className="font-medium">QR Code:</span> {selectedAsset.qrCode || '-'}</div>
                     <div><span className="font-medium">Asset Tag (sticker):</span> {selectedAsset.physicalAssetTag || '-'}</div>
                     <div><span className="font-medium">Barcode ID:</span> {selectedAsset.barcodeId || '-'}</div>
+                    <div><span className="font-medium">Images (count):</span> {Array.isArray(selectedAsset.images) ? selectedAsset.images.length : 0}</div>
+                    <div><span className="font-medium">Documents (count):</span> {Array.isArray(selectedAsset.documents) ? selectedAsset.documents.length : 0}</div>
                   </div>
                 </div>
               </div>

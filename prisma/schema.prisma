@@ -88,6 +88,8 @@ model assets {
   procurementType     String?
   expectedLifespan    Int?
   usageType           String?
+  assignedProgram     String?
+  assignedProject     String?
   depreciationMethod  String?               @default("straight-line")
   depreciationRate    Float?                @default(0)
   documents           String[]              @default([])
