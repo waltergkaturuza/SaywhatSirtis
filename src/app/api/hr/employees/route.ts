@@ -16,6 +16,8 @@ import {
 } from '@/lib/api-utils'
 import emailService from '@/lib/email-service'
 
+export const maxDuration = 60
+
 export async function GET() {
   try {
     // Authentication required for production
@@ -75,11 +77,24 @@ export async function GET() {
         )
       )
 
+    // Inventory asset forms need assignee / custodian pickers (same idea as risk owner)
+    const canSeeEmployeesForInventory =
+      userPermissions.includes('inventory.view') ||
+      userPermissions.includes('inventory_view') ||
+      userPermissions.includes('inventory.edit') ||
+      userPermissions.includes('inventory_edit') ||
+      userPermissions.includes('inventory.create') ||
+      userPermissions.includes('inventory.full_access') ||
+      userPermissions.includes('inventory.manage') ||
+      userPermissions.includes('asset.manage') ||
+      userPermissions.includes('assets.view')
+
+    const canSeeAllEmployees =
+      canSeeAllEmployeesForRiskWorkflow || canSeeEmployeesForInventory
+
     const employeeWhere = {
       status: { in: ['ACTIVE', 'ON_LEAVE', 'SUSPENDED'] },
-      ...(canSeeAllEmployeesForRiskWorkflow
-        ? {}
-        : { userId: currentUser.id })
+      ...(canSeeAllEmployees ? {} : { userId: currentUser.id }),
     }
 
     // Get all employees with their user details and department hierarchy

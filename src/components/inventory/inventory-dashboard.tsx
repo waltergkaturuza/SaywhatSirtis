@@ -31,6 +31,7 @@ export function InventoryDashboard({ permissions }: InventoryDashboardProps) {
       'disposed': 0,
       'stolen': 0,
       'lost': 0,
+      'maintenance': 0,
       'under-maintenance': 0,
       'retired': 0,
       'pending-disposal': 0
@@ -65,7 +66,8 @@ export function InventoryDashboard({ permissions }: InventoryDashboardProps) {
             'disposed': 89,
             'stolen': 3,
             'lost': 12,
-            'under-maintenance': 67,
+            'maintenance': 67,
+            'under-maintenance': 0,
             'retired': 5,
             'pending-disposal': 0
           },

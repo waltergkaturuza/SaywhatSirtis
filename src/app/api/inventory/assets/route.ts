@@ -12,6 +12,9 @@ import {
   mapStatusToDb,
 } from "@/lib/inventory/asset-mapper"
 
+/** Cold DB connections on Vercel can exceed default ~10s */
+export const maxDuration = 60
+
 async function emailForEmployeeId(
   prisma: PrismaClient,
   employeeId: string
@@ -61,9 +64,24 @@ function normalizeAssetPayload(raw: unknown, mode: "create" | "update"): Record<
   const el = toInt(b.expectedLifespan)
   if (el !== undefined) b.expectedLifespan = el
 
+  const numericKeys = [
+    "procurementValue",
+    "currentValue",
+    "depreciationRate",
+    "insuranceValue",
+    "expectedLifespan",
+  ] as const
   if (mode === "update") {
-    for (const k of ["warrantyExpiry", "lastAuditDate", "nextMaintenanceDate", "procurementDate"]) {
+    for (const k of [
+      "warrantyExpiry",
+      "lastAuditDate",
+      "nextMaintenanceDate",
+      "procurementDate",
+    ]) {
       if (b[k] === "") delete b[k]
+    }
+    for (const k of numericKeys) {
+      if (b[k] === "" || b[k] === null) delete b[k]
     }
   }
 

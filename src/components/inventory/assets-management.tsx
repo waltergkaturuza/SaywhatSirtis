@@ -74,12 +74,15 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
   const [departments, setDepartments] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
   const [loadingData, setLoadingData] = useState(false)
+  const [referenceDataError, setReferenceDataError] = useState<string | null>(null)
 
   // Fetch assets from backend API
   const fetchAssets = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/inventory/assets')
+      const response = await fetch('/api/inventory/assets', {
+        credentials: 'include',
+      })
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -98,52 +101,100 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     }
   }
 
-  // Fetch departments and employees
+  const parseHierarchyDepartments = (deptData: {
+    success?: boolean
+    data?: { flat?: unknown[] } | unknown[]
+  }) => {
+    const flat = deptData?.data && !Array.isArray(deptData.data)
+      ? (deptData.data as { flat?: unknown[] }).flat
+      : undefined
+    if (Array.isArray(flat) && flat.length > 0) {
+      return (flat as { id: string; name: string; parentId?: string | null }[]).map((d) => ({
+        id: d.id,
+        name: d.name,
+        parentId: d.parentId ?? undefined,
+      }))
+    }
+    const data = deptData?.data
+    if (Array.isArray(data)) {
+      return (data as { id: string; name: string; parentId?: string | null }[]).map((d) => ({
+        id: d.id,
+        name: d.name,
+        parentId: d.parentId ?? undefined,
+      }))
+    }
+    return []
+  }
+
   const fetchDepartmentsAndEmployees = async () => {
     try {
       setLoadingData(true)
-      
-      // Fetch departments
-      const deptResponse = await fetch('/api/hr/departments/hierarchy', {
+      setReferenceDataError(null)
+      const fetchOpts: RequestInit = {
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+        headers: { 'Content-Type': 'application/json' },
+      }
+
+      let deptRows: { id: string; name: string; parentId?: string }[] = []
+      let deptStatus = 0
+      const deptResponse = await fetch('/api/hr/departments/hierarchy', fetchOpts)
+      deptStatus = deptResponse.status
       if (deptResponse.ok) {
         const deptData = await deptResponse.json()
-        const flat = deptData?.data?.flat
-        if (deptData?.success && Array.isArray(flat)) {
-          setDepartments(
-            flat.map((d: { id: string; name: string; parentId?: string | null }) => ({
+        deptRows = parseHierarchyDepartments(deptData)
+      } else {
+        console.error('Departments hierarchy failed:', deptResponse.status)
+      }
+
+      if (deptRows.length === 0) {
+        const listRes = await fetch('/api/hr/department/list', fetchOpts)
+        if (listRes.ok) {
+          const listJson = await listRes.json()
+          const arr = listJson?.data
+          if (Array.isArray(arr)) {
+            deptRows = arr.map((d: { id: string; name: string; parentId?: string | null }) => ({
               id: d.id,
               name: d.name,
               parentId: d.parentId ?? undefined,
             }))
-          )
+          }
+        } else {
+          console.error('Department list fallback failed:', listRes.status)
         }
-      } else {
-        console.error('Departments fetch failed:', deptResponse.status, deptResponse.statusText)
       }
-      
-      // Fetch employees
-      const empResponse = await fetch('/api/hr/employees', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+      setDepartments(deptRows)
+
+      const empResponse = await fetch('/api/hr/employees', fetchOpts)
+      let empList: unknown[] = []
       if (empResponse.ok) {
         const empData = await empResponse.json()
-        const list = empData?.data
-        if (empData?.success && Array.isArray(list)) {
-          setEmployees(list)
+        if (empData?.success && Array.isArray(empData.data)) {
+          empList = empData.data
         }
       } else {
         console.error('Employees fetch failed:', empResponse.status, empResponse.statusText)
       }
+      setEmployees(empList as any[])
+
+      const msgs: string[] = []
+      if (deptRows.length === 0) {
+        msgs.push(
+          deptStatus === 401
+            ? 'Sign in again to load departments.'
+            : 'No departments returned (check HR data or API errors).'
+        )
+      }
+      if (!empResponse.ok) {
+        msgs.push(
+          empResponse.status === 401
+            ? 'Sign in again to load employees.'
+            : `Employees API error (${empResponse.status}).`
+        )
+      }
+      setReferenceDataError(msgs.length ? msgs.join(' ') : null)
     } catch (error) {
       console.error('Failed to fetch departments/employees:', error)
+      setReferenceDataError('Could not load departments or employees. Check your connection and try again.')
     } finally {
       setLoadingData(false)
     }
@@ -277,9 +328,16 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     setShowViewModal(true)
   }
 
+  const statusForEditForm = (s: string | undefined): AssetStatus => {
+    if (!s) return 'active'
+    if (s === 'under-maintenance') return 'maintenance'
+    if (s === 'retired') return 'disposed'
+    return s as AssetStatus
+  }
+
   const handleEdit = (asset: Asset) => {
     setSelectedAsset(asset)
-    setEditingAsset({ ...asset })
+    setEditingAsset({ ...asset, status: statusForEditForm(asset.status) })
     setShowEditModal(true)
   }
 
@@ -301,7 +359,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
       if (selectedAsset) {
         // Delete single asset via API
         const response = await fetch(`/api/inventory/assets?id=${selectedAsset.id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          credentials: 'include',
         })
         
         if (!response.ok) {
@@ -383,6 +442,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
 
         const response = await fetch(`/api/inventory/assets?id=${selectedAsset.id}`, {
           method: 'PUT',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -918,6 +978,11 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
           <DialogHeader>
             <DialogTitle>Edit Asset</DialogTitle>
           </DialogHeader>
+          {referenceDataError && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 mb-2">
+              {referenceDataError}
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
@@ -1014,8 +1079,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="under-maintenance">Under maintenance</SelectItem>
-                      <SelectItem value="retired">Retired</SelectItem>
+                      <SelectItem value="maintenance">Under maintenance</SelectItem>
+                      <SelectItem value="disposed">Disposed / retired</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -215,6 +215,7 @@ export type AssetStatus =
   | 'disposed' 
   | 'stolen' 
   | 'lost' 
+  | 'maintenance'
   | 'under-maintenance' 
   | 'retired' 
   | 'pending-disposal'
