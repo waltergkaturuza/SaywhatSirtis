@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import {
   PlusIcon,
   QrCodeIcon,
@@ -15,20 +15,7 @@ import {
 import { Asset } from '@/types/inventory'
 import { Button } from '@/components/ui/button'
 import { ASSET_LOCATION_OPTIONS } from '@/lib/inventory/asset-locations'
-
-interface Department {
-  id: string
-  name: string
-  parentId?: string
-}
-
-interface Employee {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-  department?: string
-}
+import { useHrReferenceData } from '@/hooks/use-hr-reference-data'
 
 interface AssetRegistrationProps {
   createFormData: Partial<Asset>
@@ -175,78 +162,15 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
   const [activeStep, setActiveStep] = useState(1)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   
-  // Dynamic data states
-  const [departments, setDepartments] = useState<Department[]>([])
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [loadingData, setLoadingData] = useState(true)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  // Fetch departments and employees from HR system
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoadingData(true)
-        
-        // Fetch departments
-        const deptResponse = await fetch('/api/hr/departments/hierarchy', {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-        if (deptResponse.ok) {
-          const deptData = await deptResponse.json()
-          
-          // Use the flat structure from the API response
-          if (deptData.success && deptData.data && deptData.data.flat) {
-            const departments = deptData.data.flat.map((dept: any) => ({
-              id: dept.id,
-              name: dept.name,
-              parentId: dept.parentId || null
-            }))
-            setDepartments(departments)
-          } else {
-            console.error('Unexpected department data structure:', deptData)
-            setDepartments([])
-          }
-        } else {
-          console.error('Failed to fetch departments:', deptResponse.status)
-          setDepartments([])
-        }
-        
-        // Fetch employees
-        const empResponse = await fetch('/api/hr/employees', {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-        if (empResponse.ok) {
-          const empData = await empResponse.json()
-          
-          // Handle the employees data structure
-          if (empData.success && empData.data) {
-            setEmployees(empData.data)
-          } else if (Array.isArray(empData)) {
-            setEmployees(empData)
-          } else {
-            console.error('Unexpected employee data structure:', empData)
-            setEmployees([])
-          }
-        } else {
-          console.error('Failed to fetch employees:', empResponse.status)
-          setEmployees([])
-        }
-      } catch (error) {
-        console.error('Error fetching HR data:', error)
-      } finally {
-        setLoadingData(false)
-      }
-    }
-
-    fetchData()
-  }, [])
+  const {
+    departments,
+    employees,
+    loadingData,
+    refetch: refetchHrData,
+  } = useHrReferenceData(Boolean(permissions?.canCreate))
 
   const validateStep = (step: number): boolean => {
     const errors: string[] = []

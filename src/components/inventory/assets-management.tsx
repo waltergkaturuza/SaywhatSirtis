@@ -30,6 +30,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ExportButton } from "@/components/ui/export-button"
 import { Asset, InventoryPermissions, AssetStatus, AssetCondition } from '@/types/inventory'
 import { ASSET_LOCATION_OPTIONS } from '@/lib/inventory/asset-locations'
+import { useHrReferenceData } from '@/hooks/use-hr-reference-data'
 
 interface AssetsManagementProps {
   assets: Asset[]
@@ -70,11 +71,13 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
   const [editingAsset, setEditingAsset] = useState<Partial<Asset>>({})
 
-  // Data for dropdowns
-  const [departments, setDepartments] = useState<any[]>([])
-  const [employees, setEmployees] = useState<any[]>([])
-  const [loadingData, setLoadingData] = useState(false)
-  const [referenceDataError, setReferenceDataError] = useState<string | null>(null)
+  const {
+    departments,
+    employees,
+    loadingData,
+    referenceDataError,
+    refetch: refetchHrData,
+  } = useHrReferenceData(Boolean(permissions.canEdit || permissions.canCreate))
 
   // Fetch assets from backend API
   const fetchAssets = async () => {
@@ -101,105 +104,6 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     }
   }
 
-  const parseHierarchyDepartments = (deptData: {
-    success?: boolean
-    data?: { flat?: unknown[] } | unknown[]
-  }) => {
-    const flat = deptData?.data && !Array.isArray(deptData.data)
-      ? (deptData.data as { flat?: unknown[] }).flat
-      : undefined
-    if (Array.isArray(flat) && flat.length > 0) {
-      return (flat as { id: string; name: string; parentId?: string | null }[]).map((d) => ({
-        id: d.id,
-        name: d.name,
-        parentId: d.parentId ?? undefined,
-      }))
-    }
-    const data = deptData?.data
-    if (Array.isArray(data)) {
-      return (data as { id: string; name: string; parentId?: string | null }[]).map((d) => ({
-        id: d.id,
-        name: d.name,
-        parentId: d.parentId ?? undefined,
-      }))
-    }
-    return []
-  }
-
-  const fetchDepartmentsAndEmployees = async () => {
-    try {
-      setLoadingData(true)
-      setReferenceDataError(null)
-      const fetchOpts: RequestInit = {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      }
-
-      let deptRows: { id: string; name: string; parentId?: string }[] = []
-      let deptStatus = 0
-      const deptResponse = await fetch('/api/hr/departments/hierarchy', fetchOpts)
-      deptStatus = deptResponse.status
-      if (deptResponse.ok) {
-        const deptData = await deptResponse.json()
-        deptRows = parseHierarchyDepartments(deptData)
-      } else {
-        console.error('Departments hierarchy failed:', deptResponse.status)
-      }
-
-      if (deptRows.length === 0) {
-        const listRes = await fetch('/api/hr/department/list', fetchOpts)
-        if (listRes.ok) {
-          const listJson = await listRes.json()
-          const arr = listJson?.data
-          if (Array.isArray(arr)) {
-            deptRows = arr.map((d: { id: string; name: string; parentId?: string | null }) => ({
-              id: d.id,
-              name: d.name,
-              parentId: d.parentId ?? undefined,
-            }))
-          }
-        } else {
-          console.error('Department list fallback failed:', listRes.status)
-        }
-      }
-      setDepartments(deptRows)
-
-      const empResponse = await fetch('/api/hr/employees', fetchOpts)
-      let empList: unknown[] = []
-      if (empResponse.ok) {
-        const empData = await empResponse.json()
-        if (empData?.success && Array.isArray(empData.data)) {
-          empList = empData.data
-        }
-      } else {
-        console.error('Employees fetch failed:', empResponse.status, empResponse.statusText)
-      }
-      setEmployees(empList as any[])
-
-      const msgs: string[] = []
-      if (deptRows.length === 0) {
-        msgs.push(
-          deptStatus === 401
-            ? 'Sign in again to load departments.'
-            : 'No departments returned (check HR data or API errors).'
-        )
-      }
-      if (!empResponse.ok) {
-        msgs.push(
-          empResponse.status === 401
-            ? 'Sign in again to load employees.'
-            : `Employees API error (${empResponse.status}).`
-        )
-      }
-      setReferenceDataError(msgs.length ? msgs.join(' ') : null)
-    } catch (error) {
-      console.error('Failed to fetch departments/employees:', error)
-      setReferenceDataError('Could not load departments or employees. Check your connection and try again.')
-    } finally {
-      setLoadingData(false)
-    }
-  }
-
   // Auto-generation functions
   const generateAssetNumber = () => {
     return `AST-${Date.now()}`
@@ -213,11 +117,15 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     return `QR-${assetNumber}`
   }
 
-  // Fetch assets on component mount
   useEffect(() => {
     fetchAssets()
-    fetchDepartmentsAndEmployees()
   }, [])
+
+  useEffect(() => {
+    if (showEditModal && permissions.canEdit) {
+      void refetchHrData()
+    }
+  }, [showEditModal, permissions.canEdit, refetchHrData])
 
   // Filter and search effects
   useEffect(() => {
