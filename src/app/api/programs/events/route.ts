@@ -16,32 +16,68 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const category = searchParams.get('category');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const offset = (page - 1) * limit;
+    const fromParam = searchParams.get('from'); // YYYY-MM-DD inclusive
+    const toParam = searchParams.get('to'); // YYYY-MM-DD inclusive
+    let page = parseInt(searchParams.get('page') || '1');
+    let limit = parseInt(searchParams.get('limit') || '10');
+    let offset = (page - 1) * limit;
 
-    console.log('Events API: Query params:', { status, category, page, limit })
+    console.log('Events API: Query params:', { status, category, from: fromParam, to: toParam, page, limit })
 
-    // Database connection is handled automatically by Prisma
+    const andParts: Record<string, unknown>[] = [];
 
-    // Build where clause
-    const where: any = {};
     if (status && status !== 'all') {
-      where.status = status.toLowerCase();
+      andParts.push({ status: status.toLowerCase() });
     }
     if (category && category !== 'all') {
-      where.type = category.toLowerCase();
+      const cat = category.toLowerCase();
+      if (cat === 'competitions') {
+        andParts.push({ OR: [{ type: 'competitions' }, { type: 'fundraising' }] });
+      } else {
+        andParts.push({ type: cat });
+      }
     }
 
-    console.log('Events API: Where clause:', where)
+    /** Calendar / range fetch: events overlapping [from 00:00 UTC, to 23:59:59.999 UTC] */
+    let dateScoped = false;
+    if (fromParam && toParam) {
+      const rangeStart = new Date(`${fromParam}T00:00:00.000Z`);
+      const rangeEnd = new Date(`${toParam}T23:59:59.999Z`);
+      if (!Number.isNaN(rangeStart.getTime()) && !Number.isNaN(rangeEnd.getTime()) && rangeStart <= rangeEnd) {
+        dateScoped = true;
+        andParts.push({ startDate: { lte: rangeEnd } });
+        andParts.push({
+          OR: [
+            { endDate: { gte: rangeStart } },
+            {
+              AND: [
+                { endDate: null },
+                { startDate: { gte: rangeStart } },
+                { startDate: { lte: rangeEnd } },
+              ],
+            },
+          ],
+        });
+      }
+    }
 
-    // Get events with pagination
+    const where = andParts.length > 0 ? { AND: andParts } : {};
+
+    if (dateScoped) {
+      limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '3000', 10), 1), 5000);
+      offset = 0;
+      page = 1;
+    }
+
+    console.log('Events API: Where clause:', where, { dateScoped, limit, offset })
+
+    // Get events with pagination (or full range for calendar)
     const [events, total] = await Promise.all([
       prisma.events.findMany({
         where,
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: dateScoped
+          ? { startDate: 'asc' }
+          : { createdAt: 'desc' },
         skip: offset,
         take: limit,
       }),
@@ -82,6 +118,7 @@ export async function POST(request: NextRequest) {
       endDate,
       endTime,
       location,
+      country,
       venue,
       address,
       expectedAttendees,
@@ -98,7 +135,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!name || !startDate || !endDate || !location) {
+    if (!name || !startDate || !endDate || !location || !country || String(country).trim() === '') {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -117,6 +154,7 @@ export async function POST(request: NextRequest) {
         endDate: new Date(endDate),
         endTime: endTime || undefined,
         location,
+        country: String(country).trim(),
         venue: venue || undefined,
         address: address || undefined,
         expectedAttendees: expectedAttendees ? parseInt(expectedAttendees) : 0,

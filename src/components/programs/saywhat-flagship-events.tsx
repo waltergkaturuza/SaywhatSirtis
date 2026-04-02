@@ -6,6 +6,7 @@ import { Combobox } from '@headlessui/react'
 import clsx from 'clsx'
 import { PlusIcon, TrophyIcon, CalendarDaysIcon, EyeIcon, PrinterIcon, PencilIcon, TrashIcon, MapPinIcon, UsersIcon } from '@heroicons/react/24/outline'
 import { resolveCategoryInfo, buildFolderPath, sanitizeFolderSegment } from '@/lib/documents/category-utils'
+import { AFRICAN_COUNTRIES } from '@/lib/programs/african-countries'
 
 interface FlagshipEvent {
   id: string
@@ -17,12 +18,13 @@ interface FlagshipEvent {
   endDate: string
   endTime: string | null
   location: string
+  country?: string | null
   venue?: string | null
   address?: string | null
   expectedAttendees: number | null
   actualAttendees: number | null
   status: 'PLANNING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
-  category: 'CONFERENCE' | 'WORKSHOP' | 'CAMPAIGN' | 'OUTREACH' | 'FUNDRAISING'
+  category: 'CONFERENCE' | 'WORKSHOP' | 'CAMPAIGN' | 'OUTREACH' | 'COMPETITIONS'
   budget: number
   actualCost: number | null
   organizerUserId: string
@@ -51,6 +53,27 @@ const getOrganizerName = (organizer: FlagshipEvent['organizer']): string => {
   return organizer.name || 'Unknown';
 };
 
+function normalizeEventCategory(typeOrCategory: string | undefined): FlagshipEvent['category'] {
+  const raw = (typeOrCategory || 'conference').toString().toLowerCase()
+  if (raw === 'fundraising') return 'COMPETITIONS'
+  const u = raw.toUpperCase() as FlagshipEvent['category']
+  if (u === 'CONFERENCE' || u === 'WORKSHOP' || u === 'CAMPAIGN' || u === 'OUTREACH' || u === 'COMPETITIONS') return u
+  return 'CONFERENCE'
+}
+
+function formatCategoryLabel(category: string | undefined): string {
+  if (!category) return 'N/A'
+  const c = category.toLowerCase()
+  if (c === 'fundraising' || c === 'competitions') return 'Competitions'
+  return category.charAt(0) + category.slice(1).toLowerCase()
+}
+
+function categoryToFormValue(category: string | undefined): string {
+  const c = (category || 'CONFERENCE').toLowerCase()
+  if (c === 'fundraising' || c === 'competitions') return 'competitions'
+  return c
+}
+
 // Transform API response to frontend format
 const transformApiEvent = (apiEvent: any): FlagshipEvent => ({
   id: apiEvent.id,
@@ -62,12 +85,13 @@ const transformApiEvent = (apiEvent: any): FlagshipEvent => ({
   endDate: apiEvent.endDate,
   endTime: apiEvent.endTime,
   location: apiEvent.location,
+  country: apiEvent.country ?? null,
   venue: apiEvent.venue,
   address: apiEvent.address,
   expectedAttendees: apiEvent.expectedAttendees !== null ? apiEvent.expectedAttendees : (apiEvent.capacity || 0),
   actualAttendees: apiEvent.actualAttendees,
   status: apiEvent.status?.toUpperCase() || 'PLANNING',
-  category: apiEvent.category?.toUpperCase() || apiEvent.type?.toUpperCase() || 'CONFERENCE',
+  category: normalizeEventCategory(apiEvent.type ?? apiEvent.category),
   budget: apiEvent.budget || 0,
   actualCost: apiEvent.actualCost,
   organizerUserId: apiEvent.organizerUserId || '',
@@ -98,6 +122,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
     endDate: '',
     endTime: '',
     location: '',
+    country: '',
     address: '',
     venue: '',
     expectedAttendees: 0,
@@ -159,7 +184,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
         await saveEventDocuments(newEvent.id, uploadedDocuments)
       }
       
-      setEvents(prev => [newEvent, ...prev])
+      setEvents(prev => [transformApiEvent(newEvent), ...prev])
       setShowNewEventForm(false)
       setUploadedDocuments([])
       setFormData({
@@ -171,6 +196,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
         endDate: '',
         endTime: '',
         location: '',
+        country: '',
         venue: '',
         address: '',
         expectedAttendees: 0,
@@ -253,8 +279,8 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
       }
 
       const updatedEvent = await response.json()
-      setEvents(prev => prev.map(event => 
-        event.id === editingEvent.id ? updatedEvent : event
+      setEvents(prev => prev.map(event =>
+        event.id === editingEvent.id ? transformApiEvent(updatedEvent) : event
       ))
       setShowNewEventForm(false)
       setEditingEvent(null)
@@ -268,6 +294,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
         endDate: '',
         endTime: '',
         location: '',
+        country: '',
         venue: '',
         address: '',
         expectedAttendees: 0,
@@ -381,11 +408,12 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
           <h1>${event.name}</h1>
           <p><strong>Description:</strong> ${event.description || 'N/A'}</p>
           <p><strong>Date:</strong> ${new Date(event.startDate).toLocaleDateString()} ${event.startTime || ''} - ${new Date(event.endDate).toLocaleDateString()} ${event.endTime || ''}</p>
+          <p><strong>Country:</strong> ${event.country || 'N/A'}</p>
           <p><strong>Location:</strong> ${event.location}</p>
           <p><strong>Expected Attendees:</strong> ${event.expectedAttendees ? event.expectedAttendees.toLocaleString() : 'N/A'}</p>
           ${event.actualAttendees ? `<p><strong>Actual Attendees:</strong> ${event.actualAttendees.toLocaleString()}</p>` : ''}
           <p><strong>Status:</strong> ${event.status ? (event.status.charAt(0) + event.status.slice(1).toLowerCase()) : 'N/A'}</p>
-          <p><strong>Category:</strong> ${event.category ? (event.category.charAt(0) + event.category.slice(1).toLowerCase()) : 'N/A'}</p>
+          <p><strong>Category:</strong> ${formatCategoryLabel(event.category)}</p>
           <p><strong>Budget:</strong> ${formatCurrency(event.budget)}</p>
           ${event.actualCost ? `<p><strong>Actual Cost:</strong> ${formatCurrency(event.actualCost)}</p>` : ''}
           <p><strong>Organizer:</strong> ${getOrganizerName(event.organizer)}</p>
@@ -424,6 +452,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
       endDate: new Date(event.endDate).toISOString().split('T')[0],
       endTime: event.endTime || '',
       location: event.location,
+      country: event.country || '',
       venue: event.venue || '',
       address: event.address || '',
       expectedAttendees: event.expectedAttendees || 0,
@@ -432,7 +461,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
       registrationDeadline: '',
       registrationFields: Array.isArray(event.registrationFields) ? event.registrationFields : ['name', 'email', 'phone'],
       status: event.status ? event.status.toLowerCase() : 'planning',
-      category: event.category ? event.category.toLowerCase() : 'conference',
+      category: categoryToFormValue(event.category),
       budget: event.budget,
       actualCost: event.actualCost || 0,
       organizer: getOrganizerName(event.organizer),
@@ -532,10 +561,21 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
   }, [selectedStatus, selectedCategory])
 
   useEffect(() => {
-    if (autoOpenForm) {
+    if (selectedStatus === 'completed') {
+      setShowNewEventForm(false)
+    }
+  }, [selectedStatus])
+
+  useEffect(() => {
+    if (autoOpenForm && selectedStatus !== 'completed') {
       setShowNewEventForm(true)
     }
-  }, [autoOpenForm])
+  }, [autoOpenForm, selectedStatus])
+
+  const canAddFlagshipEvent = useMemo(
+    () => Boolean(permissions?.canCreate && selectedStatus !== 'completed'),
+    [permissions?.canCreate, selectedStatus]
+  )
 
   const getStatusColor = (status: string | undefined) => {
     if (!status) return 'text-gray-600 bg-gray-100'
@@ -557,6 +597,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
       case 'workshop': return 'text-blue-700 bg-blue-100'
       case 'campaign': return 'text-orange-700 bg-orange-100'
       case 'outreach': return 'text-green-700 bg-green-100'
+      case 'competitions':
       case 'fundraising': return 'text-yellow-700 bg-yellow-100'
       default: return 'text-gray-600 bg-gray-100'
     }
@@ -642,22 +683,22 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
             </>
           )}
           {permissions?.canCreate && (
-            <>
-              <button
-                onClick={() => setShowPartnerForm(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center"
-              >
-                <UsersIcon className="h-4 w-4 mr-2" />
-                Add Partner
-              </button>
-              <button
-                onClick={() => setShowNewEventForm(true)}
-                className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors flex items-center"
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Add Event
-              </button>
-            </>
+            <button
+              onClick={() => setShowPartnerForm(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center"
+            >
+              <UsersIcon className="h-4 w-4 mr-2" />
+              Add Partner
+            </button>
+          )}
+          {canAddFlagshipEvent && (
+            <button
+              onClick={() => setShowNewEventForm(true)}
+              className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors flex items-center"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add Event
+            </button>
           )}
         </div>
       </div>
@@ -829,14 +870,14 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
           Outreach
         </button>
         <button
-          onClick={() => setSelectedCategory('fundraising')}
+          onClick={() => setSelectedCategory('competitions')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            selectedCategory === 'fundraising' 
+            selectedCategory === 'competitions' 
               ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' 
               : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
           }`}
         >
-          Fundraising
+          Competitions
         </button>
       </div>
 
@@ -856,18 +897,27 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
       ) : events.length === 0 ? (
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-12 text-center">
           <TrophyIcon className="h-16 w-16 text-orange-400 mx-auto mb-4" />
-          <h3 className="text-xl font-medium text-gray-900 mb-2">No Flagship Events Yet</h3>
+          <h3 className="text-xl font-medium text-gray-900 mb-2">
+            {selectedStatus === 'completed'
+              ? 'No completed flagship events'
+              : selectedStatus !== 'all' || selectedCategory !== 'all'
+                ? 'No events match your filters'
+                : 'No Flagship Events Yet'}
+          </h3>
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            Start creating memorable events that align with SAYWHAT's mission. From conferences to community outreach,
-            manage all your flagship events in one place.
+            {selectedStatus === 'completed'
+              ? 'Completed events appear here when their status is set to completed. Switch to another status tab to add new flagship events.'
+              : selectedStatus !== 'all' || selectedCategory !== 'all'
+                ? 'Try changing your filters, or add a new event if it does not exist yet.'
+                : 'Start creating memorable events that align with SAYWHAT\'s mission. From conferences to community outreach, manage all your flagship events in one place.'}
           </p>
-          {permissions?.canCreate && (
+          {canAddFlagshipEvent && (
             <button
               onClick={() => setShowNewEventForm(true)}
               className="bg-orange-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-700 transition-colors flex items-center mx-auto"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
-              Create Your First Event
+              {selectedStatus !== 'all' || selectedCategory !== 'all' ? 'Add Event' : 'Create Your First Event'}
             </button>
           )}
         </div>
@@ -889,7 +939,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                           {event.status ? (event.status.charAt(0) + event.status.slice(1).toLowerCase()) : 'N/A'}
                         </span>
                         <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold ${getCategoryColor(event.category)} shadow-sm`}>
-                          {event.category ? (event.category.charAt(0) + event.category.slice(1).toLowerCase()) : 'N/A'}
+                          {formatCategoryLabel(event.category)}
                         </span>
                       </div>
                     </div>
@@ -1058,7 +1108,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                                 {event.status ? (event.status.charAt(0) + event.status.slice(1).toLowerCase()) : 'N/A'}
                               </span>
                               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(event.category)}`}>
-                                {event.category ? (event.category.charAt(0) + event.category.slice(1).toLowerCase()) : 'N/A'}
+                                {formatCategoryLabel(event.category)}
                               </span>
                             </div>
                             
@@ -1188,6 +1238,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                       endDate: '',
                       endTime: '',
                       location: '',
+                      country: '',
                       venue: '',
                       address: '',
                       expectedAttendees: 0,
@@ -1322,7 +1373,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                         <option value="workshop">Workshop</option>
                         <option value="campaign">Campaign</option>
                         <option value="outreach">Outreach</option>
-                        <option value="fundraising">Fundraising</option>
+                        <option value="competitions">Competitions</option>
                       </select>
                     </div>
                     <div>
@@ -1404,17 +1455,36 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Province/Location *
-                    </label>
-                    <select 
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                      value={formData.location} 
-                      onChange={e => setFormData({ ...formData, location: e.target.value })} 
-                      required
-                    >
-                      <option value="">Select Province</option>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Country (Africa) *
+                      </label>
+                      <select
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                        value={formData.country}
+                        onChange={e => setFormData({ ...formData, country: e.target.value })}
+                        required
+                      >
+                        <option value="">Select country</option>
+                        {AFRICAN_COUNTRIES.map((c) => (
+                          <option key={c.code} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Province/State or region *
+                      </label>
+                      <select 
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                        value={formData.location} 
+                        onChange={e => setFormData({ ...formData, location: e.target.value })} 
+                        required
+                      >
+                        <option value="">Select province (Zimbabwe)</option>
                       <option value="Bulawayo">Bulawayo</option>
                       <option value="Harare">Harare</option>
                       <option value="Manicaland">Manicaland</option>
@@ -1426,6 +1496,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                       <option value="Matabeleland South">Matabeleland South</option>
                       <option value="Midlands">Midlands</option>
                     </select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div>
@@ -1745,6 +1816,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                         endDate: '',
                         endTime: '',
                         location: '',
+                        country: '',
                         venue: '',
                         address: '',
                         expectedAttendees: 0,
@@ -1794,7 +1866,7 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                       {selectedEvent.status ? (selectedEvent.status.charAt(0) + selectedEvent.status.slice(1).toLowerCase()) : 'N/A'}
                     </span>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white/20 text-white`}>
-                      {selectedEvent.category ? (selectedEvent.category.charAt(0) + selectedEvent.category.slice(1).toLowerCase()) : 'N/A'}
+                      {formatCategoryLabel(selectedEvent.category)}
                     </span>
                   </div>
                 </div>
@@ -1844,7 +1916,8 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                     Location
                   </h3>
                   <div className="space-y-2">
-                    <p><strong>Location:</strong> {selectedEvent.location}</p>
+                    {selectedEvent.country && <p><strong>Country:</strong> {selectedEvent.country}</p>}
+                    <p><strong>Province/region:</strong> {selectedEvent.location}</p>
                     {selectedEvent.venue && <p><strong>Venue:</strong> {selectedEvent.venue}</p>}
                     {selectedEvent.address && <p><strong>Address:</strong> {selectedEvent.address}</p>}
                   </div>

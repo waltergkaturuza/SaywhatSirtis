@@ -2242,7 +2242,11 @@ export default function DocumentRepositoryPage() {
       const matchesDepartment = !searchFilterDepartment || (doc.department || '') === searchFilterDepartment;
       const matchesUploadedBy = !searchFilterUploadedBy || 
         (uploaderMap.get(doc.uploadedBy) === searchFilterUploadedBy || doc.uploadedBy === searchFilterUploadedBy);
-      const matchesProject = !searchFilterProject || (doc as any).projectId === searchFilterProject;
+      const docProjectId =
+        (doc as any).projectId ||
+        (doc as any).customMetadata?.projectId;
+      const matchesProject =
+        !searchFilterProject || docProjectId === searchFilterProject;
       const docClassification = (doc.classification || doc.accessLevel || '').toUpperCase();
       const matchesClassification = !searchFilterClassification || docClassification === searchFilterClassification.toUpperCase();
       return matchesQuery && matchesFileType && matchesDateFrom && matchesDateTo &&

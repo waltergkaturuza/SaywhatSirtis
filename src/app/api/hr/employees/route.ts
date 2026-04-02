@@ -53,25 +53,39 @@ export async function GET() {
       return NextResponse.json(response, { status })
     }
 
-    const isHR = currentUser.role === 'HR' || currentUser.role === 'SUPERUSER'
+    const isHR =
+      currentUser.role === 'HR' || currentUser.role === 'SUPERUSER'
 
-    // Build query based on permissions
-    let whereClause: any = {
-      isActive: true
-    }
+    const userPermissions =
+      (session.user as { permissions?: string[] }).permissions ?? []
+    const userRoles =
+      (session.user as { roles?: string[] }).roles ?? []
+    const roleSlugs = userRoles.map((r) => String(r).toLowerCase())
 
-    // If user is not HR, limit to their scope
-    if (!isHR) {
-      // Regular users can only see themselves
-      whereClause.id = currentUser.id
+    // Same cohort as risk create / add-risk form: full employee list for picking risk owner
+    const canSeeAllEmployeesForRiskWorkflow =
+      isHR ||
+      userPermissions.includes('risk.create') ||
+      userPermissions.includes('risks_edit') ||
+      userPermissions.includes('risks.edit') ||
+      userPermissions.includes('admin.access') ||
+      roleSlugs.some((role) =>
+        ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(
+          role
+        )
+      )
+
+    const employeeWhere = {
+      status: { in: ['ACTIVE', 'ON_LEAVE', 'SUSPENDED'] },
+      ...(canSeeAllEmployeesForRiskWorkflow
+        ? {}
+        : { userId: currentUser.id })
     }
 
     // Get all employees with their user details and department hierarchy
     const employees = await executeQuery(async (prisma) => 
       prisma.employees.findMany({
-        where: {
-          status: { in: ['ACTIVE', 'ON_LEAVE', 'SUSPENDED'] } // Show active employees
-        },
+        where: employeeWhere,
         include: {
           users: {
             select: {

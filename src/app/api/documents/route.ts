@@ -65,7 +65,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (projectId) {
-      where.projectId = projectId
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { projectId },
+            { customMetadata: { path: ['projectId'], equals: projectId } },
+          ],
+        },
+      ]
     }
 
     if (uploadedBy) {
@@ -255,8 +263,9 @@ export async function GET(request: NextRequest) {
           uploadedByEmail: uploaderInfo?.email || null,
           url: doc.url,
           department: resolvedDepartment,
-          projectId: doc.projectId,
-          projectName: projectInfo?.name || customMetadata.projectName || null,
+          projectId: doc.projectId || customMetadata.projectId || null,
+          projectName:
+            projectInfo?.name || customMetadata.projectName || null,
           folderPath: doc.folderPath || (resolvedDepartment && resolvedCategory ? `${resolvedDepartment}/${resolvedCategory}` : null),
           customMetadata: doc.customMetadata,
           tags: doc.tags,

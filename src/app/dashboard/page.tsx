@@ -129,6 +129,15 @@ export default function DashboardPage() {
   const [programTimelineData, setProgramTimelineData] = useState<any[]>([])
   const [callsByProvince, setCallsByProvince] = useState<Array<{province: string, calls: number, validCalls: number}>>([])
   const [callsByAgeGroup, setCallsByAgeGroup] = useState<Array<{ageGroup: string, count: number, percentage: number}>>([])
+  const [ageKeyPopulationCrossTab, setAgeKeyPopulationCrossTab] = useState<{
+    ageGroups: string[]
+    keyPopulations: string[]
+    rows: Array<{
+      ageGroup: string
+      cells: Array<{ keyPopulation: string; count: number }>
+      rowTotal: number
+    }>
+  } | null>(null)
   const [callsByGender, setCallsByGender] = useState<Array<{gender: string, count: number, percentage: number}>>([])
   const [totalCases, setTotalCases] = useState(0)
   const [newCasesThisMonth, setNewCasesThisMonth] = useState(0)
@@ -195,6 +204,7 @@ export default function DashboardPage() {
           const summaryData = await callSummaryResponse.json()
           setCallsByProvince(summaryData.callsByProvince || [])
           setCallsByAgeGroup(summaryData.callsByAgeGroup || [])
+          setAgeKeyPopulationCrossTab(summaryData.ageKeyPopulationCrossTab ?? null)
           setCallsByGender(summaryData.callsByGender || [])
           setTotalCases(summaryData.stats?.totalCases || 0)
           
@@ -703,6 +713,65 @@ export default function DashboardPage() {
                   </CardContent>
                 </Card>
               </div>
+
+              {ageKeyPopulationCrossTab &&
+              ageKeyPopulationCrossTab.rows.some(r => r.rowTotal > 0) ? (
+                <Card className="border-saywhat-grey mt-6">
+                  <CardHeader>
+                    <CardTitle className="text-saywhat-dark">
+                      Age group × Key population
+                    </CardTitle>
+                    <p className="text-xs text-saywhat-grey mt-1">
+                      Zero age (invalid / unstated) maps to Invalid key population in reporting.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="overflow-x-auto">
+                    <table className="min-w-full text-sm border border-gray-200">
+                      <thead>
+                        <tr className="bg-saywhat-light-grey">
+                          <th className="text-left py-2 px-3 font-semibold text-saywhat-dark border-b">
+                            Age group
+                          </th>
+                          {ageKeyPopulationCrossTab.keyPopulations.map(kp => (
+                            <th
+                              key={kp}
+                              className="text-center py-2 px-2 font-semibold text-saywhat-dark border-b whitespace-nowrap"
+                            >
+                              {kp}
+                            </th>
+                          ))}
+                          <th className="text-center py-2 px-3 font-semibold text-saywhat-dark border-b">
+                            Total
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ageKeyPopulationCrossTab.rows.map(row => (
+                          <tr
+                            key={row.ageGroup}
+                            className="border-b border-gray-100 hover:bg-gray-50"
+                          >
+                            <td className="py-2 px-3 font-medium text-saywhat-dark">
+                              {row.ageGroup}
+                            </td>
+                            {row.cells.map(c => (
+                              <td
+                                key={c.keyPopulation}
+                                className="text-center py-2 px-2 text-saywhat-dark"
+                              >
+                                {c.count}
+                              </td>
+                            ))}
+                            <td className="text-center py-2 px-3 font-bold text-saywhat-dark">
+                              {row.rowTotal}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+              ) : null}
             </TabsContent>
 
             <TabsContent value="calls" className="space-y-6">

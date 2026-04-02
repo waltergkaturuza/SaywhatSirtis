@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { riskVisibilityOrFilter } from '@/lib/risk-management/session-risk-access';
 
 // Define types for risk enums
 type RiskCategory = 'OPERATIONAL' | 'STRATEGIC' | 'FINANCIAL' | 'COMPLIANCE' | 'REPUTATIONAL' | 'ENVIRONMENTAL' | 'CYBERSECURITY' | 'HR_PERSONNEL';
@@ -14,6 +15,21 @@ function calculateRiskScore(probability: RiskProbability, impact: RiskImpact): n
   const probabilityScore: { [key in RiskProbability]: number } = { LOW: 1, MEDIUM: 2, HIGH: 3 };
   const impactScore: { [key in RiskImpact]: number } = { LOW: 1, MEDIUM: 2, HIGH: 3 };
   return probabilityScore[probability] * impactScore[impact];
+}
+
+/** Map UI 5-level values to Prisma enum (LOW | MEDIUM | HIGH). */
+function normalizeRiskProbability(value: string): RiskProbability {
+  const v = String(value).toUpperCase();
+  if (v === 'VERY_LOW' || v === 'LOW') return 'LOW';
+  if (v === 'HIGH' || v === 'VERY_HIGH') return 'HIGH';
+  return 'MEDIUM';
+}
+
+function normalizeRiskImpact(value: string): RiskImpact {
+  const v = String(value).toUpperCase();
+  if (v === 'VERY_LOW' || v === 'LOW') return 'LOW';
+  if (v === 'HIGH' || v === 'VERY_HIGH') return 'HIGH';
+  return 'MEDIUM';
 }
 
 // Helper function to generate risk ID
@@ -35,32 +51,31 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') as RiskCategory | null;
     const status = searchParams.get('status') as RiskStatus | null;
     const department = searchParams.get('department');
+    const searchRaw = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const skip = (page - 1) * limit;
 
-    // Build filters
-    const where: any = {};
-    if (category) where.category = category;
-    if (status) where.status = status;
-    if (department) where.department = department;
+    const andParts: Record<string, unknown>[] = [];
+    if (category) andParts.push({ category });
+    if (status) andParts.push({ status });
+    if (department) andParts.push({ department });
 
-    // Check user permissions for data filtering - Updated to support ADVANCE_USER_1
-    const userPermissions = session.user.permissions || [];
-    const userRoles = session.user.roles || [];
-    
-    // If user doesn't have admin access, filter by department or owned risks
-    if (!userPermissions.includes('admin.access') && 
-        !userPermissions.includes('risk.full_access') &&
-        !userPermissions.includes('risks_edit') &&
-        !userPermissions.includes('risks.edit') &&
-        !userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))) {
-      where.OR = [
-        { department: session.user.department },
-        { ownerId: session.user.id },
-        { createdById: session.user.id }
-      ];
+    const search = searchRaw?.trim();
+    if (search) {
+      andParts.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { riskId: { contains: search, mode: 'insensitive' } },
+        ],
+      });
     }
+
+    const vis = riskVisibilityOrFilter(session);
+    if (vis) andParts.push(vis);
+
+    const where = andParts.length > 0 ? { AND: andParts } : {};
 
     const [risks, total] = await Promise.all([
       prisma.risks.findMany({
@@ -167,9 +182,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate risk score
-    const riskScore = calculateRiskScore(probability, impact);
-    
+    const probabilityDb = normalizeRiskProbability(probability);
+    const impactDb = normalizeRiskImpact(impact);
+    const riskScore = calculateRiskScore(probabilityDb, impactDb);
+
     // Generate unique risk ID
     const riskId = generateRiskId();
 
@@ -181,8 +197,8 @@ export async function POST(request: NextRequest) {
         description,
         category,
         department: department || session.user.department,
-        probability,
-        impact,
+        probability: probabilityDb,
+        impact: impactDb,
         riskScore,
         ownerId: ownerId || session.user.id,
         createdById: session.user.id,

@@ -734,6 +734,7 @@ model events {
   endDate              DateTime?
   endTime              String?
   location             String?
+  country              String?
   address              String?
   venue                String?
   capacity             Int?

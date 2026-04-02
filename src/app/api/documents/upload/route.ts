@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { sanitizeFolderPath, sanitizeFolderSegment, resolveCategoryInfo, buildFolderPath } from '@/lib/documents/category-utils'
+import { departmentRequiresProgramProjectLink } from '@/lib/documents/program-department'
 import { uploadToSupabaseStorage, ensureBucketExists } from '@/lib/storage/supabase-storage'
 
 export async function POST(request: NextRequest) {
@@ -85,6 +86,37 @@ export async function POST(request: NextRequest) {
         success: false, 
         error: "Title and category are required" 
       }, { status: 400 })
+    }
+
+    const departmentTrimmed = (department || '').trim()
+    if (departmentRequiresProgramProjectLink(departmentTrimmed)) {
+      const publishedCount = await prisma.projects.count()
+      if (publishedCount > 0) {
+        const pid = (projectId || '').trim()
+        if (!pid) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                'Please select which program or project this document is for (required for your department).',
+            },
+            { status: 400 }
+          )
+        }
+        const projectRow = await prisma.projects.findUnique({
+          where: { id: pid },
+          select: { id: true },
+        })
+        if (!projectRow) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Invalid or unknown project selected.',
+            },
+            { status: 400 }
+          )
+        }
+      }
     }
 
     // Validate file size (100MB limit for videos/large files, 10MB for others)

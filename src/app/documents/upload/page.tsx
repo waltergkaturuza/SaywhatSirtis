@@ -33,7 +33,7 @@ import {
 } from "@heroicons/react/24/solid";
 
 import { resolveCategoryInfo, buildFolderPath } from "@/lib/documents/category-utils";
-import { isProgramsDepartmentName } from "@/lib/documents/program-department";
+import { departmentRequiresProgramProjectLink } from "@/lib/documents/program-department";
 
 // Document categories
 const documentCategories = [
@@ -397,7 +397,8 @@ export default function DocumentUploadPage() {
   }, [formData.accessLevel, status, session]);
 
   const effectiveDepartment = (formData.department || userDepartment || "").trim();
-  const showProgramsProjectField = isProgramsDepartmentName(effectiveDepartment);
+  const showProgramsProjectField =
+    departmentRequiresProgramProjectLink(effectiveDepartment);
 
   useEffect(() => {
     if (!showProgramsProjectField) {
@@ -632,7 +633,7 @@ export default function DocumentUploadPage() {
       !selectedProgramProjectId
     ) {
       alert(
-        "Please select which program/project this document is for (Programs department)."
+        "Please select which program or project this document is for (required for Programs, Grants & Compliance, MEAL, and related teams)."
       );
       return;
     }
@@ -1024,8 +1025,8 @@ export default function DocumentUploadPage() {
                         <p className="text-sm text-gray-500">Loading projects…</p>
                       ) : programLinkProjects.length === 0 ? (
                         <p className="text-sm text-amber-800">
-                          No published projects found. You can still upload; ask an admin to add
-                          projects in Programs, or your account may need program access.
+                          No projects found in the system yet. You can still upload; ask an admin to
+                          add projects, or confirm your account can access the project list.
                         </p>
                       ) : (
                         <div>

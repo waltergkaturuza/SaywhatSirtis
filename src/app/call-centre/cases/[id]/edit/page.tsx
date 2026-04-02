@@ -346,7 +346,9 @@ export default function EditCasePage() {
                     <select value={caseData.caseType} onChange={(e) => handleInputChange('caseType', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500">
                       <option value="">Select purpose...</option>
                       <option value="HIV/AIDS">HIV/AIDS</option>
-                      <option value="Information and Counselling">Information and Counselling</option>
+                      <option value="Information">Information</option>
+                      <option value="Counselling">Counselling</option>
+                      <option value="Information and Counselling">Information and Counselling (legacy)</option>
                       <option value="In-house Case">In-house Case</option>
                       <option value="Cancer Screening">Cancer Screening</option>
                       <option value="Child Protection">Child Protection</option>
