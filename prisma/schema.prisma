@@ -80,7 +80,14 @@ model assets {
   assignedEmail       String?
   assignedTo          String?
   barcodeId           String?
+  physicalAssetTag    String?
   department          String?
+  custodian           String?
+  lastAuditDate       DateTime?
+  nextMaintenanceDate DateTime?
+  procurementType     String?
+  expectedLifespan    Int?
+  usageType           String?
   depreciationMethod  String?               @default("straight-line")
   depreciationRate    Float?                @default(0)
   documents           String[]              @default([])

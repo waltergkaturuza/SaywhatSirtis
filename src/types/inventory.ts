@@ -1,6 +1,8 @@
 export interface Asset {
   id: string
   assetNumber: string
+  /** Physical / secondary tag (sticker), distinct from `assetNumber` / `assetTag` in DB */
+  physicalAssetTag?: string
   assetTag?: string
   name: string
   type: AssetType
@@ -13,7 +15,11 @@ export interface Asset {
   procurementValue: number
   currentValue: number
   depreciationRate: number
-  depreciationMethod: 'straight-line' | 'declining-balance' | 'units-of-production'
+  depreciationMethod:
+    | 'straight-line'
+    | 'declining-balance'
+    | 'units-of-production'
+    | 'sum-of-years'
   procurementDate: string
   lastValuationDate?: string
   procurementType?: string

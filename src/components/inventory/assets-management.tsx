@@ -29,11 +29,24 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ExportButton } from "@/components/ui/export-button"
 import { Asset, InventoryPermissions, AssetStatus, AssetCondition } from '@/types/inventory'
+import { ASSET_LOCATION_OPTIONS } from '@/lib/inventory/asset-locations'
 
 interface AssetsManagementProps {
   assets: Asset[]
   permissions: InventoryPermissions
   onAssetUpdate?: (assets: Asset[]) => void
+}
+
+function categoryLabel(c: Asset['category']): string {
+  return typeof c === 'string' ? c : c?.name ?? ''
+}
+
+function typeLabel(t: Asset['type']): string {
+  return typeof t === 'string' ? t : t?.name ?? ''
+}
+
+function locationLabel(l: Asset['location']): string {
+  return typeof l === 'string' ? l : l?.name ?? ''
 }
 
 export function AssetsManagement({ assets: initialAssets, permissions, onAssetUpdate }: AssetsManagementProps) {
@@ -99,9 +112,15 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
       })
       if (deptResponse.ok) {
         const deptData = await deptResponse.json()
-        console.log('Departments response:', deptData)
-        if (deptData.departments && Array.isArray(deptData.departments)) {
-          setDepartments(deptData.departments)
+        const flat = deptData?.data?.flat
+        if (deptData?.success && Array.isArray(flat)) {
+          setDepartments(
+            flat.map((d: { id: string; name: string; parentId?: string | null }) => ({
+              id: d.id,
+              name: d.name,
+              parentId: d.parentId ?? undefined,
+            }))
+          )
         }
       } else {
         console.error('Departments fetch failed:', deptResponse.status, deptResponse.statusText)
@@ -116,9 +135,9 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
       })
       if (empResponse.ok) {
         const empData = await empResponse.json()
-        console.log('Employees response:', empData)
-        if (empData.employees && Array.isArray(empData.employees)) {
-          setEmployees(empData.employees)
+        const list = empData?.data
+        if (empData?.success && Array.isArray(list)) {
+          setEmployees(list)
         }
       } else {
         console.error('Employees fetch failed:', empResponse.status, empResponse.statusText)
@@ -310,14 +329,52 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     if (showEditModal && selectedAsset) {
       try {
         setIsLoading(true)
-        
-        // Update asset via API
+
+        const payload: Record<string, unknown> = {
+          name: editingAsset.name,
+          assetNumber: editingAsset.assetNumber,
+          brand: editingAsset.brand,
+          model: editingAsset.model,
+          serialNumber: editingAsset.serialNumber,
+          description: editingAsset.description,
+          category: categoryLabel(editingAsset.category as Asset['category']),
+          type: typeLabel(editingAsset.type as Asset['type']),
+          location: locationLabel(editingAsset.location as Asset['location']),
+          department: editingAsset.department,
+          assignedTo: editingAsset.assignedTo,
+          assignedEmail: editingAsset.assignedEmail,
+          custodian: editingAsset.custodian,
+          procurementValue: editingAsset.procurementValue,
+          currentValue: editingAsset.currentValue,
+          depreciationRate: editingAsset.depreciationRate,
+          depreciationMethod: editingAsset.depreciationMethod,
+          fundingSource: editingAsset.fundingSource,
+          procurementType: editingAsset.procurementType,
+          expectedLifespan: editingAsset.expectedLifespan,
+          usageType: editingAsset.usageType,
+          procurementDate: editingAsset.procurementDate,
+          warrantyExpiry: editingAsset.warrantyExpiry,
+          lastAuditDate: editingAsset.lastAuditDate,
+          nextMaintenanceDate: editingAsset.nextMaintenanceDate,
+          status: editingAsset.status,
+          condition: editingAsset.condition,
+          rfidTag: editingAsset.rfidTag,
+          qrCode: editingAsset.qrCode,
+          barcodeId: editingAsset.barcodeId,
+          physicalAssetTag: editingAsset.physicalAssetTag,
+          insuranceValue: editingAsset.insuranceValue,
+          insurancePolicy: editingAsset.insurancePolicy,
+        }
+        Object.keys(payload).forEach((k) => {
+          if (payload[k] === undefined) delete payload[k]
+        })
+
         const response = await fetch(`/api/inventory/assets?id=${selectedAsset.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(editingAsset)
+          body: JSON.stringify(payload),
         })
         
         if (!response.ok) {
@@ -343,9 +400,12 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
       active: "default",
       inactive: "secondary",
       maintenance: "outline",
-      disposed: "destructive"
+      "under-maintenance": "outline",
+      disposed: "destructive",
+      retired: "destructive",
     }
-    return <Badge className="bg-orange-500 text-white shadow-lg" variant={variants[status] || "default"}>{status}</Badge>
+    const label = status === 'under-maintenance' ? 'under maintenance' : status
+    return <Badge className="bg-orange-500 text-white shadow-lg" variant={variants[status] || "default"}>{label}</Badge>
   }
 
   const getConditionBadge = (condition: string) => {
@@ -597,12 +657,12 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     </td>
                     <td className="p-4">
                       <div className="font-medium">{asset.assetNumber}</div>
-                      {asset.assetTag && (
+                      {asset.physicalAssetTag ? (
                         <div className="text-xs text-gray-500 flex items-center gap-1">
                           <TagIcon className="h-3 w-3" />
-                          {asset.assetTag}
+                          {asset.physicalAssetTag}
                         </div>
-                      )}
+                      ) : null}
                     </td>
                     <td className="p-4">
                       <div className="font-medium">{asset.name}</div>
@@ -624,7 +684,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     <td className="p-4">
                       <div className="text-sm flex items-center gap-1">
                         <MapPinIcon className="h-3 w-3 text-gray-400" />
-                        {typeof asset.location === 'string' ? asset.location : asset.location?.name}
+                        {locationLabel(asset.location) || '—'}
                       </div>
                     </td>
                     <td className="p-4">
@@ -736,6 +796,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   <div className="mt-2 space-y-2">
                     <div><span className="font-medium">Asset Number:</span> {selectedAsset.assetNumber}</div>
                     <div><span className="font-medium">Name:</span> {selectedAsset.name}</div>
+                    <div><span className="font-medium">Category:</span> {categoryLabel(selectedAsset.category) || '-'}</div>
+                    <div><span className="font-medium">Type:</span> {typeLabel(selectedAsset.type) || '-'}</div>
                     <div><span className="font-medium">Brand:</span> {selectedAsset.brand || '-'}</div>
                     <div><span className="font-medium">Model:</span> {selectedAsset.model || '-'}</div>
                     <div><span className="font-medium">Serial Number:</span> {selectedAsset.serialNumber || '-'}</div>
@@ -759,9 +821,11 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Assignment</Label>
                   <div className="mt-2 space-y-2">
-                    <div><span className="font-medium">Department:</span> {selectedAsset.department}</div>
+                    <div><span className="font-medium">Department:</span> {selectedAsset.department || '-'}</div>
                     <div><span className="font-medium">Assigned To:</span> {selectedAsset.assignedTo || '-'}</div>
-                    <div><span className="font-medium">Location:</span> {typeof selectedAsset.location === 'string' ? selectedAsset.location : selectedAsset.location?.name || '-'}</div>
+                    <div><span className="font-medium">Assigned Email:</span> {selectedAsset.assignedEmail || '-'}</div>
+                    <div><span className="font-medium">Custodian:</span> {selectedAsset.custodian || '-'}</div>
+                    <div><span className="font-medium">Location:</span> {locationLabel(selectedAsset.location) || '-'}</div>
                   </div>
                 </div>
               </div>
@@ -773,6 +837,9 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     <div><span className="font-medium">Procurement Value:</span> ${selectedAsset.procurementValue?.toLocaleString() || '0'}</div>
                     <div><span className="font-medium">Current Value:</span> ${selectedAsset.currentValue?.toLocaleString() || '0'}</div>
                     <div><span className="font-medium">Depreciation Method:</span> {selectedAsset.depreciationMethod || '-'}</div>
+                    <div><span className="font-medium">Funding Source:</span> {selectedAsset.fundingSource || '-'}</div>
+                    <div><span className="font-medium">Insurance Value:</span> {selectedAsset.insuranceValue != null ? `$${Number(selectedAsset.insuranceValue).toLocaleString()}` : '-'}</div>
+                    <div><span className="font-medium">Insurance Policy:</span> {selectedAsset.insurancePolicy || '-'}</div>
                   </div>
                 </div>
 
@@ -791,20 +858,18 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   <div className="mt-2 space-y-2">
                     <div><span className="font-medium">RFID Tag:</span> {selectedAsset.rfidTag || '-'}</div>
                     <div><span className="font-medium">QR Code:</span> {selectedAsset.qrCode || '-'}</div>
-                    <div><span className="font-medium">Asset Tag:</span> {selectedAsset.assetTag || '-'}</div>
+                    <div><span className="font-medium">Asset Tag (sticker):</span> {selectedAsset.physicalAssetTag || '-'}</div>
                     <div><span className="font-medium">Barcode ID:</span> {selectedAsset.barcodeId || '-'}</div>
                   </div>
                 </div>
               </div>
 
-              {selectedAsset.description && (
-                <div className="md:col-span-2">
-                  <Label className="text-sm font-medium text-gray-500">Description</Label>
-                  <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                    {selectedAsset.description}
-                  </div>
+              <div className="md:col-span-2">
+                <Label className="text-sm font-medium text-gray-500">Description</Label>
+                <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                  {selectedAsset.description?.trim() ? selectedAsset.description : '—'}
                 </div>
-              )}
+              </div>
             </div>
           )}
         </DialogContent>
@@ -875,6 +940,36 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                 />
               </div>
 
+              <div>
+                <Label htmlFor="edit-category">Category</Label>
+                <Input
+                  id="edit-category"
+                  value={categoryLabel(editingAsset.category as Asset['category'])}
+                  onChange={(e) =>
+                    setEditingAsset((prev) => ({
+                      ...prev,
+                      category: e.target.value as unknown as Asset['category'],
+                    }))
+                  }
+                  placeholder="e.g. Laptops"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-type">Asset type</Label>
+                <Input
+                  id="edit-type"
+                  value={typeLabel(editingAsset.type as Asset['type'])}
+                  onChange={(e) =>
+                    setEditingAsset((prev) => ({
+                      ...prev,
+                      type: e.target.value as unknown as Asset['type'],
+                    }))
+                  }
+                  placeholder="e.g. IT Equipment"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="status">Status*</Label>
@@ -888,8 +983,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                      <SelectItem value="disposed">Disposed</SelectItem>
+                      <SelectItem value="under-maintenance">Under maintenance</SelectItem>
+                      <SelectItem value="retired">Retired</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -907,6 +1002,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                       <SelectItem value="good">Good</SelectItem>
                       <SelectItem value="fair">Fair</SelectItem>
                       <SelectItem value="poor">Poor</SelectItem>
+                      <SelectItem value="needs-repair">Needs repair</SelectItem>
+                      <SelectItem value="damaged">Damaged</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -914,6 +1011,30 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
             </div>
 
             <div className="space-y-4">
+              <div>
+                <Label htmlFor="location-edit">Location*</Label>
+                <Select
+                  value={locationLabel(editingAsset.location as Asset['location']) || undefined}
+                  onValueChange={(value) =>
+                    setEditingAsset((prev) => ({
+                      ...prev,
+                      location: value as unknown as Asset['location'],
+                    }))
+                  }
+                >
+                  <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ASSET_LOCATION_OPTIONS.map((loc) => (
+                      <SelectItem key={loc} value={loc}>
+                        {loc}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div>
                 <Label htmlFor="department">Department*</Label>
                 <Select 
@@ -930,7 +1051,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                       </SelectItem>
                     ) : (
                       departments.map(dept => (
-                        <SelectItem key={dept.id} value={dept.id}>
+                        <SelectItem key={dept.id} value={dept.name}>
                           {dept.name}
                         </SelectItem>
                       ))
@@ -970,6 +1091,17 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     )}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="assignedEmail">Assigned email</Label>
+                <Input
+                  id="assignedEmail"
+                  type="email"
+                  value={editingAsset.assignedEmail || ''}
+                  onChange={(e) => setEditingAsset((prev) => ({ ...prev, assignedEmail: e.target.value }))}
+                  placeholder="name@organization.org"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1012,6 +1144,57 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     type="date"
                     value={editingAsset.warrantyExpiry || ''}
                     onChange={(e) => setEditingAsset(prev => ({ ...prev, warrantyExpiry: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastAuditDate">Last audit</Label>
+                  <Input
+                    id="lastAuditDate"
+                    type="date"
+                    value={editingAsset.lastAuditDate || ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, lastAuditDate: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="nextMaintenanceDate">Next maintenance</Label>
+                  <Input
+                    id="nextMaintenanceDate"
+                    type="date"
+                    value={editingAsset.nextMaintenanceDate || ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, nextMaintenanceDate: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="insuranceValue">Insurance value</Label>
+                  <Input
+                    id="insuranceValue"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={editingAsset.insuranceValue ?? ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({
+                        ...prev,
+                        insuranceValue: e.target.value === '' ? undefined : Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="insurancePolicy">Insurance policy</Label>
+                  <Input
+                    id="insurancePolicy"
+                    value={editingAsset.insurancePolicy || ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, insurancePolicy: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -1071,12 +1254,14 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   />
                 </div>
                 <div>
-                  <Label htmlFor="assetTag">Asset Tag</Label>
+                  <Label htmlFor="physicalAssetTag">Asset tag (sticker)</Label>
                   <Input
-                    id="assetTag"
-                    value={editingAsset.assetTag || ''}
-                    onChange={(e) => setEditingAsset(prev => ({ ...prev, assetTag: e.target.value }))}
-                    placeholder="Enter asset tag"
+                    id="physicalAssetTag"
+                    value={editingAsset.physicalAssetTag || ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, physicalAssetTag: e.target.value }))
+                    }
+                    placeholder="Physical label / sticker"
                   />
                 </div>
               </div>
@@ -1151,13 +1336,54 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                       <SelectValue placeholder="Select funding source" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="UNICEF">UNICEF</SelectItem>
+                      <SelectItem value="EU">EU</SelectItem>
+                      <SelectItem value="Internal Capex">Internal Capex</SelectItem>
+                      <SelectItem value="Government">Government</SelectItem>
+                      <SelectItem value="World Bank">World Bank</SelectItem>
+                      <SelectItem value="Other Donor">Other Donor</SelectItem>
                       <SelectItem value="Internal">Internal</SelectItem>
                       <SelectItem value="Grant">Grant</SelectItem>
-                      <SelectItem value="Loan">Loan</SelectItem>
-                      <SelectItem value="Donation">Donation</SelectItem>
-                      <SelectItem value="Other Donor">Other Donor</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="procurementType">Procurement type</Label>
+                  <Input
+                    id="procurementType"
+                    value={editingAsset.procurementType || ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, procurementType: e.target.value }))
+                    }
+                    placeholder="e.g. Procured, Donated"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="usageType">Usage type</Label>
+                  <Input
+                    id="usageType"
+                    value={editingAsset.usageType || ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, usageType: e.target.value }))
+                    }
+                    placeholder="e.g. Field, Admin"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="expectedLifespan">Expected lifespan (years)</Label>
+                  <Input
+                    id="expectedLifespan"
+                    type="number"
+                    min={1}
+                    value={editingAsset.expectedLifespan ?? ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({
+                        ...prev,
+                        expectedLifespan:
+                          e.target.value === '' ? undefined : parseInt(e.target.value, 10),
+                      }))
+                    }
+                  />
                 </div>
               </div>
             </div>

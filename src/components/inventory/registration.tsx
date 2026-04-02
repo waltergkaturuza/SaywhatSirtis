@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { Asset } from '@/types/inventory'
 import { Button } from '@/components/ui/button'
+import { ASSET_LOCATION_OPTIONS } from '@/lib/inventory/asset-locations'
 
 interface Department {
   id: string
@@ -147,8 +148,6 @@ const PROCUREMENT_TYPES = ['Procured', 'Donated', 'Leased', 'Rented']
 const FUNDING_SOURCES = ['UNICEF', 'EU', 'Internal Capex', 'Government', 'World Bank', 'Other Donor']
 // Departments are now fetched dynamically from HR system
 const USAGE_TYPES = ['Field', 'Admin', 'Storage', 'Loaned', 'Shared']
-const CONDITIONS = ['New', 'Excellent', 'Good', 'Fair', 'Poor', 'Repair Required']
-const LOCATIONS = ['Head Office', 'Branch Office A', 'Branch Office B', 'Warehouse', 'Field Office', 'Storage']
 
 export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
   createFormData,
@@ -663,6 +662,21 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   </button>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                  Physical asset tag (sticker)
+                </label>
+                <input
+                  type="text"
+                  value={createFormData.physicalAssetTag || ''}
+                  onChange={(e) =>
+                    setCreateFormData({ ...createFormData, physicalAssetTag: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900"
+                  placeholder="Optional sticker / label number"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -700,7 +714,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="">Select location</option>
-                  {LOCATIONS.map(location => (
+                  {ASSET_LOCATION_OPTIONS.map((location) => (
                     <option key={location} value={location}>{location}</option>
                   ))}
                 </select>
@@ -720,7 +734,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                     {loadingData ? "Loading departments..." : "Select department"}
                   </option>
                   {departments.map(dept => (
-                    <option key={dept.id} value={dept.id}>
+                    <option key={dept.id} value={dept.name}>
                       {dept.parentId ? `└ ${dept.name}` : dept.name}
                     </option>
                   ))}
@@ -832,9 +846,12 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   onChange={(e) => setCreateFormData({...createFormData, condition: e.target.value as any})}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
-                  {CONDITIONS.map(condition => (
-                    <option key={condition} value={condition.toLowerCase()}>{condition}</option>
-                  ))}
+                  <option value="excellent">Excellent</option>
+                  <option value="good">Good / New</option>
+                  <option value="fair">Fair</option>
+                  <option value="poor">Poor</option>
+                  <option value="needs-repair">Repair required</option>
+                  <option value="damaged">Damaged</option>
                 </select>
               </div>
 
@@ -891,6 +908,57 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   value={createFormData.warrantyExpiry || ''}
                   onChange={(e) => setCreateFormData({...createFormData, warrantyExpiry: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                  Current value ($)
+                </label>
+                <input
+                  type="number"
+                  value={createFormData.currentValue ?? ''}
+                  onChange={(e) =>
+                    setCreateFormData({
+                      ...createFormData,
+                      currentValue: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
+                  placeholder="Defaults to procurement value if empty"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                  Last audit date
+                </label>
+                <input
+                  type="date"
+                  value={createFormData.lastAuditDate || ''}
+                  onChange={(e) =>
+                    setCreateFormData({ ...createFormData, lastAuditDate: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                  Next maintenance
+                </label>
+                <input
+                  type="date"
+                  value={createFormData.nextMaintenanceDate || ''}
+                  onChange={(e) =>
+                    setCreateFormData({
+                      ...createFormData,
+                      nextMaintenanceDate: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900"
                 />
               </div>
 
