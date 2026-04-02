@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom') // YYYY-MM-DD
     const dateTo = searchParams.get('dateTo') // YYYY-MM-DD
     const department = searchParams.get('department')
+    const riskManagementReports = searchParams.get('riskManagementReports')
 
     // Build filter - always exclude deleted documents
     const where: any = {
@@ -80,6 +81,23 @@ export async function GET(request: NextRequest) {
 
     if (department) {
       where.department = department
+    }
+
+    if (riskManagementReports === 'true') {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { tags: { has: 'risk-management-report' } },
+            {
+              customMetadata: {
+                path: ['source'],
+                equals: 'risk_management_reports',
+              },
+            },
+          ],
+        },
+      ]
     }
 
     if (dateFrom || dateTo) {

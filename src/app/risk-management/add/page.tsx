@@ -6,6 +6,10 @@ import { ArrowLeft, Save, X, Plus, Upload, FileText, Calendar, User, AlertTriang
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import {
+  fetchRiskDepartmentSelectOptions,
+  type RiskDepartmentSelectOption,
+} from '@/lib/risk-management/risk-department-options'
 
 interface RiskFormData {
   title: string
@@ -22,11 +26,6 @@ interface RiskFormData {
   targetDate?: string
   actualCost?: number
   attachments?: File[]
-}
-
-interface Department {
-  id: string
-  name: string
 }
 
 interface Employee {
@@ -72,7 +71,7 @@ export default function AddRiskPage() {
   
   const [loading, setLoading] = useState(false)
   const [employees, setEmployees] = useState<Employee[]>([])
-  const [departments, setDepartments] = useState<Department[]>([])
+  const [departments, setDepartments] = useState<RiskDepartmentSelectOption[]>([])
   const [loadingDepartments, setLoadingDepartments] = useState(true)
   const [currentTag, setCurrentTag] = useState('')
   const [formData, setFormData] = useState<RiskFormData>({
@@ -97,62 +96,44 @@ export default function AddRiskPage() {
 
   const loadEmployeesAndDepartments = async () => {
     try {
-      // Load employees (keeping mock data for now)
-      setEmployees([
-        {
-          id: '1',
-          firstName: 'John',
-          lastName: 'Doe',
-          email: 'john.doe@saywhat.com',
-          department: 'IT'
-        },
-        {
-          id: '2',
-          firstName: 'Jane',
-          lastName: 'Smith',
-          email: 'jane.smith@saywhat.com',
-          department: 'Finance'
-        },
-        {
-          id: '3',
-          firstName: 'Mike',
-          lastName: 'Johnson',
-          email: 'mike.johnson@saywhat.com',
-          department: 'Operations'
-        }
+      setLoadingDepartments(true)
+      const [deptOpts, usersResponse] = await Promise.all([
+        fetchRiskDepartmentSelectOptions(),
+        fetch('/api/users?format=detailed', { credentials: 'include' }),
       ])
-      
-      // Load departments from HR API
-      try {
-        setLoadingDepartments(true)
-        const response = await fetch('/api/hr/departments/main')
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data) {
-            setDepartments(result.data.map((dept: any) => ({
-              id: dept.id,
-              name: dept.name
-            })))
-          } else {
-            console.error('Failed to fetch departments:', result.message)
-            // Fallback to empty departments
-            setDepartments([])
-          }
-        } else {
-          console.error('Department API request failed:', response.statusText)
-          // Fallback to empty departments
-          setDepartments([])
-        }
-      } catch (deptError) {
-        console.error('Error fetching departments:', deptError)
-        // Fallback to empty departments
-        setDepartments([])
-      } finally {
-        setLoadingDepartments(false)
+      setDepartments(deptOpts)
+
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json()
+        const list = usersData?.data?.users ?? []
+        setEmployees(
+          list
+            .filter((u: { isActive?: boolean }) => u.isActive !== false)
+            .map(
+              (u: {
+                id: string
+                firstName?: string | null
+                lastName?: string | null
+                email?: string
+                department?: string | null
+              }) => ({
+                id: u.id,
+                firstName: u.firstName ?? null,
+                lastName: u.lastName ?? null,
+                email: u.email || '',
+                department: u.department || undefined,
+              })
+            )
+        )
+      } else {
+        setEmployees([])
       }
-      
     } catch (error) {
       console.error('Error loading data:', error)
+      setDepartments([])
+      setEmployees([])
+    } finally {
+      setLoadingDepartments(false)
     }
   }
 
@@ -390,8 +371,10 @@ export default function AddRiskPage() {
                   {loadingDepartments ? (
                     <option disabled>Loading departments...</option>
                   ) : (
-                    departments.map(dept => (
-                      <option key={dept.id} value={dept.name}>{dept.name}</option>
+                    departments.map((dept) => (
+                      <option key={dept.id} value={dept.value}>
+                        {dept.label}
+                      </option>
                     ))
                   )}
                 </select>

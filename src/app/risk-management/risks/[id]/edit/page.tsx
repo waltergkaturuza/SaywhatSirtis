@@ -6,6 +6,10 @@ import { useSession } from 'next-auth/react'
 import { ArrowLeft, Save, X } from 'lucide-react'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import {
+  fetchRiskDepartmentSelectOptions,
+  type RiskDepartmentSelectOption,
+} from '@/lib/risk-management/risk-department-options'
 
 // Import Prisma types for consistency
 import type { RiskCategory, RiskProbability, RiskImpact, RiskStatus } from '@prisma/client'
@@ -71,7 +75,7 @@ export default function EditRiskPage() {
   
   const [risk, setRisk] = useState<Risk | null>(null)
   const [users, setUsers] = useState<User[]>([])
-  const [departments, setDepartments] = useState<Array<{id: string, name: string}>>([])
+  const [departments, setDepartments] = useState<RiskDepartmentSelectOption[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [loadingDepartments, setLoadingDepartments] = useState(true)
@@ -168,25 +172,9 @@ export default function EditRiskPage() {
         }
       }
       
-      // Load departments from HR API
       try {
         setLoadingDepartments(true)
-        const deptResponse = await fetch('/api/hr/departments/main')
-        if (deptResponse.ok) {
-          const deptResult = await deptResponse.json()
-          if (deptResult.success && deptResult.data) {
-            setDepartments(deptResult.data.map((dept: any) => ({
-              id: dept.id,
-              name: dept.name
-            })))
-          } else {
-            console.error('Failed to fetch departments:', deptResult.message)
-            setDepartments([])
-          }
-        } else {
-          console.error('Department API request failed:', deptResponse.statusText)
-          setDepartments([])
-        }
+        setDepartments(await fetchRiskDepartmentSelectOptions())
       } catch (deptError) {
         console.error('Error fetching departments:', deptError)
         setDepartments([])
@@ -394,8 +382,10 @@ export default function EditRiskPage() {
                 {loadingDepartments ? (
                   <option disabled>Loading departments...</option>
                 ) : (
-                  departments.map(dept => (
-                    <option key={dept.id} value={dept.name}>{dept.name}</option>
+                  departments.map((dept) => (
+                    <option key={dept.id} value={dept.value}>
+                      {dept.label}
+                    </option>
                   ))
                 )}
               </select>

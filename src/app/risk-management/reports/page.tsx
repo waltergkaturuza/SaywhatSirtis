@@ -1,17 +1,27 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Download, FileText, BarChart3, PieChart, TrendingUp, Calendar, Filter } from 'lucide-react'
+import {
+  ArrowLeft,
+  Download,
+  FileText,
+  BarChart3,
+  PieChart,
+  TrendingUp,
+  Calendar,
+  Filter,
+  Upload,
+} from 'lucide-react'
 import Link from 'next/link'
 
 interface RiskReport {
   id: string
+  documentId: string
   title: string
-  type: 'summary' | 'detailed' | 'analytics' | 'compliance'
+  type: string
   generatedDate: string
   status: 'ready' | 'generating' | 'error'
   fileSize?: string
-  downloadUrl?: string
 }
 
 interface RiskMetrics {
@@ -30,6 +40,8 @@ export default function RiskReportsPage() {
   const [metrics, setMetrics] = useState<RiskMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadTitle, setUploadTitle] = useState('')
   const [selectedPeriod, setSelectedPeriod] = useState('current_month')
   const [selectedType, setSelectedType] = useState('all')
 
@@ -40,58 +52,31 @@ export default function RiskReportsPage() {
   const loadReportsAndMetrics = async () => {
     try {
       setLoading(true)
-      
-      // Load risk metrics for dashboard
-      setMetrics({
-        totalRisks: 15,
-        highRisks: 3,
-        mediumRisks: 8,
-        lowRisks: 4,
-        openRisks: 9,
-        mitigatedRisks: 6,
-        overdueMitigations: 2,
-        risksByCategory: {
-          'CYBERSECURITY': 4,
-          'OPERATIONAL': 5,
-          'FINANCIAL': 3,
-          'COMPLIANCE': 2,
-          'STRATEGIC': 1
-        }
+      const qs =
+        selectedType && selectedType !== 'all'
+          ? `?reportType=${encodeURIComponent(selectedType)}`
+          : ''
+      const res = await fetch(`/api/risk-management/reports${qs}`, {
+        credentials: 'include',
       })
-      
-      // Load available reports
-      setReports([
-        {
-          id: '1',
-          title: 'Monthly Risk Summary - September 2025',
-          type: 'summary',
-          generatedDate: '2025-09-11T10:00:00Z',
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json.success) {
+        setMetrics(null)
+        setReports([])
+        return
+      }
+      setMetrics(json.data.metrics)
+      setReports(
+        (json.data.reports || []).map((r: RiskReport) => ({
+          ...r,
+          documentId: r.documentId || r.id,
           status: 'ready',
-          fileSize: '2.4 MB',
-          downloadUrl: '/api/risk-management/reports/monthly-summary-sept-2025.pdf'
-        },
-        {
-          id: '2',
-          title: 'Risk Assessment Analytics Report',
-          type: 'analytics',
-          generatedDate: '2025-09-10T14:30:00Z',
-          status: 'ready',
-          fileSize: '5.1 MB',
-          downloadUrl: '/api/risk-management/reports/analytics-sept-2025.pdf'
-        },
-        {
-          id: '3',
-          title: 'Compliance Risk Detailed Report',
-          type: 'compliance',
-          generatedDate: '2025-09-09T09:15:00Z',
-          status: 'ready',
-          fileSize: '3.8 MB',
-          downloadUrl: '/api/risk-management/reports/compliance-detailed-sept-2025.pdf'
-        }
-      ])
-      
+        }))
+      )
     } catch (error) {
       console.error('Error loading reports and metrics:', error)
+      setMetrics(null)
+      setReports([])
     } finally {
       setLoading(false)
     }
@@ -100,23 +85,18 @@ export default function RiskReportsPage() {
   const handleGenerateReport = async (type: string) => {
     try {
       setGenerating(type)
-      
-      // Simulate report generation
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      
-      // Add new report to the list
-      const newReport: RiskReport = {
-        id: Date.now().toString(),
-        title: `${type.charAt(0).toUpperCase() + type.slice(1)} Report - ${new Date().toLocaleDateString()}`,
-        type: type as any,
-        generatedDate: new Date().toISOString(),
-        status: 'ready',
-        fileSize: '1.2 MB',
-        downloadUrl: `/api/risk-management/reports/${type}-${Date.now()}.pdf`
+      const res = await fetch('/api/risk-management/reports/generate', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json.success) {
+        alert(json.error || 'Failed to generate report.')
+        return
       }
-      
-      setReports(prev => [newReport, ...prev])
-      
+      await loadReportsAndMetrics()
     } catch (error) {
       console.error('Error generating report:', error)
       alert('Failed to generate report. Please try again.')
@@ -125,14 +105,68 @@ export default function RiskReportsPage() {
     }
   }
 
-  const handleDownloadReport = (report: RiskReport) => {
-    // Simulate file download
-    const link = document.createElement('a')
-    link.href = report.downloadUrl || '#'
-    link.download = `${report.title}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleUploadReport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files?.length) return
+    try {
+      setUploading(true)
+      for (const file of Array.from(files)) {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('reportType', 'uploaded')
+        if (uploadTitle.trim()) fd.append('title', uploadTitle.trim())
+        const res = await fetch('/api/risk-management/reports', {
+          method: 'POST',
+          credentials: 'include',
+          body: fd,
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || 'Upload failed')
+        }
+      }
+      setUploadTitle('')
+      await loadReportsAndMetrics()
+      alert('Report uploaded. It appears here and in the document repository under Risk Management.')
+    } catch (err) {
+      console.error(err)
+      alert(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleDownloadReport = async (report: RiskReport) => {
+    const docId = report.documentId || report.id
+    try {
+      const res = await fetch(`/api/documents/${docId}/download`, {
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Download failed')
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      const ext = report.title?.endsWith('.csv')
+        ? ''
+        : res.headers.get('Content-Type')?.includes('csv')
+          ? '.csv'
+          : ''
+      link.download = `${report.title}${ext}`.replace(/[/\\?%*:|"<>]/g, '-')
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error downloading report:', error)
+      alert(
+        error instanceof Error ? error.message : 'Failed to download report.'
+      )
+    }
   }
 
   const exportToCSV = () => {
@@ -280,8 +314,44 @@ export default function RiskReportsPage() {
               <option value="detailed">Detailed Reports</option>
               <option value="analytics">Analytics Reports</option>
               <option value="compliance">Compliance Reports</option>
+              <option value="uploaded">Uploaded Files</option>
             </select>
           </div>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-orange-100/50 p-8 mb-8">
+          <div className="flex flex-col md:flex-row md:items-end gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-bold text-orange-800 mb-2">
+                Optional title (applies to next upload)
+              </label>
+              <input
+                type="text"
+                value={uploadTitle}
+                onChange={(e) => setUploadTitle(e.target.value)}
+                placeholder="e.g. Q3 board risk pack"
+                className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 bg-white/90 font-medium text-gray-900"
+              />
+            </div>
+            <div>
+              <label className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold shadow-lg cursor-pointer hover:from-orange-600 hover:to-orange-700 transition-all">
+                <Upload className="h-5 w-5 mr-2" />
+                {uploading ? 'Uploading…' : 'Upload report'}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+                  disabled={uploading}
+                  onChange={handleUploadReport}
+                  multiple
+                />
+              </label>
+            </div>
+          </div>
+          <p className="text-sm text-orange-700/80 mt-3">
+            Files are stored in the main document repository (department: Risk Management, tag:
+            risk-management-report) so they appear in search and downloads like other documents.
+          </p>
         </div>
 
         {/* Risk Metrics Overview */}

@@ -22,7 +22,8 @@ export async function GET() {
         status: true
       },
       where: {
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        isActive: true,
       },
       orderBy: [
         { level: 'asc' },

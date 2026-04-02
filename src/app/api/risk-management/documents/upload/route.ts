@@ -157,6 +157,18 @@ export async function POST(request: NextRequest) {
         }
       })
 
+      await prisma.risk_audit_logs.create({
+        data: {
+          id: crypto.randomUUID(),
+          riskId,
+          action: 'DOCUMENT_UPLOADED',
+          userId: user.id,
+          field: 'documentId',
+          newValue: document.id,
+          description: `Document uploaded: ${originalName}`,
+        },
+      })
+
       return NextResponse.json({
         success: true,
         data: {

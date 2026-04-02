@@ -68,6 +68,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Document ID is required' }, { status: 400 })
     }
 
+    const { id: riskId } = await params
+
     // Get current user
     const user = await prisma.users.findUnique({
       where: { email: session.user.email }
@@ -77,9 +79,28 @@ export async function DELETE(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Delete the document
+    const existing = await prisma.risk_documents.findFirst({
+      where: { id: documentId, riskId },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 })
+    }
+
+    await prisma.risk_audit_logs.create({
+      data: {
+        id: crypto.randomUUID(),
+        riskId,
+        action: 'DOCUMENT_DELETED',
+        userId: user.id,
+        field: 'documentId',
+        oldValue: existing.id,
+        description: `Document deleted: ${existing.originalName}`,
+      },
+    })
+
     const document = await prisma.risk_documents.delete({
-      where: { id: documentId }
+      where: { id: documentId },
     })
 
     return NextResponse.json({

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Plus, FileText, Calendar, User, AlertTriangle, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Plus, FileText, CheckCircle, Eye, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 // Import Prisma types for consistency
 import type { RiskCategory, RiskProbability, RiskImpact, RiskStatus } from '@prisma/client'
@@ -41,12 +43,30 @@ interface Risk {
   status: RiskStatus
 }
 
+function canModifyAssessments(session: ReturnType<typeof useSession>['data']) {
+  const userPermissions = session?.user?.permissions || []
+  const userRoles = session?.user?.roles || []
+  return (
+    userPermissions.includes('risk.create') ||
+    userPermissions.includes('admin.access') ||
+    userPermissions.includes('risks_edit') ||
+    userPermissions.includes('risks.edit') ||
+    userPermissions.includes('risk.edit') ||
+    userRoles.some((role) =>
+      ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase())
+    )
+  )
+}
+
 export default function RiskAssessmentPage() {
+  const router = useRouter()
+  const { data: session } = useSession()
   const [assessments, setAssessments] = useState<RiskAssessment[]>([])
   const [risks, setRisks] = useState<Risk[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [selectedRisk, setSelectedRisk] = useState('')
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -81,47 +101,36 @@ export default function RiskAssessmentPage() {
   const loadAssessmentsAndRisks = async () => {
     try {
       setLoading(true)
-      
-      // Load risks for the dropdown
-      const risksResponse = await fetch('/api/risk-management/risks')
+      setLoadError(null)
+
+      const [risksResponse, assessmentsResponse] = await Promise.all([
+        fetch('/api/risk-management/risks?limit=500'),
+        fetch('/api/risk-management/assessments?limit=200'),
+      ])
+
       if (risksResponse.ok) {
         const risksData = await risksResponse.json()
         if (risksData.success) {
           setRisks(risksData.data.risks || [])
         }
       }
-      
-      // For now, we'll use mock assessments since the API might not be implemented yet
-      setAssessments([
-        {
-          id: '1',
-          riskId: 'RISK-2025-001',
-          assessorId: 'user1',
-          assessmentDate: '2025-09-01',
-          probability: 'HIGH',
-          impact: 'MEDIUM',
-          riskScore: 12,
-          findings: 'Security vulnerabilities identified in system access controls.',
-          recommendations: 'Implement multi-factor authentication and regular security audits.',
-          nextAssessmentDate: '2025-12-01',
-          status: 'COMPLETED',
-          assessor: {
-            firstName: 'John',
-            lastName: 'Doe',
-            email: 'john.doe@saywhat.org'
-          },
-          risk: {
-            id: '1',
-            riskId: 'RISK-2025-001',
-            title: 'Cybersecurity Breach',
-            category: 'CYBERSECURITY',
-            status: 'OPEN'
-          }
+
+      if (assessmentsResponse.ok) {
+        const data = await assessmentsResponse.json()
+        if (data.success && Array.isArray(data.data?.assessments)) {
+          setAssessments(data.data.assessments)
+        } else {
+          setAssessments([])
         }
-      ])
-      
+      } else {
+        const err = await assessmentsResponse.json().catch(() => ({}))
+        setLoadError(err.error || 'Failed to load assessments')
+        setAssessments([])
+      }
     } catch (error) {
       console.error('Error loading assessments and risks:', error)
+      setLoadError('Failed to load data')
+      setAssessments([])
     } finally {
       setLoading(false)
     }
@@ -143,11 +152,24 @@ export default function RiskAssessmentPage() {
     }
     
     try {
-      // Here you would make an API call to create the assessment
-      console.log('Creating assessment:', formData)
-      
-      // For now, simulate success
-      alert('Risk assessment created successfully!')
+      setSubmitting(true)
+      const res = await fetch('/api/risk-management/assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          riskId: formData.riskId,
+          probability: formData.probability,
+          impact: formData.impact,
+          findings: formData.findings,
+          recommendations: formData.recommendations,
+          nextAssessmentDate: formData.nextAssessmentDate || null,
+        }),
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(payload.error || 'Failed to create assessment')
+        return
+      }
       setShowCreateForm(false)
       setFormData({
         riskId: '',
@@ -155,15 +177,33 @@ export default function RiskAssessmentPage() {
         impact: 'MEDIUM',
         findings: '',
         recommendations: '',
-        nextAssessmentDate: ''
+        nextAssessmentDate: '',
       })
-      
-      // Reload assessments
-      loadAssessmentsAndRisks()
-      
+      await loadAssessmentsAndRisks()
     } catch (error) {
       console.error('Error creating assessment:', error)
       alert('Failed to create assessment. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (assessmentId: string) => {
+    if (!confirm('Delete this risk assessment? This cannot be undone.')) return
+    try {
+      const res = await fetch(`/api/risk-management/assessments/${assessmentId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete')
+        return
+      }
+      await loadAssessmentsAndRisks()
+      router.refresh()
+    } catch {
+      alert('Failed to delete assessment')
     }
   }
 
@@ -367,13 +407,20 @@ export default function RiskAssessmentPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+                    disabled={submitting}
+                    className="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
                   >
-                    Create Assessment
+                    {submitting ? 'Saving…' : 'Create Assessment'}
                   </button>
                 </div>
               </form>
             </div>
+          </div>
+        )}
+
+        {loadError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {loadError}
           </div>
         )}
 
@@ -406,12 +453,15 @@ export default function RiskAssessmentPage() {
                   <th className="px-8 py-4 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
                     Next Assessment
                   </th>
+                  <th className="px-6 py-4 text-right text-sm font-bold text-orange-800 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white/60 divide-y divide-orange-100">
                 {assessments.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-8 py-16 text-center">
+                    <td colSpan={7} className="px-8 py-16 text-center">
                       <div className="flex flex-col items-center">
                         <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-full p-6 mb-6">
                           <FileText className="h-16 w-16 text-orange-500" />
@@ -444,7 +494,7 @@ export default function RiskAssessmentPage() {
                       </td>
                       <td className="px-8 py-6 whitespace-nowrap">
                         <div className="text-sm font-semibold text-orange-900">
-                          {assessment.assessor.firstName} {assessment.assessor.lastName}
+                          {[assessment.assessor.firstName, assessment.assessor.lastName].filter(Boolean).join(' ') || '—'}
                         </div>
                         <div className="text-sm text-orange-700">
                           {assessment.assessor.email}
@@ -468,6 +518,36 @@ export default function RiskAssessmentPage() {
                         {assessment.nextAssessmentDate ? formatDate(assessment.nextAssessmentDate) : (
                           <span className="text-orange-600">Not scheduled</span>
                         )}
+                      </td>
+                      <td className="px-6 py-6 whitespace-nowrap text-right">
+                        <div className="inline-flex items-center gap-1">
+                          <Link
+                            href={`/risk-management/assessment/${assessment.id}`}
+                            className="p-2 rounded-lg text-orange-700 hover:bg-orange-100 transition-colors"
+                            title="View"
+                          >
+                            <Eye className="h-5 w-5" />
+                          </Link>
+                          {canModifyAssessments(session) && (
+                            <>
+                              <Link
+                                href={`/risk-management/assessment/${assessment.id}/edit`}
+                                className="p-2 rounded-lg text-orange-700 hover:bg-orange-100 transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil className="h-5 w-5" />
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(assessment.id)}
+                                className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-5 w-5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

@@ -1,11 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ArrowLeft, Download, RotateCcw, Filter, Info, Home } from 'lucide-react'
 import Link from 'next/link'
+import {
+  fetchRiskDepartmentSelectOptions,
+  type RiskDepartmentSelectOption,
+} from '@/lib/risk-management/risk-department-options'
 
 interface RiskMatrixData {
   id: string
+  riskId: string
   title: string
   category: string
   department: string
@@ -15,6 +20,46 @@ interface RiskMatrixData {
   status: string
   description?: string
   owner?: string
+}
+
+/** Map DB enum LOW | MEDIUM | HIGH to 5-point matrix axis (1 / 3 / 5). */
+function riskEnumToAxis(val: string | undefined | null): number {
+  const v = String(val || '').toUpperCase()
+  if (v === 'LOW') return 1
+  if (v === 'HIGH') return 5
+  if (v === 'MEDIUM') return 3
+  return 3
+}
+
+function matrixCellSurfaceClass(
+  level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+): string {
+  const base =
+    'border-2 rounded-lg p-6 text-center cursor-pointer hover:shadow-xl transition-all min-h-[100px] flex flex-col justify-center'
+  switch (level) {
+    case 'LOW':
+      return `${base} bg-green-500 border-green-700 hover:bg-green-600`
+    case 'MEDIUM':
+      return `${base} bg-yellow-500 border-yellow-700 hover:bg-yellow-600`
+    case 'HIGH':
+      return `${base} bg-orange-500 border-orange-700 hover:bg-orange-600`
+    case 'CRITICAL':
+      return `${base} bg-red-600 border-red-800 hover:bg-red-700`
+    default:
+      return `${base} bg-gray-400 border-gray-600`
+  }
+}
+
+function riskBandCounts(list: RiskMatrixData[]) {
+  const out = { critical: 0, high: 0, medium: 0, low: 0 }
+  for (const r of list) {
+    const s = r.probability * r.impact
+    if (s <= 4) out.low++
+    else if (s <= 9) out.medium++
+    else if (s <= 16) out.high++
+    else out.critical++
+  }
+  return out
 }
 
 interface MatrixCell {
@@ -37,7 +82,7 @@ export default function RiskMatrixPage() {
     status: 'all',
     department: 'all'
   })
-  const [departments, setDepartments] = useState<Array<{id: string, name: string}>>([])
+  const [departments, setDepartments] = useState<RiskDepartmentSelectOption[]>([])
   const [loadingDepartments, setLoadingDepartments] = useState(true)
 
   // Matrix configuration
@@ -58,31 +103,19 @@ export default function RiskMatrixPage() {
   ]
 
   useEffect(() => {
-    loadRisksAndMatrix()
     fetchDepartments()
+  }, [])
+
+  useEffect(() => {
+    loadRisksAndMatrix()
   }, [filters])
 
   const fetchDepartments = async () => {
     try {
       setLoadingDepartments(true)
-      const response = await fetch('/api/hr/departments/main')
-      
-      if (response.ok) {
-        const result = await response.json()
-        if (result.success && result.data) {
-          setDepartments(result.data.map((dept: any) => ({
-            id: dept.id,
-            name: dept.name
-          })))
-        }
-      } else {
-        console.error('Failed to fetch departments:', response.statusText)
-        // Fallback to empty departments list
-        setDepartments([])
-      }
+      setDepartments(await fetchRiskDepartmentSelectOptions())
     } catch (error) {
       console.error('Error fetching departments:', error)
-      // Fallback to empty departments list
       setDepartments([])
     } finally {
       setLoadingDepartments(false)
@@ -92,169 +125,54 @@ export default function RiskMatrixPage() {
   const loadRisksAndMatrix = async () => {
     try {
       setLoading(true)
-      
-      // Enhanced sample risk data with departments
-      const sampleRisks: RiskMatrixData[] = [
-        {
-          id: '1',
-          title: 'Cybersecurity Data Breach Risk',
-          category: 'CYBERSECURITY',
-          department: 'IT',
-          probability: 3,
-          impact: 5,
-          riskScore: 15,
-          status: 'OPEN',
-          description: 'Potential unauthorized access to sensitive customer data',
-          owner: 'IT Security Team'
-        },
-        {
-          id: '2',
-          title: 'Financial Budget Overrun Risk',
-          category: 'FINANCIAL',
-          department: 'Finance',
-          probability: 4,
-          impact: 3,
-          riskScore: 12,
-          status: 'UNDER_REVIEW',
-          description: 'Risk of exceeding allocated project budgets',
-          owner: 'Finance Manager'
-        },
-        {
-          id: '3',
-          title: 'Regulatory Compliance Violation',
-          category: 'COMPLIANCE',
-          department: 'Operations',
-          probability: 2,
-          impact: 4,
-          riskScore: 8,
-          status: 'IN_PROGRESS',
-          description: 'Non-compliance with industry regulations',
-          owner: 'Compliance Officer'
-        },
-        {
-          id: '4',
-          title: 'Key Personnel Loss Risk',
-          category: 'OPERATIONAL',
-          department: 'HR',
-          probability: 3,
-          impact: 3,
-          riskScore: 9,
-          status: 'OPEN',
-          description: 'Loss of critical staff members with specialized knowledge',
-          owner: 'HR Director'
-        },
-        {
-          id: '5',
-          title: 'System Downtime Risk',
-          category: 'OPERATIONAL',
-          department: 'IT',
-          probability: 2,
-          impact: 3,
-          riskScore: 6,
-          status: 'MITIGATED',
-          description: 'Unexpected system outages affecting operations',
-          owner: 'IT Operations'
-        },
-        {
-          id: '6',
-          title: 'Supplier Dependency Risk',
-          category: 'STRATEGIC',
-          department: 'Operations',
-          probability: 2,
-          impact: 2,
-          riskScore: 4,
-          status: 'OPEN',
-          description: 'Over-reliance on single supplier for critical components',
-          owner: 'Supply Chain Manager'
-        },
-        {
-          id: '7',
-          title: 'Market Competition Risk',
-          category: 'STRATEGIC',
-          department: 'Programs',
-          probability: 4,
-          impact: 2,
-          riskScore: 8,
-          status: 'UNDER_REVIEW',
-          description: 'Increased competition affecting market share',
-          owner: 'Strategy Team'
-        },
-        {
-          id: '8',
-          title: 'Environmental Compliance Risk',
-          category: 'ENVIRONMENTAL',
-          department: 'Operations',
-          probability: 1,
-          impact: 3,
-          riskScore: 3,
-          status: 'CLOSED',
-          description: 'Environmental regulation compliance requirements',
-          owner: 'Environmental Officer'
-        },
-        {
-          id: '9',
-          title: 'Data Privacy Breach',
-          category: 'CYBERSECURITY',
-          department: 'IT',
-          probability: 2,
-          impact: 4,
-          riskScore: 8,
-          status: 'OPEN',
-          description: 'Unauthorized access to personal data',
-          owner: 'Data Protection Officer'
-        },
-        {
-          id: '10',
-          title: 'Project Delivery Delay',
-          category: 'OPERATIONAL',
-          department: 'Programs',
-          probability: 3,
-          impact: 2,
-          riskScore: 6,
-          status: 'OPEN',
-          description: 'Risk of missing project delivery deadlines',
-          owner: 'Program Manager'
-        },
-        {
-          id: '11',
-          title: 'Cash Flow Shortage',
-          category: 'FINANCIAL',
-          department: 'Finance',
-          probability: 2,
-          impact: 4,
-          riskScore: 8,
-          status: 'UNDER_REVIEW',
-          description: 'Insufficient cash flow to meet obligations',
-          owner: 'CFO'
-        },
-        {
-          id: '12',
-          title: 'Talent Acquisition Challenge',
-          category: 'OPERATIONAL',
-          department: 'HR',
-          probability: 4,
-          impact: 2,
-          riskScore: 8,
-          status: 'OPEN',
-          description: 'Difficulty recruiting qualified personnel',
-          owner: 'Talent Acquisition'
+
+      const params = new URLSearchParams()
+      params.set('limit', '500')
+      if (filters.category !== 'all') params.set('category', filters.category)
+      if (filters.status !== 'all') params.set('status', filters.status)
+      if (filters.department !== 'all') params.set('department', filters.department)
+
+      const response = await fetch(
+        `/api/risk-management/risks?${params.toString()}`,
+        { credentials: 'include' }
+      )
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok || !data.success) {
+        setRisks([])
+        setMatrix([])
+        return
+      }
+
+      const raw = (data.data?.risks || []) as Record<string, unknown>[]
+      const filteredRisks: RiskMatrixData[] = raw.map((r) => {
+        const owner = r.owner as
+          | { firstName?: string | null; lastName?: string | null; email?: string }
+          | null
+          | undefined
+        let ownerName = 'Unassigned'
+        if (owner) {
+          const name = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim()
+          ownerName = name || owner.email || 'Unassigned'
         }
-      ]
-      
-      // Apply filters
-      let filteredRisks = sampleRisks
-      
-      if (filters.category !== 'all') {
-        filteredRisks = filteredRisks.filter(risk => risk.category === filters.category)
-      }
-      
-      if (filters.status !== 'all') {
-        filteredRisks = filteredRisks.filter(risk => risk.status === filters.status)
-      }
-      
-      if (filters.department !== 'all') {
-        filteredRisks = filteredRisks.filter(risk => risk.department === filters.department)
-      }
+
+        const prob = riskEnumToAxis(r.probability as string)
+        const imp = riskEnumToAxis(r.impact as string)
+
+        return {
+          id: String(r.id),
+          riskId: String(r.riskId ?? r.id),
+          title: String(r.title ?? ''),
+          category: String(r.category ?? ''),
+          department: (r.department as string) || 'Unassigned',
+          probability: prob,
+          impact: imp,
+          riskScore: Number(r.riskScore ?? prob * imp),
+          status: String(r.status ?? ''),
+          description: (r.description as string) || '',
+          owner: ownerName,
+        }
+      })
       
       setRisks(filteredRisks)
       
@@ -319,11 +237,11 @@ export default function RiskMatrixPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'OPEN': return 'bg-red-100 text-red-800'
+      case 'MITIGATED': return 'bg-green-100 text-green-800'
+      case 'ESCALATED': return 'bg-orange-100 text-orange-800'
+      case 'CLOSED': return 'bg-gray-100 text-gray-800'
       case 'UNDER_REVIEW': return 'bg-yellow-100 text-yellow-800'
       case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800'
-      case 'MITIGATED': return 'bg-green-100 text-green-800'
-      case 'CLOSED': return 'bg-gray-100 text-gray-800'
-      case 'TRANSFERRED': return 'bg-purple-100 text-purple-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -337,7 +255,7 @@ export default function RiskMatrixPage() {
       case 'STRATEGIC': return 'bg-yellow-100 text-yellow-800'
       case 'ENVIRONMENTAL': return 'bg-teal-100 text-teal-800'
       case 'REPUTATIONAL': return 'bg-pink-100 text-pink-800'
-      case 'LEGAL': return 'bg-gray-100 text-gray-800'
+      case 'HR_PERSONNEL': return 'bg-indigo-100 text-indigo-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -376,7 +294,7 @@ export default function RiskMatrixPage() {
       ['Risk Details'],
       ['ID', 'Title', 'Category', 'Probability', 'Impact', 'Risk Score', 'Status'],
       ...risks.map(risk => [
-        risk.id,
+        risk.riskId,
         risk.title,
         risk.category,
         probabilityLevels.find(p => p.value === risk.probability)?.label || '',
@@ -407,6 +325,8 @@ export default function RiskMatrixPage() {
       department: 'all'
     })
   }
+
+  const summaryBands = useMemo(() => riskBandCounts(risks), [risks])
 
   if (loading) {
     return (
@@ -458,12 +378,14 @@ export default function RiskMatrixPage() {
               className="px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
             >
               <option value="all">All Categories</option>
-              <option value="CYBERSECURITY">Cybersecurity</option>
-              <option value="FINANCIAL">Financial</option>
               <option value="OPERATIONAL">Operational</option>
-              <option value="COMPLIANCE">Compliance</option>
               <option value="STRATEGIC">Strategic</option>
+              <option value="FINANCIAL">Financial</option>
+              <option value="COMPLIANCE">Compliance</option>
+              <option value="REPUTATIONAL">Reputational</option>
               <option value="ENVIRONMENTAL">Environmental</option>
+              <option value="CYBERSECURITY">Cybersecurity</option>
+              <option value="HR_PERSONNEL">HR / Personnel</option>
             </select>
             
             <select
@@ -475,8 +397,10 @@ export default function RiskMatrixPage() {
               {loadingDepartments ? (
                 <option disabled>Loading departments...</option>
               ) : (
-                departments.map(dept => (
-                  <option key={dept.id} value={dept.name}>{dept.name}</option>
+                departments.map((dept) => (
+                  <option key={dept.id} value={dept.value}>
+                    {dept.label}
+                  </option>
                 ))
               )}
             </select>
@@ -488,9 +412,8 @@ export default function RiskMatrixPage() {
             >
               <option value="all">All Statuses</option>
               <option value="OPEN">Open</option>
-              <option value="UNDER_REVIEW">Under Review</option>
-              <option value="IN_PROGRESS">In Progress</option>
               <option value="MITIGATED">Mitigated</option>
+              <option value="ESCALATED">Escalated</option>
               <option value="CLOSED">Closed</option>
             </select>
             
@@ -517,7 +440,8 @@ export default function RiskMatrixPage() {
               </h1>
               <p className="text-gray-600 flex items-center">
                 <Info className="h-4 w-4 mr-2 text-blue-500" />
-                Click on any cell to view detailed risk information
+                Live data from the risk register. Probability and impact use Low / Medium / High
+                mapped to matrix positions 1, 3, and 5. Click a cell for details.
               </p>
             </div>
           </div>
@@ -903,7 +827,9 @@ export default function RiskMatrixPage() {
                             <p className="text-gray-600 text-sm mb-3">{risk.description}</p>
                           </div>
                           <div className="ml-4 text-right">
-                            <div className="text-2xl font-bold text-orange-600">#{risk.id}</div>
+                            <div className="text-2xl font-bold text-orange-600">
+                              #{risk.riskId}
+                            </div>
                           </div>
                         </div>
                         
@@ -920,12 +846,12 @@ export default function RiskMatrixPage() {
                             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</div>
                             <div className={`text-sm font-bold mt-1 ${
                               risk.status === 'OPEN' ? 'text-red-600' :
-                              risk.status === 'IN_PROGRESS' ? 'text-orange-600' :
-                              risk.status === 'UNDER_REVIEW' ? 'text-yellow-600' :
+                              risk.status === 'ESCALATED' ? 'text-orange-600' :
                               risk.status === 'MITIGATED' ? 'text-blue-600' :
-                              'text-green-600'
+                              risk.status === 'CLOSED' ? 'text-green-600' :
+                              'text-gray-700'
                             }`}>
-                              {risk.status.replace('_', ' ')}
+                              {risk.status.replace(/_/g, ' ')}
                             </div>
                           </div>
                           <div className="bg-white rounded-lg p-3 border border-gray-200">
@@ -934,10 +860,16 @@ export default function RiskMatrixPage() {
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-3">
                           <div className="text-sm text-gray-600">
                             <span className="font-semibold">Owner:</span> {risk.owner}
                           </div>
+                          <Link
+                            href={`/risk-management/risks/${risk.id}`}
+                            className="text-sm font-semibold text-orange-600 hover:text-orange-800"
+                          >
+                            View risk record
+                          </Link>
                           <div className="flex items-center space-x-3">
                             <div className="text-xs text-gray-500">
                               Probability: <span className="font-bold">{probabilityLevels.find(p => p.value === risk.probability)?.label}</span>

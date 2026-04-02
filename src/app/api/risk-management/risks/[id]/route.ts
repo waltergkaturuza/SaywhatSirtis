@@ -129,47 +129,96 @@ export async function PUT(
 
     const riskScore = probabilityScore * impactScore
 
-    const risk = await prisma.risks.update({
-      where: { id },
-      data: {
-        title,
-        description,
-        category,
-        department,
-        probability,
-        impact,
-        riskScore,
-        status,
-        ownerId: ownerId || null,
-        tags: tags || [],
-        updatedAt: new Date()
-      },
-      include: {
-        users_risks_ownerIdTousers: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
-        users_risks_createdByIdTousers: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        },
-        risk_mitigations: true,
-        _count: {
-          select: {
-            risk_mitigations: true,
-            risk_assessments: true,
-            risk_documents: true
-          }
-        }
+    const prev = await prisma.risks.findUnique({ where: { id } })
+    if (!prev) {
+      return Response.json({ error: 'Risk not found' }, { status: 404 })
+    }
+
+    const data = {
+      title,
+      description,
+      category,
+      department,
+      probability,
+      impact,
+      riskScore,
+      status,
+      ownerId: ownerId || null,
+      tags: tags || [],
+      updatedAt: new Date(),
+    }
+
+    const serialize = (key: keyof typeof data, val: unknown): string => {
+      if (key === 'tags' && Array.isArray(val)) {
+        return JSON.stringify([...val].map(String).sort())
       }
+      if (val === null || val === undefined) return ''
+      return String(val)
+    }
+
+    const tracked: (keyof typeof data)[] = [
+      'title',
+      'description',
+      'category',
+      'department',
+      'probability',
+      'impact',
+      'riskScore',
+      'status',
+      'ownerId',
+      'tags',
+    ]
+
+    const auditRows = tracked
+      .filter((key) => serialize(key, prev[key as keyof typeof prev]) !== serialize(key, data[key]))
+      .map((key) => ({
+        id: crypto.randomUUID(),
+        riskId: id,
+        action: 'UPDATE',
+        userId: session.user.id,
+        field: key,
+        oldValue: serialize(key, prev[key as keyof typeof prev]),
+        newValue: serialize(key, data[key]),
+        description: `Risk "${prev.title}": ${String(key)} updated`,
+      }))
+
+    const risk = await prisma.$transaction(async (tx) => {
+      const updated = await tx.risks.update({
+        where: { id },
+        data,
+        include: {
+          users_risks_ownerIdTousers: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          users_risks_createdByIdTousers: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          },
+          risk_mitigations: true,
+          _count: {
+            select: {
+              risk_mitigations: true,
+              risk_assessments: true,
+              risk_documents: true,
+            },
+          },
+        },
+      })
+
+      if (auditRows.length > 0) {
+        await tx.risk_audit_logs.createMany({ data: auditRows })
+      }
+
+      return updated
     })
 
     return Response.json({

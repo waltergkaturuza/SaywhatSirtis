@@ -22,6 +22,10 @@ import {
   Activity
 } from 'lucide-react'
 import Link from 'next/link'
+import {
+  fetchRiskDepartmentSelectOptions,
+  type RiskDepartmentSelectOption,
+} from '@/lib/risk-management/risk-department-options'
 
 // Import Prisma types for consistency
 import type { RiskCategory, RiskProbability, RiskImpact, RiskStatus, MitigationStatus } from '@prisma/client'
@@ -76,7 +80,7 @@ export default function RiskManagementPage() {
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [isExporting, setIsExporting] = useState(false)
-  const [departments, setDepartments] = useState<Array<{id: string, name: string}>>([])
+  const [departments, setDepartments] = useState<RiskDepartmentSelectOption[]>([])
   const [loadingDepartments, setLoadingDepartments] = useState(true)
 
   // Check user permissions for edit access
@@ -99,31 +103,18 @@ export default function RiskManagementPage() {
     'HR_PERSONNEL'
   ]
 
-  // Load risks data and departments
+  useEffect(() => {
+    loadDepartments()
+  }, [])
+
   useEffect(() => {
     loadRisks()
-    loadDepartments()
   }, [selectedCategory, selectedStatus, selectedDepartment, searchTerm])
 
   const loadDepartments = async () => {
     try {
       setLoadingDepartments(true)
-      const response = await fetch('/api/hr/departments/main')
-      if (response.ok) {
-        const result = await response.json()
-        if (result.success && result.data) {
-          setDepartments(result.data.map((dept: any) => ({
-            id: dept.id,
-            name: dept.name
-          })))
-        } else {
-          console.error('Failed to fetch departments:', result.message)
-          setDepartments([])
-        }
-      } else {
-        console.error('Department API request failed:', response.statusText)
-        setDepartments([])
-      }
+      setDepartments(await fetchRiskDepartmentSelectOptions())
     } catch (error) {
       console.error('Error fetching departments:', error)
       setDepartments([])
@@ -142,8 +133,8 @@ export default function RiskManagementPage() {
       if (selectedStatus) params.append('status', selectedStatus)
       if (selectedDepartment) params.append('department', selectedDepartment)
       if (searchTerm) params.append('search', searchTerm)
-      
-      // Fetch risks from API
+      params.append('limit', '500')
+
       const response = await fetch(`/api/risk-management/risks?${params.toString()}`)
       
       if (!response.ok) {
@@ -475,8 +466,10 @@ export default function RiskManagementPage() {
               {loadingDepartments ? (
                 <option disabled>Loading departments...</option>
               ) : (
-                departments.map(dept => (
-                  <option key={dept.id} value={dept.name}>{dept.name}</option>
+                departments.map((dept) => (
+                  <option key={dept.id} value={dept.value}>
+                    {dept.label}
+                  </option>
                 ))
               )}
             </select>

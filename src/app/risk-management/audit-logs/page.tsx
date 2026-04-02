@@ -11,11 +11,14 @@ interface AuditLogEntry {
   userEmail: string
   userName: string
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'VIEW' | 'EXPORT' | 'APPROVE' | 'REJECT'
+  /** Original DB action (e.g. ASSESSMENT_UPDATED) */
+  rawAction?: string
   entityType: 'RISK' | 'MITIGATION' | 'ASSESSMENT' | 'DOCUMENT' | 'REPORT'
   entityId: string
   entityName: string
-  oldValues?: Record<string, any>
-  newValues?: Record<string, any>
+  riskDisplayId?: string
+  oldValues?: Record<string, unknown>
+  newValues?: Record<string, unknown>
   ipAddress: string
   userAgent: string
   details?: string
@@ -48,6 +51,8 @@ export default function AuditLogsPage() {
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [listError, setListError] = useState<string | null>(null)
   const logsPerPage = 25
 
   useEffect(() => {
@@ -57,155 +62,41 @@ export default function AuditLogsPage() {
   const loadAuditLogs = async () => {
     try {
       setLoading(true)
-      
-      // Simulate API call with sample data
-      const sampleLogs: AuditLogEntry[] = [
-        {
-          id: '1',
-          timestamp: '2025-01-11T14:30:00Z',
-          userId: 'user-1',
-          userEmail: 'john.doe@saywhat.com',
-          userName: 'John Doe',
-          action: 'CREATE',
-          entityType: 'RISK',
-          entityId: 'risk-1',
-          entityName: 'Cybersecurity Data Breach Risk',
-          newValues: {
-            title: 'Cybersecurity Data Breach Risk',
-            description: 'Risk of data breach due to inadequate cybersecurity measures',
-            severity: 'HIGH',
-            probability: 'MEDIUM',
-            impact: 'HIGH',
-            category: 'CYBERSECURITY'
-          },
-          ipAddress: '192.168.1.100',
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          details: 'New high-severity cybersecurity risk created',
-          severity: 'HIGH'
-        },
-        {
-          id: '2',
-          timestamp: '2025-01-11T13:15:00Z',
-          userId: 'user-2',
-          userEmail: 'jane.smith@saywhat.com',
-          userName: 'Jane Smith',
-          action: 'UPDATE',
-          entityType: 'RISK',
-          entityId: 'risk-2',
-          entityName: 'Financial Budget Overrun Risk',
-          oldValues: {
-            severity: 'MEDIUM',
-            status: 'OPEN'
-          },
-          newValues: {
-            severity: 'HIGH',
-            status: 'UNDER_REVIEW'
-          },
-          ipAddress: '192.168.1.101',
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          details: 'Risk severity escalated from MEDIUM to HIGH',
-          severity: 'MEDIUM'
-        },
-        {
-          id: '3',
-          timestamp: '2025-01-11T12:45:00Z',
-          userId: 'user-3',
-          userEmail: 'admin@saywhat.com',
-          userName: 'System Administrator',
-          action: 'DELETE',
-          entityType: 'DOCUMENT',
-          entityId: 'doc-1',
-          entityName: 'Outdated Risk Assessment Document',
-          oldValues: {
-            title: 'Outdated Risk Assessment Document',
-            fileSize: '2.5MB',
-            uploadDate: '2024-12-01T10:00:00Z'
-          },
-          ipAddress: '192.168.1.102',
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          details: 'Document deleted due to being outdated and superseded',
-          severity: 'LOW'
-        },
-        {
-          id: '4',
-          timestamp: '2025-01-11T11:30:00Z',
-          userId: 'user-1',
-          userEmail: 'john.doe@saywhat.com',
-          userName: 'John Doe',
-          action: 'APPROVE',
-          entityType: 'MITIGATION',
-          entityId: 'mit-1',
-          entityName: 'Implement Multi-Factor Authentication',
-          newValues: {
-            status: 'APPROVED',
-            approvedBy: 'John Doe',
-            approvalDate: '2025-01-11T11:30:00Z'
-          },
-          ipAddress: '192.168.1.100',
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          details: 'Mitigation strategy approved for implementation',
-          severity: 'MEDIUM'
-        },
-        {
-          id: '5',
-          timestamp: '2025-01-11T10:15:00Z',
-          userId: 'user-4',
-          userEmail: 'mike.johnson@saywhat.com',
-          userName: 'Mike Johnson',
-          action: 'EXPORT',
-          entityType: 'REPORT',
-          entityId: 'rep-1',
-          entityName: 'Monthly Risk Summary Report',
-          details: 'Risk report exported to PDF format',
-          ipAddress: '192.168.1.103',
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          severity: 'LOW'
-        }
-      ]
-      
-      // Apply filters
-      let filteredLogs = sampleLogs
-      
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase()
-        filteredLogs = filteredLogs.filter(log =>
-          log.entityName.toLowerCase().includes(searchLower) ||
-          log.userName.toLowerCase().includes(searchLower) ||
-          log.userEmail.toLowerCase().includes(searchLower) ||
-          log.details?.toLowerCase().includes(searchLower)
-        )
+      setListError(null)
+
+      const params = new URLSearchParams()
+      params.set('page', String(currentPage))
+      params.set('limit', String(logsPerPage))
+      if (filters.search) params.set('search', filters.search)
+      if (filters.action !== 'all') params.set('action', filters.action)
+      if (filters.entityType !== 'all') params.set('entityType', filters.entityType)
+      if (filters.severity !== 'all') params.set('severity', filters.severity)
+      if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+      if (filters.dateTo) params.set('dateTo', filters.dateTo)
+
+      const res = await fetch(`/api/risk-management/audit-logs?${params.toString()}`, {
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok || !data.success) {
+        setListError(data.error || 'Failed to load activity logs')
+        setAuditLogs([])
+        setTotalPages(1)
+        setTotalCount(0)
+        return
       }
-      
-      if (filters.action !== 'all') {
-        filteredLogs = filteredLogs.filter(log => log.action === filters.action)
-      }
-      
-      if (filters.entityType !== 'all') {
-        filteredLogs = filteredLogs.filter(log => log.entityType === filters.entityType)
-      }
-      
-      if (filters.severity !== 'all') {
-        filteredLogs = filteredLogs.filter(log => log.severity === filters.severity)
-      }
-      
-      // Apply date filters
-      if (filters.dateFrom) {
-        filteredLogs = filteredLogs.filter(log => new Date(log.timestamp) >= new Date(filters.dateFrom))
-      }
-      
-      if (filters.dateTo) {
-        filteredLogs = filteredLogs.filter(log => new Date(log.timestamp) <= new Date(filters.dateTo))
-      }
-      
-      // Pagination
-      const startIndex = (currentPage - 1) * logsPerPage
-      const paginatedLogs = filteredLogs.slice(startIndex, startIndex + logsPerPage)
-      
-      setAuditLogs(paginatedLogs)
-      setTotalPages(Math.ceil(filteredLogs.length / logsPerPage))
-      
+
+      const logs = (data.data?.logs || []) as AuditLogEntry[]
+      setAuditLogs(logs)
+      setTotalPages(Math.max(1, data.data?.totalPages ?? 1))
+      setTotalCount(data.data?.total ?? logs.length)
     } catch (error) {
       console.error('Error loading audit logs:', error)
+      setListError('Failed to load activity logs')
+      setAuditLogs([])
+      setTotalPages(1)
+      setTotalCount(0)
     } finally {
       setLoading(false)
     }
@@ -234,21 +125,47 @@ export default function AuditLogsPage() {
     setShowDetails(true)
   }
 
-  const exportAuditLogs = () => {
-    const csvData = [
-      ['Timestamp', 'User', 'Action', 'Entity Type', 'Entity Name', 'Severity', 'Details'],
-      ...auditLogs.map(log => [
-        new Date(log.timestamp).toLocaleString(),
-        log.userName,
-        log.action,
-        log.entityType,
-        log.entityName,
-        log.severity,
-        log.details || ''
-      ])
-    ]
-    
-    const csvContent = csvData.map(row => row.join(',')).join('\n')
+  const csvEscape = (cell: string) => `"${String(cell).replace(/"/g, '""')}"`
+
+  const exportAuditLogs = async () => {
+    try {
+      const params = new URLSearchParams()
+      params.set('export', '1')
+      params.set('limit', '5000')
+      if (filters.search) params.set('search', filters.search)
+      if (filters.action !== 'all') params.set('action', filters.action)
+      if (filters.entityType !== 'all') params.set('entityType', filters.entityType)
+      if (filters.severity !== 'all') params.set('severity', filters.severity)
+      if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+      if (filters.dateTo) params.set('dateTo', filters.dateTo)
+
+      const res = await fetch(`/api/risk-management/audit-logs?${params.toString()}`, {
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.success) {
+        alert(data.error || 'Export failed')
+        return
+      }
+
+      const rows = (data.data?.logs || []) as AuditLogEntry[]
+      const csvData: string[][] = [
+        ['Timestamp', 'User', 'Email', 'Action', 'Raw action', 'Entity Type', 'Entity Name', 'Risk ID', 'Severity', 'Details'],
+        ...rows.map((log) => [
+          new Date(log.timestamp).toLocaleString(),
+          log.userName,
+          log.userEmail,
+          log.action,
+          log.rawAction || '',
+          log.entityType,
+          log.entityName,
+          log.riskDisplayId || '',
+          log.severity,
+          log.details || '',
+        ]),
+      ]
+
+      const csvContent = csvData.map((row) => row.map(csvEscape).join(',')).join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -258,6 +175,9 @@ export default function AuditLogsPage() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+    } catch {
+      alert('Export failed')
+    }
   }
 
   const getActionIcon = (action: string) => {
@@ -371,6 +291,12 @@ export default function AuditLogsPage() {
             <p className="text-gray-600 text-lg">Track all risk management activities and changes with comprehensive logging</p>
           </div>
         </div>
+
+        {listError && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {listError}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-orange-100 p-8 mb-8">
@@ -583,7 +509,7 @@ export default function AuditLogsPage() {
           </div>
           
           {/* Pagination */}
-          {totalPages > 1 && (
+          {(totalPages > 1 || totalCount > 0) && (
             <div className="bg-gradient-to-r from-orange-50 to-orange-100 px-8 py-6 border-t border-orange-200">
               <div className="flex items-center justify-between">
                 <div className="flex-1 flex justify-between sm:hidden">
@@ -605,28 +531,38 @@ export default function AuditLogsPage() {
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                   <div>
                     <p className="text-lg text-gray-700 font-medium">
-                      Showing page <span className="font-bold text-orange-600">{currentPage}</span> of{' '}
-                      <span className="font-bold text-orange-600">{totalPages}</span>
+                      {totalCount > 0 ? (
+                        <>
+                          <span className="font-bold text-orange-600">{totalCount}</span> log
+                          {totalCount !== 1 ? 's' : ''} · Page{' '}
+                          <span className="font-bold text-orange-600">{currentPage}</span> of{' '}
+                          <span className="font-bold text-orange-600">{totalPages}</span>
+                        </>
+                      ) : (
+                        'No logs'
+                      )}
                     </p>
                   </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-xl shadow-lg overflow-hidden">
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                        className="relative inline-flex items-center px-6 py-3 border border-orange-200 bg-white text-sm font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Previous
-                      </button>
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                        className="relative inline-flex items-center px-6 py-3 border-l border-orange-200 bg-white text-sm font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Next
-                      </button>
-                    </nav>
-                  </div>
+                  {totalPages > 1 && (
+                    <div>
+                      <nav className="relative z-0 inline-flex rounded-xl shadow-lg overflow-hidden">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                          className="relative inline-flex items-center px-6 py-3 border border-orange-200 bg-white text-sm font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                          className="relative inline-flex items-center px-6 py-3 border-l border-orange-200 bg-white text-sm font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
+                      </nav>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -678,6 +614,23 @@ export default function AuditLogsPage() {
                     <label className="block text-sm font-medium text-gray-700">Entity Name</label>
                     <p className="text-sm text-gray-900">{selectedLog.entityName}</p>
                   </div>
+                  {selectedLog.riskDisplayId && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Risk ID</label>
+                      <Link
+                        href={`/risk-management/risks/${selectedLog.entityId}`}
+                        className="text-sm text-orange-600 hover:text-orange-800 font-medium"
+                      >
+                        {selectedLog.riskDisplayId}
+                      </Link>
+                    </div>
+                  )}
+                  {selectedLog.rawAction && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">System action</label>
+                      <p className="text-sm text-gray-900 font-mono">{selectedLog.rawAction}</p>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700">IP Address</label>
                     <p className="text-sm text-gray-900">{selectedLog.ipAddress}</p>
