@@ -80,10 +80,13 @@ const assetSchema = z.object({
   condition: z.enum(["excellent", "good", "fair", "poor", "needs-repair"]).default("good"),
   warrantyExpiry: z.string().optional().transform((str) => str ? new Date(str) : null),
   
-  // Tracking
+  // Tracking (physicalAssetTag = sticker / external tag; assetNumber maps to DB assetTag unique id)
+  physicalAssetTag: z.string().optional(),
   rfidTag: z.string().optional(),
   qrCode: z.string().optional(),
   barcodeId: z.string().optional(),
+  lastAuditDate: z.string().optional(),
+  nextMaintenanceDate: z.string().optional(),
   
   // Insurance
   insuranceValue: z.number().min(0).optional(),
@@ -106,11 +109,25 @@ function statusToFrontend(s: string | null | undefined): string {
   return String(s).toLowerCase().replace(/_/g, "-")
 }
 
+type AssetRowWithRelations = AssetRow & {
+  physicalAssetTag?: string | null
+  asset_audits?: { auditDate: Date }[]
+  maintenance_records?: { nextDueDate: Date | null }[]
+}
+
+function formatDateOnly(d: Date | string | null | undefined): string {
+  if (!d) return ""
+  const x = d instanceof Date ? d : new Date(d)
+  if (Number.isNaN(x.getTime())) return ""
+  return x.toISOString().split("T")[0]
+}
+
 /** Map DB row → frontend Asset shape (GET list + PUT response). */
-function transformDbAssetToFrontend(asset: AssetRow) {
-  const row = asset as AssetRow & {
-    physicalAssetTag?: string | null
-  }
+function transformDbAssetToFrontend(asset: AssetRowWithRelations) {
+  const row = asset
+  const lastAuditFromChild = row.asset_audits?.[0]?.auditDate
+  const nextMaintFromChild = row.maintenance_records?.[0]?.nextDueDate
+
   return {
     id: row.id,
     name: row.name,
@@ -146,12 +163,12 @@ function transformDbAssetToFrontend(asset: AssetRow) {
     warrantyExpiry: row.warrantyExpiry
       ? new Date(row.warrantyExpiry).toISOString().split("T")[0]
       : "",
-    lastAuditDate: row.lastAuditDate
-      ? new Date(row.lastAuditDate).toISOString().split("T")[0]
-      : "",
-    nextMaintenanceDate: row.nextMaintenanceDate
-      ? new Date(row.nextMaintenanceDate).toISOString().split("T")[0]
-      : "",
+    lastAuditDate:
+      formatDateOnly(row.lastAuditDate) ||
+      (lastAuditFromChild ? formatDateOnly(lastAuditFromChild) : ""),
+    nextMaintenanceDate:
+      formatDateOnly(row.nextMaintenanceDate) ||
+      (nextMaintFromChild ? formatDateOnly(nextMaintFromChild) : ""),
     rfidTag: row.rfidTag || "",
     qrCode: row.qrCode || "",
     barcodeId: row.barcodeId || "",
@@ -194,6 +211,7 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { name: { contains: q, mode: "insensitive" } },
         { assetTag: { contains: q, mode: "insensitive" } },
+        { physicalAssetTag: { contains: q, mode: "insensitive" } },
         { category: { contains: q, mode: "insensitive" } },
         { location: { contains: q, mode: "insensitive" } },
         { serialNumber: { contains: q, mode: "insensitive" } },
@@ -215,6 +233,19 @@ export async function GET(request: NextRequest) {
           orderBy: { createdAt: "desc" },
           skip: offset,
           take: limit,
+          include: {
+            asset_audits: {
+              orderBy: { auditDate: "desc" },
+              take: 1,
+              select: { auditDate: true },
+            },
+            maintenance_records: {
+              where: { nextDueDate: { not: null } },
+              orderBy: { nextDueDate: "asc" },
+              take: 1,
+              select: { nextDueDate: true },
+            },
+          },
         })
       ),
       executeQuery(async (prisma) => prisma.assets.count({ where })),
@@ -310,6 +341,14 @@ export async function POST(request: NextRequest) {
           status: validatedData.status.toUpperCase(),
           condition: mapCondition(validatedData.condition),
           warrantyExpiry: validatedData.warrantyExpiry,
+          physicalAssetTag:
+            validatedData.physicalAssetTag?.trim() || null,
+          lastAuditDate: validatedData.lastAuditDate?.trim()
+            ? new Date(validatedData.lastAuditDate)
+            : null,
+          nextMaintenanceDate: validatedData.nextMaintenanceDate?.trim()
+            ? new Date(validatedData.nextMaintenanceDate)
+            : null,
           rfidTag: validatedData.rfidTag,
           qrCode: validatedData.qrCode,
           barcodeId: validatedData.barcodeId,
@@ -443,6 +482,21 @@ export async function PUT(request: NextRequest) {
     if (validatedData.procurementDate !== undefined) updateData.purchaseDate = validatedData.procurementDate
     if (validatedData.fundingSource !== undefined) updateData.fundingSource = validatedData.fundingSource || null
     if (validatedData.warrantyExpiry !== undefined) updateData.warrantyExpiry = validatedData.warrantyExpiry
+    if (validatedData.physicalAssetTag !== undefined) {
+      updateData.physicalAssetTag =
+        validatedData.physicalAssetTag?.trim() || null
+    }
+    if (validatedData.lastAuditDate !== undefined) {
+      updateData.lastAuditDate = validatedData.lastAuditDate?.trim()
+        ? new Date(validatedData.lastAuditDate)
+        : null
+    }
+    if (validatedData.nextMaintenanceDate !== undefined) {
+      updateData.nextMaintenanceDate =
+        validatedData.nextMaintenanceDate?.trim()
+          ? new Date(validatedData.nextMaintenanceDate)
+          : null
+    }
     if (validatedData.rfidTag !== undefined) updateData.rfidTag = validatedData.rfidTag || null
     if (validatedData.qrCode !== undefined) updateData.qrCode = validatedData.qrCode || null
     if (validatedData.barcodeId !== undefined) updateData.barcodeId = validatedData.barcodeId || null

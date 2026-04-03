@@ -482,6 +482,9 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
           rfidTag: editingAsset.rfidTag,
           qrCode: editingAsset.qrCode,
           barcodeId: editingAsset.barcodeId,
+          physicalAssetTag: editingAsset.assetTag,
+          lastAuditDate: editingAsset.lastAuditDate,
+          nextMaintenanceDate: editingAsset.nextMaintenanceDate,
           insuranceValue: editingAsset.insuranceValue,
           insurancePolicy: editingAsset.insurancePolicy,
           images: mergedImages,
@@ -963,8 +966,14 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   <div className="mt-2 space-y-2">
                     <div><span className="font-medium">Procurement Date:</span> {selectedAsset.procurementDate || '-'}</div>
                     <div><span className="font-medium">Warranty Expiry:</span> {selectedAsset.warrantyExpiry || '-'}</div>
-                    <div><span className="font-medium">Last Audit:</span> {selectedAsset.lastAuditDate || '-'}</div>
-                    <div><span className="font-medium">Next Maintenance:</span> {selectedAsset.nextMaintenanceDate || '-'}</div>
+                    <div>
+                      <span className="font-medium">Last Audit:</span>{" "}
+                      {selectedAsset.lastAuditDate || "—"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Next Maintenance:</span>{" "}
+                      {selectedAsset.nextMaintenanceDate || "—"}
+                    </div>
                   </div>
                 </div>
 
@@ -973,7 +982,10 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   <div className="mt-2 space-y-2">
                     <div><span className="font-medium">RFID Tag:</span> {selectedAsset.rfidTag || '-'}</div>
                     <div><span className="font-medium">QR Code:</span> {selectedAsset.qrCode || '-'}</div>
-                    <div><span className="font-medium">Asset Tag:</span> {selectedAsset.assetTag || '-'}</div>
+                    <div>
+                      <span className="font-medium">Physical asset tag:</span>{" "}
+                      {selectedAsset.assetTag || "—"}
+                    </div>
                     <div><span className="font-medium">Barcode ID:</span> {selectedAsset.barcodeId || '-'}</div>
                   </div>
                 </div>
@@ -1300,6 +1312,37 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <Label htmlFor="lastAuditDate">Last audit</Label>
+                  <Input
+                    id="lastAuditDate"
+                    type="date"
+                    value={editingAsset.lastAuditDate || ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, lastAuditDate: e.target.value }))
+                    }
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Shown in view; also filled from latest asset audit record when set there.
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="nextMaintenanceDate">Next maintenance</Label>
+                  <Input
+                    id="nextMaintenanceDate"
+                    type="date"
+                    value={editingAsset.nextMaintenanceDate || ''}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, nextMaintenanceDate: e.target.value }))
+                    }
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Optional; may show earliest next due from maintenance records if empty here.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <Label htmlFor="qrCode">QR Code</Label>
                   <div className="flex gap-2">
                     <Input
@@ -1353,12 +1396,12 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   />
                 </div>
                 <div>
-                  <Label htmlFor="assetTag">Asset Tag</Label>
+                  <Label htmlFor="assetTag">Physical asset tag</Label>
                   <Input
                     id="assetTag"
                     value={editingAsset.assetTag || ''}
                     onChange={(e) => setEditingAsset(prev => ({ ...prev, assetTag: e.target.value }))}
-                    placeholder="Enter asset tag"
+                    placeholder="Sticker or external tag (not the asset number)"
                   />
                 </div>
               </div>

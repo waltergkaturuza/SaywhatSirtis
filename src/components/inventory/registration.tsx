@@ -661,6 +661,49 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
 
               <div>
                 <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                  Physical asset tag
+                </label>
+                <input
+                  type="text"
+                  value={createFormData.assetTag || ''}
+                  onChange={(e) =>
+                    setCreateFormData({ ...createFormData, assetTag: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
+                  placeholder="Sticker or external tag (optional)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                  Last audit
+                </label>
+                <input
+                  type="date"
+                  value={createFormData.lastAuditDate || ''}
+                  onChange={(e) =>
+                    setCreateFormData({ ...createFormData, lastAuditDate: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                  Next maintenance
+                </label>
+                <input
+                  type="date"
+                  value={createFormData.nextMaintenanceDate || ''}
+                  onChange={(e) =>
+                    setCreateFormData({ ...createFormData, nextMaintenanceDate: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
                   QR Code
                 </label>
                 <div className="flex">
