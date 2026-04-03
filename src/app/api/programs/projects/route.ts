@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { buildProjectIdToIndicatorProgress } from "@/lib/programs/indicator-progress"
 import { fetchMealIndicatorsForProjectProgress } from "@/lib/programs/meal-indicators-query"
+import { computeProjectHealth } from "@/lib/programs/project-health"
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,9 +55,18 @@ export async function GET(request: NextRequest) {
 
     const projectsWithIndicatorProgress = projects.map((p) => {
       const agg = indicatorProgressByProject.get(p.id)
+      const hasIndicatorData = !!agg?.hasData
       const fromIndicators = agg?.hasData ? agg.percent : undefined
       const progress = fromIndicators ?? p.progress ?? 0
-      return { ...p, progress }
+      const health = computeProjectHealth({
+        status: p.status || "PLANNING",
+        progress,
+        hasIndicatorData,
+        budget: p.budget,
+        actualSpent: p.actualSpent,
+        endDate: p.endDate,
+      })
+      return { ...p, progress, hasIndicatorData, health }
     })
 
     // Fetch draft projects and convert them to project-like format
@@ -130,6 +140,8 @@ export async function GET(request: NextRequest) {
         status: 'DRAFT',
         priority: 'MEDIUM',
         progress: 0,
+        hasIndicatorData: false,
+        health: 'at-risk' as const,
         startDate: draft.startDate ? new Date(draft.startDate).toISOString() : null,
         endDate: draft.endDate ? new Date(draft.endDate).toISOString() : null,
         budget: draft.totalBudget ? parseFloat(draft.totalBudget.toString()) : null,

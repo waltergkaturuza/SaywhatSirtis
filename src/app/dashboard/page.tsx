@@ -437,7 +437,7 @@ export default function DashboardPage() {
                     </p>
                     <p className="text-xs flex items-center mt-1" style={{ color: SAYWHAT_COLORS.grey }}>
                       <Target className="h-3 w-3 mr-1" />
-                      {metrics ? metrics.activePrograms : 0} active programs
+                      {metrics ? metrics.activePrograms : 0} active — avg MEAL indicator vs target
                     </p>
                   </div>
                   <div 

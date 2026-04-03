@@ -250,7 +250,7 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
             email: project.users_projects_managerIdTousers.email
           } : null,
           team: [], // Would need additional API endpoint for team data
-          health: calculateProjectHealth(project),
+          health: normalizeProjectHealthFromApi(project),
           tags: [], // Would need additional field in database
           client: 'SAYWHAT Organization',
           department: project.manager?.department || '',
@@ -279,12 +279,16 @@ export function ProjectTable({ permissions, viewMode, onProjectSelect, selectedP
     }
   }
 
-  const calculateProjectHealth = (project: any): 'healthy' | 'at-risk' | 'critical' => {
+  const normalizeProjectHealthFromApi = (project: any): 'healthy' | 'at-risk' | 'critical' => {
+    const h = project.health
+    if (h === 'healthy' || h === 'at-risk' || h === 'critical') return h
     const progress = project.progress || 0
     const budget = project.budget || 0
     const spent = project.actualSpent || 0
     const budgetUtilization = budget > 0 ? (spent / budget) * 100 : 0
-    
+    const st = (project.status || '').toUpperCase()
+    if (st === 'ON_HOLD' || budgetUtilization > 90) return 'critical'
+    if (progress <= 0 && (st === 'ACTIVE' || st === 'PLANNING')) return 'at-risk'
     if (progress < 25 && budgetUtilization > 75) return 'critical'
     if (progress < 50 && budgetUtilization > 60) return 'at-risk'
     return 'healthy'

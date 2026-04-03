@@ -138,7 +138,7 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
             avatar: undefined
           },
           team: [], // You may want to add team members to the schema
-          health: calculateHealth(project),
+          health: normalizeHealthFromApi(project),
           tags: [], // You may want to add tags to the schema
           lastActivity: project.updatedAt ? new Date(project.updatedAt).toISOString() : new Date().toISOString(),
           milestones: { total: project._count?.activities || 0, completed: 0 },
@@ -173,12 +173,16 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
     }
   }
 
-  // Helper function to calculate project health (uses indicator-based progress from API)
-  const calculateHealth = (project: any): 'healthy' | 'at-risk' | 'critical' => {
+  /** Prefer server-computed health (MEAL indicators vs targets + budget + dates). */
+  const normalizeHealthFromApi = (project: any): 'healthy' | 'at-risk' | 'critical' => {
+    const h = project.health
+    if (h === 'healthy' || h === 'at-risk' || h === 'critical') return h
     const progress = typeof project.progress === 'number' ? project.progress : 0
-    const budgetUtilization = project.budget > 0 ? (project.actualSpent / project.budget) * 100 : 0
-    
+    const budgetUtilization =
+      project.budget > 0 ? (project.actualSpent / project.budget) * 100 : 0
     if (project.status === 'ON_HOLD' || budgetUtilization > 90) return 'critical'
+    if (progress <= 0 && (project.status === 'ACTIVE' || project.status === 'PLANNING'))
+      return 'at-risk'
     if (progress < 50 && budgetUtilization > 70) return 'at-risk'
     return 'healthy'
   }

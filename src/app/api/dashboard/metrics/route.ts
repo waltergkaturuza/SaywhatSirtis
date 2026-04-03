@@ -3,7 +3,9 @@ import { createErrorResponse } from '@/lib/error-handler'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { safeQuery } from '@/lib/prisma'
-import { UserRole } from '@prisma/client'
+import { fetchMealIndicatorsForProjectProgress } from '@/lib/programs/meal-indicators-query'
+import { buildProjectIdToIndicatorProgress } from '@/lib/programs/indicator-progress'
+import { computeDashboardProgramPerformance } from '@/lib/programs/project-health'
 
 export async function GET(request: NextRequest) {
   try {
@@ -75,8 +77,9 @@ export async function GET(request: NextRequest) {
       }).catch(() => 0)
     ])
 
-    // Get program performance metrics with safe query execution
-    const [activePrograms, totalPrograms, programsOnTrack] = await Promise.all([
+    // Program performance = average MEAL indicator attainment on ACTIVE projects
+    // (same basis as project list progress; no targets / no data counts as 0%)
+    const [activePrograms, totalPrograms, performanceScore] = await Promise.all([
       safeQuery(async (prisma) => {
         return await prisma.projects.count({
           where: {
@@ -88,22 +91,20 @@ export async function GET(request: NextRequest) {
         return await prisma.projects.count()
       }).catch(() => 0),
       safeQuery(async (prisma) => {
-        return await prisma.projects.count({
-          where: {
-            status: 'ACTIVE',
-            // Consider a program "on track" if it's active and not overdue
-            endDate: {
-              gte: now
-            }
-          }
+        const active = await prisma.projects.findMany({
+          where: { status: 'ACTIVE' },
+          select: { id: true },
         })
-      }).catch(() => 0)
+        if (active.length === 0) return 0
+        const ids = active.map((p) => p.id)
+        const mealIndicators = await fetchMealIndicatorsForProjectProgress(
+          prisma,
+          ids
+        )
+        const indicatorMap = buildProjectIdToIndicatorProgress(mealIndicators)
+        return computeDashboardProgramPerformance(active, indicatorMap)
+      }).catch(() => 0),
     ])
-
-    // Calculate performance score based on programs
-    const performanceScore = totalPrograms > 0 
-      ? Math.round((programsOnTrack / activePrograms) * 100) 
-      : 0
 
     // Calculate call success rate based on resolved/closed calls vs total calls
     const callSuccessRate = totalCallsForRate > 0 
@@ -131,7 +132,6 @@ export async function GET(request: NextRequest) {
       programs: {
         active: activePrograms,
         total: totalPrograms,
-        onTrack: programsOnTrack,
         performanceScore
       }
     })
