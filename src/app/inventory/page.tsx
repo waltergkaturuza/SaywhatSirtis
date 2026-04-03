@@ -289,7 +289,6 @@ export default function InventoryManagementPage() {
         assignedEmail: createFormData.assignedEmail || '',
         custodian: createFormData.custodian || '',
         assignedProgram: createFormData.assignedProgram || '',
-        assignedProject: createFormData.assignedProject || '',
         assignedProjectIds: Array.isArray(createFormData.assignedProjectIds)
           ? createFormData.assignedProjectIds
           : [],

@@ -469,7 +469,6 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
           custodian: editingAsset.custodian,
           assignedEmail: editingAsset.assignedEmail,
           assignedProgram: editingAsset.assignedProgram,
-          assignedProject: editingAsset.assignedProject,
           assignedProjectIds,
           procurementValue: editingAsset.procurementValue,
           currentValue: editingAsset.currentValue,
@@ -601,7 +600,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   placeholder="Search assets by name, number, serial, brand, model..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-800 placeholder-gray-500"
+                  className="pl-10 bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-800 placeholder-gray-500"
                 />
               </div>
             </div>
@@ -609,7 +608,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
             {/* Quick filters */}
             <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px] bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                <SelectTrigger className="w-[140px] bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -621,7 +620,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
               </Select>
 
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[160px] bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                <SelectTrigger className="w-[160px] bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -645,7 +644,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
               <div>
                 <Label>Items per page</Label>
                 <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
-                  <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                  <SelectTrigger className="bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -660,7 +659,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
               <div>
                 <Label>Sort by</Label>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                  <SelectTrigger className="bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1165,7 +1164,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     value={editingAsset.status || 'active'} 
                     onValueChange={(value) => setEditingAsset(prev => ({ ...prev, status: value as AssetStatus }))}
                   >
-                    <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                    <SelectTrigger className="bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1182,7 +1181,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     value={editingAsset.condition || 'good'} 
                     onValueChange={(value) => setEditingAsset(prev => ({ ...prev, condition: value as AssetCondition }))}
                   >
-                    <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                    <SelectTrigger className="bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1203,7 +1202,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   value={matchDepartmentSelectValue(editingAsset.department, departments) || undefined} 
                   onValueChange={(value) => setEditingAsset(prev => ({ ...prev, department: value === 'loading' ? undefined : value }))}
                 >
-                  <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                  <SelectTrigger className="bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                     <SelectValue placeholder={loadingData ? "Loading departments..." : "Select department"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -1236,7 +1235,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     }))
                   }}
                 >
-                  <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                  <SelectTrigger className="bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                     <SelectValue placeholder={loadingData ? "Loading employees..." : "Select assigned person"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -1384,7 +1383,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     value={editingAsset.depreciationMethod || 'straight-line'} 
                     onValueChange={(value) => setEditingAsset(prev => ({ ...prev, depreciationMethod: value as 'straight-line' | 'declining-balance' | 'units-of-production' }))}
                   >
-                    <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                    <SelectTrigger className="bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1406,7 +1405,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     value={matchEmployeeSelectValue(editingAsset.custodian, employees) || undefined} 
                     onValueChange={(value) => setEditingAsset(prev => ({ ...prev, custodian: value === 'loading' ? undefined : value }))}
                   >
-                    <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                    <SelectTrigger className="bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                       <SelectValue placeholder={loadingData ? "Loading employees..." : "Select custodian"} />
                     </SelectTrigger>
                     <SelectContent>
@@ -1430,7 +1429,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     value={editingAsset.fundingSource || undefined} 
                     onValueChange={(value) => setEditingAsset(prev => ({ ...prev, fundingSource: value }))}
                   >
-                    <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
+                    <SelectTrigger className="bg-white border-orange-200 shadow-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
                       <SelectValue placeholder="Select funding source" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1606,28 +1605,16 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="assignedProgram">Assigned Program</Label>
-                  <Input
-                    id="assignedProgram"
-                    value={editingAsset.assignedProgram || ""}
-                    onChange={(e) =>
-                      setEditingAsset((prev) => ({ ...prev, assignedProgram: e.target.value }))
-                    }
-                    placeholder="Program name"
-                  />
-                </div>
-                <div>
-                  <Label>Legacy project label</Label>
-                  <Input
-                    value={editingAsset.assignedProject || ""}
-                    onChange={(e) =>
-                      setEditingAsset((prev) => ({ ...prev, assignedProject: e.target.value }))
-                    }
-                    placeholder="Optional free-text (older records)"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="assignedProgram">Assigned Program</Label>
+                <Input
+                  id="assignedProgram"
+                  value={editingAsset.assignedProgram || ""}
+                  onChange={(e) =>
+                    setEditingAsset((prev) => ({ ...prev, assignedProgram: e.target.value }))
+                  }
+                  placeholder="Program name"
+                />
               </div>
               <div>
                 <Label>Linked projects</Label>

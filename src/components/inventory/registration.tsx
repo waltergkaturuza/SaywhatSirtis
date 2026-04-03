@@ -460,7 +460,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="text"
                   value={createFormData.name || ''}
                   onChange={(e) => setCreateFormData({...createFormData, name: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
                   placeholder="Enter asset name"
                 />
               </div>
@@ -474,7 +474,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                     type="text"
                     value={createFormData.assetNumber || ''}
                     onChange={(e) => setCreateFormData({...createFormData, assetNumber: e.target.value})}
-                    className="flex-1 px-4 py-3 border border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 rounded-l-xl border-r-0"
+                    className="flex-1 px-4 py-3 border border-gray-300 bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 rounded-l-xl border-r-0"
                     placeholder="Auto-generated"
                   />
                   <button
@@ -507,7 +507,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                       })
                     }
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm appearance-none cursor-pointer"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm appearance-none cursor-pointer"
                 >
                   <option value="" className="text-gray-500">Select category</option>
                   {Object.keys(ASSET_CATEGORIES).map(category => (
@@ -539,7 +539,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                       })
                     }
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   disabled={!createFormData.category}
                 >
                   <option value="">Select type</option>
@@ -563,7 +563,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   value={createFormData.description || ''}
                   onChange={(e) => setCreateFormData({...createFormData, description: e.target.value})}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200 resize-none"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200 resize-none"
                   placeholder="Enter asset description"
                 />
               </div>
@@ -588,7 +588,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="text"
                   value={createFormData.brand || ''}
                   onChange={(e) => setCreateFormData({...createFormData, brand: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="Enter brand name"
                 />
               </div>
@@ -601,7 +601,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="text"
                   value={createFormData.model || ''}
                   onChange={(e) => setCreateFormData({...createFormData, model: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="Enter model"
                 />
               </div>
@@ -614,7 +614,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="text"
                   value={createFormData.serialNumber || ''}
                   onChange={(e) => setCreateFormData({...createFormData, serialNumber: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="Enter serial number"
                 />
               </div>
@@ -654,7 +654,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="text"
                   value={createFormData.rfidTag || ''}
                   onChange={(e) => setCreateFormData({...createFormData, rfidTag: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="RFID tag number"
                 />
               </div>
@@ -713,7 +713,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                       })
                     }
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="">Select location</option>
                   {LOCATIONS.map(location => (
@@ -729,7 +729,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 <select
                   value={createFormData.department || ''}
                   onChange={(e) => setCreateFormData({...createFormData, department: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   disabled={loadingData}
                 >
                   <option value="">
@@ -757,7 +757,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                       assignedEmail: selectedEmployee?.email || ''
                     })
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   disabled={loadingData}
                 >
                   <option value="">
@@ -778,7 +778,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 <select
                   value={createFormData.custodian || ''}
                   onChange={(e) => setCreateFormData({...createFormData, custodian: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   disabled={loadingData}
                 >
                   <option value="">
@@ -800,7 +800,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="number"
                   value={createFormData.procurementValue || ''}
                   onChange={(e) => setCreateFormData({...createFormData, procurementValue: parseFloat(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="0.00"
                   min="0"
                   step="0.01"
@@ -815,7 +815,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="number"
                   value={createFormData.depreciationRate || ''}
                   onChange={(e) => setCreateFormData({...createFormData, depreciationRate: parseFloat(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="15"
                   min="0"
                   max="100"
@@ -830,7 +830,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 <select
                   value={createFormData.depreciationMethod || 'straight-line'}
                   onChange={(e) => setCreateFormData({...createFormData, depreciationMethod: e.target.value as any})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="straight-line">Straight Line</option>
                   <option value="declining-balance">Declining Balance</option>
@@ -846,7 +846,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 <select
                   value={createFormData.condition || 'excellent'}
                   onChange={(e) => setCreateFormData({...createFormData, condition: e.target.value as any})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   {CONDITIONS.map(condition => (
                     <option key={condition} value={condition.toLowerCase()}>{condition}</option>
@@ -861,7 +861,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 <select
                   value={createFormData.procurementType || ''}
                   onChange={(e) => setCreateFormData({...createFormData, procurementType: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="">Select type</option>
                   {PROCUREMENT_TYPES.map(type => (
@@ -877,7 +877,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 <select
                   value={createFormData.fundingSource || ''}
                   onChange={(e) => setCreateFormData({...createFormData, fundingSource: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="">Select source</option>
                   {FUNDING_SOURCES.map(source => (
@@ -894,7 +894,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="date"
                   value={createFormData.procurementDate || ''}
                   onChange={(e) => setCreateFormData({...createFormData, procurementDate: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 />
               </div>
 
@@ -906,7 +906,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="date"
                   value={createFormData.warrantyExpiry || ''}
                   onChange={(e) => setCreateFormData({...createFormData, warrantyExpiry: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 />
               </div>
 
@@ -918,7 +918,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   type="number"
                   value={createFormData.expectedLifespan || ''}
                   onChange={(e) => setCreateFormData({...createFormData, expectedLifespan: parseInt(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="5"
                   min="1"
                 />
@@ -931,7 +931,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 <select
                   value={createFormData.usageType || ''}
                   onChange={(e) => setCreateFormData({...createFormData, usageType: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="">Select usage type</option>
                   {USAGE_TYPES.map(type => (
@@ -957,7 +957,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                     type="text"
                     value={createFormData.assignedProgram || ''}
                     onChange={(e) => setCreateFormData({ ...createFormData, assignedProgram: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
                     placeholder="Program name"
                   />
                 </div>
@@ -969,7 +969,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 <p className="text-xs text-gray-500 mb-2">
                   Select one or more projects. Drafts are marked.
                 </p>
-                <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-300 p-3 space-y-2 bg-gray-50/50">
+                <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-300 p-3 space-y-2 bg-white shadow-sm">
                   {projects.length === 0 ? (
                     <p className="text-sm text-gray-500">
                       {loadingData ? 'Loading projects…' : 'No projects available.'}
@@ -1002,20 +1002,6 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                       )
                     })
                   )}
-                </div>
-                <div className="mt-3">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Optional legacy project label
-                  </label>
-                  <input
-                    type="text"
-                    value={createFormData.assignedProject || ''}
-                    onChange={(e) =>
-                      setCreateFormData({ ...createFormData, assignedProject: e.target.value })
-                    }
-                    className="w-full max-w-xl px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    placeholder="Free text (optional)"
-                  />
                 </div>
               </div>
             </div>
