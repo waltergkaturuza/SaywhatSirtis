@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { buildProjectIdToIndicatorProgress } from "@/lib/programs/indicator-progress"
+import { aggregateResultsFrameworkProgress, resolveProjectResultsFramework } from "@/lib/programs/results-framework-progress"
 import { fetchMealIndicatorsForProjectProgress } from "@/lib/programs/meal-indicators-query"
 import { computeProjectHealth } from "@/lib/programs/project-health"
 
@@ -54,10 +55,23 @@ export async function GET(request: NextRequest) {
     const indicatorProgressByProject = buildProjectIdToIndicatorProgress(mealIndicators)
 
     const projectsWithIndicatorProgress = projects.map((p) => {
-      const agg = indicatorProgressByProject.get(p.id)
-      const hasIndicatorData = !!agg?.hasData
-      const fromIndicators = agg?.hasData ? agg.percent : undefined
-      const progress = fromIndicators ?? p.progress ?? 0
+      const mealAgg = indicatorProgressByProject.get(p.id)
+      const fw = resolveProjectResultsFramework(p)
+      const fwAgg = aggregateResultsFrameworkProgress(fw)
+      const fromFramework = fwAgg.hasData ? fwAgg.percent : undefined
+      const fromMeal = mealAgg?.hasData ? mealAgg.percent : undefined
+      const progress =
+        fromFramework !== undefined
+          ? fromFramework
+          : fromMeal !== undefined
+            ? fromMeal
+            : p.progress ?? 0
+      const hasIndicatorData = fwAgg.hasData || !!mealAgg?.hasData
+      const indicatorCount = fwAgg.hasData
+        ? fwAgg.indicatorCount
+        : mealAgg?.hasData
+          ? mealAgg.measuredCount
+          : 0
       const health = computeProjectHealth({
         status: p.status || "PLANNING",
         progress,
@@ -66,7 +80,7 @@ export async function GET(request: NextRequest) {
         actualSpent: p.actualSpent,
         endDate: p.endDate,
       })
-      return { ...p, progress, hasIndicatorData, health }
+      return { ...p, progress, hasIndicatorData, indicatorCount, health }
     })
 
     // Fetch draft projects and convert them to project-like format
@@ -131,6 +145,7 @@ export async function GET(request: NextRequest) {
       const selectedMethodologies = safeParseArray(draft.selectedMethodologies, [])
       const resultsFramework = safeParseObject(draft.resultsFramework, { objectives: [], projectDuration: 3 })
       const uploadedDocuments = safeParseArray(draft.uploadedDocuments, [])
+      const draftFwAgg = aggregateResultsFrameworkProgress(resultsFramework)
 
       return {
         id: draft.id,
@@ -139,8 +154,9 @@ export async function GET(request: NextRequest) {
         projectGoal: draft.projectGoal || '',
         status: 'DRAFT',
         priority: 'MEDIUM',
-        progress: 0,
-        hasIndicatorData: false,
+        progress: draftFwAgg.hasData ? draftFwAgg.percent : 0,
+        hasIndicatorData: draftFwAgg.hasData,
+        indicatorCount: draftFwAgg.indicatorCount,
         health: 'at-risk' as const,
         startDate: draft.startDate ? new Date(draft.startDate).toISOString() : null,
         endDate: draft.endDate ? new Date(draft.endDate).toISOString() : null,

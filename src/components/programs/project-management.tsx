@@ -36,6 +36,8 @@ export interface Project {
   status: ProjectStatus
   priority: ProjectPriority
   progress: number
+  hasIndicatorData?: boolean
+  indicatorCount?: number
   startDate: string
   endDate: string
   budget: number
@@ -64,6 +66,7 @@ export interface Project {
   client?: string
   department?: string
   location?: string
+  isDraft?: boolean
 }
 
 export interface ProjectFilters {
@@ -128,6 +131,8 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
           status: mapStatus(project.status),
           priority: (project.priority || 'MEDIUM').toString().toLowerCase(),
           progress: typeof project.progress === 'number' ? project.progress : 0,
+          hasIndicatorData: !!project.hasIndicatorData,
+          indicatorCount: typeof project.indicatorCount === 'number' ? project.indicatorCount : 0,
           startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : '',
           endDate: project.endDate ? new Date(project.endDate).toISOString().split('T')[0] : '',
           budget: project.budget || 0,
@@ -145,7 +150,8 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
           tasks: { total: project._count?.activities || 0, completed: 0 },
           client: 'SAYWHAT', // Default client
           department: 'Programs', // Default department
-          location: `${project.province || ''}, ${project.country || ''}`.trim().replace(/^,\s*/, '')
+          location: `${project.province || ''}, ${project.country || ''}`.trim().replace(/^,\s*/, ''),
+          isDraft: !!project.isDraft,
         }))
         
         setProjects(transformedProjects)
@@ -332,9 +338,28 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
     try {
       // Handle bulk actions
       switch (action) {
-        case 'delete':
-          setProjects(prev => prev.filter(p => !projectIds.includes(p.id)))
+        case 'delete': {
+          if (!permissions?.canDeleteProjectsAsSystemAdmin) break
+          const failures: string[] = []
+          for (const id of projectIds) {
+            const p = projects.find((x) => x.id === id)
+            const url = p?.isDraft
+              ? `/api/programs/projects/drafts/${id}`
+              : `/api/programs/projects/${id}`
+            const res = await fetch(url, { method: "DELETE" })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) {
+              failures.push(
+                `${p?.name || id}: ${data.message || data.error || res.statusText}`
+              )
+            }
+          }
+          if (failures.length > 0) {
+            window.alert(`Could not delete some projects:\n${failures.join("\n")}`)
+          }
+          await fetchProjects()
           break
+        }
         case 'archive':
           setProjects(prev => prev.map(p => 
             projectIds.includes(p.id) ? { ...p, status: 'completed' as ProjectStatus } : p
@@ -538,6 +563,7 @@ export function ProjectManagement({ permissions, selectedProject, onProjectSelec
             sortConfig={sortConfig}
             permissions={permissions}
             isLoading={isLoading}
+            onProjectDeleted={fetchProjects}
           />
         )}
 

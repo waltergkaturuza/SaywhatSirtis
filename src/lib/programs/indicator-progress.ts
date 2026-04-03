@@ -17,26 +17,37 @@ export type IndicatorProgressRow = {
 }
 
 /**
- * Average progress across indicators that have a valid target.
- * If none qualify, returns { percent: 0, hasData: false }.
+ * Project list / dashboard % aligned with Project Indicators cumulative column
+ * (`getCumulativeProgressPercentage`): for each measurable indicator,
+ * cumulative attainment ratio = min(current / target, 1), then
+ * project % = (mean of those ratios) × 100.
  */
 export function projectIndicatorProgressAggregate(rows: IndicatorProgressRow[]): {
   percent: number
   hasData: boolean
+  measuredCount: number
 } {
-  const pcts: number[] = []
+  const ratios: number[] = []
   for (const row of rows) {
-    const p = indicatorRowProgressPercent(row.current, row.target)
-    if (p !== null) pcts.push(p)
+    const t = row.target
+    if (t == null || t <= 0) continue
+    const c = row.current ?? 0
+    ratios.push(Math.min(c / t, 1))
   }
-  if (pcts.length === 0) return { percent: 0, hasData: false }
-  const avg = pcts.reduce((a, b) => a + b, 0) / pcts.length
-  return { percent: Math.round(avg), hasData: true }
+  if (ratios.length === 0) return { percent: 0, hasData: false, measuredCount: 0 }
+  const meanRatio =
+    ratios.reduce((a, b) => a + b, 0) / ratios.length
+  const percent = meanRatio * 100
+  return {
+    percent: Math.round(percent),
+    hasData: true,
+    measuredCount: ratios.length,
+  }
 }
 
 export function buildProjectIdToIndicatorProgress(
   indicators: { projectId: string | null; current: number | null; target: number | null }[]
-): Map<string, { percent: number; hasData: boolean }> {
+): Map<string, { percent: number; hasData: boolean; measuredCount: number }> {
   const byProject = new Map<string, IndicatorProgressRow[]>()
   for (const ind of indicators) {
     if (!ind.projectId) continue
@@ -44,7 +55,7 @@ export function buildProjectIdToIndicatorProgress(
     list.push({ current: ind.current, target: ind.target })
     byProject.set(ind.projectId, list)
   }
-  const out = new Map<string, { percent: number; hasData: boolean }>()
+  const out = new Map<string, { percent: number; hasData: boolean; measuredCount: number }>()
   for (const [projectId, rows] of byProject) {
     out.set(projectId, projectIndicatorProgressAggregate(rows))
   }

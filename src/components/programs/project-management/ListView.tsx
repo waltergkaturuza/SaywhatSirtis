@@ -1,13 +1,11 @@
 import React, { useState } from "react"
-import { 
-  CheckIcon, 
-  ChevronUpIcon, 
+import {
+  ChevronUpIcon,
   ChevronDownIcon,
   EllipsisHorizontalIcon,
   EyeIcon,
   PencilIcon,
   TrashIcon,
-  ArchiveBoxIcon
 } from "@heroicons/react/24/outline"
 import { Project, SortConfig } from "../project-management"
 import { ProjectViewPopup } from "../project-view-popup"
@@ -22,6 +20,7 @@ interface ListViewProps {
   sortConfig: SortConfig
   permissions: any
   isLoading: boolean
+  onProjectDeleted?: () => void | Promise<void>
 }
 
 const ListView: React.FC<ListViewProps> = ({
@@ -32,11 +31,13 @@ const ListView: React.FC<ListViewProps> = ({
   onSort,
   sortConfig,
   permissions,
-  isLoading
+  isLoading,
+  onProjectDeleted,
 }) => {
   const [viewPopupOpen, setViewPopupOpen] = useState(false)
   const [editPopupOpen, setEditPopupOpen] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const handleSelectAll = () => {
     if (selectedProjects.length === projects.length) {
       onBulkSelect([])
@@ -70,9 +71,43 @@ const ListView: React.FC<ListViewProps> = ({
   }
 
   const handleSaveProject = (projectId: string) => {
-    // Refresh the project list or handle the save
     console.log('Project saved:', projectId)
-    // You might want to trigger a refresh here
+  }
+
+  const formatDateSafe = (dateString: string) => {
+    if (!dateString?.trim()) return "—"
+    const d = new Date(dateString)
+    return Number.isNaN(d.getTime()) ? "—" : formatDate(dateString)
+  }
+
+  const handleDeleteProject = async (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!permissions?.canDeleteProjectsAsSystemAdmin) return
+    const kind = project.isDraft ? "draft" : "project"
+    if (
+      !window.confirm(
+        `Delete ${kind} "${project.name}"? This cannot be undone.`
+      )
+    ) {
+      return
+    }
+    const url = project.isDraft
+      ? `/api/programs/projects/drafts/${project.id}`
+      : `/api/programs/projects/${project.id}`
+    setDeletingId(project.id)
+    try {
+      const res = await fetch(url, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        window.alert(data.message || data.error || "Delete failed")
+        return
+      }
+      await onProjectDeleted?.()
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Delete failed")
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -195,6 +230,9 @@ const ListView: React.FC<ListViewProps> = ({
                 Health
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <SortableHeader field="startDate">Start Date</SortableHeader>
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <SortableHeader field="endDate">Due Date</SortableHeader>
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -280,7 +318,11 @@ const ListView: React.FC<ListViewProps> = ({
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {project.tasks.completed}/{project.tasks.total} tasks
+                    {project.hasIndicatorData
+                      ? `Cumulative · ${project.indicatorCount ?? 0} indicator${
+                          (project.indicatorCount ?? 0) === 1 ? "" : "s"
+                        }`
+                      : "No measurable indicators"}
                   </div>
                 </td>
 
@@ -325,16 +367,25 @@ const ListView: React.FC<ListViewProps> = ({
                   </div>
                 </td>
 
+                {/* Start Date */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{formatDateSafe(project.startDate)}</div>
+                </td>
+
                 {/* Due Date */}
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {formatDate(project.endDate)}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(project.endDate) < new Date() ? 'Overdue' : 
-                     Math.ceil((new Date(project.endDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) + ' days left'
-                    }
-                  </div>
+                  <div className="text-sm text-gray-900">{formatDateSafe(project.endDate)}</div>
+                  {project.endDate?.trim() &&
+                    !Number.isNaN(new Date(project.endDate).getTime()) && (
+                      <div className="text-xs text-gray-500">
+                        {new Date(project.endDate) < new Date()
+                          ? "Overdue"
+                          : `${Math.ceil(
+                              (new Date(project.endDate).getTime() - new Date().getTime()) /
+                                (1000 * 3600 * 24)
+                            )} days left`}
+                      </div>
+                    )}
                 </td>
 
                 {/* Actions */}
@@ -364,10 +415,19 @@ const ListView: React.FC<ListViewProps> = ({
                         <PencilIcon className="h-4 w-4" />
                       </button>
                     )}
+                    {permissions?.canDeleteProjectsAsSystemAdmin && (
+                      <button
+                        onClick={(e) => handleDeleteProject(project, e)}
+                        disabled={deletingId === project.id}
+                        className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-40"
+                        title="Delete project (System Administrator only)"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        // Handle more actions
                       }}
                       className="text-gray-400 hover:text-gray-600"
                     >

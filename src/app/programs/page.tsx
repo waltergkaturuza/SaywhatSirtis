@@ -37,12 +37,15 @@ import { SaywhatFlagshipEvents } from "../../components/programs/saywhat-flagshi
 import { ReportsAnalytics } from "../../components/programs/reports-analytics-enhanced"
 import { ProjectCalendar } from "../../components/programs/project-calendar"
 import MealModule from "../../components/programs/MealModule"
+import { hasSystemAdministratorRole } from "@/lib/role-names"
 
 interface ProgramPermissions {
   canView: boolean
   canCreate: boolean
   canEdit: boolean
   canDelete: boolean
+  /** Row/bulk hard delete — same gate as API (system admin roles per auth). */
+  canDeleteProjectsAsSystemAdmin: boolean
   canManageResources: boolean
   canViewFinancials: boolean
   canManageFinancials: boolean
@@ -66,6 +69,7 @@ function EnhancedProgramsContent() {
     canCreate: false,
     canEdit: false,
     canDelete: false,
+    canDeleteProjectsAsSystemAdmin: false,
     canManageResources: false,
     canViewFinancials: false,
     canManageFinancials: false,
@@ -99,6 +103,7 @@ function EnhancedProgramsContent() {
           canCreate: true,
           canEdit: true,
           canDelete: true,
+          canDeleteProjectsAsSystemAdmin: true,
           canManageResources: true,
           canViewFinancials: true,
           canManageFinancials: true,
@@ -118,6 +123,7 @@ function EnhancedProgramsContent() {
                            userRoles.includes('project_manager') ||
                            userRoles.includes('admin') ||
                            userRoles.includes('system_admin') ||
+                           hasSystemAdministratorRole(userRoles) ||
                            userPermissions.includes('programs.full_access') ||
                            userPermissions.includes('all_access') ||
                            userPermissions.includes('admin')
@@ -128,12 +134,16 @@ function EnhancedProgramsContent() {
                           userRoles.includes('superuser') ||
                           userPermissions.includes('all_access') || userPermissions.includes('admin')
         const isProjectManager = userRoles.includes('PROJECT_MANAGER') || userRoles.includes('project_manager')
+        const isProgramsSystemAdministrator =
+          session.user.email?.toLowerCase().trim() === 'admin@saywhat.org' ||
+          hasSystemAdministratorRole(userRoles)
         
         setPermissions({
           canView: true,
           canCreate: isSystemAdmin || userPermissions.includes('programs.create') || isProjectManager,
           canEdit: isSystemAdmin || userPermissions.includes('programs.edit') || isProjectManager,
           canDelete: isSystemAdmin || userPermissions.includes('programs.delete'),
+          canDeleteProjectsAsSystemAdmin: isProgramsSystemAdministrator,
           canManageResources: isSystemAdmin || userPermissions.includes('programs.resources') || isProjectManager,
           canViewFinancials: isSystemAdmin || userDepartment === 'Finance' || userPermissions.includes('programs.finance.view'),
           canManageFinancials: isSystemAdmin || userDepartment === 'Finance' || userPermissions.includes('programs.finance.manage'),

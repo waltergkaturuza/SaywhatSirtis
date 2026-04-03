@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { 
   ChartBarIcon,
   ArrowTrendingUpIcon,
@@ -8,10 +8,8 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
-  EyeIcon,
   PencilIcon,
   ArrowPathIcon,
-  PlusIcon
 } from "@heroicons/react/24/outline"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
@@ -188,6 +186,25 @@ const getCurrentProjectYearInfo = (
   }
 }
 
+/** Target value + label for a specific year row (for bulk updates / display). */
+const getTargetForYearIndex = (
+  indicator: {
+    targetsByYear?: { label: string; value: number }[]
+    target?: number
+    currentYearLabel?: string
+  },
+  yearIndex: number
+): { value: number; label: string } => {
+  const t = indicator.targetsByYear
+  if (t && t.length > 0 && yearIndex >= 0 && yearIndex < t.length) {
+    return { value: t[yearIndex].value, label: t[yearIndex].label }
+  }
+  return {
+    value: indicator.target ?? 0,
+    label: indicator.currentYearLabel || "Reporting period",
+  }
+}
+
 interface Project {
   id: string
   name: string
@@ -213,6 +230,9 @@ interface UpdateHistory {
   updatedBy: string
   updatedAt: string
   notes?: string
+  /** Which reporting year this increment was logged against (bulk / backfill). */
+  reportingYearIndex?: number
+  reportingYearLabel?: string
 }
 
 interface ProjectIndicator {
@@ -253,6 +273,226 @@ interface ProjectIndicator {
   pendingIncrement?: number
 }
 
+/** Per-year actuals from tagged bulk history; legacy totals shown on calendar current year row only. */
+type YearlyProgressRow = {
+  label: string
+  target: number
+  progress: number | null
+}
+
+const computeYearlyProgressRows = (
+  indicator: ProjectIndicator
+): YearlyProgressRow[] => {
+  const targets = indicator.targetsByYear
+  const total = parseNumericValue(indicator.current)
+
+  if (!targets?.length) {
+    return [
+      {
+        label: "Total",
+        target: indicator.target ?? 0,
+        progress: total,
+      },
+    ]
+  }
+
+  const n = targets.length
+  const sums = new Array(n).fill(0)
+  let taggedSum = 0
+
+  for (const h of indicator.updateHistory || []) {
+    const inc = typeof h.incrementBy === "number" ? h.incrementBy : 0
+    if (!inc) continue
+    let idx: number | null = null
+    if (
+      typeof h.reportingYearIndex === "number" &&
+      h.reportingYearIndex >= 0 &&
+      h.reportingYearIndex < n
+    ) {
+      idx = h.reportingYearIndex
+    } else if (h.reportingYearLabel) {
+      const found = targets.findIndex((t) => t.label === h.reportingYearLabel)
+      if (found >= 0) idx = found
+    }
+    if (idx !== null) {
+      sums[idx] += inc
+      taggedSum += inc
+    }
+  }
+
+  const untagged = Math.max(0, total - taggedSum)
+
+  if (taggedSum === 0) {
+    const curIdx = Math.min(
+      Math.max(0, indicator.currentYearIndex ?? 0),
+      n - 1
+    )
+    return targets.map((t, i) => ({
+      label: t.label,
+      target: t.value,
+      progress: i === curIdx ? total : null,
+    }))
+  }
+
+  const rows = targets.map((t, i) => ({
+    label: t.label,
+    target: t.value,
+    progress: sums[i],
+  }))
+
+  if (untagged > 0) {
+    rows.push({
+      label: "Other (cumulative, not tagged by year)",
+      target: 0,
+      progress: untagged,
+    })
+  }
+
+  return rows
+}
+
+const fractionElapsedInPeriod = (now: Date, start: Date, end: Date): number => {
+  const t0 = start.getTime()
+  const t1 = end.getTime()
+  if (t1 <= t0) return 1
+  return Math.min(1, Math.max(0, (now.getTime() - t0) / (t1 - t0)))
+}
+
+/** Approximate reporting-year window when calendar grouping is unavailable. */
+const estimatedYearBoundaryWindow = (
+  project: { startDate?: string | null; endDate?: string | null } | null,
+  yearIndex: number
+): { start: Date; end: Date } | null => {
+  if (!project?.startDate) return null
+  const anchor = new Date(project.startDate)
+  if (isNaN(anchor.getTime())) return null
+  const s = new Date(anchor)
+  s.setFullYear(s.getFullYear() + yearIndex)
+  const e = new Date(anchor)
+  e.setFullYear(e.getFullYear() + yearIndex + 1)
+  e.setDate(e.getDate() - 1)
+  return { start: s, end: e }
+}
+
+const programmeTotalTarget = (indicator: ProjectIndicator): number => {
+  if (typeof indicator.totalTarget === "number" && indicator.totalTarget > 0) {
+    return indicator.totalTarget
+  }
+  if (indicator.targetsByYear?.length) {
+    const s = indicator.targetsByYear.reduce((a, t) => a + t.value, 0)
+    if (s > 0) return s
+  }
+  return indicator.target ?? 0
+}
+
+/**
+ * Status for charts / summary: compares achieved vs time-adjusted expected progress
+ * for the same period as the indicator bar chart (cumulative or a reporting year).
+ */
+const computeDerivedIndicatorStatus = (
+  indicator: ProjectIndicator,
+  period: "cumulative" | number,
+  project: { startDate?: string | null; endDate?: string | null } | null,
+  frameworkDuration?: number
+): ProjectIndicator["status"] => {
+  const now = new Date()
+  const totalTarget = programmeTotalTarget(indicator)
+  const current = parseNumericValue(indicator.current)
+  const behindTol = 0.12
+  const aheadTol = 0.08
+
+  if (totalTarget > 0 && current >= totalTarget) {
+    return "completed"
+  }
+
+  const projectStart = project?.startDate ? new Date(project.startDate) : null
+  const projectEndRaw = project?.endDate ? new Date(project.endDate) : null
+
+  const resolveProgrammeEnd = (yearSpan: number): Date => {
+    const start = projectStart && !isNaN(projectStart.getTime()) ? projectStart : new Date()
+    const end = new Date(start)
+    end.setFullYear(end.getFullYear() + Math.max(1, yearSpan))
+    end.setDate(end.getDate() - 1)
+    return end
+  }
+
+  if (period === "cumulative") {
+    let expectedRatio = 0.5
+    if (projectStart && !isNaN(projectStart.getTime())) {
+      let endD =
+        projectEndRaw && !isNaN(projectEndRaw.getTime()) && projectEndRaw > projectStart
+          ? projectEndRaw
+          : null
+      if (!endD) {
+        const ny =
+          indicator.targetsByYear?.length ??
+          (typeof frameworkDuration === "number" && frameworkDuration > 0
+            ? frameworkDuration
+            : 1)
+        endD = resolveProgrammeEnd(ny)
+      }
+      expectedRatio = fractionElapsedInPeriod(now, projectStart, endD)
+    }
+    const actualRatio = totalTarget > 0 ? current / totalTarget : 0
+    if (expectedRatio < 0.02) return "on-track"
+    if (actualRatio + 1e-9 < expectedRatio - behindTol) return "behind"
+    if (actualRatio > expectedRatio + aheadTol) return "ahead"
+    return "on-track"
+  }
+
+  const targets = indicator.targetsByYear
+  const n = targets?.length ?? 0
+  if (n === 0) {
+    const t = indicator.target ?? 0
+    const ar = t > 0 ? current / t : 0
+    let er = 0.5
+    if (projectStart && !isNaN(projectStart.getTime())) {
+      let endD =
+        projectEndRaw && !isNaN(projectEndRaw.getTime()) && projectEndRaw > projectStart
+          ? projectEndRaw
+          : resolveProgrammeEnd(1)
+      er = fractionElapsedInPeriod(now, projectStart, endD)
+    }
+    if (er < 0.02) return "on-track"
+    if (ar + 1e-9 < er - behindTol) return "behind"
+    if (ar > er + aheadTol) return "ahead"
+    return "on-track"
+  }
+
+  const yi = Math.min(Math.max(0, period as number), n - 1)
+  const yearTarget = targets![yi].value
+  const rows = computeYearlyProgressRows(indicator)
+  const row = rows[yi]
+  const progress = row?.progress != null ? row.progress : 0
+
+  if (yearTarget > 0 && progress >= yearTarget) {
+    return "ahead"
+  }
+
+  let elapsedInYear = 0.5
+  const groups = getProjectYearGroups(n, project)
+  if (groups.length === n && groups[yi]) {
+    elapsedInYear = fractionElapsedInPeriod(now, groups[yi].start, groups[yi].end)
+  } else {
+    const win = estimatedYearBoundaryWindow(project, yi)
+    if (win) {
+      elapsedInYear = fractionElapsedInPeriod(now, win.start, win.end)
+    } else {
+      const cy = getCurrentProjectYearInfo(targets, project, frameworkDuration)
+      if (yi < cy.index) elapsedInYear = 1
+      else if (yi > cy.index) elapsedInYear = 0
+      else elapsedInYear = 0.5
+    }
+  }
+
+  if (yearTarget <= 0) return "on-track"
+  const expectedProgress = yearTarget * elapsedInYear
+  if (elapsedInYear < 0.02) return "on-track"
+  if (progress + 1e-9 < expectedProgress - yearTarget * behindTol) return "behind"
+  if (progress > expectedProgress + yearTarget * aheadTol) return "ahead"
+  return "on-track"
+}
+
 interface ProjectIndicatorsProps {
   permissions: any
   onProjectSelect: (projectId: string | null) => void
@@ -261,6 +501,25 @@ interface ProjectIndicatorsProps {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
+/** Status pie + legend (semantic colors; do not reuse generic COLORS). */
+const STATUS_PIE_COLORS: Record<
+  ProjectIndicator["status"],
+  string
+> = {
+  "on-track": "#2563EB",
+  behind: "#DC2626",
+  ahead: "#D97706",
+  completed: "#228B22",
+}
+
+type StatusPieRow = {
+  statusKey: ProjectIndicator["status"]
+  name: string
+  value: number
+  fill: string
+  items: { id: string; name: string; detail?: string }[]
+}
+
 export function ProjectIndicators({ permissions, onProjectSelect, selectedProject }: ProjectIndicatorsProps) {
   const [mounted, setMounted] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
@@ -268,13 +527,12 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
-  const [showUpdateModal, setShowUpdateModal] = useState(false)
-  const [selectedIndicator, setSelectedIndicator] = useState<ProjectIndicator | null>(null)
-  const [updateValue, setUpdateValue] = useState(0)
   const [filteredIndicators, setFilteredIndicators] = useState<ProjectIndicator[]>([])
   const [showAllProjects, setShowAllProjects] = useState(true)
   const [resultsFramework, setResultsFramework] = useState<any>(null)
   const [showBulkUpdate, setShowBulkUpdate] = useState(false)
+  /** Year row index in targetsByYear that increments apply to (default = project "current" year). */
+  const [bulkUpdateYearIndex, setBulkUpdateYearIndex] = useState(0)
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([])
   const [updateNotes, setUpdateNotes] = useState('')
   const [bulkUpdateType, setBulkUpdateType] = useState('set')
@@ -287,10 +545,12 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     updatedBy: string
     timestamp: string
   } | null>(null)
-  const [editingIndicator, setEditingIndicator] = useState<string | null>(null)
-  const [quickUpdateValue, setQuickUpdateValue] = useState('')
   const [currentUser, setCurrentUser] = useState<string>('System')
   const [showAuditTrail, setShowAuditTrail] = useState<string | null>(null)
+  /** Bar chart: cumulative vs reporting year index (0-based). */
+  const [progressChartPeriod, setProgressChartPeriod] = useState<
+    "cumulative" | number
+  >("cumulative")
 
   useEffect(() => {
     setMounted(true)
@@ -301,6 +561,18 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     fetchCurrentUser()
     // Don't fetch indicators on mount - they should only be loaded when a project is selected
   }, [])
+
+  // Keep bulk reporting year within range when selection changes
+  useEffect(() => {
+    if (!showBulkUpdate || selectedIndicatorDetails.length === 0) return
+    const maxIdx = Math.max(
+      0,
+      ...selectedIndicatorDetails.map((i) =>
+        Math.max(0, (i.targetsByYear?.length ?? 1) - 1)
+      )
+    )
+    setBulkUpdateYearIndex((prev) => (prev > maxIdx ? maxIdx : prev))
+  }, [showBulkUpdate, selectedIndicators])
 
   const fetchCurrentUser = async () => {
     try {
@@ -347,8 +619,6 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       setFilteredIndicators([])
       setSelectedIndicators([])
       setSelectedIndicatorDetails([])
-      setEditingIndicator(null)
-      setQuickUpdateValue('')
       setShowAllProjects(false)
       // Fetch Results Framework data for the selected project
       fetchResultsFramework(selectedProjectId)
@@ -356,6 +626,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       setFilteredIndicators(indicators)
       setShowAllProjects(true)
     }
+  }, [selectedProjectId])
+
+  useEffect(() => {
+    setProgressChartPeriod("cumulative")
   }, [selectedProjectId])
 
   // Debug indicators state changes
@@ -630,17 +904,40 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   }
 
 
+  const openBulkUpdateModal = () => {
+    const proj = projects.find((p) => p.id === selectedProjectId) ?? null
+    const seed =
+      filteredIndicators.find((i) => selectedIndicators.includes(i.id)) ??
+      filteredIndicators[0]
+    let idx = 0
+    if (seed?.targetsByYear?.length) {
+      const cy = getCurrentProjectYearInfo(
+        seed.targetsByYear,
+        proj,
+        resultsFramework?.projectDuration
+      )
+      idx = Math.max(
+        0,
+        Math.min(cy.index, seed.targetsByYear.length - 1)
+      )
+    }
+    setBulkUpdateYearIndex(idx)
+    setShowBulkUpdate(true)
+  }
+
   const handleBulkUpdate = async () => {
     if (selectedIndicators.length === 0) return
 
     try {
       console.log('Bulk updating indicators:', selectedIndicators, 'with details:', selectedIndicatorDetails)
       console.log('Update notes:', updateNotes)
+      console.log('Reporting year index:', bulkUpdateYearIndex)
       
       const hasIncrements = selectedIndicatorDetails.some(detail => (detail.pendingIncrement ?? 0) !== 0)
       if (!hasIncrements) {
         console.log('No increments provided, skipping bulk update')
         setShowBulkUpdate(false)
+        setBulkUpdateYearIndex(0)
         setSelectedIndicators([])
         setSelectedIndicatorDetails([])
         setUpdateNotes('')
@@ -659,7 +956,14 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             return
           }
           console.log(`Updating indicator ${indicator.id} with increment ${incrementValue} and notes: "${updateNotes}"`)
-          updatedFramework = updateIndicatorInFramework(updatedFramework, indicator.id, incrementValue, updateNotes)
+          const yr = getTargetForYearIndex(indicator, bulkUpdateYearIndex)
+          updatedFramework = updateIndicatorInFramework(
+            updatedFramework,
+            indicator.id,
+            incrementValue,
+            updateNotes,
+            { index: bulkUpdateYearIndex, label: yr.label }
+          )
         })
         
         // Save the updated framework to the project
@@ -703,7 +1007,8 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
       setBulkUpdateValue('')
       setUpdateNotes('')
       setBulkUpdateType('set')
-      
+      setBulkUpdateYearIndex(0)
+
       // Refresh indicators from the project's Results Framework
       if (selectedProjectId) {
         fetchResultsFramework(selectedProjectId)
@@ -733,7 +1038,13 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     setSelectedIndicatorDetails(details)
   }
 
-  const updateIndicatorInFramework = (framework: any, indicatorId: string, incrementValue: number, notes: string = '') => {
+  const updateIndicatorInFramework = (
+    framework: any,
+    indicatorId: string,
+    incrementValue: number,
+    notes: string = '',
+    reportingYear?: { index: number; label: string }
+  ) => {
     if (!framework) return framework
 
     // Work directly on the passed framework (already cloned by caller)
@@ -776,15 +1087,32 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                   previousValue: previousValue,
                   updatedBy: currentUser,
                   updatedAt: now,
-                  notes: notes
+                  notes: notes,
+                  ...(reportingYear
+                    ? {
+                        reportingYearIndex: reportingYear.index,
+                        reportingYearLabel: reportingYear.label,
+                      }
+                    : {}),
                 })
-                
+
                 // Update current progress tracking fields
                 indicator.current = newValue
                 indicator.lastUpdated = now
                 indicator.lastUpdatedBy = currentUser
                 indicator.notes = notes // Save the current notes to main notes field
-                console.log('✓ Updated outcome indicator:', indicator.id, 'from', previousValue, 'to', newValue, '(+' + incrementValue + ')', 'notes:', notes)
+                console.log(
+                  "✓ Updated outcome indicator:",
+                  indicator.id,
+                  "from",
+                  previousValue,
+                  "to",
+                  newValue,
+                  "(+" + incrementValue + ")",
+                  "notes:",
+                  notes,
+                  reportingYear ? `year:${reportingYear.label}` : ""
+                )
               }
             })
           }
@@ -814,15 +1142,32 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                     previousValue: previousValue,
                     updatedBy: currentUser,
                     updatedAt: now,
-                    notes: notes
+                    notes: notes,
+                    ...(reportingYear
+                      ? {
+                          reportingYearIndex: reportingYear.index,
+                          reportingYearLabel: reportingYear.label,
+                        }
+                      : {}),
                   })
-                  
+
                   // Update current progress tracking fields
                   indicator.current = newValue
                   indicator.lastUpdated = now
                   indicator.lastUpdatedBy = currentUser
                   indicator.notes = notes // Save the current notes to main notes field
-                  console.log('✓ Updated output indicator:', indicator.id, 'from', previousValue, 'to', newValue, '(+' + incrementValue + ')', 'notes:', notes)
+                  console.log(
+                    "✓ Updated output indicator:",
+                    indicator.id,
+                    "from",
+                    previousValue,
+                    "to",
+                    newValue,
+                    "(+" + incrementValue + ")",
+                    "notes:",
+                    notes,
+                    reportingYear ? `year:${reportingYear.label}` : ""
+                  )
                 }
               })
             }
@@ -833,102 +1178,6 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     
     console.log('Updated framework with cumulative values for indicator:', indicatorId)
     return framework
-  }
-
-  const handleQuickUpdate = async (indicatorId: string) => {
-    if (!quickUpdateValue) return
-
-    console.log('Attempting to update indicator:', indicatorId, 'with value:', quickUpdateValue)
-
-    try {
-      // Check if this is a sample indicator (not in database)
-      const indicator = filteredIndicators.find(ind => ind.id === indicatorId)
-      console.log('Found indicator:', indicator)
-      
-      // Check for any invalid UUID patterns
-      if (indicatorId.includes('sample-') || indicatorId === 'sample-1' || indicatorId === 'sample-2') {
-        console.log('Detected old sample indicator with invalid ID, updating local state only')
-        const updatedIndicators = indicators.map(ind => 
-          ind.id === indicatorId 
-            ? { ...ind, current: Number(quickUpdateValue) }
-            : ind
-        )
-        setIndicators(updatedIndicators)
-        setFilteredIndicators(updatedIndicators)
-        setEditingIndicator(null)
-        setQuickUpdateValue('')
-        return
-      }
-      
-      if (indicator && (indicator.name.includes('Number of Beneficiaries') || indicator.name.includes('Training Sessions') || indicator.name.includes('Boreholes') || indicator.name.includes('Water Quality'))) {
-        // This is a sample indicator, just update the local state
-        console.log('Sample indicator detected, updating local state only')
-        const updatedIndicators = indicators.map(ind => 
-          ind.id === indicatorId 
-            ? { ...ind, current: Number(quickUpdateValue) }
-            : ind
-        )
-        setIndicators(updatedIndicators)
-        setFilteredIndicators(updatedIndicators)
-        setEditingIndicator(null)
-        setQuickUpdateValue('')
-        return
-      }
-
-      // For real indicators from Results Framework, update the project's resultsFramework
-      if (selectedProjectId && resultsFramework) {
-        const clonedFramework = JSON.parse(JSON.stringify(resultsFramework))
-        const updatedFramework = updateIndicatorInFramework(clonedFramework, indicatorId, Number(quickUpdateValue), '')
-        
-        const response = await fetch(`/api/programs/projects/${selectedProjectId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            resultsFramework: updatedFramework
-          })
-        })
-
-        if (response.ok) {
-          setEditingIndicator(null)
-          setQuickUpdateValue('')
-          // Refresh the indicators from the updated framework
-          fetchResultsFramework(selectedProjectId)
-        }
-      }
-    } catch (err) {
-      console.error('Error updating indicator:', err)
-    }
-  }
-
-  const handleUpdateIndicator = async () => {
-    if (!selectedIndicator) return
-
-    try {
-      const response = await fetch(`/api/meal/indicators/${selectedIndicator.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          current: updateValue,
-          lastUpdated: new Date().toISOString()
-        }),
-      })
-
-      if (response.ok) {
-        // Refresh indicators from the project's Results Framework
-        if (selectedProjectId) {
-          fetchResultsFramework(selectedProjectId)
-        }
-        setShowUpdateModal(false)
-        setSelectedIndicator(null)
-        setUpdateValue(0)
-      }
-    } catch (err) {
-      console.error('Error updating indicator:', err)
-    }
   }
 
   const getStatusColor = (status: string) => {
@@ -950,8 +1199,99 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
   }
 
   const getProgressPercentage = (current: number, target: number) => {
+    if (!target || target <= 0) return 0
     return Math.min((current / target) * 100, 100)
   }
+
+  /** Denominator for cumulative %: all-years total when available, else current-year target. */
+  const getCumulativeProgressDenominator = (indicator: ProjectIndicator): number => {
+    if (typeof indicator.totalTarget === "number" && indicator.totalTarget > 0) {
+      return indicator.totalTarget
+    }
+    if (indicator.targetsByYear && indicator.targetsByYear.length > 0) {
+      const sum = indicator.targetsByYear.reduce((s, t) => s + t.value, 0)
+      if (sum > 0) return sum
+    }
+    const t = indicator.target
+    return t && t > 0 ? t : 0
+  }
+
+  const getCumulativeProgressPercentage = (indicator: ProjectIndicator) => {
+    const denom = getCumulativeProgressDenominator(indicator)
+    return getProgressPercentage(parseNumericValue(indicator.current), denom)
+  }
+
+  /** Normalized chart values (0–100%) so mixed units share one scale. */
+  const getIndicatorChartPercentages = (
+    indicator: ProjectIndicator,
+    period: "cumulative" | number
+  ) => {
+    if (period === "cumulative") {
+      const denom = getCumulativeProgressDenominator(indicator)
+      const cur = parseNumericValue(indicator.current)
+      return {
+        currentPct: getProgressPercentage(cur, denom),
+        targetPct: 100,
+        rawCurrent: cur,
+        rawTarget: denom,
+        periodLabel: "All years (cumulative)",
+      }
+    }
+    const targets = indicator.targetsByYear
+    const n = targets?.length ?? 0
+    if (n === 0) {
+      const t = indicator.target ?? 0
+      const cur = parseNumericValue(indicator.current)
+      return {
+        currentPct: getProgressPercentage(cur, t),
+        targetPct: 100,
+        rawCurrent: cur,
+        rawTarget: t,
+        periodLabel: "Reporting period",
+      }
+    }
+    const yi = Math.min(Math.max(0, period), n - 1)
+    const rows = computeYearlyProgressRows(indicator)
+    const row = rows[yi]
+    const tval = targets![yi].value
+    const prog = row?.progress != null ? row.progress : 0
+    return {
+      currentPct: getProgressPercentage(prog, tval),
+      targetPct: 100,
+      rawCurrent: prog,
+      rawTarget: tval,
+      periodLabel: targets![yi].label,
+    }
+  }
+
+  const progressChartYearOptions = useMemo(() => {
+    let maxN = 0
+    for (const ind of filteredIndicators) {
+      maxN = Math.max(maxN, ind.targetsByYear?.length ?? 0)
+    }
+    const labels: string[] = []
+    for (let j = 0; j < maxN; j++) {
+      const src = filteredIndicators.find(
+        (ind) => ind.targetsByYear && ind.targetsByYear[j]
+      )
+      labels.push(src?.targetsByYear![j].label ?? `Year ${j + 1}`)
+    }
+    return { maxN, labels }
+  }, [filteredIndicators])
+
+  useEffect(() => {
+    if (progressChartPeriod === "cumulative") return
+    const { maxN } = progressChartYearOptions
+    if (maxN === 0) {
+      setProgressChartPeriod("cumulative")
+      return
+    }
+    if (progressChartPeriod < 0 || progressChartPeriod >= maxN) {
+      setProgressChartPeriod(
+        Math.max(0, Math.min(progressChartPeriod, maxN - 1))
+      )
+    }
+  }, [progressChartYearOptions, progressChartPeriod])
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -962,18 +1302,138 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
     }
   }
 
-  // Chart data preparation with numbered labels
-  const chartData = filteredIndicators.map((indicator, index) => ({
-    name: `Indicator ${index + 1}`,
-    fullName: indicator.name,
-    current: indicator.current,
-    target: indicator.target,
-    progress: getProgressPercentage(indicator.current, indicator.target)
-  }))
+  const chartData = useMemo(() => {
+    return filteredIndicators.map((indicator, index) => {
+      const stats = getIndicatorChartPercentages(
+        indicator,
+        progressChartPeriod
+      )
+      return {
+        name: `Indicator ${index + 1}`,
+        fullName: indicator.name,
+        current: stats.currentPct,
+        target: stats.targetPct,
+        progress: stats.currentPct,
+        rawCurrent: stats.rawCurrent,
+        rawTarget: stats.rawTarget,
+        unit: indicator.unit || "",
+        periodLabel: stats.periodLabel,
+      }
+    })
+  }, [filteredIndicators, progressChartPeriod])
 
-  const totalSelectedCurrentYearTarget = selectedIndicatorDetails.reduce((sum, indicator) => {
-    return sum + (indicator.target || 0)
+  const selectedProjectRow = useMemo(
+    () => projects.find((p) => p.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId]
+  )
+
+  const indicatorDerivedStatus = useMemo(() => {
+    const map = new Map<string, ProjectIndicator["status"]>()
+    const fwDur = resultsFramework?.projectDuration as number | undefined
+    for (const ind of filteredIndicators) {
+      const proj =
+        projects.find((p) => p.id === ind.projectId) ?? selectedProjectRow
+      const durForInd =
+        selectedProjectId && ind.projectId === selectedProjectId
+          ? fwDur
+          : undefined
+      map.set(
+        ind.id,
+        computeDerivedIndicatorStatus(
+          ind,
+          progressChartPeriod,
+          proj,
+          durForInd
+        )
+      )
+    }
+    return map
+  }, [
+    filteredIndicators,
+    progressChartPeriod,
+    projects,
+    selectedProjectRow,
+    selectedProjectId,
+    resultsFramework?.projectDuration,
+  ])
+
+  const statusTally = useMemo(() => {
+    const tallies = {
+      "on-track": 0,
+      behind: 0,
+      ahead: 0,
+      completed: 0,
+    }
+    for (const ind of filteredIndicators) {
+      const s = indicatorDerivedStatus.get(ind.id) ?? ind.status
+      tallies[s]++
+    }
+    return tallies
+  }, [filteredIndicators, indicatorDerivedStatus])
+
+  const statusPieSlices: StatusPieRow[] = useMemo(() => {
+    const order: ProjectIndicator["status"][] = [
+      "on-track",
+      "behind",
+      "ahead",
+      "completed",
+    ]
+    const titles: Record<ProjectIndicator["status"], string> = {
+      "on-track": "On track",
+      behind: "Behind",
+      ahead: "Ahead",
+      completed: "Completed",
+    }
+    return order.map((statusKey) => {
+      const items = filteredIndicators
+        .filter(
+          (ind) =>
+            (indicatorDerivedStatus.get(ind.id) ?? ind.status) === statusKey
+        )
+        .map((ind) => {
+          const base = { id: ind.id, name: ind.name }
+          if (statusKey !== "completed") return base
+          const tt = programmeTotalTarget(ind)
+          const cur = parseNumericValue(ind.current)
+          const detail =
+            tt > 0
+              ? `${cur.toLocaleString()} / ${tt.toLocaleString()}${ind.unit ? ` ${ind.unit}` : ""}`
+              : undefined
+          return { ...base, detail }
+        })
+      return {
+        statusKey,
+        name: titles[statusKey],
+        value: statusTally[statusKey],
+        fill: STATUS_PIE_COLORS[statusKey],
+        items,
+      }
+    })
+  }, [filteredIndicators, indicatorDerivedStatus, statusTally])
+
+  const statusPieChartData = useMemo(
+    () => statusPieSlices.filter((s) => s.value > 0),
+    [statusPieSlices]
+  )
+
+  const totalSelectedReportingYearTarget = selectedIndicatorDetails.reduce((sum, indicator) => {
+    return sum + getTargetForYearIndex(indicator, bulkUpdateYearIndex).value
   }, 0)
+
+  const bulkYearMaxIndex = (() => {
+    if (selectedIndicatorDetails.length === 0) {
+      const fromList = filteredIndicators.map((i) =>
+        Math.max(0, (i.targetsByYear?.length ?? 1) - 1)
+      )
+      return Math.max(0, ...fromList, 0)
+    }
+    return Math.max(
+      0,
+      ...selectedIndicatorDetails.map((i) =>
+        Math.max(0, (i.targetsByYear?.length ?? 1) - 1)
+      )
+    )
+  })()
 
   const totalSelectedAllYearsTarget = selectedIndicatorDetails.reduce((sum, indicator) => {
     return sum + (indicator.totalTarget || indicator.target || 0)
@@ -1006,13 +1466,6 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         : `${objective} → ${outcome}`
     }
   })
-
-  const statusData = [
-    { name: 'On Track', value: filteredIndicators.filter(i => i.status === 'on-track').length },
-    { name: 'Behind', value: filteredIndicators.filter(i => i.status === 'behind').length },
-    { name: 'Ahead', value: filteredIndicators.filter(i => i.status === 'ahead').length },
-    { name: 'Completed', value: filteredIndicators.filter(i => i.status === 'completed').length }
-  ]
 
   const categoryData = [
     { name: 'Output', value: filteredIndicators.filter(i => i.category === 'output').length },
@@ -1146,7 +1599,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
           <div className="flex items-center space-x-2">
             <div className="flex space-x-3">
               <button
-                onClick={() => setShowBulkUpdate(true)}
+                onClick={openBulkUpdateModal}
                 className="flex items-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg shadow-md transition-all transform hover:scale-105"
               >
                 <PencilIcon className="h-4 w-4 mr-2" />
@@ -1185,7 +1638,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">On Track</p>
               <p className="text-4xl font-bold text-green-600">
-                {filteredIndicators.filter(i => i.status === 'on-track').length}
+                {statusTally["on-track"]}
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
@@ -1200,7 +1653,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             <div>
               <p className="text-sm font-medium text-gray-600 mb-1">Behind</p>
               <p className="text-4xl font-bold text-gray-700">
-                {filteredIndicators.filter(i => i.status === 'behind').length}
+                {statusTally.behind}
               </p>
             </div>
             <div className="p-3 bg-gray-100 rounded-lg">
@@ -1215,7 +1668,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             <div>
               <p className="text-sm font-medium text-green-100 mb-1">Completed</p>
               <p className="text-4xl font-bold text-white">
-                {filteredIndicators.filter(i => i.status === 'completed').length}
+                {statusTally.completed}
               </p>
             </div>
             <div className="p-3 bg-white bg-opacity-20 rounded-lg">
@@ -1225,48 +1678,110 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Charts Section — max height so left legend can’t grow the row unbounded (enables scroll) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:items-stretch lg:min-h-0">
         {/* Progress Chart */}
-        <div className="bg-white rounded-xl shadow-lg border-t-4 border-orange-500 p-6">
-          <div className="flex items-center mb-4">
-            <div className="p-2 bg-orange-100 rounded-lg mr-3">
-              <ChartBarIcon className="h-5 w-5 text-orange-600" />
+        <div className="bg-white rounded-xl shadow-lg border-t-4 border-orange-500 p-6 pb-7 flex flex-col min-h-0 h-full max-h-[calc(100dvh-7.5rem)] sm:max-h-[calc(100dvh-8.5rem)] lg:max-h-[calc(100dvh-9.5rem)] overflow-hidden">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4 shrink-0">
+            <div className="flex items-center min-w-0">
+              <div className="p-2 bg-orange-100 rounded-lg mr-3 shrink-0">
+                <ChartBarIcon className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Indicator progress (% of target)
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Bars use one scale (0–100%). Orange = attainment; gray = full target for the
+                  selected period. Raw values differ by unit.
+                </p>
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-gray-900">Indicator Progress</h3>
+            {progressChartYearOptions.maxN > 0 ? (
+              <label className="flex items-center gap-2 text-sm text-gray-700 shrink-0">
+                <span className="font-medium whitespace-nowrap">Period</span>
+                <select
+                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white min-w-[10rem]"
+                  value={
+                    progressChartPeriod === "cumulative"
+                      ? "cumulative"
+                      : String(progressChartPeriod)
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setProgressChartPeriod(
+                      v === "cumulative" ? "cumulative" : Number(v)
+                    )
+                  }}
+                >
+                  <option value="cumulative">All years (cumulative)</option>
+                  {progressChartYearOptions.labels.map((label, idx) => (
+                    <option key={idx} value={String(idx)}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
           </div>
-          <ResponsiveContainer width="100%" height={300}>
+          <div className="w-full shrink-0" style={{ height: 300 }}>
+            <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" angle={0} textAnchor="middle" />
-              <YAxis />
+              <YAxis
+                domain={[0, 100]}
+                tickFormatter={(v) => `${v}%`}
+                width={44}
+              />
               <Tooltip 
                 content={({ active, payload }: any) => {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload
+                    const u = data.unit ? ` ${data.unit}` : ""
                     return (
-                      <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
+                      <div className="bg-white p-3 border border-gray-200 rounded shadow-lg max-w-xs">
                         <p className="font-semibold text-sm text-gray-900">{data.fullName}</p>
-                        <p className="text-xs text-blue-600">Current: {data.current}</p>
-                        <p className="text-xs text-gray-600">Target: {data.target}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{data.periodLabel}</p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          Attainment: {Number(data.current).toFixed(1)}% of target
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Target bar: {Number(data.target).toFixed(0)}% (normalized)
+                        </p>
+                        <p className="text-xs text-gray-500 mt-2 border-t border-gray-100 pt-2">
+                          Raw: {Number(data.rawCurrent).toLocaleString()}
+                          {u} / {Number(data.rawTarget).toLocaleString()}
+                          {u}
+                        </p>
                       </div>
                     )
                   }
                   return null
                 }}
               />
-              <Bar dataKey="current" fill="#F97316" name="Current" />
-              <Bar dataKey="target" fill="#D1D5DB" name="Target" />
+              <Bar dataKey="current" fill="#F97316" name="Attainment %" />
+              <Bar dataKey="target" fill="#D1D5DB" name="100% target" />
             </BarChart>
-          </ResponsiveContainer>
+            </ResponsiveContainer>
+          </div>
           
-          {/* Legend - Grouped by Objective and Outcome */}
-          <div className="mt-4 max-h-48 overflow-y-auto border-t-2 border-orange-200 pt-3 bg-gradient-to-b from-orange-50 to-white p-3 rounded-lg">
-            <h4 className="text-xs font-bold text-orange-600 mb-3 flex items-center">
-              <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
-              Indicator Legend (by Objective → Outcome):
+          {/* Legend: fills remaining card height; inner list scrolls */}
+          <div className="mt-4 flex flex-col flex-1 min-h-0 border-t-2 border-orange-200 pt-3 bg-gradient-to-b from-orange-50 to-white p-3 rounded-lg overflow-hidden">
+            <h4 className="text-xs font-bold text-orange-600 mb-2 flex items-center shrink-0 bg-gradient-to-b from-orange-50 to-orange-50/95 pb-2 -mt-1 pt-1 border-b border-orange-200/60">
+              <span className="w-2 h-2 bg-orange-500 rounded-full mr-2 shrink-0"></span>
+              Indicator Legend (by Objective → Outcome)
+              <span className="ml-2 font-normal text-orange-600/80 normal-case">
+                — scroll
+              </span>
             </h4>
-            <div className="space-y-3 text-xs">
+            <div
+              className="space-y-3 text-xs leading-relaxed flex-1 overflow-y-auto overscroll-y-contain pr-1 touch-pan-y [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-orange-300/90 [&::-webkit-scrollbar-track]:bg-orange-100/50 min-h-[9rem]"
+              style={{
+                flex: "1 1 0%",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
               {(() => {
                 // Group indicators by objective and outcome
                 const grouped: any = {}
@@ -1311,64 +1826,114 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         </div>
 
         {/* Status Distribution */}
-        <div className="bg-white rounded-xl shadow-lg border-t-4 border-green-500 p-6">
-          <div className="flex items-center mb-4">
-            <div className="p-2 bg-green-100 rounded-lg mr-3">
+        <div className="bg-white rounded-xl shadow-lg border-t-4 border-green-500 p-6 pb-7 flex flex-col min-h-0 h-full max-h-[calc(100dvh-7.5rem)] sm:max-h-[calc(100dvh-8.5rem)] lg:max-h-[calc(100dvh-9.5rem)] overflow-x-hidden overflow-y-auto">
+          <div className="flex items-start mb-4 shrink-0">
+            <div className="p-2 bg-green-100 rounded-lg mr-3 shrink-0">
               <CheckCircleIcon className="h-5 w-5 text-green-600" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900">Status Distribution</h3>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Status Distribution</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Uses the same <span className="font-medium">Period</span> as the indicator bar chart.
+                Compares achievement to expected progress along the project timeline (linear baseline).
+              </p>
+            </div>
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={statusData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent, value }: any) => value > 0 ? `${name}: ${value}` : ''}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {statusData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip 
-                content={({ active, payload }: any) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0]
-                    return (
-                      <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
-                        <p className="font-semibold text-sm text-gray-900">{data.name}</p>
-                        <p className="text-xs text-gray-600">Count: {data.value} indicators</p>
-                        <p className="text-xs text-gray-500">
-                          {((data.value / filteredIndicators.length) * 100).toFixed(1)}% of total
-                        </p>
-                      </div>
-                    )
-                  }
-                  return null
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          
-          {/* Status Legend */}
-          <div className="mt-4 border-t-2 border-green-200 pt-3 bg-gradient-to-b from-green-50 to-white p-3 rounded-lg">
+
+          {statusPieChartData.length > 0 ? (
+            <div className="w-full flex justify-center shrink-0">
+              <div className="relative w-full max-w-[min(100%,320px)] aspect-square rounded-lg bg-gray-50/40 box-border">
+                <div className="absolute inset-0 min-h-0 p-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                      <Pie
+                        data={statusPieChartData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        isAnimationActive={true}
+                        innerRadius={0}
+                        outerRadius="78%"
+                        dataKey="value"
+                      >
+                      {statusPieChartData.map((entry) => (
+                        <Cell
+                          key={entry.statusKey}
+                          fill={entry.fill}
+                          stroke="#fff"
+                          strokeWidth={1}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={({ active, payload }: any) => {
+                        if (!active || !payload?.length) return null
+                        const row = payload[0].payload as StatusPieRow
+                        const total = filteredIndicators.length || 1
+                        const pct = ((row.value / total) * 100).toFixed(1)
+                        return (
+                          <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg max-w-sm">
+                            <p className="font-semibold text-sm text-gray-900">
+                              {row.value} {row.name}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {pct}% of indicators
+                            </p>
+                            {row.items.length > 0 && (
+                              <ul className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-700 max-h-48 overflow-y-auto space-y-2">
+                                {row.items.map((item) => (
+                                  <li key={item.id}>
+                                    <span className="font-medium text-gray-900">
+                                      {item.name}
+                                    </span>
+                                    {item.detail ? (
+                                      <div className="text-[11px] text-gray-500 mt-0.5 pl-0">
+                                        Achieved vs programme target:{" "}
+                                        {item.detail}
+                                      </div>
+                                    ) : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )
+                      }}
+                    />
+                  </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="min-h-[160px] w-full flex items-center justify-center text-sm text-gray-500 rounded-lg border border-dashed border-gray-200 shrink-0">
+              No indicators to chart
+            </div>
+          )}
+
+          <div className="w-full shrink-0 border-t-2 border-green-200 bg-gradient-to-b from-green-50 to-white rounded-lg px-3 pt-3 pb-3 mt-4">
             <h4 className="text-xs font-bold text-green-600 mb-3 flex items-center">
-              <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-              Status Breakdown:
+              <span className="w-2 h-2 bg-green-500 rounded-full mr-2 shrink-0"></span>
+              Status breakdown
             </h4>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              {statusData.map((item, index) => (
-                <div key={item.name} className="flex items-center bg-white p-2 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                  <div 
-                    className="w-4 h-4 rounded-full mr-2 shadow-inner" 
-                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full">
+              {statusPieSlices.map((item) => (
+                <div
+                  key={item.statusKey}
+                  className="flex items-center gap-2 w-full min-w-0 bg-white rounded-lg shadow-sm border border-green-100/90 px-3 py-3 hover:shadow-md transition-shadow"
+                >
+                  <div
+                    className="w-3.5 h-3.5 rounded-full shrink-0 shadow-inner ring-1 ring-black/5"
+                    style={{ backgroundColor: item.fill }}
                   />
-                  <span className="text-gray-800 font-medium">{item.name}:</span>
-                  <span className="ml-1 font-bold text-black">{item.value}</span>
+                  <div className="flex flex-col min-w-0 flex-1 leading-tight">
+                    <span className="text-[11px] sm:text-xs font-semibold text-gray-700 capitalize truncate">
+                      {item.name}
+                    </span>
+                    <span className="text-base font-bold text-gray-900 tabular-nums">
+                      {item.value}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1385,7 +1950,9 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             </div>
             <div>
               <h3 className="text-xl font-bold text-black">Project Indicators Progress Update</h3>
-              <p className="text-sm text-gray-600 mt-1">Enter <span className="font-semibold text-orange-600">incremental progress</span> for each indicator - values will be <span className="font-semibold text-green-600">added</span> to current totals</p>
+              <p className="text-sm text-gray-600 mt-1">
+                Add progress only via <span className="font-semibold text-green-600">Bulk Update</span> (choose the reporting year there). Yearly Progress below shows totals per period where tagged in the audit trail; legacy data appears on the calendar current year until split.
+              </p>
             </div>
           </div>
         </div>
@@ -1400,11 +1967,11 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                 <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-32">
                   Target
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-40">
-                  Current Progress
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[200px]">
+                  Yearly Progress
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-32">
-                  Progress %
+                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-36">
+                  Cumulative Progress
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider w-28">
                   Status
@@ -1419,8 +1986,7 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredIndicators.map((indicator) => {
-                const project = projects.find(p => p.id === indicator.projectId)
-                const progressPercentage = getProgressPercentage(indicator.current, indicator.target)
+                const progressPercentage = getCumulativeProgressPercentage(indicator)
                 
                 return (
                   <tr key={indicator.id} className="hover:bg-orange-50 transition-colors border-b border-gray-100">
@@ -1471,56 +2037,59 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingIndicator === indicator.id ? (
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="number"
-                            value={quickUpdateValue}
-                            onChange={(e) => setQuickUpdateValue(e.target.value)}
-                            className="w-20 px-3 py-1.5 text-sm font-medium border-2 border-orange-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-orange-50"
-                            placeholder="Add..."
-                            autoFocus
-                          />
-                          <span className="text-xs font-medium text-gray-600">{indicator.unit}</span>
-                          <button
-                            onClick={() => handleQuickUpdate(indicator.id)}
-                            className="p-1 bg-green-500 text-white rounded-lg hover:bg-green-600 shadow-md transition-all"
-                            title="Save increment"
-                          >
-                            <CheckCircleIcon className="h-5 w-5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingIndicator(null)
-                              setQuickUpdateValue('')
-                            }}
-                            className="p-1 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all"
-                            title="Cancel"
-                          >
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-bold text-black">
-                            {indicator.current}
-                          </span>
-                          <span className="text-xs text-gray-600">{indicator.unit}</span>
-                          <button
-                            onClick={() => {
-                              setEditingIndicator(indicator.id)
-                              setQuickUpdateValue('') // Start with empty for increment
-                            }}
-                            className="p-1 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-colors"
-                            title="Add increment"
-                          >
-                            <PlusIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
+                    <td className="px-6 py-4 align-top whitespace-normal">
+                      <div className="text-xs space-y-1.5 bg-gray-50 border border-gray-200 rounded-lg p-2 max-w-xs">
+                        {computeYearlyProgressRows(indicator).map((row) => {
+                          const pct =
+                            row.target > 0 && row.progress != null
+                              ? Math.min(
+                                  (row.progress / row.target) * 100,
+                                  100
+                                )
+                              : null
+                          return (
+                            <div
+                              key={row.label}
+                              className="flex flex-col border-b border-gray-100 last:border-0 pb-1.5 last:pb-0"
+                            >
+                              <div className="flex justify-between gap-2 text-gray-700">
+                                <span className="font-medium text-gray-800 shrink-0">
+                                  {row.label}
+                                </span>
+                                <span className="text-right tabular-nums">
+                                  {row.progress == null ? (
+                                    <span className="text-gray-400">—</span>
+                                  ) : (
+                                    <>
+                                      <span className="font-semibold text-black">
+                                        {row.progress}
+                                      </span>
+                                      <span className="text-gray-500 ml-1">
+                                        {indicator.unit}
+                                      </span>
+                                    </>
+                                  )}
+                                </span>
+                              </div>
+                              {row.target > 0 && (
+                                <div className="text-[10px] text-gray-500 mt-0.5">
+                                  Target {row.target.toLocaleString()}{" "}
+                                  {indicator.unit}
+                                  {pct != null && row.progress != null
+                                    ? ` · ${Math.round(pct)}%`
+                                    : ""}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-[10px] text-gray-500 mt-2 max-w-xs">
+                        Cumulative total:{" "}
+                        <span className="font-semibold text-gray-700">
+                          {indicator.current} {indicator.unit}
+                        </span>
+                      </p>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -1535,13 +2104,23 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                           ></div>
                         </div>
                         <span className="text-sm font-bold text-gray-900">
-                          {Math.round(progressPercentage)}%
+                          {progressPercentage.toFixed(1)}%
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm ${getStatusColor(indicator.status)}`}>
-                        {indicator.status.replace('-', ' ').toUpperCase()}
+                      <span
+                        className={`inline-flex px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm ${getStatusColor(
+                          indicatorDerivedStatus.get(indicator.id) ??
+                            indicator.status
+                        )}`}
+                      >
+                        {(
+                          indicatorDerivedStatus.get(indicator.id) ??
+                          indicator.status
+                        )
+                          .replace("-", " ")
+                          .toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -1576,118 +2155,6 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
         </div>
       </div>
 
-      {/* Enhanced Update Modal */}
-      {showUpdateModal && selectedIndicator && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-6 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Update Indicator Progress</h3>
-                <button
-                  onClick={() => setShowUpdateModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="space-y-6">
-                {/* Indicator Details */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">{selectedIndicator.name}</h4>
-                  <p className="text-sm text-gray-600 mb-3">{selectedIndicator.description}</p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500">Category:</span>
-                      <span className="ml-2 font-medium capitalize">{selectedIndicator.category}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Unit:</span>
-                      <span className="ml-2 font-medium">{selectedIndicator.unit}</span>
-                    </div>
-                    {selectedIndicator.baseline && (
-                      <div>
-                        <span className="text-gray-500">Baseline:</span>
-                        <span className="ml-2 font-medium">{selectedIndicator.baseline} {selectedIndicator.baselineUnit}</span>
-                      </div>
-                    )}
-                    {selectedIndicator.monitoringMethod && (
-                      <div>
-                        <span className="text-gray-500">Monitoring:</span>
-                        <span className="ml-2 font-medium">{selectedIndicator.monitoringMethod}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Progress Update */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Current Progress
-                  </label>
-                  <div className="text-sm text-gray-500 mb-4">
-                    Current: {selectedIndicator.current} / Target: {selectedIndicator.target} {selectedIndicator.unit}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">New Value</label>
-                      <input
-                        type="number"
-                        value={updateValue}
-                        onChange={(e) => setUpdateValue(Number(e.target.value))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Enter new value"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Progress %</label>
-                      <div className="px-3 py-2 bg-gray-100 rounded-md text-sm">
-                        {selectedIndicator.target > 0 ? Math.round((updateValue / selectedIndicator.target) * 100) : 0}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Update Notes (Optional)
-                  </label>
-                  <textarea
-                    value={updateNotes}
-                    onChange={(e) => setUpdateNotes(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Add any notes about this update..."
-                  />
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex justify-end space-x-3 pt-4 border-t">
-                  <button
-                    onClick={() => {
-                      setShowUpdateModal(false)
-                      setUpdateNotes('')
-                    }}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleUpdateIndicator}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Update Progress
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Bulk Update Modal */}
       {showBulkUpdate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -1696,7 +2163,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-black">Bulk Update Indicators</h3>
                 <button
-                  onClick={() => setShowBulkUpdate(false)}
+                  onClick={() => {
+                    setShowBulkUpdate(false)
+                    setBulkUpdateYearIndex(0)
+                  }}
                   className="text-gray-400 hover:text-red-500 transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1765,10 +2235,24 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                                   <div className="font-medium text-gray-700">Yearly Breakdown:</div>
                                   <div className="grid grid-cols-2 gap-1 mt-1">
                                     {indicator.targetsByYear.map(({ label, value }, index) => {
-                                      const isCurrent = indicator.currentYearIndex === index
+                                      const isCalendarCurrent =
+                                        indicator.currentYearIndex === index
+                                      const isBulkYear = bulkUpdateYearIndex === index
                                       return (
-                                        <div key={label} className={`flex justify-between ${isCurrent ? 'text-gray-900 font-semibold' : 'text-gray-600'}`}>
-                                          <span>{label}</span>
+                                        <div
+                                          key={label}
+                                          className={`flex justify-between rounded px-1 ${
+                                            isBulkYear
+                                              ? "bg-orange-100 text-orange-900 font-semibold ring-1 ring-orange-300"
+                                              : isCalendarCurrent
+                                                ? "text-gray-900 font-semibold"
+                                                : "text-gray-600"
+                                          }`}
+                                        >
+                                          <span>
+                                            {label}
+                                            {isBulkYear ? " · updating" : ""}
+                                          </span>
                                           <span>{value}</span>
                                         </div>
                                       )
@@ -1811,10 +2295,55 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                             </div>
                           ))}
                         </div>
+
+                        <div className="mt-3 mb-3">
+                          <label
+                            htmlFor="bulk-reporting-year"
+                            className="block text-sm font-semibold text-blue-900 mb-1"
+                          >
+                            Reporting year for this update
+                          </label>
+                          <p className="text-xs text-blue-800/90 mb-2">
+                            Defaults to the current project year from start dates. Choose another year
+                            to backfill or correct data for older periods.
+                          </p>
+                          <select
+                            id="bulk-reporting-year"
+                            value={bulkUpdateYearIndex}
+                            onChange={(e) =>
+                              setBulkUpdateYearIndex(Number(e.target.value))
+                            }
+                            className="w-full max-w-md px-3 py-2 border border-blue-200 rounded-md text-sm font-medium text-gray-900 bg-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          >
+                            {Array.from({ length: bulkYearMaxIndex + 1 }, (_, i) => {
+                              const src =
+                                selectedIndicatorDetails.find(
+                                  (ind) => ind.targetsByYear?.[i]
+                                ) ??
+                                filteredIndicators.find(
+                                  (ind) => ind.targetsByYear?.[i]
+                                )
+                              const lab =
+                                src?.targetsByYear?.[i]?.label ??
+                                `Period ${i + 1}`
+                              return (
+                                <option key={i} value={i}>
+                                  {lab}
+                                </option>
+                              )
+                            })}
+                          </select>
+                        </div>
+
                         <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-blue-900">
                           <div className="bg-white border border-blue-200 rounded-md p-3 shadow-sm">
-                            <div className="font-semibold text-blue-900">Current Year Target Total</div>
-                            <div className="text-base font-bold">{totalSelectedCurrentYearTarget.toLocaleString()} {bulkUnitsLabel}</div>
+                            <div className="font-semibold text-blue-900">
+                              Target total (selected year)
+                            </div>
+                            <div className="text-base font-bold">
+                              {totalSelectedReportingYearTarget.toLocaleString()}{" "}
+                              {bulkUnitsLabel}
+                            </div>
                           </div>
                           <div className="bg-white border border-blue-200 rounded-md p-3 shadow-sm">
                             <div className="font-semibold text-blue-900">All Years Target Total</div>
@@ -1855,7 +2384,21 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                                 <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-3">
                                   <div className="font-semibold text-gray-800 mb-1">Targets</div>
-                                  <div>Current Year Target{indicator.currentYearLabel ? ` (${indicator.currentYearLabel})` : ''}: <span className="font-medium text-gray-900">{indicator.target} {indicator.unit}</span></div>
+                                  <div>
+                                    Selected year target (
+                                    {getTargetForYearIndex(indicator, bulkUpdateYearIndex).label}):{" "}
+                                    <span className="font-medium text-gray-900">
+                                      {getTargetForYearIndex(indicator, bulkUpdateYearIndex).value}{" "}
+                                      {indicator.unit}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 text-gray-500">
+                                    Calendar current year (
+                                    {indicator.currentYearLabel || "—"}):{" "}
+                                    <span className="font-medium text-gray-800">
+                                      {indicator.target} {indicator.unit}
+                                    </span>
+                                  </div>
                                   {typeof indicator.totalTarget === 'number' && indicator.totalTarget > indicator.target && (
                                     <div>Total Across Years: <span className="font-medium text-gray-900">{indicator.totalTarget} {indicator.unit}</span></div>
                                   )}
@@ -1865,11 +2408,21 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
                                     <div className="font-semibold text-gray-800 mb-1">Yearly Breakdown</div>
                                     <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
                                       {indicator.targetsByYear.map(({ label, value }, index) => {
-                                        const isCurrent = indicator.currentYearIndex === index
+                                        const isCalendarCurrent = indicator.currentYearIndex === index
+                                        const isBulkYear = bulkUpdateYearIndex === index
                                         return (
-                                          <div key={label} className={`flex justify-between ${isCurrent ? 'text-gray-900 font-semibold' : ''}`}>
-                                            <span>{label}</span>
-                                            <span className={`${isCurrent ? 'text-gray-900' : 'text-gray-700'} font-medium`}>{value} {indicator.unit}</span>
+                                          <div
+                                            key={label}
+                                            className={`flex justify-between rounded px-1 ${
+                                              isBulkYear
+                                                ? "bg-orange-100 text-orange-900 font-semibold"
+                                                : isCalendarCurrent
+                                                  ? "text-gray-900 font-semibold"
+                                                  : ""
+                                            }`}
+                                          >
+                                            <span>{label}{isBulkYear ? " · updating" : ""}</span>
+                                            <span className="font-medium">{value} {indicator.unit}</span>
                                           </div>
                                         )
                                       })}
@@ -1923,7 +2476,10 @@ export function ProjectIndicators({ permissions, onProjectSelect, selectedProjec
 
                 <div className="flex justify-end space-x-3 pt-4 border-t">
                   <button
-                    onClick={() => setShowBulkUpdate(false)}
+                    onClick={() => {
+                      setShowBulkUpdate(false)
+                      setBulkUpdateYearIndex(0)
+                    }}
                     className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                   >
                     Cancel

@@ -7,33 +7,12 @@ import AuditLogger from "@/lib/audit-logger"
 import { isTwoFactorEnabled, verifyTwoFactorToken, verifyAndConsumeBackupCode } from "@/lib/two-factor-auth"
 import { createOrUpdateSession, checkSessionIdle, checkSessionAbsoluteTimeout } from "@/lib/session-manager"
 import { validateIPAccess } from "@/lib/ip-security"
+import { normalizeRoleName } from "@/lib/role-names"
 
 // Development users REMOVED for security
 // All authentication now uses database only with proper password hashing
 // Users must be created through the admin panel or database migrations
 const developmentUsers: any[] = []
-
-// Helper function to normalize role names to handle different formats
-function normalizeRoleName(role: string): string {
-  if (!role) return 'BASIC_USER_1'
-  // Uppercase and unify common separators to underscore
-  const upper = role.trim().toUpperCase().replace(/[-\s]+/g, '_')
-
-  // Map common role variations to standard names
-  const roleMap: Record<string, string> = {
-    'SUPERUSER': 'SYSTEM_ADMINISTRATOR',
-    'ADMIN': 'SYSTEM_ADMINISTRATOR',
-    'ADMINISTRATOR': 'SYSTEM_ADMINISTRATOR',
-    'SYS_ADMIN': 'SYSTEM_ADMINISTRATOR',
-    'SYSTEM_ADMIN': 'SYSTEM_ADMINISTRATOR',
-    'SYSTEM_ADMINISTRATOR': 'SYSTEM_ADMINISTRATOR',
-    'HR_MANAGER': 'HR',
-    'HR_OFFICER': 'HR',
-    'HUMAN_RESOURCES': 'HR'
-  }
-
-  return roleMap[upper] || upper
-}
 
 // Get union permissions for multiple roles
 function getPermissionsForRoles(roles: string[] | undefined | null, department: string): string[] {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isProgramsSystemAdministrator } from "@/lib/programs/system-administrator"
 
 // PUT - Update existing draft
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -79,12 +80,17 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const { id } = await params
 
     try {
-      await prisma.projectDraft.delete({
-        where: {
-          id: id,
-          userId: session.user.id // Ensure user can only delete their own drafts
-        }
-      })
+      const isAdmin = isProgramsSystemAdministrator(session.user)
+      if (isAdmin) {
+        await prisma.projectDraft.delete({ where: { id } })
+      } else {
+        await prisma.projectDraft.delete({
+          where: {
+            id,
+            userId: session.user.id,
+          },
+        })
+      }
 
       return NextResponse.json({ 
         success: true 

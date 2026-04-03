@@ -350,8 +350,8 @@ const BulkActions: React.FC<BulkActionsProps> = ({
               </button>
             )}
 
-            {/* Delete */}
-            {permissions?.canDelete && (
+            {/* Delete — System Administrator only (API-enforced) */}
+            {permissions?.canDeleteProjectsAsSystemAdmin && (
               <button
                 onClick={() => {
                   if (confirm(`Are you sure you want to delete ${selectedCount} project(s)? This action cannot be undone.`)) {
@@ -382,7 +382,9 @@ const BulkActions: React.FC<BulkActionsProps> = ({
         <div className="text-xs text-gray-600">
           <span className="font-medium">Available actions:</span>
           {permissions?.canEdit && <span className="ml-1">Edit, </span>}
-          {permissions?.canDelete && <span>Delete, </span>}
+          {permissions?.canDeleteProjectsAsSystemAdmin && (
+            <span>Delete (System Admin), </span>
+          )}
           <span>Export, Generate Reports</span>
           {selectedCount > 1 && (
             <span className="ml-2 text-blue-600">

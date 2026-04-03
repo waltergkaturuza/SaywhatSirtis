@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { isProgramsSystemAdministrator } from '@/lib/programs/system-administrator'
 
 export async function GET(
   request: NextRequest,
@@ -164,6 +165,13 @@ export async function DELETE(
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!isProgramsSystemAdministrator(session.user)) {
+      return NextResponse.json(
+        { error: 'Forbidden', message: 'Only System Administrators can delete projects.' },
+        { status: 403 }
+      )
     }
 
     const { id: projectId } = await params
