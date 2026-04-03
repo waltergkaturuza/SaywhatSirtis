@@ -41,7 +41,13 @@ interface AssetsManagementProps {
 }
 
 type DeptRow = { id: string; name: string; parentId?: string | null }
-type EmpRow = { id: string; firstName?: string; lastName?: string; email?: string }
+type EmpRow = {
+  id: string
+  firstName?: string
+  lastName?: string
+  email?: string
+  user?: { id: string }
+}
 
 function matchDepartmentSelectValue(stored: string | undefined, depts: DeptRow[]) {
   if (!stored) return undefined
@@ -52,26 +58,37 @@ function matchDepartmentSelectValue(stored: string | undefined, depts: DeptRow[]
 
 function matchEmployeeSelectValue(stored: string | undefined, emps: EmpRow[]) {
   if (!stored) return undefined
-  if (emps.some((e) => e.id === stored)) return stored
-  const byEmail = emps.find((e) => e.email === stored)
+  const t = stored.trim()
+  if (emps.some((e) => e.id === t)) return t
+  const byUser = emps.find((e) => e.user?.id === t)
+  if (byUser) return byUser.id
+  const byEmail = emps.find((e) => e.email?.toLowerCase() === t.toLowerCase())
   if (byEmail) return byEmail.id
-  const trimmed = stored.trim()
   const byLabel = emps.find(
-    (e) => `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() === trimmed
+    (e) => `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() === t
   )
   return byLabel?.id
 }
 
 function formatDepartmentLabel(stored: string | undefined, depts: DeptRow[]) {
   if (!stored) return "-"
-  const d = depts.find((x) => x.id === stored)
-  if (d) return d.name
+  const s = stored.trim()
+  const d =
+    depts.find((x) => x.id === s) ||
+    depts.find((x) => x.name === s) ||
+    depts.find((x) => x.id.toLowerCase() === s.toLowerCase())
+  if (d) return d.parentId ? `└ ${d.name}` : d.name
   return stored
 }
 
 function formatEmployeeLabel(stored: string | undefined, emps: EmpRow[]) {
   if (!stored) return "-"
-  const e = emps.find((x) => x.id === stored)
+  const s = stored.trim()
+  const e =
+    emps.find((x) => x.id === s) ||
+    emps.find((x) => x.user?.id === s) ||
+    emps.find((x) => x.email?.toLowerCase() === s.toLowerCase()) ||
+    emps.find((x) => `${x.firstName ?? ""} ${x.lastName ?? ""}`.trim() === s)
   if (e) {
     const label = `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim()
     return e.email ? `${label} (${e.email})` : label || stored
@@ -118,9 +135,10 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
   const [editExtraImages, setEditExtraImages] = useState<File[]>([])
   const [editExtraDocuments, setEditExtraDocuments] = useState<File[]>([])
 
-  // Data for dropdowns
+  // Data for dropdowns (same response shapes as Asset Registration)
   const [departments, setDepartments] = useState<any[]>([])
   const [employees, setEmployees] = useState<any[]>([])
+  const [projects, setProjects] = useState<{ id: string; name: string; isDraft?: boolean }[]>([])
   const [loadingData, setLoadingData] = useState(false)
 
   // Fetch assets from backend API
@@ -146,46 +164,69 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     }
   }
 
-  // Fetch departments and employees
-  const fetchDepartmentsAndEmployees = async () => {
+  const fetchDepartmentsEmployeesAndProjects = async () => {
     try {
       setLoadingData(true)
-      
-      // Fetch departments
-      const deptResponse = await fetch('/api/hr/departments/hierarchy', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+
+      const deptResponse = await fetch("/api/hr/departments/hierarchy", {
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
       })
       if (deptResponse.ok) {
         const deptData = await deptResponse.json()
-        console.log('Departments response:', deptData)
-        if (deptData.departments && Array.isArray(deptData.departments)) {
-          setDepartments(deptData.departments)
+        if (deptData.success && deptData.data?.flat && Array.isArray(deptData.data.flat)) {
+          setDepartments(
+            deptData.data.flat.map((dept: { id: string; name: string; parentId?: string | null }) => ({
+              id: dept.id,
+              name: dept.name,
+              parentId: dept.parentId ?? null,
+            }))
+          )
+        } else {
+          console.error("Unexpected department API shape:", deptData)
+          setDepartments([])
         }
       } else {
-        console.error('Departments fetch failed:', deptResponse.status, deptResponse.statusText)
+        console.error("Departments fetch failed:", deptResponse.status)
+        setDepartments([])
       }
-      
-      // Fetch employees
-      const empResponse = await fetch('/api/hr/employees', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+
+      const empResponse = await fetch("/api/hr/employees", {
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
       })
       if (empResponse.ok) {
         const empData = await empResponse.json()
-        console.log('Employees response:', empData)
-        if (empData.employees && Array.isArray(empData.employees)) {
-          setEmployees(empData.employees)
+        if (empData.success && Array.isArray(empData.data)) {
+          setEmployees(empData.data)
+        } else if (Array.isArray(empData)) {
+          setEmployees(empData)
+        } else {
+          console.error("Unexpected employees API shape:", empData)
+          setEmployees([])
         }
       } else {
-        console.error('Employees fetch failed:', empResponse.status, empResponse.statusText)
+        console.error("Employees fetch failed:", empResponse.status)
+        setEmployees([])
+      }
+
+      const projResponse = await fetch("/api/programs/projects", {
+        credentials: "include",
+      })
+      if (projResponse.ok) {
+        const projData = await projResponse.json()
+        if (projData.success && Array.isArray(projData.data)) {
+          setProjects(
+            projData.data.map((p: { id: string; name: string; isDraft?: boolean }) => ({
+              id: p.id,
+              name: p.name || "Untitled",
+              isDraft: p.isDraft,
+            }))
+          )
+        }
       }
     } catch (error) {
-      console.error('Failed to fetch departments/employees:', error)
+      console.error("Failed to fetch HR/projects reference data:", error)
     } finally {
       setLoadingData(false)
     }
@@ -204,11 +245,16 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     return `QR-${assetNumber}`
   }
 
-  // Fetch assets on component mount
   useEffect(() => {
     fetchAssets()
-    fetchDepartmentsAndEmployees()
+    fetchDepartmentsEmployeesAndProjects()
   }, [])
+
+  useEffect(() => {
+    if (showViewModal || showEditModal) {
+      void fetchDepartmentsEmployeesAndProjects()
+    }
+  }, [showViewModal, showEditModal])
 
   // Filter and search effects
   useEffect(() => {
@@ -327,6 +373,9 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
       ...asset,
       images: asStringList(asset.images) as unknown as Asset["images"],
       documents: asStringList(asset.documents) as unknown as Asset["documents"],
+      assignedProjectIds: Array.isArray(asset.assignedProjectIds)
+        ? [...asset.assignedProjectIds]
+        : [],
     })
     setShowEditModal(true)
   }
@@ -402,13 +451,46 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
             ? editingAsset.location
             : editingAsset.location?.name ?? ""
 
-        const payload = {
-          ...editingAsset,
+        const assignedProjectIds = Array.isArray(editingAsset.assignedProjectIds)
+          ? editingAsset.assignedProjectIds
+          : []
+
+        const payload: Record<string, unknown> = {
+          name: editingAsset.name,
+          assetNumber: editingAsset.assetNumber,
+          brand: editingAsset.brand,
+          model: editingAsset.model,
+          serialNumber: editingAsset.serialNumber,
+          description: editingAsset.description,
           category: categoryStr,
           location: locationStr,
+          department: editingAsset.department,
+          assignedTo: editingAsset.assignedTo,
+          custodian: editingAsset.custodian,
+          assignedEmail: editingAsset.assignedEmail,
+          assignedProgram: editingAsset.assignedProgram,
+          assignedProject: editingAsset.assignedProject,
+          assignedProjectIds,
+          procurementValue: editingAsset.procurementValue,
+          currentValue: editingAsset.currentValue,
+          depreciationRate: editingAsset.depreciationRate,
+          depreciationMethod: editingAsset.depreciationMethod,
+          fundingSource: editingAsset.fundingSource,
+          procurementDate: editingAsset.procurementDate,
+          warrantyExpiry: editingAsset.warrantyExpiry,
+          status: editingAsset.status,
+          condition: editingAsset.condition,
+          rfidTag: editingAsset.rfidTag,
+          qrCode: editingAsset.qrCode,
+          barcodeId: editingAsset.barcodeId,
+          insuranceValue: editingAsset.insuranceValue,
+          insurancePolicy: editingAsset.insurancePolicy,
           images: mergedImages,
           documents: mergedDocs,
         }
+        Object.keys(payload).forEach((k) => {
+          if (payload[k] === undefined) delete payload[k]
+        })
 
         const response = await fetch(`/api/inventory/assets?id=${selectedAsset.id}`, {
           method: "PUT",
@@ -909,8 +991,29 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     <div className="text-sm text-gray-800">{selectedAsset.assignedProgram || "—"}</div>
                   </div>
                   <div>
-                    <span className="font-medium text-sm">Assigned Project:</span>
-                    <div className="text-sm text-gray-800">{selectedAsset.assignedProject || "—"}</div>
+                    <span className="font-medium text-sm">Linked projects:</span>
+                    <div className="text-sm text-gray-800 mt-1">
+                      {(selectedAsset.assignedProjectIds?.length ?? 0) === 0 &&
+                      !selectedAsset.assignedProject ? (
+                        "—"
+                      ) : (
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {(selectedAsset.assignedProjectIds || []).map((pid) => {
+                            const p = projects.find((x) => x.id === pid)
+                            return (
+                              <li key={pid}>
+                                {p?.name || pid}
+                                {p?.isDraft ? " (draft)" : ""}
+                              </li>
+                            )
+                          })}
+                          {selectedAsset.assignedProject &&
+                          (selectedAsset.assignedProjectIds?.length ?? 0) === 0 ? (
+                            <li>{selectedAsset.assignedProject}</li>
+                          ) : null}
+                        </ul>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
@@ -1516,15 +1619,57 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                   />
                 </div>
                 <div>
-                  <Label htmlFor="assignedProject">Assigned Project</Label>
+                  <Label>Legacy project label</Label>
                   <Input
-                    id="assignedProject"
                     value={editingAsset.assignedProject || ""}
                     onChange={(e) =>
                       setEditingAsset((prev) => ({ ...prev, assignedProject: e.target.value }))
                     }
-                    placeholder="Project name"
+                    placeholder="Optional free-text (older records)"
                   />
+                </div>
+              </div>
+              <div>
+                <Label>Linked projects</Label>
+                <p className="text-xs text-gray-500 mt-1 mb-2">
+                  Select one or more projects from Programs. Drafts are marked.
+                </p>
+                <div className="max-h-52 overflow-y-auto rounded-lg border border-gray-200 p-3 space-y-2 bg-white">
+                  {projects.length === 0 ? (
+                    <p className="text-sm text-gray-500">
+                      {loadingData ? "Loading projects…" : "No projects returned from API."}
+                    </p>
+                  ) : (
+                    projects.map((p) => {
+                      const selected = (editingAsset.assignedProjectIds || []).includes(p.id)
+                      return (
+                        <label
+                          key={p.id}
+                          className="flex items-start gap-2 text-sm cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selected}
+                            onCheckedChange={(checked) => {
+                              const cur = editingAsset.assignedProjectIds || []
+                              setEditingAsset((prev) => ({
+                                ...prev,
+                                assignedProjectIds: checked
+                                  ? [...cur, p.id]
+                                  : cur.filter((x) => x !== p.id),
+                              }))
+                            }}
+                            className="mt-0.5"
+                          />
+                          <span>
+                            {p.name}
+                            {p.isDraft ? (
+                              <span className="text-amber-700"> (draft)</span>
+                            ) : null}
+                          </span>
+                        </label>
+                      )
+                    })
+                  )}
                 </div>
               </div>
             </div>

@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { Asset } from '@/types/inventory'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface Department {
   id: string
@@ -179,6 +180,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
   // Dynamic data states
   const [departments, setDepartments] = useState<Department[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [projects, setProjects] = useState<{ id: string; name: string; isDraft?: boolean }[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -238,6 +240,20 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
         } else {
           console.error('Failed to fetch employees:', empResponse.status)
           setEmployees([])
+        }
+
+        const projResponse = await fetch('/api/programs/projects', { credentials: 'include' })
+        if (projResponse.ok) {
+          const projData = await projResponse.json()
+          if (projData.success && Array.isArray(projData.data)) {
+            setProjects(
+              projData.data.map((p: { id: string; name?: string; isDraft?: boolean }) => ({
+                id: p.id,
+                name: p.name || 'Untitled',
+                isDraft: p.isDraft,
+              }))
+            )
+          }
         }
       } catch (error) {
         console.error('Error fetching HR data:', error)
@@ -374,7 +390,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               {[
                 { step: 1, title: 'Basic Information', description: 'Name, category, type', icon: '📝' },
                 { step: 2, title: 'Technical Details', description: 'Brand, model, serial', icon: '⚙️' },
-                { step: 3, title: 'Assignment & Value', description: 'Location, department, value', icon: '💰' },
+                { step: 3, title: 'Assignment & Value', description: 'Location, dept, projects, value', icon: '💰' },
                 { step: 4, title: 'Additional Info', description: 'Images, documents, tags', icon: '📎' }
               ].map((item, index) => (
                 <div key={item.step} className="flex flex-col items-center flex-1 relative z-20">
@@ -924,6 +940,85 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 </select>
               </div>
             </div>
+
+            <div className="border-t border-gray-200 pt-6 mt-2 space-y-6">
+              <div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-1">Program & projects</h4>
+                <p className="text-sm text-gray-500 mb-4">
+                  Link this asset to a program and one or more system projects (same list as Programs).
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                    Assigned Program
+                  </label>
+                  <input
+                    type="text"
+                    value={createFormData.assignedProgram || ''}
+                    onChange={(e) => setCreateFormData({ ...createFormData, assignedProgram: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
+                    placeholder="Program name"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2 group-focus-within:text-orange-600 transition-colors">
+                  Linked projects
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Select one or more projects. Drafts are marked.
+                </p>
+                <div className="max-h-52 overflow-y-auto rounded-xl border border-gray-300 p-3 space-y-2 bg-gray-50/50">
+                  {projects.length === 0 ? (
+                    <p className="text-sm text-gray-500">
+                      {loadingData ? 'Loading projects…' : 'No projects available.'}
+                    </p>
+                  ) : (
+                    projects.map((p) => {
+                      const selected = (createFormData.assignedProjectIds || []).includes(p.id)
+                      return (
+                        <label key={p.id} className="flex items-start gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={selected}
+                            onCheckedChange={(checked) => {
+                              const cur = createFormData.assignedProjectIds || []
+                              setCreateFormData({
+                                ...createFormData,
+                                assignedProjectIds: checked
+                                  ? [...cur, p.id]
+                                  : cur.filter((x) => x !== p.id),
+                              })
+                            }}
+                            className="mt-0.5"
+                          />
+                          <span>
+                            {p.name}
+                            {p.isDraft ? (
+                              <span className="text-amber-700"> (draft)</span>
+                            ) : null}
+                          </span>
+                        </label>
+                      )
+                    })
+                  )}
+                </div>
+                <div className="mt-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Optional legacy project label
+                  </label>
+                  <input
+                    type="text"
+                    value={createFormData.assignedProject || ''}
+                    onChange={(e) =>
+                      setCreateFormData({ ...createFormData, assignedProject: e.target.value })
+                    }
+                    className="w-full max-w-xl px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    placeholder="Free text (optional)"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1037,35 +1132,6 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   ))}
                 </div>
               )}
-            </div>
-
-            {/* Additional Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
-                  Assigned Program
-                </label>
-                <input
-                  type="text"
-                  value={createFormData.assignedProgram || ''}
-                  onChange={(e) => setCreateFormData({...createFormData, assignedProgram: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
-                  placeholder="Program name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
-                  Assigned Project
-                </label>
-                <input
-                  type="text"
-                  value={createFormData.assignedProject || ''}
-                  onChange={(e) => setCreateFormData({...createFormData, assignedProject: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
-                  placeholder="Project name"
-                />
-              </div>
             </div>
           </div>
         )}

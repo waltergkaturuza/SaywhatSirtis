@@ -97,8 +97,9 @@ model assets {
   procurementType     String?
   expectedLifespan    Int?
   usageType           String?
-  assignedProgram     String?
-  assignedProject     String?
+  assignedProgram      String?
+  assignedProject      String?
+  assignedProjectIds   String[]              @default([])
   asset_audits        asset_audits[]
   maintenance_records maintenance_records[]
   audits              Audit[]               @relation("AuditAssets")

@@ -290,6 +290,9 @@ export default function InventoryManagementPage() {
         custodian: createFormData.custodian || '',
         assignedProgram: createFormData.assignedProgram || '',
         assignedProject: createFormData.assignedProject || '',
+        assignedProjectIds: Array.isArray(createFormData.assignedProjectIds)
+          ? createFormData.assignedProjectIds
+          : [],
         status: createFormData.status || 'active',
         condition: createFormData.condition || 'good',
         warrantyExpiry: createFormData.warrantyExpiry || '',

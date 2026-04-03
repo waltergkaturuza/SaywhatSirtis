@@ -71,6 +71,7 @@ const assetSchema = z.object({
   custodian: z.string().optional(),
   assignedProgram: z.string().optional(),
   assignedProject: z.string().optional(),
+  assignedProjectIds: z.array(z.string()).optional().default([]),
   
   // Status & Condition
   status: z
@@ -130,6 +131,7 @@ function transformDbAssetToFrontend(asset: AssetRow) {
     custodian: row.custodian || "",
     assignedProgram: row.assignedProgram || "",
     assignedProject: row.assignedProject || "",
+    assignedProjectIds: Array.isArray(row.assignedProjectIds) ? row.assignedProjectIds : [],
     procurementValue: row.purchasePrice != null ? Number(row.purchasePrice) : 0,
     currentValue: row.currentValue != null ? Number(row.currentValue) : 0,
     depreciationRate: row.depreciationRate ?? 0,
@@ -304,6 +306,7 @@ export async function POST(request: NextRequest) {
           custodian: validatedData.custodian,
           assignedProgram: validatedData.assignedProgram,
           assignedProject: validatedData.assignedProject,
+          assignedProjectIds: validatedData.assignedProjectIds ?? [],
           status: validatedData.status.toUpperCase(),
           condition: mapCondition(validatedData.condition),
           warrantyExpiry: validatedData.warrantyExpiry,
@@ -427,6 +430,8 @@ export async function PUT(request: NextRequest) {
       updateData.assignedProgram = validatedData.assignedProgram || null
     if (validatedData.assignedProject !== undefined)
       updateData.assignedProject = validatedData.assignedProject || null
+    if (validatedData.assignedProjectIds !== undefined)
+      updateData.assignedProjectIds = validatedData.assignedProjectIds
     if (validatedData.status !== undefined) updateData.status = validatedData.status.toUpperCase()
     if (validatedData.condition !== undefined) updateData.condition = mapCondition(validatedData.condition)
     if (validatedData.procurementValue !== undefined)

@@ -28,6 +28,8 @@ export interface Asset {
   assignedEmail?: string
   assignedProgram?: string
   assignedProject?: string
+  /** Program/project IDs from /api/programs/projects (multi-select). */
+  assignedProjectIds?: string[]
   custodian?: string
   coordinates?: {
     lat: number
