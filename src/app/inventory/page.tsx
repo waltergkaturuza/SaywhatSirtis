@@ -26,6 +26,7 @@ import { MaintenanceManagement } from "@/components/inventory/maintenance-manage
 import { LocationTracking } from "@/components/inventory/location-tracking-enhanced"
 import { AssetsManagement } from "@/components/inventory/assets-management"
 import { DatabaseStatusIndicator } from "@/components/inventory/database-status"
+import { uploadInventoryAssetFile } from "@/lib/inventory/client-upload"
 
 // Types
 import { Asset, AssetAlert, InventoryPermissions } from '@/types/inventory'
@@ -256,6 +257,17 @@ export default function InventoryManagementPage() {
         return
       }
 
+      const imagePaths: string[] = []
+      for (const img of selectedImages) {
+        const r = await uploadInventoryAssetFile(img, "image")
+        imagePaths.push(r.path)
+      }
+      const documentPaths: string[] = []
+      for (const doc of selectedDocuments) {
+        const r = await uploadInventoryAssetFile(doc, "document")
+        documentPaths.push(r.path)
+      }
+
       // Prepare data for API call with proper type conversion
       const assetData = {
         name: createFormData.name.trim(),
@@ -275,6 +287,9 @@ export default function InventoryManagementPage() {
         department: createFormData.department || '',
         assignedTo: createFormData.assignedTo || '',
         assignedEmail: createFormData.assignedEmail || '',
+        custodian: createFormData.custodian || '',
+        assignedProgram: createFormData.assignedProgram || '',
+        assignedProject: createFormData.assignedProject || '',
         status: createFormData.status || 'active',
         condition: createFormData.condition || 'good',
         warrantyExpiry: createFormData.warrantyExpiry || '',
@@ -283,8 +298,8 @@ export default function InventoryManagementPage() {
         barcodeId: createFormData.barcodeId || generateBarcode(),
         insuranceValue: Number(createFormData.insuranceValue) || 0,
         insurancePolicy: createFormData.insurancePolicy || '',
-        images: selectedImages.map(img => img.name), // For now, just store filenames
-        documents: selectedDocuments.map(doc => doc.name) // For now, just store filenames
+        images: imagePaths,
+        documents: documentPaths,
       }
       
       console.log('Form data before processing:', createFormData)
@@ -297,6 +312,7 @@ export default function InventoryManagementPage() {
       // Call the API
       const response = await fetch('/api/inventory/assets', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

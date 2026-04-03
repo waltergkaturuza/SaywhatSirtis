@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { executeQuery } from "@/lib/prisma"
 import { z } from "zod"
 import { createErrorResponse } from '@/lib/error-handler'
+import type { Prisma, assets as AssetRow } from "@prisma/client"
 
 // Map category to valid enum value
 const mapCategory = (category: string): 'COMPUTER' | 'FURNITURE' | 'VEHICLE' | 'EQUIPMENT' | 'OTHER' => {
@@ -19,23 +20,6 @@ const mapCategory = (category: string): 'COMPUTER' | 'FURNITURE' | 'VEHICLE' | '
       return 'EQUIPMENT'
     default:
       return 'OTHER'
-  }
-}
-
-// Map status to valid enum value
-const mapStatus = (status: string): 'ACTIVE' | 'MAINTENANCE' | 'DISPOSED' => {
-  switch (status.toUpperCase()) {
-    case 'ACTIVE':
-    case 'GOOD':
-      return 'ACTIVE'
-    case 'MAINTENANCE':
-    case 'NEEDS_REPAIR':
-      return 'MAINTENANCE'
-    case 'DISPOSED':
-    case 'RETIRED':
-      return 'DISPOSED'
-    default:
-      return 'ACTIVE'
   }
 }
 
@@ -73,6 +57,7 @@ const assetSchema = z.object({
   
   // Financial Information  
   procurementValue: z.number().min(0, "Procurement value must be non-negative"),
+  currentValue: z.number().min(0).optional(),
   depreciationRate: z.number().min(0).max(100, "Depreciation rate must be between 0-100").default(0),
   depreciationMethod: z.string().default("straight-line"),
   procurementDate: z.string().transform((str) => new Date(str)),
@@ -83,9 +68,14 @@ const assetSchema = z.object({
   department: z.string().optional(),
   assignedTo: z.string().optional(),
   assignedEmail: z.string().email().optional().or(z.literal("")),
+  custodian: z.string().optional(),
+  assignedProgram: z.string().optional(),
+  assignedProject: z.string().optional(),
   
   // Status & Condition
-  status: z.enum(["active", "inactive", "under-maintenance", "retired"]).default("active"),
+  status: z
+    .enum(["active", "inactive", "maintenance", "disposed", "under-maintenance", "retired"])
+    .default("active"),
   condition: z.enum(["excellent", "good", "fair", "poor", "needs-repair"]).default("good"),
   warrantyExpiry: z.string().optional().transform((str) => str ? new Date(str) : null),
   
@@ -98,10 +88,82 @@ const assetSchema = z.object({
   insuranceValue: z.number().min(0).optional(),
   insurancePolicy: z.string().optional(),
   
-  // Files - these will be handled separately for now
-  images: z.array(z.any()).optional().default([]),
-  documents: z.array(z.any()).optional().default([])
+  // Files — filenames only (same as registration)
+  images: z.array(z.string()).optional().default([]),
+  documents: z.array(z.string()).optional().default([])
 })
+
+function conditionToFrontend(c: string | null | undefined): string {
+  if (!c) return "good"
+  const s = String(c).toLowerCase()
+  if (s === "damaged") return "poor"
+  return s
+}
+
+function statusToFrontend(s: string | null | undefined): string {
+  if (!s) return "active"
+  return String(s).toLowerCase().replace(/_/g, "-")
+}
+
+/** Map DB row → frontend Asset shape (GET list + PUT response). */
+function transformDbAssetToFrontend(asset: AssetRow) {
+  const row = asset as AssetRow & {
+    physicalAssetTag?: string | null
+  }
+  return {
+    id: row.id,
+    name: row.name,
+    assetNumber: row.assetTag,
+    assetTag: row.physicalAssetTag ?? undefined,
+    type: row.assetType || row.category,
+    category: row.category,
+    brand: row.brand || "",
+    model: row.model || "",
+    description: row.description || "",
+    serialNumber: row.serialNumber || "",
+    status: statusToFrontend(row.status),
+    condition: conditionToFrontend(row.condition as string),
+    location: row.location || "",
+    department: row.department || "",
+    assignedTo: row.assignedTo || "",
+    assignedEmail: row.assignedEmail || "",
+    custodian: row.custodian || "",
+    assignedProgram: row.assignedProgram || "",
+    assignedProject: row.assignedProject || "",
+    procurementValue: row.purchasePrice != null ? Number(row.purchasePrice) : 0,
+    currentValue: row.currentValue != null ? Number(row.currentValue) : 0,
+    depreciationRate: row.depreciationRate ?? 0,
+    depreciationMethod: (row.depreciationMethod || "straight-line") as
+      | "straight-line"
+      | "declining-balance"
+      | "units-of-production",
+    procurementDate: row.purchaseDate
+      ? new Date(row.purchaseDate).toISOString().split("T")[0]
+      : "",
+    fundingSource: row.fundingSource || "",
+    warrantyExpiry: row.warrantyExpiry
+      ? new Date(row.warrantyExpiry).toISOString().split("T")[0]
+      : "",
+    lastAuditDate: row.lastAuditDate
+      ? new Date(row.lastAuditDate).toISOString().split("T")[0]
+      : "",
+    nextMaintenanceDate: row.nextMaintenanceDate
+      ? new Date(row.nextMaintenanceDate).toISOString().split("T")[0]
+      : "",
+    rfidTag: row.rfidTag || "",
+    qrCode: row.qrCode || "",
+    barcodeId: row.barcodeId || "",
+    insuranceValue: row.insuranceValue != null ? Number(row.insuranceValue) : 0,
+    insurancePolicy: row.insurancePolicy || "",
+    images: Array.isArray(row.images) ? row.images : [],
+    documents: Array.isArray(row.documents) ? row.documents : [],
+    procurementType: row.procurementType || "",
+    expectedLifespan: row.expectedLifespan ?? undefined,
+    usageType: row.usageType || "",
+    createdAt: new Date(row.createdAt).toISOString(),
+    updatedAt: new Date(row.updatedAt).toISOString(),
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -123,93 +185,40 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = (page - 1) * limit
 
-    // Build SQL query with proper filtering
-    let whereClause = "WHERE 1=1"
-    const params: any[] = []
-    let paramIndex = 1
+    const where: Prisma.assetsWhereInput = {}
 
-    if (search) {
-      whereClause += ` AND (name ILIKE $${paramIndex} OR "assetTag" ILIKE $${paramIndex} OR category ILIKE $${paramIndex} OR location ILIKE $${paramIndex})`
-      params.push(`%${search}%`)
-      paramIndex++
+    if (search?.trim()) {
+      const q = search.trim()
+      where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { assetTag: { contains: q, mode: "insensitive" } },
+        { category: { contains: q, mode: "insensitive" } },
+        { location: { contains: q, mode: "insensitive" } },
+        { serialNumber: { contains: q, mode: "insensitive" } },
+      ]
     }
 
-    if (status && status !== 'all') {
-      whereClause += ` AND status = $${paramIndex}`
-      params.push(status.toUpperCase())
-      paramIndex++
+    if (status && status !== "all") {
+      where.status = { equals: status, mode: "insensitive" }
     }
 
-    if (location && location !== 'all') {
-      whereClause += ` AND location ILIKE $${paramIndex}`
-      params.push(`%${location}%`)
-      paramIndex++
+    if (location && location !== "all") {
+      where.location = { contains: location, mode: "insensitive" }
     }
 
-    // Get assets with safe field access
-    const [assets, countResult] = await Promise.all([
-      executeQuery(async (prisma) => {
-        return await prisma.$queryRawUnsafe(`
-          SELECT 
-            id, 
-            "assetTag", 
-            name, 
-            description, 
-            category, 
-            COALESCE(brand, '') as brand,
-            COALESCE(model, '') as model,
-            COALESCE("serialNumber", '') as "serialNumber",
-            "purchaseDate",
-            COALESCE("purchasePrice", 0) as "purchasePrice",
-            COALESCE("currentValue", 0) as "currentValue",
-            COALESCE(location, '') as location,
-            condition,
-            status,
-            "warrantyExpiry",
-            "createdAt",
-            "updatedAt"
-          FROM assets 
-          ${whereClause}
-          ORDER BY "createdAt" DESC
-          LIMIT ${limit} OFFSET ${offset}
-        `)
-      }),
-      executeQuery(async (prisma) => {
-        const result = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM assets ${whereClause}`)
-        return result
-      })
+    const [assets, totalCount] = await Promise.all([
+      executeQuery(async (prisma) =>
+        prisma.assets.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: offset,
+          take: limit,
+        })
+      ),
+      executeQuery(async (prisma) => prisma.assets.count({ where })),
     ])
 
-    const totalCount = parseInt((countResult as any)[0]?.count || '0')
-
-    // Transform data to match frontend expectations
-    const transformedAssets = (assets as any[]).map((asset: any) => ({
-      id: asset.id,
-      name: asset.name,
-      assetNumber: asset.assetTag,
-      category: asset.category,
-      type: asset.category,
-      brand: asset.brand || '',
-      model: asset.model || '',
-      serialNumber: asset.serialNumber || '',
-      status: asset.status ? asset.status.toLowerCase() : 'active',
-      condition: asset.condition ? (typeof asset.condition === 'string' ? asset.condition.toLowerCase() : asset.condition) : 'good',
-      location: asset.location || '',
-      department: asset.location || '',
-      assignedTo: '', // Not available in current schema
-      procurementValue: asset.purchasePrice ? parseFloat(asset.purchasePrice.toString()) : 0,
-      currentValue: asset.currentValue ? parseFloat(asset.currentValue.toString()) : 0,
-      depreciationRate: 0,
-      procurementDate: asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().split('T')[0] : null,
-      warrantyExpiry: asset.warrantyExpiry ? new Date(asset.warrantyExpiry).toISOString().split('T')[0] : null,
-      lastAuditDate: null,
-      nextMaintenanceDate: null,
-      rfidTag: null,
-      qrCode: null,
-      description: asset.description || '',
-      createdAt: new Date(asset.createdAt).toISOString(),
-      updatedAt: new Date(asset.updatedAt).toISOString()
-    }))
+    const transformedAssets = assets.map((row) => transformDbAssetToFrontend(row))
 
     return NextResponse.json({
       assets: transformedAssets,
@@ -292,6 +301,9 @@ export async function POST(request: NextRequest) {
           department: validatedData.department,
           assignedTo: validatedData.assignedTo,
           assignedEmail: validatedData.assignedEmail,
+          custodian: validatedData.custodian,
+          assignedProgram: validatedData.assignedProgram,
+          assignedProject: validatedData.assignedProject,
           status: validatedData.status.toUpperCase(),
           condition: mapCondition(validatedData.condition),
           warrantyExpiry: validatedData.warrantyExpiry,
@@ -307,41 +319,7 @@ export async function POST(request: NextRequest) {
       })
     })
 
-    // Transform response to match frontend expectations
-    const assetWithNewFields = newAsset as any
-    const transformedAsset = {
-      id: newAsset.id,
-      name: newAsset.name,
-      assetNumber: newAsset.assetTag,
-      type: assetWithNewFields.assetType || '',
-      category: newAsset.category,
-      brand: newAsset.brand || '',
-      model: newAsset.model || '',
-      description: newAsset.description || '',
-      serialNumber: newAsset.serialNumber || '',
-      procurementValue: newAsset.purchasePrice ? parseFloat(newAsset.purchasePrice.toString()) : 0,
-      currentValue: newAsset.currentValue ? parseFloat(newAsset.currentValue.toString()) : 0,
-      depreciationRate: assetWithNewFields.depreciationRate || 0,
-      depreciationMethod: assetWithNewFields.depreciationMethod || 'straight-line',
-      procurementDate: newAsset.purchaseDate?.toISOString().split('T')[0] || null,
-      fundingSource: assetWithNewFields.fundingSource || '',
-      location: newAsset.location || '',
-      department: assetWithNewFields.department || '',
-      assignedTo: assetWithNewFields.assignedTo || '',
-      assignedEmail: assetWithNewFields.assignedEmail || '',
-      status: newAsset.status.toLowerCase(),
-      condition: newAsset.condition?.toString().toLowerCase() || 'good',
-      warrantyExpiry: newAsset.warrantyExpiry?.toISOString().split('T')[0] || null,
-      rfidTag: assetWithNewFields.rfidTag || '',
-      qrCode: assetWithNewFields.qrCode || '',
-      barcodeId: assetWithNewFields.barcodeId || '',
-      insuranceValue: assetWithNewFields.insuranceValue || 0,
-      insurancePolicy: assetWithNewFields.insurancePolicy || '',
-      images: assetWithNewFields.images || [],
-      documents: assetWithNewFields.documents || [],
-      createdAt: newAsset.createdAt.toISOString(),
-      updatedAt: newAsset.updatedAt.toISOString()
-    }
+    const transformedAsset = transformDbAssetToFrontend(newAsset as AssetRow)
 
     return NextResponse.json(
       { 
@@ -426,53 +404,60 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Transform frontend data to database schema
-    const updateData: any = {}
-    if (validatedData.name) updateData.name = validatedData.name
-    if (validatedData.assetNumber) updateData.assetTag = validatedData.assetNumber
-    if (validatedData.category) updateData.category = mapCategory(validatedData.category)
-    if (validatedData.model) updateData.model = validatedData.model
-    if (validatedData.location) updateData.location = validatedData.location
-    if (validatedData.status) updateData.status = mapStatus(validatedData.status)
-    if (validatedData.procurementValue) updateData.purchasePrice = validatedData.procurementValue
-    if (validatedData.procurementDate) updateData.purchaseDate = validatedData.procurementDate
+    const updateData: Prisma.assetsUpdateInput = {}
 
-    // Update asset in database
+    if (validatedData.name !== undefined) updateData.name = validatedData.name
+    if (validatedData.assetNumber !== undefined) updateData.assetTag = validatedData.assetNumber
+    if (validatedData.category !== undefined) updateData.category = mapCategory(validatedData.category)
+    if (validatedData.brand !== undefined) updateData.brand = validatedData.brand || null
+    if (validatedData.model !== undefined) updateData.model = validatedData.model || null
+    if (validatedData.description !== undefined) updateData.description = validatedData.description || null
+    if (validatedData.serialNumber !== undefined) updateData.serialNumber = validatedData.serialNumber || null
+    if (validatedData.location !== undefined) updateData.location = validatedData.location || null
+    if (validatedData.department !== undefined) updateData.department = validatedData.department || null
+    if (validatedData.assignedTo !== undefined) updateData.assignedTo = validatedData.assignedTo || null
+    if (validatedData.assignedEmail !== undefined) {
+      updateData.assignedEmail =
+        validatedData.assignedEmail && validatedData.assignedEmail.length > 0
+          ? validatedData.assignedEmail
+          : null
+    }
+    if (validatedData.custodian !== undefined) updateData.custodian = validatedData.custodian || null
+    if (validatedData.assignedProgram !== undefined)
+      updateData.assignedProgram = validatedData.assignedProgram || null
+    if (validatedData.assignedProject !== undefined)
+      updateData.assignedProject = validatedData.assignedProject || null
+    if (validatedData.status !== undefined) updateData.status = validatedData.status.toUpperCase()
+    if (validatedData.condition !== undefined) updateData.condition = mapCondition(validatedData.condition)
+    if (validatedData.procurementValue !== undefined)
+      updateData.purchasePrice = validatedData.procurementValue
+    if (validatedData.currentValue !== undefined) updateData.currentValue = validatedData.currentValue
+    if (validatedData.depreciationRate !== undefined) updateData.depreciationRate = validatedData.depreciationRate
+    if (validatedData.depreciationMethod !== undefined)
+      updateData.depreciationMethod = validatedData.depreciationMethod
+    if (validatedData.procurementDate !== undefined) updateData.purchaseDate = validatedData.procurementDate
+    if (validatedData.fundingSource !== undefined) updateData.fundingSource = validatedData.fundingSource || null
+    if (validatedData.warrantyExpiry !== undefined) updateData.warrantyExpiry = validatedData.warrantyExpiry
+    if (validatedData.rfidTag !== undefined) updateData.rfidTag = validatedData.rfidTag || null
+    if (validatedData.qrCode !== undefined) updateData.qrCode = validatedData.qrCode || null
+    if (validatedData.barcodeId !== undefined) updateData.barcodeId = validatedData.barcodeId || null
+    if (validatedData.insuranceValue !== undefined) updateData.insuranceValue = validatedData.insuranceValue
+    if (validatedData.insurancePolicy !== undefined)
+      updateData.insurancePolicy = validatedData.insurancePolicy || null
+    if (validatedData.images !== undefined) updateData.images = validatedData.images
+    if (validatedData.documents !== undefined) updateData.documents = validatedData.documents
+    if (validatedData.type !== undefined) updateData.assetType = validatedData.type || null
+
+    updateData.updatedAt = new Date()
+
     const updatedAsset = await executeQuery(async (prisma) => {
       return await prisma.assets.update({
         where: { id },
-        data: updateData
+        data: updateData,
       })
     })
 
-    // Transform response to match frontend expectations
-    const transformedAsset = {
-      id: updatedAsset.id,
-      name: updatedAsset.name,
-      assetNumber: updatedAsset.assetTag,
-      category: updatedAsset.category,
-      type: updatedAsset.category,
-      brand: (updatedAsset as any).brand || '',
-      model: updatedAsset.model || '',
-      serialNumber: updatedAsset.serialNumber || '',
-      status: updatedAsset.status.toLowerCase(),
-      condition: updatedAsset.status.toLowerCase(),
-      location: updatedAsset.location || '',
-      department: updatedAsset.location || '',
-      assignedTo: '', // Not available in current schema
-      procurementValue: updatedAsset.purchasePrice ? parseFloat(updatedAsset.purchasePrice.toString()) : 0,
-      currentValue: updatedAsset.currentValue ? parseFloat(updatedAsset.currentValue.toString()) : 0,
-      depreciationRate: 0, // Not in schema
-      procurementDate: updatedAsset.purchaseDate?.toISOString().split('T')[0] || null,
-      warrantyExpiry: updatedAsset.warrantyExpiry?.toISOString().split('T')[0] || null,
-      lastAuditDate: null,
-      nextMaintenanceDate: null,
-      rfidTag: null,
-      qrCode: null,
-      description: updatedAsset.description || null,
-      createdAt: updatedAsset.createdAt.toISOString(),
-      updatedAt: updatedAsset.updatedAt.toISOString()
-    }
+    const transformedAsset = transformDbAssetToFrontend(updatedAsset as AssetRow)
 
     return NextResponse.json({
       message: "Asset updated successfully",

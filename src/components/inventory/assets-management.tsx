@@ -16,7 +16,9 @@ import {
   CalendarIcon,
   CurrencyDollarIcon,
   QrCodeIcon,
-  DocumentDuplicateIcon
+  DocumentDuplicateIcon,
+  PhotoIcon,
+  XMarkIcon
 } from "@heroicons/react/24/outline"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,11 +31,68 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ExportButton } from "@/components/ui/export-button"
 import { Asset, InventoryPermissions, AssetStatus, AssetCondition } from '@/types/inventory'
+import { assetFileDisplayName, isAssetStoragePath } from '@/lib/inventory/asset-storage'
+import { uploadInventoryAssetFile } from '@/lib/inventory/client-upload'
 
 interface AssetsManagementProps {
   assets: Asset[]
   permissions: InventoryPermissions
   onAssetUpdate?: (assets: Asset[]) => void
+}
+
+type DeptRow = { id: string; name: string; parentId?: string | null }
+type EmpRow = { id: string; firstName?: string; lastName?: string; email?: string }
+
+function matchDepartmentSelectValue(stored: string | undefined, depts: DeptRow[]) {
+  if (!stored) return undefined
+  if (depts.some((d) => d.id === stored)) return stored
+  const byName = depts.find((d) => d.name === stored)
+  return byName?.id
+}
+
+function matchEmployeeSelectValue(stored: string | undefined, emps: EmpRow[]) {
+  if (!stored) return undefined
+  if (emps.some((e) => e.id === stored)) return stored
+  const byEmail = emps.find((e) => e.email === stored)
+  if (byEmail) return byEmail.id
+  const trimmed = stored.trim()
+  const byLabel = emps.find(
+    (e) => `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() === trimmed
+  )
+  return byLabel?.id
+}
+
+function formatDepartmentLabel(stored: string | undefined, depts: DeptRow[]) {
+  if (!stored) return "-"
+  const d = depts.find((x) => x.id === stored)
+  if (d) return d.name
+  return stored
+}
+
+function formatEmployeeLabel(stored: string | undefined, emps: EmpRow[]) {
+  if (!stored) return "-"
+  const e = emps.find((x) => x.id === stored)
+  if (e) {
+    const label = `${e.firstName ?? ""} ${e.lastName ?? ""}`.trim()
+    return e.email ? `${label} (${e.email})` : label || stored
+  }
+  return stored
+}
+
+/** API stores image/document filenames as strings; Asset type may still list Document[]. */
+function asStringList(val: unknown): string[] {
+  if (!Array.isArray(val)) return []
+  return val
+    .map((x) => {
+      if (typeof x === "string") return x
+      if (x && typeof x === "object" && "name" in x) return String((x as { name: string }).name)
+      return ""
+    })
+    .filter(Boolean)
+}
+
+function assetDownloadHref(storagePath: string): string {
+  return `/api/inventory/assets/download?path=${encodeURIComponent(storagePath)}`
 }
 
 export function AssetsManagement({ assets: initialAssets, permissions, onAssetUpdate }: AssetsManagementProps) {
@@ -56,6 +115,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
   const [editingAsset, setEditingAsset] = useState<Partial<Asset>>({})
+  const [editExtraImages, setEditExtraImages] = useState<File[]>([])
+  const [editExtraDocuments, setEditExtraDocuments] = useState<File[]>([])
 
   // Data for dropdowns
   const [departments, setDepartments] = useState<any[]>([])
@@ -260,7 +321,13 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
 
   const handleEdit = (asset: Asset) => {
     setSelectedAsset(asset)
-    setEditingAsset({ ...asset })
+    setEditExtraImages([])
+    setEditExtraDocuments([])
+    setEditingAsset({
+      ...asset,
+      images: asStringList(asset.images) as unknown as Asset["images"],
+      documents: asStringList(asset.documents) as unknown as Asset["documents"],
+    })
     setShowEditModal(true)
   }
 
@@ -310,32 +377,65 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
     if (showEditModal && selectedAsset) {
       try {
         setIsLoading(true)
-        
-        // Update asset via API
+
+        const uploadedImagePaths: string[] = []
+        for (const file of editExtraImages) {
+          const r = await uploadInventoryAssetFile(file, "image")
+          uploadedImagePaths.push(r.path)
+        }
+        const uploadedDocPaths: string[] = []
+        for (const file of editExtraDocuments) {
+          const r = await uploadInventoryAssetFile(file, "document")
+          uploadedDocPaths.push(r.path)
+        }
+        const existingImages = asStringList(editingAsset.images)
+        const existingDocs = asStringList(editingAsset.documents)
+        const mergedImages = [...existingImages, ...uploadedImagePaths]
+        const mergedDocs = [...existingDocs, ...uploadedDocPaths]
+
+        const categoryStr =
+          typeof editingAsset.category === "string"
+            ? editingAsset.category
+            : editingAsset.category?.name ?? ""
+        const locationStr =
+          typeof editingAsset.location === "string"
+            ? editingAsset.location
+            : editingAsset.location?.name ?? ""
+
+        const payload = {
+          ...editingAsset,
+          category: categoryStr,
+          location: locationStr,
+          images: mergedImages,
+          documents: mergedDocs,
+        }
+
         const response = await fetch(`/api/inventory/assets?id=${selectedAsset.id}`, {
-          method: 'PUT',
+          method: "PUT",
+          credentials: "include",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify(editingAsset)
+          body: JSON.stringify(payload),
         })
-        
+
         if (!response.ok) {
           throw new Error(`Failed to update asset: ${response.statusText}`)
         }
-        
-        // Refresh assets from backend
+
         await fetchAssets()
         setShowEditModal(false)
+        setEditExtraImages([])
+        setEditExtraDocuments([])
+        setEditingAsset({})
+        setSelectedAsset(null)
       } catch (error) {
-        console.error('Error updating asset:', error)
-        alert('Failed to update asset. Please try again.')
+        console.error("Error updating asset:", error)
+        alert("Failed to update asset. Please try again.")
       } finally {
         setIsLoading(false)
       }
     }
-    setEditingAsset({})
-    setSelectedAsset(null)
   }
 
   const getStatusBadge = (status: string) => {
@@ -378,8 +478,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
       asset.status,
       asset.condition,
       typeof asset.location === 'string' ? asset.location : asset.location?.name || '',
-      asset.department,
-      asset.assignedTo || '',
+      formatDepartmentLabel(asset.department, departments),
+      formatEmployeeLabel(asset.assignedTo, employees),
       asset.procurementValue?.toString() || '0',
       asset.currentValue?.toString() || '0',
       asset.procurementDate || '',
@@ -628,8 +728,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="text-sm">{asset.assignedTo || '-'}</div>
-                      <div className="text-xs text-gray-500">{asset.department}</div>
+                      <div className="text-sm">{formatEmployeeLabel(asset.assignedTo, employees)}</div>
+                      <div className="text-xs text-gray-500">{formatDepartmentLabel(asset.department, departments)}</div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-1">
@@ -759,8 +859,9 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                 <div>
                   <Label className="text-sm font-medium text-gray-500">Assignment</Label>
                   <div className="mt-2 space-y-2">
-                    <div><span className="font-medium">Department:</span> {selectedAsset.department}</div>
-                    <div><span className="font-medium">Assigned To:</span> {selectedAsset.assignedTo || '-'}</div>
+                    <div><span className="font-medium">Department:</span> {formatDepartmentLabel(selectedAsset.department, departments)}</div>
+                    <div><span className="font-medium">Assigned To:</span> {formatEmployeeLabel(selectedAsset.assignedTo, employees)}</div>
+                    <div><span className="font-medium">Custodian:</span> {formatEmployeeLabel(selectedAsset.custodian, employees)}</div>
                     <div><span className="font-medium">Location:</span> {typeof selectedAsset.location === 'string' ? selectedAsset.location : selectedAsset.location?.name || '-'}</div>
                   </div>
                 </div>
@@ -797,6 +898,83 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                 </div>
               </div>
 
+              <div className="md:col-span-2">
+                <Label className="text-sm font-medium text-gray-500">Additional Information</Label>
+                <p className="text-xs text-gray-500 mt-1 mb-3">
+                  New files are stored in Supabase; open a row to download via a signed link. Legacy entries show as plain names until re-uploaded.
+                </p>
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="font-medium text-sm">Assigned Program:</span>
+                    <div className="text-sm text-gray-800">{selectedAsset.assignedProgram || "—"}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-sm">Assigned Project:</span>
+                    <div className="text-sm text-gray-800">{selectedAsset.assignedProject || "—"}</div>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <span className="font-medium text-sm">Asset images</span>
+                    <ul className="mt-1 space-y-1 text-sm text-gray-700 list-none">
+                      {asStringList(selectedAsset.images).length === 0 ? (
+                        <li className="text-gray-400">None</li>
+                      ) : (
+                        asStringList(selectedAsset.images).map((p, i) => (
+                          <li key={`${p}-${i}`} className="flex items-center gap-2 flex-wrap">
+                            {isAssetStoragePath(p) ? (
+                              <a
+                                href={assetDownloadHref(p)}
+                                className="text-orange-600 hover:underline inline-flex items-center gap-1"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ArrowDownTrayIcon className="h-4 w-4" />
+                                {assetFileDisplayName(p)}
+                              </a>
+                            ) : (
+                              <span>
+                                {p}{" "}
+                                <span className="text-gray-400">(legacy — re-upload for download)</span>
+                              </span>
+                            )}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
+                  <div>
+                    <span className="font-medium text-sm">Supporting documents</span>
+                    <ul className="mt-1 space-y-1 text-sm text-gray-700 list-none">
+                      {asStringList(selectedAsset.documents).length === 0 ? (
+                        <li className="text-gray-400">None</li>
+                      ) : (
+                        asStringList(selectedAsset.documents).map((p, i) => (
+                          <li key={`${p}-${i}`} className="flex items-center gap-2 flex-wrap">
+                            {isAssetStoragePath(p) ? (
+                              <a
+                                href={assetDownloadHref(p)}
+                                className="text-orange-600 hover:underline inline-flex items-center gap-1"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ArrowDownTrayIcon className="h-4 w-4" />
+                                {assetFileDisplayName(p)}
+                              </a>
+                            ) : (
+                              <span>
+                                {p}{" "}
+                                <span className="text-gray-400">(legacy — re-upload for download)</span>
+                              </span>
+                            )}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               {selectedAsset.description && (
                 <div className="md:col-span-2">
                   <Label className="text-sm font-medium text-gray-500">Description</Label>
@@ -815,6 +993,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
         if (!open) {
           setShowEditModal(false)
           setEditingAsset({})
+          setEditExtraImages([])
+          setEditExtraDocuments([])
           setSelectedAsset(null)
         }
       }}>
@@ -917,7 +1097,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
               <div>
                 <Label htmlFor="department">Department*</Label>
                 <Select 
-                  value={editingAsset.department || undefined} 
+                  value={matchDepartmentSelectValue(editingAsset.department, departments) || undefined} 
                   onValueChange={(value) => setEditingAsset(prev => ({ ...prev, department: value === 'loading' ? undefined : value }))}
                 >
                   <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
@@ -931,7 +1111,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                     ) : (
                       departments.map(dept => (
                         <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
+                          {dept.parentId ? `└ ${dept.name}` : dept.name}
                         </SelectItem>
                       ))
                     )}
@@ -942,7 +1122,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
               <div>
                 <Label htmlFor="assignedTo">Assigned To</Label>
                 <Select 
-                  value={editingAsset.assignedTo || undefined} 
+                  value={matchEmployeeSelectValue(editingAsset.assignedTo, employees) || undefined} 
                   onValueChange={(value) => {
                     if (value === 'loading') return
                     const selectedEmployee = employees.find(emp => emp.id === value)
@@ -1120,7 +1300,7 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
                 <div>
                   <Label htmlFor="custodian">Custodian</Label>
                   <Select 
-                    value={editingAsset.custodian || undefined} 
+                    value={matchEmployeeSelectValue(editingAsset.custodian, employees) || undefined} 
                     onValueChange={(value) => setEditingAsset(prev => ({ ...prev, custodian: value === 'loading' ? undefined : value }))}
                   >
                     <SelectTrigger className="bg-white/90 backdrop-blur-sm border-orange-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:ring-2 focus:ring-orange-500">
@@ -1162,6 +1342,193 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
               </div>
             </div>
 
+            <div className="md:col-span-2 space-y-6 border-t pt-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Additional Information</h3>
+                <p className="text-sm text-gray-600">
+                  Uploads go to Supabase (same pattern as the document repository). Saving sends files to storage, then stores paths on the asset.
+                </p>
+              </div>
+
+              <div>
+                <Label>Asset Images</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 mt-2">
+                  <div className="text-center">
+                    <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <div className="mt-4">
+                      <label htmlFor="edit-image-upload" className="cursor-pointer">
+                        <span className="mt-2 block text-sm font-medium text-gray-900">Upload asset images</span>
+                        <input
+                          id="edit-image-upload"
+                          type="file"
+                          className="sr-only"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => {
+                            const files = e.target.files
+                            if (!files?.length) return
+                            setEditExtraImages((prev) => [...prev, ...Array.from(files)])
+                            e.target.value = ""
+                          }}
+                        />
+                      </label>
+                      <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
+                    </div>
+                  </div>
+                </div>
+                {asStringList(editingAsset.images).length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {asStringList(editingAsset.images).map((name, index) => (
+                      <span
+                        key={`${name}-${index}`}
+                        className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-800 max-w-full"
+                      >
+                        <span className="truncate max-w-[220px]">
+                          {isAssetStoragePath(name) ? assetFileDisplayName(name) : name}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-red-600 hover:text-red-800"
+                          onClick={() =>
+                            setEditingAsset((prev) => ({
+                              ...prev,
+                              images: asStringList(prev.images).filter((_, i) => i !== index) as unknown as Asset["images"],
+                            }))
+                          }
+                          aria-label={`Remove ${name}`}
+                        >
+                          <XMarkIcon className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {editExtraImages.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {editExtraImages.map((file, index) => (
+                      <div key={`${file.name}-${index}`} className="relative">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt=""
+                          className="w-full h-24 object-cover rounded border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditExtraImages((prev) => prev.filter((_, i) => i !== index))}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          aria-label="Remove new image"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <Label>Supporting Documents</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 mt-2">
+                  <div className="text-center">
+                    <DocumentDuplicateIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <div className="mt-4">
+                      <label htmlFor="edit-document-upload" className="cursor-pointer">
+                        <span className="mt-2 block text-sm font-medium text-gray-900">Upload documents</span>
+                        <input
+                          id="edit-document-upload"
+                          type="file"
+                          className="sr-only"
+                          multiple
+                          accept=".pdf,.doc,.docx,.xls,.xlsx"
+                          onChange={(e) => {
+                            const files = e.target.files
+                            if (!files?.length) return
+                            setEditExtraDocuments((prev) => [...prev, ...Array.from(files)])
+                            e.target.value = ""
+                          }}
+                        />
+                      </label>
+                      <p className="mt-1 text-xs text-gray-500">PDF, DOC, XLS up to 10MB each</p>
+                    </div>
+                  </div>
+                </div>
+                {asStringList(editingAsset.documents).length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {asStringList(editingAsset.documents).map((name, index) => (
+                      <div
+                        key={`${name}-${index}`}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded border"
+                      >
+                        <div className="flex items-center gap-2 text-sm text-gray-900 min-w-0">
+                          <DocumentDuplicateIcon className="h-5 w-5 text-gray-400 shrink-0" />
+                          <span className="truncate">
+                            {isAssetStoragePath(name) ? assetFileDisplayName(name) : name}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() =>
+                            setEditingAsset((prev) => ({
+                              ...prev,
+                              documents: asStringList(prev.documents).filter((_, i) => i !== index) as unknown as Asset["documents"],
+                            }))
+                          }
+                          aria-label={`Remove ${name}`}
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {editExtraDocuments.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {editExtraDocuments.map((file, index) => (
+                      <div
+                        key={`${file.name}-${index}`}
+                        className="flex items-center justify-between p-3 bg-amber-50 rounded border border-amber-100"
+                      >
+                        <span className="text-sm text-gray-900">{file.name} (pending upload)</span>
+                        <button
+                          type="button"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => setEditExtraDocuments((prev) => prev.filter((_, i) => i !== index))}
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="assignedProgram">Assigned Program</Label>
+                  <Input
+                    id="assignedProgram"
+                    value={editingAsset.assignedProgram || ""}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, assignedProgram: e.target.value }))
+                    }
+                    placeholder="Program name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="assignedProject">Assigned Project</Label>
+                  <Input
+                    id="assignedProject"
+                    value={editingAsset.assignedProject || ""}
+                    onChange={(e) =>
+                      setEditingAsset((prev) => ({ ...prev, assignedProject: e.target.value }))
+                    }
+                    placeholder="Project name"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="md:col-span-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
@@ -1177,6 +1544,8 @@ export function AssetsManagement({ assets: initialAssets, permissions, onAssetUp
             <Button variant="outline" className="bg-orange-500 hover:bg-orange-600 text-white border-none shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300" onClick={() => {
               setShowEditModal(false)
               setEditingAsset({})
+              setEditExtraImages([])
+              setEditExtraDocuments([])
               setSelectedAsset(null)
             }}>
               Cancel

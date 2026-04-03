@@ -90,6 +90,15 @@ model assets {
   insuranceValue      Float?
   qrCode              String?
   rfidTag             String?
+  custodian           String?
+  physicalAssetTag    String?
+  lastAuditDate       DateTime?
+  nextMaintenanceDate DateTime?
+  procurementType     String?
+  expectedLifespan    Int?
+  usageType           String?
+  assignedProgram     String?
+  assignedProject     String?
   asset_audits        asset_audits[]
   maintenance_records maintenance_records[]
   audits              Audit[]               @relation("AuditAssets")
