@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { prisma, withRetry } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
+import { withRetry } from '@/lib/database';
 import { createErrorResponse } from '@/lib/error-handler';
+import { enrichDocumentDetailJson } from '@/lib/documents/enrich-document-detail';
 
 export async function GET(
   request: NextRequest,
@@ -17,11 +19,12 @@ export async function GET(
 
     const { id: documentId } = await params;
 
-    // Fetch document from database with retry logic
+    // Same Prisma client as GET /api/documents list; include project name for parity with list mapper
     const document = await withRetry(async () => {
       return await prisma.documents.findUnique({
-        where: {
-          id: documentId,
+        where: { id: documentId },
+        include: {
+          projects: { select: { name: true } },
         },
       });
     });
@@ -50,38 +53,32 @@ export async function GET(
       }
     }
 
-    // Check if user has access to this document
-    const hasAccess = 
+    // Match list route: any authenticated user with document access permissions can view
+    const hasListAccess =
+      session.user?.permissions?.includes('documents.view') ||
+      session.user?.permissions?.includes('documents.full_access') ||
+      session.user?.permissions?.includes('documents') ||
+      session.user?.permissions?.includes('documents_view') ||
+      session.user?.permissions?.includes('documents_edit') ||
+      session.user?.roles?.some((role: string) =>
+        ['admin', 'manager', 'advance_user_1', 'advance_user_2', 'basic_user_1', 'basic_user_2', 'hr'].includes(
+          role.toLowerCase()
+        )
+      ) ||
+      Boolean(session.user);
+
+    const hasAccess =
       document.isPublic ||
-      document.uploadedBy === session.user.id ||
-      session.user.roles?.includes('admin') ||
-      session.user.permissions?.includes('documents.admin') ||
-      session.user.permissions?.includes('documents.view');
+      document.uploadedBy === session.user?.id ||
+      session.user?.roles?.includes('admin') ||
+      session.user?.permissions?.includes('documents.admin') ||
+      hasListAccess;
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Return document details
-    return NextResponse.json({
-      id: document.id,
-      filename: document.filename,
-      originalName: document.originalName,
-      mimeType: document.mimeType,
-      size: document.size,
-      category: document.category,
-      classification: document.classification,
-      description: document.description,
-      tags: document.tags,
-      isPublic: document.isPublic,
-      uploadedBy: document.uploadedBy,
-      uploadedByUser: uploadedByUser,
-      createdAt: document.createdAt.toISOString(),
-      updatedAt: document.updatedAt.toISOString(),
-      customMetadata: document.customMetadata,
-      url: document.url,
-      path: document.path,
-    });
+    return NextResponse.json(enrichDocumentDetailJson(document, uploadedByUser));
 
   } catch (error: any) {
     console.error('Error fetching document:', error);

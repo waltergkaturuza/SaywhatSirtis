@@ -70,13 +70,25 @@ export default function DocumentViewPage() {
         throw new Error('Failed to fetch document');
       }
       
-      const docData = await docResponse.json();
-      setDocument(docData);
+      const raw = await docResponse.json();
+      const docData =
+        raw && typeof raw === 'object' && raw !== null && 'id' in raw
+          ? raw
+          : (raw as { document?: DocumentData; data?: DocumentData })?.document ??
+            (raw as { data?: DocumentData })?.data;
+      if (!docData || typeof docData !== 'object' || !('id' in docData)) {
+        throw new Error('Invalid document payload');
+      }
+      const normalized: DocumentData = {
+        ...(docData as DocumentData),
+        tags: Array.isArray((docData as DocumentData).tags) ? (docData as DocumentData).tags : [],
+      };
+      setDocument(normalized);
 
       // Fetch uploader details
-      if (docData.uploadedBy) {
+      if (normalized.uploadedBy) {
         try {
-          const userResponse = await fetch(`/api/users/${docData.uploadedBy}`);
+          const userResponse = await fetch(`/api/users/${normalized.uploadedBy}`);
           if (userResponse.ok) {
             const userData = await userResponse.json();
             setUploader(userData);

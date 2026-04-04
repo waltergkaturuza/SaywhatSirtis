@@ -30,6 +30,7 @@ import {
   PolarRadiusAxis,
   Radar
 } from 'recharts'
+import { fetchHrDepartmentOptions, type HrDepartmentOption } from '@/lib/hr/department-options'
 import {
   DocumentTextIcon,
   ChartBarIcon,
@@ -142,6 +143,33 @@ export default function DocumentAnalytics() {
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([])
   const [securityData, setSecurityData] = useState<SecurityData[]>([])
   const [userActivityData, setUserActivityData] = useState<UserActivityData[]>([])
+  const [departmentOptions, setDepartmentOptions] = useState<HrDepartmentOption[]>([])
+  const [departmentsLoading, setDepartmentsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchHrDepartmentOptions()
+      .then((opts) => {
+        if (!cancelled) setDepartmentOptions(opts)
+      })
+      .catch(() => {
+        if (!cancelled) setDepartmentOptions([])
+      })
+      .finally(() => {
+        if (!cancelled) setDepartmentsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (selectedDepartment === 'all' || departmentsLoading) return
+    if (departmentOptions.length === 0) return
+    if (!departmentOptions.some((o) => o.name === selectedDepartment)) {
+      setSelectedDepartment('all')
+    }
+  }, [departmentOptions, departmentsLoading, selectedDepartment])
 
   useEffect(() => {
     fetchAnalytics()
@@ -152,7 +180,9 @@ export default function DocumentAnalytics() {
       setLoading(true)
       setError('')
 
-      const response = await fetch(`/api/documents/analytics/comprehensive?period=${selectedPeriod}&department=${selectedDepartment}`)
+      const response = await fetch(
+        `/api/documents/analytics/comprehensive?period=${encodeURIComponent(selectedPeriod)}&department=${encodeURIComponent(selectedDepartment)}`
+      )
       
       if (response.ok) {
         const data = await response.json()
@@ -175,7 +205,9 @@ export default function DocumentAnalytics() {
 
   const handleExport = async (format: string) => {
     try {
-      const response = await fetch(`/api/documents/analytics/export?format=${format}&period=${selectedPeriod}&department=${selectedDepartment}`)
+      const response = await fetch(
+        `/api/documents/analytics/export?format=${encodeURIComponent(format)}&period=${encodeURIComponent(selectedPeriod)}&department=${encodeURIComponent(selectedDepartment)}`
+      )
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
@@ -218,16 +250,17 @@ export default function DocumentAnalytics() {
         </SelectContent>
       </Select>
       
-      <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-        <SelectTrigger className="w-48">
-          <SelectValue />
+      <Select value={selectedDepartment} onValueChange={setSelectedDepartment} disabled={departmentsLoading}>
+        <SelectTrigger className="w-48 min-w-[12rem]">
+          <SelectValue placeholder={departmentsLoading ? 'Loading departments…' : undefined} />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Departments</SelectItem>
-          <SelectItem value="Programs">Programs</SelectItem>
-          <SelectItem value="Human Resource Management">Human Resource Management</SelectItem>
-          <SelectItem value="Finance and Administration">Finance and Administration</SelectItem>
-          <SelectItem value="Communications">Communications</SelectItem>
+          {departmentOptions.map((d) => (
+            <SelectItem key={d.id} value={d.name}>
+              {d.displayLabel}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
       

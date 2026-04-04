@@ -58,8 +58,20 @@ export default function DocumentViewPage() {
       const response = await fetch(`/api/documents/${params.id}`);
       
       if (response.ok) {
-        const data = await response.json();
-        setDocument(data);
+        const raw = await response.json();
+        const data =
+          raw && typeof raw === 'object' && raw !== null && 'id' in raw
+            ? raw
+            : (raw as { document?: Document; data?: Document })?.document ??
+              (raw as { data?: Document })?.data;
+        if (!data || typeof data !== 'object' || !('id' in data)) {
+          setError('Failed to load document');
+        } else {
+          setDocument({
+            ...(data as Document),
+            tags: Array.isArray((data as Document).tags) ? (data as Document).tags : [],
+          });
+        }
       } else {
         setError('Failed to load document');
       }

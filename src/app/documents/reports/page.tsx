@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { fetchHrDepartmentOptions, type HrDepartmentOption } from '@/lib/hr/department-options'
 import { ModulePage } from "@/components/layout/enhanced-layout"
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -107,13 +108,40 @@ export default function DocumentReports() {
   const [selectedPeriod, setSelectedPeriod] = useState('12months')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [selectedFormat, setSelectedFormat] = useState('xlsx')
+  const [departmentOptions, setDepartmentOptions] = useState<HrDepartmentOption[]>([])
+  const [departmentsLoading, setDepartmentsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchHrDepartmentOptions()
+      .then((opts) => {
+        if (!cancelled) setDepartmentOptions(opts)
+      })
+      .catch(() => {
+        if (!cancelled) setDepartmentOptions([])
+      })
+      .finally(() => {
+        if (!cancelled) setDepartmentsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (selectedDepartment === 'all' || departmentsLoading) return
+    if (departmentOptions.length === 0) return
+    if (!departmentOptions.some((o) => o.name === selectedDepartment)) {
+      setSelectedDepartment('all')
+    }
+  }, [departmentOptions, departmentsLoading, selectedDepartment])
 
   const generateReport = async (templateId: string) => {
     try {
       setGenerating(templateId)
 
       const response = await fetch(
-        `/api/documents/reports/generate?template=${templateId}&period=${selectedPeriod}&department=${selectedDepartment}&format=${selectedFormat}`,
+        `/api/documents/reports/generate?template=${encodeURIComponent(templateId)}&period=${encodeURIComponent(selectedPeriod)}&department=${encodeURIComponent(selectedDepartment)}&format=${encodeURIComponent(selectedFormat)}`,
         { method: 'POST' }
       )
 
@@ -193,14 +221,15 @@ export default function DocumentReports() {
                 <select
                   value={selectedDepartment}
                   onChange={(e) => setSelectedDepartment(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange"
+                  disabled={departmentsLoading}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange disabled:opacity-60"
                 >
                   <option value="all">All Departments</option>
-                  <option value="Programs">Programs</option>
-                  <option value="Human Resource Management">Human Resource Management</option>
-                  <option value="Finance and Administration">Finance and Administration</option>
-                  <option value="Communications">Communications</option>
-                  <option value="Research and Development">Research and Development</option>
+                  {departmentOptions.map((d) => (
+                    <option key={d.id} value={d.name}>
+                      {d.displayLabel}
+                    </option>
+                  ))}
                 </select>
               </div>
 
