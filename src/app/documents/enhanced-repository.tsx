@@ -48,10 +48,8 @@ import {
   PhotoIcon,
   FilmIcon,
   HomeIcon,
-  CloudArrowDownIcon,
   LinkIcon,
   Square3Stack3DIcon,
-  ServerIcon,
   DocumentDuplicateIcon,
   RectangleStackIcon,
   ComputerDesktopIcon,
@@ -213,15 +211,6 @@ const securityClassifications = {
 // External platforms for quick access integration
 const externalPlatforms = [
   {
-    id: 'onedrive',
-    name: 'OneDrive',
-    icon: CloudIcon,
-    color: 'bg-blue-50 hover:bg-blue-100 border-blue-200',
-    iconColor: 'text-blue-600',
-    description: 'Microsoft OneDrive files',
-    path: '/documents/onedrive'
-  },
-  {
     id: 'sharepoint',
     name: 'SharePoint',
     icon: Square3Stack3DIcon,
@@ -231,15 +220,6 @@ const externalPlatforms = [
     path: '/documents/sharepoint'
   },
   {
-    id: 'googledrive',
-    name: 'Google Drive',
-    icon: ServerIcon,
-    color: 'bg-green-50 hover:bg-green-100 border-green-200',
-    iconColor: 'text-green-600',
-    description: 'Google Drive files',
-    path: '/documents/googledrive'
-  },
-  {
     id: 'teams',
     name: 'Microsoft Teams',
     icon: ChatBubbleLeftRightIcon,
@@ -247,15 +227,6 @@ const externalPlatforms = [
     iconColor: 'text-purple-600',
     description: 'Teams file shares',
     path: '/documents/teams'
-  },
-  {
-    id: 'dropbox',
-    name: 'Dropbox',
-    icon: CloudArrowDownIcon,
-    color: 'bg-blue-50 hover:bg-blue-100 border-blue-200',
-    iconColor: 'text-blue-500',
-    description: 'Dropbox storage',
-    path: '/documents/dropbox'
   }
 ];
 

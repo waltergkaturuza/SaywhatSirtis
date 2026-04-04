@@ -9,10 +9,7 @@ import {
   ExclamationTriangleIcon,
   TrophyIcon,
   FlagIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   CalendarIcon,
-  MapPinIcon
 } from "@heroicons/react/24/outline"
 
 interface ProjectDashboardProps {
@@ -33,8 +30,32 @@ interface ProjectMetrics {
   overdueProjects: number
   upcomingMilestones: number
   highRiskProjects: number
-  resourceUtilization: number
+  /** null when not tracked (no fabricated %) */
+  resourceUtilization: number | null
+  /** Share of portfolio with status completed (all-time). */
   deliverySuccess: number
+}
+
+interface DashboardMeta {
+  period: string
+  periodLabel: string
+  periodStart: string
+  projectsUpdatedInPeriod: number
+}
+
+function averageProgressCaption(pct: number): { text: string; className: string } {
+  if (pct <= 0) return { text: "No progress to show", className: "text-gray-500" }
+  if (pct < 15) return { text: "Early stage", className: "text-amber-600" }
+  if (pct < 45) return { text: "Below midpoint", className: "text-orange-600" }
+  if (pct < 75) return { text: "Building momentum", className: "text-blue-600" }
+  return { text: "Strong average", className: "text-green-600" }
+}
+
+function deliverySuccessCaption(pct: number): { text: string; className: string } {
+  if (pct <= 0) return { text: "No completed projects yet", className: "text-gray-500" }
+  if (pct < 20) return { text: "Few completions", className: "text-amber-600" }
+  if (pct < 55) return { text: "Moderate completion rate", className: "text-blue-600" }
+  return { text: "High completion rate", className: "text-green-600" }
 }
 
 interface ProjectStatus {
@@ -53,6 +74,7 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
   const [mounted, setMounted] = useState(false)
   const [timeRange, setTimeRange] = useState('month')
   const [metrics, setMetrics] = useState<ProjectMetrics | null>(null)
+  const [dashboardMeta, setDashboardMeta] = useState<DashboardMeta | null>(null)
   const [recentProjects, setRecentProjects] = useState<ProjectStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +84,7 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
       setLoading(true)
       setError(null)
       
-      const response = await fetch('/api/programs/dashboard')
+      const response = await fetch(`/api/programs/dashboard?range=${encodeURIComponent(timeRange)}`)
       const result = await response.json()
       
       if (!response.ok) {
@@ -76,6 +98,15 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
       if (result.success) {
         setMetrics(result.data.metrics)
         setRecentProjects(result.data.recentProjects)
+        const m = result.data.meta
+        setDashboardMeta(
+          m ?? {
+            period: timeRange,
+            periodLabel: "Last 30 days",
+            periodStart: new Date().toISOString(),
+            projectsUpdatedInPeriod: result.data.recentProjects?.length ?? 0,
+          }
+        )
       } else {
         throw new Error(result.error || 'Failed to load dashboard data')
       }
@@ -184,6 +215,13 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
     }
   }
 
+  const meta: DashboardMeta = dashboardMeta ?? {
+    period: timeRange,
+    periodLabel: "Last 30 days",
+    periodStart: "",
+    projectsUpdatedInPeriod: 0,
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Dashboard Header */}
@@ -191,12 +229,19 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Project Dashboard</h1>
           <p className="text-gray-600 mt-1">Real-time overview of all projects and key metrics</p>
+          <p className="text-sm text-gray-500 mt-2 max-w-2xl">
+            Portfolio totals (projects, budget, risk) are <span className="font-medium text-gray-700">all-time</span>.
+            The activity table lists projects <span className="font-medium text-gray-700">updated in {meta.periodLabel}</span>
+            ({meta.projectsUpdatedInPeriod} project
+            {meta.projectsUpdatedInPeriod === 1 ? "" : "s"}).
+          </p>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 shrink-0">
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors"
+            aria-label="Time range for activity table"
           >
             <option value="week">Last Week</option>
             <option value="month">Last Month</option>
@@ -216,13 +261,13 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
             </div>
             <div className="ml-4 flex-1">
               <p className="text-sm font-medium text-gray-500">Total Projects</p>
-              <div className="flex items-baseline">
+              <div className="flex items-baseline flex-wrap gap-x-2">
                 <p className="text-2xl font-semibold text-gray-900">{metrics.totalProjects}</p>
-                <span className="ml-2 text-sm text-green-600 flex items-center">
-                  <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
+                <span className="text-sm text-gray-600">
                   Active: {metrics.activeProjects}
                 </span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">Portfolio (all-time)</p>
             </div>
           </div>
         </div>
@@ -238,9 +283,12 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
               <div className="flex items-baseline">
                 <p className="text-2xl font-semibold text-gray-900">{metrics.activeProjects}</p>
                 <span className="ml-2 text-sm text-gray-500">
-                  {Math.round((metrics.activeProjects / metrics.totalProjects) * 100)}% of total
+                  {metrics.totalProjects > 0
+                    ? `${Math.round((metrics.activeProjects / metrics.totalProjects) * 100)}% of total`
+                    : "—"}
                 </span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">Portfolio (all-time)</p>
             </div>
           </div>
         </div>
@@ -261,6 +309,7 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
                   {formatCurrency(metrics.totalSpent)} / {formatCurrency(metrics.totalBudget)}
                 </span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">All-time spend vs budget</p>
               <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-orange-600 h-2 rounded-full" 
@@ -280,12 +329,13 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
             <div className="ml-4 flex-1">
               <p className="text-sm font-medium text-gray-500">Resource Utilization</p>
               <div className="flex items-baseline">
-                <p className="text-2xl font-semibold text-gray-900">{metrics.resourceUtilization}%</p>
-                <span className="ml-2 text-sm text-green-600 flex items-center">
-                  <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-                  Optimal
-                </span>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {metrics.resourceUtilization != null ? `${metrics.resourceUtilization}%` : "—"}
+                </p>
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Not tracked in this app yet
+              </p>
             </div>
           </div>
         </div>
@@ -301,9 +351,12 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
               <div className="flex items-baseline">
                 <p className="text-2xl font-semibold text-gray-900">{metrics.highRiskProjects}</p>
                 <span className="ml-2 text-sm text-orange-600">
-                  {metrics.activeProjects > 0 ? Math.round((metrics.highRiskProjects / metrics.activeProjects) * 100) : 0}% of active
+                  {metrics.activeProjects > 0
+                    ? `${Math.round((metrics.highRiskProjects / metrics.activeProjects) * 100)}% of active`
+                    : "—"}
                 </span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">Overdue / at-risk (portfolio)</p>
             </div>
           </div>
         </div>
@@ -320,6 +373,7 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
                 <p className="text-2xl font-semibold text-gray-900">{metrics.upcomingMilestones}</p>
                 <span className="ml-2 text-sm text-gray-500">Next 30 days</span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">Open activities with a due date</p>
             </div>
           </div>
         </div>
@@ -332,13 +386,15 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
             </div>
             <div className="ml-4 flex-1">
               <p className="text-sm font-medium text-gray-500">Average Progress</p>
-              <div className="flex items-baseline">
+              <div className="flex items-baseline flex-wrap gap-x-2">
                 <p className="text-2xl font-semibold text-gray-900">{metrics.averageProgress}%</p>
-                <span className="ml-2 text-sm text-green-600 flex items-center">
-                  <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-                  On track
+                <span
+                  className={`text-sm font-medium ${averageProgressCaption(metrics.averageProgress).className}`}
+                >
+                  {averageProgressCaption(metrics.averageProgress).text}
                 </span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">Mean across all projects (framework / MEAL / stored %)</p>
               <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-orange-600 h-2 rounded-full" 
@@ -356,11 +412,16 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
               <TrophyIcon className="h-8 w-8 text-green-600" />
             </div>
             <div className="ml-4 flex-1">
-              <p className="text-sm font-medium text-gray-500">Delivery Success</p>
-              <div className="flex items-baseline">
+              <p className="text-sm font-medium text-gray-500">Portfolio completion</p>
+              <div className="flex items-baseline flex-wrap gap-x-2">
                 <p className="text-2xl font-semibold text-gray-900">{metrics.deliverySuccess}%</p>
-                <span className="ml-2 text-sm text-green-600">Excellent</span>
+                <span
+                  className={`text-sm font-medium ${deliverySuccessCaption(metrics.deliverySuccess).className}`}
+                >
+                  {deliverySuccessCaption(metrics.deliverySuccess).text}
+                </span>
               </div>
+              <p className="text-xs text-gray-400 mt-1">Completed ÷ all projects (all-time)</p>
             </div>
           </div>
         </div>
@@ -369,8 +430,11 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
       {/* Recent Projects Status */}
       <div className="bg-white rounded-lg shadow border">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Recent Project Status</h3>
-          <p className="text-sm text-gray-500 mt-1">Click on a project to view details and manage it</p>
+          <h3 className="text-lg font-medium text-gray-900">Recently updated projects</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Showing projects with any update in <span className="font-medium text-gray-700">{meta.periodLabel}</span>
+            . Click a row to open it.
+          </p>
         </div>
         <div className="p-6">
           <div className="overflow-x-auto">
@@ -454,7 +518,7 @@ export function ProjectDashboard({ permissions, onProjectSelect, selectedProject
                 {recentProjects.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                      No recent projects found. Create your first project to get started.
+                      No projects were updated in {meta.periodLabel}. Try a longer range or edit a project to see it here.
                     </td>
                   </tr>
                 )}
