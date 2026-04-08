@@ -7,6 +7,7 @@ import clsx from 'clsx'
 import { PlusIcon, TrophyIcon, CalendarDaysIcon, EyeIcon, PrinterIcon, PencilIcon, TrashIcon, MapPinIcon, UsersIcon } from '@heroicons/react/24/outline'
 import { resolveCategoryInfo, buildFolderPath, sanitizeFolderSegment } from '@/lib/documents/category-utils'
 import { AFRICAN_COUNTRIES } from '@/lib/programs/african-countries'
+import { buildEventRegionOptions, getRegionsForAfricanCountry } from '@/lib/programs/african-country-regions'
 
 interface FlagshipEvent {
   id: string
@@ -575,6 +576,11 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
   const canAddFlagshipEvent = useMemo(
     () => Boolean(permissions?.canCreate && selectedStatus !== 'completed'),
     [permissions?.canCreate, selectedStatus]
+  )
+
+  const eventRegionOptions = useMemo(
+    () => buildEventRegionOptions(formData.country, formData.location),
+    [formData.country, formData.location]
   )
 
   const getStatusColor = (status: string | undefined) => {
@@ -1463,7 +1469,15 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                       <select
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
                         value={formData.country}
-                        onChange={e => setFormData({ ...formData, country: e.target.value })}
+                        onChange={e => {
+                          const country = e.target.value
+                          const regions = getRegionsForAfricanCountry(country)
+                          setFormData((fd) => ({
+                            ...fd,
+                            country,
+                            location: regions.includes(fd.location) ? fd.location : '',
+                          }))
+                        }}
                         required
                       >
                         <option value="">Select country</option>
@@ -1478,24 +1492,22 @@ export function SaywhatFlagshipEvents({ permissions, autoOpenForm = false }: Say
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Province/State or region *
                       </label>
-                      <select 
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-                        value={formData.location} 
-                        onChange={e => setFormData({ ...formData, location: e.target.value })} 
+                      <select
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors disabled:bg-gray-100 disabled:text-gray-500"
+                        value={formData.location}
+                        onChange={e => setFormData({ ...formData, location: e.target.value })}
                         required
+                        disabled={!formData.country}
                       >
-                        <option value="">Select province (Zimbabwe)</option>
-                      <option value="Bulawayo">Bulawayo</option>
-                      <option value="Harare">Harare</option>
-                      <option value="Manicaland">Manicaland</option>
-                      <option value="Mashonaland Central">Mashonaland Central</option>
-                      <option value="Mashonaland East">Mashonaland East</option>
-                      <option value="Mashonaland West">Mashonaland West</option>
-                      <option value="Masvingo">Masvingo</option>
-                      <option value="Matabeleland North">Matabeleland North</option>
-                      <option value="Matabeleland South">Matabeleland South</option>
-                      <option value="Midlands">Midlands</option>
-                    </select>
+                        <option value="">
+                          {!formData.country ? 'Select country first' : 'Select province or region'}
+                        </option>
+                        {eventRegionOptions.map((region) => (
+                          <option key={region} value={region}>
+                            {region}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
