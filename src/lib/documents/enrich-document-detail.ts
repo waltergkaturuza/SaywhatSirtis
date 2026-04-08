@@ -35,14 +35,16 @@ function inferMimeFromFilename(name: string): string {
  * Align single-document API output with list API resolution (folderPath, customMetadata)
  * and stable display fields for detail / preview UIs.
  */
+type UploadedByUserRow = {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+}
+
 export function enrichDocumentDetailJson(
   document: DocWithProject,
-  uploadedByUser: {
-    id: string
-    firstName: string
-    lastName: string
-    email: string
-  } | null
+  uploadedByUser: UploadedByUserRow | null
 ) {
   const customMetadata =
     document.customMetadata && typeof document.customMetadata === 'object' && !Array.isArray(document.customMetadata)
@@ -90,6 +92,15 @@ export function enrichDocumentDetailJson(
   const categoryDisplay =
     (typeof customMetadata.categoryDisplay === 'string' && customMetadata.categoryDisplay) || resolvedCategory
 
+  const uploadedByUserOut = uploadedByUser
+    ? {
+        id: uploadedByUser.id,
+        firstName: uploadedByUser.firstName ?? '',
+        lastName: uploadedByUser.lastName ?? '',
+        email: uploadedByUser.email ?? '',
+      }
+    : null
+
   return {
     id: document.id,
     filename: filename || originalName,
@@ -105,7 +116,7 @@ export function enrichDocumentDetailJson(
     tags: document.tags ?? [],
     isPublic: document.isPublic,
     uploadedBy: document.uploadedBy,
-    uploadedByUser,
+    uploadedByUser: uploadedByUserOut,
     createdAt: document.createdAt.toISOString(),
     updatedAt: document.updatedAt.toISOString(),
     customMetadata: document.customMetadata,
