@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import { ensureArray, safeFilter } from "@/lib/array-utils"
@@ -35,16 +35,46 @@ interface CaseData {
   description: string
 }
 
+interface CaseStats {
+  totalCases: number
+  openCases: number
+  inProgressCases: number
+  pendingCases: number
+  closedCases: number
+  overdueCases: number
+}
+
 export default function CaseManagementPage() {
   const { data: session } = useSession()
   
-  // All useState hooks must be called before any conditional logic
   const [activeTab, setActiveTab] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedOfficer, setSelectedOfficer] = useState('all')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [cases, setCases] = useState<CaseData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [totalCasesCount, setTotalCasesCount] = useState<number | null>(null)
+  const [stats, setStats] = useState<CaseStats>({
+    totalCases: 0,
+    openCases: 0,
+    inProgressCases: 0,
+    pendingCases: 0,
+    closedCases: 0,
+    overdueCases: 0,
+  })
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(true)
+  const [filterOptions, setFilterOptions] = useState({
+    officers: [] as string[],
+    provinces: [] as string[],
+  })
+  const [filters, setFilters] = useState({
+    officer: 'all',
+    province: '',
+    priority: '',
+    dateFrom: '',
+    dateTo: '',
+  })
   
   // Check user permissions after all hooks
   const userPermissions = session?.user?.permissions || []
@@ -58,41 +88,103 @@ export default function CaseManagementPage() {
                              userPermissions.includes('callcentre.view') ||
                              userRoles.some(role => ['advance_user_1', 'advance_user_2', 'admin', 'super_user', 'manager'].includes(role.toLowerCase()))
 
-  useEffect(() => {
-    if (canAccessCallCentre) {
-      fetchCases()
+  const buildCasesQuery = useCallback((
+    currentTab: string,
+    currentFilters: typeof filters,
+    currentSearch: string
+  ) => {
+    const params = new URLSearchParams({ limit: '1000', page: '1', tab: currentTab })
+    if (currentFilters.officer && currentFilters.officer !== 'all') {
+      params.set('officer', currentFilters.officer)
     }
-  }, [canAccessCallCentre])
+    if (currentFilters.province) params.set('province', currentFilters.province)
+    if (currentFilters.priority) params.set('priority', currentFilters.priority)
+    if (currentFilters.dateFrom) params.set('dateFrom', currentFilters.dateFrom)
+    if (currentFilters.dateTo) params.set('dateTo', currentFilters.dateTo)
+    if (currentSearch) params.set('search', currentSearch)
+    return params.toString()
+  }, [])
 
-  const fetchCases = async () => {
+  const fetchCases = useCallback(async (
+    currentTab = activeTab,
+    currentFilters = filters,
+    currentSearch = debouncedSearchTerm
+  ) => {
     try {
-      const response = await fetch('/api/call-centre/cases')
+      setLoading(true)
+      const query = buildCasesQuery(currentTab, currentFilters, currentSearch)
+      const response = await fetch(`/api/call-centre/cases?${query}`)
       if (!response.ok) {
         throw new Error('Failed to fetch cases')
       }
       const data = await response.json()
-      
-      // Debug: Log what we receive from API
-      console.log('=== FRONTEND DEBUG: API Response ===')
-      console.log('Raw API data:', data)
-      console.log('Cases array:', data.cases)
-      console.log('Cases length:', data.cases?.length)
-      
-      if (data.cases && Array.isArray(data.cases)) {
-        const statusCounts: Record<string, number> = {}
-        data.cases.forEach((c: any) => {
-          statusCounts[c.status] = (statusCounts[c.status] || 0) + 1
-        })
-        console.log('Status counts from API:', statusCounts)
-      }
-      
       setCases(data.cases || [])
-    } catch (error) {
-      console.error('Error fetching cases:', error)
+      setTotalCasesCount(data.total ?? null)
+      if (data.stats) {
+        setStats(data.stats)
+      }
+      setError('')
+    } catch (fetchError) {
+      console.error('Error fetching cases:', fetchError)
       setError('Failed to load case data')
     } finally {
       setLoading(false)
     }
+  }, [activeTab, filters, debouncedSearchTerm, buildCasesQuery])
+
+  const fetchFilterOptions = async () => {
+    try {
+      setFilterOptionsLoading(true)
+      const response = await fetch('/api/call-centre/filter-options')
+      if (!response.ok) {
+        throw new Error('Failed to fetch filter options')
+      }
+      const data = await response.json()
+      if (data.success && data.filterOptions) {
+        setFilterOptions({
+          officers: data.filterOptions.officers || [],
+          provinces: data.filterOptions.provinces || [],
+        })
+      }
+    } catch (fetchError) {
+      console.error('Error fetching filter options:', fetchError)
+      setFilterOptions({ officers: [], provinces: [] })
+    } finally {
+      setFilterOptionsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (canAccessCallCentre) {
+      fetchFilterOptions()
+    }
+  }, [canAccessCallCentre])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  useEffect(() => {
+    if (canAccessCallCentre) {
+      fetchCases(activeTab, filters, debouncedSearchTerm)
+    }
+  }, [canAccessCallCentre, activeTab, filters, debouncedSearchTerm, fetchCases])
+
+  const activeFiltersCount = Object.entries(filters).filter(
+    ([key, value]) => key !== 'officer' ? value !== '' : value !== 'all'
+  ).length
+  const hasActiveFilters = activeFiltersCount > 0 || searchTerm !== ''
+
+  const clearFilters = () => {
+    setFilters({
+      officer: 'all',
+      province: '',
+      priority: '',
+      dateFrom: '',
+      dateTo: '',
+    })
+    setSearchTerm('')
   }
 
   if (!canAccessCallCentre) {
@@ -109,45 +201,12 @@ export default function CaseManagementPage() {
     )
   }
 
-  // Extract unique officers from cases for filter dropdown and calculate statistics
   const safeCases = ensureArray<CaseData>(cases)
-  const officers = [...new Set(safeCases.map(c => c.officer).filter(Boolean))]
+  const officers = filterOptions.officers.length > 0
+    ? filterOptions.officers
+    : [...new Set(safeCases.map(c => c.officer).filter(Boolean))]
 
-  // Filter cases based on active tab and search
-  const filteredCases = safeFilter(cases, (caseItem: CaseData) => {
-    const matchesTab = activeTab === 'all' || 
-                      (activeTab === 'open' && caseItem.status === 'open') ||
-                      (activeTab === 'in-progress' && caseItem.status === 'in-progress') ||
-                      (activeTab === 'pending' && caseItem.status === 'pending') ||
-                      (activeTab === 'closed' && caseItem.status === 'closed') ||
-                      (activeTab === 'overdue' && caseItem.isOverdue)
-
-    const matchesSearch = searchTerm === '' ||
-                         caseItem.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         caseItem.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         caseItem.purpose.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesOfficer = selectedOfficer === 'all' || caseItem.officer === selectedOfficer
-
-    return matchesTab && matchesSearch && matchesOfficer
-  })
-
-  // Calculate statistics
-  const stats = {
-    totalCases: safeCases.length,
-    openCases: safeFilter(cases, (c: CaseData) => c.status === 'open').length,
-    inProgressCases: safeFilter(cases, (c: CaseData) => c.status === 'in-progress').length,
-    pendingCases: safeFilter(cases, (c: CaseData) => c.status === 'pending').length,
-    closedCases: safeFilter(cases, (c: CaseData) => c.status === 'closed').length,
-    overdueCases: safeFilter(cases, (c: CaseData) => c.isOverdue).length
-  }
-
-  // Debug: Log the stats calculation
-  console.log('=== FRONTEND DEBUG: Stats Calculation ===')
-  console.log('safeCases length:', safeCases.length)
-  console.log('Raw cases:', cases)
-  console.log('Cases with status details:', cases.map(c => ({ id: c.caseNumber || c.id, status: c.status })))
-  console.log('Calculated stats:', stats)
+  const filteredCases = cases
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -283,42 +342,158 @@ export default function CaseManagementPage() {
     >
       <div className="space-y-6">
         {/* Search and Filter Controls */}
-        <div className="bg-white rounded-lg border p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search cases..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+        <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-saywhat-dark via-gray-800 to-saywhat-dark px-6 py-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex-1 max-w-2xl">
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-300" />
+                  <input
+                    type="text"
+                    placeholder="Search cases by number, client, phone, or purpose..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg bg-white placeholder-gray-400 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <select
+                  value={filters.officer}
+                  onChange={(e) => setFilters({ ...filters, officer: e.target.value })}
+                  className="px-4 py-3 border-2 border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                  disabled={filterOptionsLoading}
+                >
+                  <option value="all">All Officers</option>
+                  {officers.map((officer) => (
+                    <option key={officer} value={officer}>
+                      {officer}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`inline-flex items-center px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 shadow-md ${
+                    showFilters
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-900 border-2 border-blue-500 hover:bg-blue-500 hover:text-white"
+                  }`}
+                >
+                  <FunnelIcon className="mr-2 h-5 w-5" />
+                  Filters
+                  {activeFiltersCount > 0 && (
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                      showFilters ? "bg-white/30 text-white" : "bg-blue-500 text-white"
+                    }`}>
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
-            
-            <div className="sm:w-48">
-              <select
-                value={selectedOfficer}
-                onChange={(e) => setSelectedOfficer(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Officers</option>
-                {officers.map((officer) => (
-                  <option key={officer} value={officer}>
-                    {officer}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
+
+          {showFilters && (
+            <div className="px-6 py-6 bg-gradient-to-br from-gray-50 via-white to-gray-50 border-t border-gray-100">
+              {hasActiveFilters && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-800">
+                    {activeFiltersCount} filter{activeFiltersCount !== 1 ? 's' : ''} active
+                    {searchTerm && ' • Search active'}
+                  </span>
+                  <button
+                    onClick={clearFilters}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div>
+                  <label className="block text-sm font-bold text-gray-800 mb-2">Province</label>
+                  <select
+                    value={filters.province}
+                    onChange={(e) => setFilters({ ...filters, province: e.target.value })}
+                    className="block w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                    disabled={filterOptionsLoading}
+                  >
+                    <option value="">All Provinces</option>
+                    {filterOptions.provinces.map((province) => (
+                      <option key={province} value={province}>{province}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-800 mb-2">Priority</label>
+                  <select
+                    value={filters.priority}
+                    onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+                    className="block w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="">All Priorities</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-800 mb-2">Date From</label>
+                  <input
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                    className="block w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-800 mb-2">Date To</label>
+                  <input
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                    className="block w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5 flex justify-end">
+                <button
+                  onClick={clearFilters}
+                  disabled={!hasActiveFilters}
+                  className={`px-6 py-3 rounded-lg font-semibold text-sm ${
+                    hasActiveFilters
+                      ? "bg-gray-600 text-white hover:bg-gray-700"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Case Status Tabs */}
         <div className="bg-white rounded-lg border">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6">
+          <div className="border-b border-gray-200 px-6 pt-4">
+            <p className="text-sm text-gray-500 mb-3">
+              {hasActiveFilters
+                ? `${filteredCases.length.toLocaleString()} matching ${filteredCases.length === 1 ? 'case' : 'cases'}`
+                : `${stats.totalCases.toLocaleString()} cases total`}
+              {filteredCases.length < (totalCasesCount || 0) && hasActiveFilters && (
+                <span className="text-xs text-gray-400 ml-1">
+                  (up to 1,000 shown per page)
+                </span>
+              )}
+            </p>
+            <nav className="-mb-px flex flex-wrap gap-x-8 gap-y-2">
               {[
                 { key: 'all', label: 'All Cases', count: stats.totalCases },
                 { key: 'open', label: 'Open', count: stats.openCases },
@@ -357,7 +532,7 @@ export default function CaseManagementPage() {
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Error Loading Cases</h3>
                 <p className="text-sm text-gray-500 mb-4">{error}</p>
                 <button 
-                  onClick={fetchCases}
+                  onClick={() => fetchCases()}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700"
                 >
                   Try Again
@@ -368,7 +543,7 @@ export default function CaseManagementPage() {
                 <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-4 text-sm font-medium text-gray-900">No cases found</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  {searchTerm || selectedOfficer !== 'all' 
+                  {hasActiveFilters
                     ? 'Try adjusting your search or filter criteria.'
                     : 'No cases have been created yet.'
                   }

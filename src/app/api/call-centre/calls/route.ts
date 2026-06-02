@@ -28,15 +28,72 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Get query parameters for pagination
+    // Get query parameters for pagination and filtering
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = Math.min(parseInt(searchParams.get('limit') || '500'), 1000) // Max 1000 records
     const skip = (page - 1) * limit
 
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
+    const officer = searchParams.get('officer')
+    const province = searchParams.get('province')
+    const status = searchParams.get('status')
+    const validity = searchParams.get('validity')
+    const communicationMode = searchParams.get('communicationMode')
+    const search = searchParams.get('search')
+
+    const andConditions: Record<string, unknown>[] = []
+
+    if (officer) {
+      andConditions.push({
+        OR: [{ officerName: officer }, { assignedOfficer: officer }]
+      })
+    }
+    if (province) {
+      andConditions.push({ callerProvince: province })
+    }
+    if (status) {
+      andConditions.push({ status })
+    }
+    if (validity) {
+      andConditions.push({ callValidity: validity })
+    }
+    if (communicationMode) {
+      andConditions.push({ modeOfCommunication: communicationMode })
+    }
+    if (search) {
+      andConditions.push({
+        OR: [
+          { callerName: { contains: search, mode: 'insensitive' } },
+          { callerPhone: { contains: search } },
+          { callNumber: { contains: search, mode: 'insensitive' } },
+          { purpose: { contains: search, mode: 'insensitive' } }
+        ]
+      })
+    }
+    if (dateFrom || dateTo) {
+      const dateRange: { gte?: Date; lte?: Date } = {}
+      if (dateFrom) {
+        dateRange.gte = new Date(dateFrom)
+      }
+      if (dateTo) {
+        dateRange.lte = new Date(`${dateTo}T23:59:59.999`)
+      }
+      andConditions.push({
+        OR: [
+          { callStartTime: { not: null, ...dateRange } },
+          { callStartTime: null, createdAt: dateRange }
+        ]
+      })
+    }
+
+    const where = andConditions.length > 0 ? { AND: andConditions } : {}
+
     // Optimized query with pagination and selective fields
     const [calls, totalCount] = await Promise.all([
       prisma.call_records.findMany({
+        where,
         select: {
           id: true,
           callNumber: true,
@@ -89,14 +146,14 @@ export async function GET(request: NextRequest) {
           followUpDate: true,
           updatedAt: true
         },
-        orderBy: {
-          createdAt: 'desc'
-        },
+        orderBy: [
+          { callStartTime: 'desc' },
+          { createdAt: 'desc' }
+        ],
         skip,
         take: limit
       }),
-      // Get total count efficiently
-      prisma.call_records.count()
+      prisma.call_records.count({ where })
     ])
 
     // Transform the data to match the frontend interface
@@ -108,7 +165,7 @@ export async function GET(request: NextRequest) {
       officer: call.officerName || call.assignedOfficer || 'N/A', // Map for frontend compatibility
       communicationMode: call.modeOfCommunication || 'N/A', // Map for frontend
       validity: call.callValidity || 'N/A',
-      dateTime: call.createdAt?.toISOString() || new Date().toISOString(),
+      dateTime: (call.callStartTime ?? call.createdAt)?.toISOString() || new Date().toISOString(),
       duration: call.callEndTime && call.callStartTime ? 
         `${Math.round((new Date(call.callEndTime).getTime() - new Date(call.callStartTime).getTime()) / 60000)} min` : 'N/A',
       voucherIssued: call.voucherIssued || 'N/A',

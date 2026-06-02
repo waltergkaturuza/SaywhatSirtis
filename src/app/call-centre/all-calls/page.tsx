@@ -78,76 +78,13 @@ export default function AllCallsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
   const [showCallDetail, setShowCallDetail] = useState(false);
   const [showEditCall, setShowEditCall] = useState(false);
   const [editingCall, setEditingCall] = useState<CallRecord | null>(null);
   const [totalCallsCount, setTotalCallsCount] = useState<number | null>(null); // Actual total from database
 
-  useEffect(() => {
-    fetchCalls();
-    fetchFilterOptions();
-  }, []);
-
-  const fetchFilterOptions = async () => {
-    try {
-      setFilterOptionsLoading(true);
-      const response = await fetch('/api/call-centre/filter-options');
-      if (!response.ok) {
-        throw new Error('Failed to fetch filter options');
-      }
-      const data = await response.json();
-      if (data.success && data.filterOptions) {
-        setFilterOptions({
-          officers: data.filterOptions.officers || [],
-          provinces: data.filterOptions.provinces || [],
-          statuses: data.filterOptions.statuses || [],
-          validity: data.filterOptions.validity || [],
-          communicationModes: data.filterOptions.communicationModes || [],
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching filter options:', error);
-      // Set empty arrays on error - filters will just be empty
-      setFilterOptions({
-        officers: [],
-        provinces: [],
-        statuses: [],
-        validity: [],
-        communicationModes: [],
-      });
-    } finally {
-      setFilterOptionsLoading(false);
-    }
-  };
-
-  const fetchCalls = async () => {
-    try {
-      // Fetch calls with pagination - get first 1000 records (reasonable limit)
-      const response = await fetch('/api/call-centre/calls?limit=1000&page=1');
-      if (!response.ok) {
-        throw new Error('Failed to fetch calls');
-      }
-      const data = await response.json();
-      setCalls(data.calls || []);
-      setFilteredCalls(data.calls || []);
-      // Store the actual total count from database (not just paginated count)
-      setTotalCallsCount(data.total || null);
-    } catch (error) {
-      console.error('Error fetching calls:', error);
-      setError('Failed to load call records');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Status color mapping
-  const statusesMap = {
-    'OPEN': { color: 'bg-blue-100 text-blue-800', icon: ExclamationTriangleIcon },
-    'IN_PROGRESS': { color: 'bg-yellow-100 text-yellow-800', icon: ClockIcon },
-    'RESOLVED': { color: 'bg-green-100 text-green-800', icon: CheckBadgeIcon },
-    'CLOSED': { color: 'bg-gray-100 text-gray-800', icon: CheckBadgeIcon },
-  };
   const [filters, setFilters] = useState({
     officer: "",
     province: "", 
@@ -169,7 +106,92 @@ export default function AllCallsPage() {
   });
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
 
-  // Check permissions
+  const buildCallsQuery = useCallback((currentFilters: typeof filters, currentSearch: string) => {
+    const params = new URLSearchParams({ limit: '1000', page: '1' });
+    if (currentFilters.officer) params.set('officer', currentFilters.officer);
+    if (currentFilters.province) params.set('province', currentFilters.province);
+    if (currentFilters.status) params.set('status', currentFilters.status);
+    if (currentFilters.validity) params.set('validity', currentFilters.validity);
+    if (currentFilters.communicationMode) params.set('communicationMode', currentFilters.communicationMode);
+    if (currentFilters.dateFrom) params.set('dateFrom', currentFilters.dateFrom);
+    if (currentFilters.dateTo) params.set('dateTo', currentFilters.dateTo);
+    if (currentSearch) params.set('search', currentSearch);
+    return params.toString();
+  }, []);
+
+  const fetchCalls = useCallback(async (currentFilters = filters, currentSearch = searchTerm) => {
+    try {
+      setLoading(true);
+      const query = buildCallsQuery(currentFilters, currentSearch);
+      const response = await fetch(`/api/call-centre/calls?${query}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch calls');
+      }
+      const data = await response.json();
+      setCalls(data.calls || []);
+      setFilteredCalls(data.calls || []);
+      setTotalCallsCount(data.total ?? null);
+      setError('');
+    } catch (error) {
+      console.error('Error fetching calls:', error);
+      setError('Failed to load call records');
+    } finally {
+      setLoading(false);
+    }
+  }, [buildCallsQuery, filters, searchTerm]);
+
+  useEffect(() => {
+    fetchFilterOptions();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    fetchCalls(filters, debouncedSearchTerm);
+  }, [filters, debouncedSearchTerm, fetchCalls]);
+
+  const fetchFilterOptions = async () => {
+    try {
+      setFilterOptionsLoading(true);
+      const response = await fetch('/api/call-centre/filter-options');
+      if (!response.ok) {
+        throw new Error('Failed to fetch filter options');
+      }
+      const data = await response.json();
+      if (data.success && data.filterOptions) {
+        setFilterOptions({
+          officers: data.filterOptions.officers || [],
+          provinces: data.filterOptions.provinces || [],
+          statuses: data.filterOptions.statuses || [],
+          validity: data.filterOptions.validity || [],
+          communicationModes: data.filterOptions.communicationModes || [],
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching filter options:', error);
+      setFilterOptions({
+        officers: [],
+        provinces: [],
+        statuses: [],
+        validity: [],
+        communicationModes: [],
+      });
+    } finally {
+      setFilterOptionsLoading(false);
+    }
+  };
+
+  // Status color mapping
+  const statusesMap = {
+    'OPEN': { color: 'bg-blue-100 text-blue-800', icon: ExclamationTriangleIcon },
+    'IN_PROGRESS': { color: 'bg-yellow-100 text-yellow-800', icon: ClockIcon },
+    'RESOLVED': { color: 'bg-green-100 text-green-800', icon: CheckBadgeIcon },
+    'CLOSED': { color: 'bg-gray-100 text-gray-800', icon: CheckBadgeIcon },
+  };
+
   const hasAccess = session?.user?.permissions?.includes("callcentre.access");
   // Call editing should be less restrictive than case editing (for data capturers)
   const canEdit = session?.user?.permissions?.some(permission => 
@@ -182,45 +204,6 @@ export default function AllCallsPage() {
   console.log('User permissions:', session?.user?.permissions);
   console.log('User roles:', session?.user?.roles);
   console.log('Can edit:', canEdit);
-
-  useEffect(() => {
-    let filtered = calls || [];
-
-    // Apply search
-    if (searchTerm) {
-      filtered = filtered.filter(call =>
-        call.callerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        call.callerPhone?.includes(searchTerm) ||
-        call.callNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        call.purpose?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Apply filters
-    if (filters.officer) {
-      filtered = filtered.filter(call => call.officer === filters.officer);
-    }
-    if (filters.province) {
-      filtered = filtered.filter(call => call.callerProvince === filters.province);
-    }
-    if (filters.status) {
-      filtered = filtered.filter(call => call.status === filters.status);
-    }
-    if (filters.validity) {
-      filtered = filtered.filter(call => call.validity === filters.validity);
-    }
-    if (filters.communicationMode) {
-      filtered = filtered.filter(call => call.communicationMode === filters.communicationMode);
-    }
-    if (filters.dateFrom) {
-      filtered = filtered.filter(call => call.dateTime && call.dateTime >= filters.dateFrom);
-    }
-    if (filters.dateTo) {
-      filtered = filtered.filter(call => call.dateTime && call.dateTime <= filters.dateTo + " 23:59:59");
-    }
-
-    setFilteredCalls(filtered);
-  }, [searchTerm, filters, calls]);
 
   const getStatusInfo = (status: string) => {
     return statusesMap[status as keyof typeof statusesMap] || { 
@@ -641,13 +624,20 @@ export default function AllCallsPage() {
                     Call Records
                   </h3>
                   <p className="text-sm text-gray-300 mt-0.5">
-                    {totalCallsCount !== null 
-                      ? `${totalCallsCount.toLocaleString()} ${totalCallsCount === 1 ? 'record' : 'records'} total`
-                      : `${filteredCalls.length} ${filteredCalls.length === 1 ? 'record' : 'records'} loaded`
+                    {hasActiveFilters
+                      ? `${filteredCalls.length.toLocaleString()} matching ${filteredCalls.length === 1 ? 'record' : 'records'}`
+                      : totalCallsCount !== null 
+                        ? `${totalCallsCount.toLocaleString()} ${totalCallsCount === 1 ? 'record' : 'records'} total`
+                        : `${filteredCalls.length} ${filteredCalls.length === 1 ? 'record' : 'records'} loaded`
                     }
-                    {filteredCalls.length < (totalCallsCount || 0) && totalCallsCount !== null && (
+                    {hasActiveFilters && filteredCalls.length < (totalCallsCount || 0) && (
                       <span className="text-xs text-gray-400 ml-1">
-                        ({filteredCalls.length} shown)
+                        ({filteredCalls.length} shown, up to 1,000 per page)
+                      </span>
+                    )}
+                    {!hasActiveFilters && filteredCalls.length < (totalCallsCount || 0) && totalCallsCount !== null && (
+                      <span className="text-xs text-gray-400 ml-1">
+                        ({filteredCalls.length} shown — use filters to search older records)
                       </span>
                     )}
                   </p>
@@ -656,7 +646,7 @@ export default function AllCallsPage() {
               <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg backdrop-blur-sm">
                 <PhoneIcon className="h-5 w-5 text-saywhat-orange" />
                 <span className="text-white font-semibold">
-                  {totalCallsCount !== null ? totalCallsCount.toLocaleString() : filteredCalls.length}
+                  {hasActiveFilters ? filteredCalls.length.toLocaleString() : (totalCallsCount !== null ? totalCallsCount.toLocaleString() : filteredCalls.length)}
                 </span>
               </div>
             </div>
@@ -731,7 +721,7 @@ export default function AllCallsPage() {
                         <h3 className="text-lg font-bold text-saywhat-dark mb-2">Error Loading Records</h3>
                         <p className="text-saywhat-grey mb-6">{error}</p>
                         <button 
-                          onClick={fetchCalls}
+                          onClick={() => fetchCalls()}
                           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-saywhat-orange to-orange-600 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-orange-700 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                         >
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
