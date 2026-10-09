@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { deleteFromSupabaseStorage, uploadToSupabaseStorage } from '@/lib/storage/supabase-storage'
 
@@ -20,6 +21,15 @@ const DEFAULT_SCHEDULE: BackupSchedule = {
   frequency: 'daily',
   weekday: 0,
   retentionCount: 14,
+}
+
+function scheduleJson(schedule: BackupSchedule): Prisma.InputJsonObject {
+  return {
+    enabled: schedule.enabled,
+    frequency: schedule.frequency,
+    weekday: schedule.weekday,
+    retentionCount: schedule.retentionCount,
+  }
 }
 
 function serializeValue(value: unknown): unknown {
@@ -76,13 +86,13 @@ export async function saveBackupSchedule(input: Partial<BackupSchedule>): Promis
     create: {
       id: randomUUID(),
       key: SCHEDULE_KEY,
-      value: next,
+      value: scheduleJson(next),
       description: 'Automated database backup schedule',
       category: 'backup',
       updatedAt: new Date(),
     },
     update: {
-      value: next,
+      value: scheduleJson(next),
       updatedAt: new Date(),
     },
   })
