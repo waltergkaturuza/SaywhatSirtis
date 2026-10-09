@@ -48,27 +48,175 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Get date range from query params
+    // Every summary section uses this same filter so province, officer,
+    // dates, and the other search fields apply across all tables.
     const { searchParams } = new URL(request.url)
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
+    const officerName = searchParams.get('officerName')?.trim() || ''
+    const dateFrom = searchParams.get('dateFrom') || searchParams.get('startDate')
+    const dateTo = searchParams.get('dateTo') || searchParams.get('endDate')
+    const province = searchParams.get('province')?.trim() || ''
+    const callerId = (searchParams.get('callerId') || searchParams.get('callerIdNumber'))?.trim() || ''
+    const caseNumber = searchParams.get('caseNumber')?.trim() || ''
+    const gender = searchParams.get('gender')?.trim() || ''
+    const validCallsFilter = searchParams.get('validCalls')?.trim() || ''
+    const purposeFilter = searchParams.get('purpose')?.trim() || ''
+    const language = searchParams.get('language')?.trim() || ''
+    const communicationMode = searchParams.get('communicationMode')?.trim() || ''
 
-    const dateFilter = startDate && endDate ? {
-      createdAt: {
-        gte: new Date(startDate),
-        lte: new Date(endDate)
+    const isAll = (value: string) => !value || value.toLowerCase() === 'all'
+    const andConditions: Record<string, unknown>[] = []
+
+    if (officerName) {
+      andConditions.push({
+        OR: [
+          { officerName: { contains: officerName, mode: 'insensitive' } },
+          { assignedOfficer: { contains: officerName, mode: 'insensitive' } },
+        ],
+      })
+    }
+
+    if (!isAll(province)) {
+      andConditions.push({
+        OR: [
+          { callerProvince: { equals: province, mode: 'insensitive' } },
+          { clientProvince: { equals: province, mode: 'insensitive' } },
+        ],
+      })
+    }
+
+    if (callerId) {
+      andConditions.push({
+        OR: [
+          { callerPhone: { contains: callerId, mode: 'insensitive' } },
+          { callNumber: { contains: callerId, mode: 'insensitive' } },
+        ],
+      })
+    }
+
+    if (caseNumber) {
+      andConditions.push({
+        caseNumber: { contains: caseNumber, mode: 'insensitive' },
+      })
+    }
+
+    if (!isAll(gender)) {
+      const genderMatch = (field: 'callerGender' | 'clientSex') => ({
+        OR: [
+          { [field]: null },
+          { [field]: '' },
+          { [field]: { equals: 'N/A', mode: 'insensitive' } },
+          { [field]: { equals: 'NA', mode: 'insensitive' } },
+        ],
+      })
+
+      if (gender.toLowerCase() === 'n/a') {
+        andConditions.push({
+          AND: [genderMatch('callerGender'), genderMatch('clientSex')],
+        })
+      } else {
+        andConditions.push({
+          OR: [
+            { callerGender: { equals: gender, mode: 'insensitive' } },
+            { clientSex: { equals: gender, mode: 'insensitive' } },
+          ],
+        })
       }
-    } : {}
+    }
+
+    if (validCallsFilter === 'valid') {
+      andConditions.push({
+        callValidity: { equals: 'valid', mode: 'insensitive' },
+      })
+    } else if (validCallsFilter === 'invalid') {
+      andConditions.push({
+        NOT: { callValidity: { equals: 'valid', mode: 'insensitive' } },
+      })
+    }
+
+    if (!isAll(purposeFilter)) {
+      andConditions.push({
+        purpose: { equals: purposeFilter, mode: 'insensitive' },
+      })
+    }
+
+    if (!isAll(language)) {
+      andConditions.push({
+        language: { equals: language, mode: 'insensitive' },
+      })
+    }
+
+    if (!isAll(communicationMode)) {
+      const modeAliases: Record<string, string[]> = {
+        inbound: ['inbound', 'Inbound Call'],
+        outbound: ['outbound', 'Outbound Call'],
+        whatsapp: ['whatsapp', 'WhatsApp'],
+        walk: ['walk', 'Walk-in', 'walk-in'],
+        text: ['text', 'Text/SMS', 'Text Message', 'SMS'],
+      }
+      const aliases = modeAliases[communicationMode.toLowerCase()] || [communicationMode]
+      andConditions.push({
+        OR: aliases.flatMap((value) => ([
+          { modeOfCommunication: { equals: value, mode: 'insensitive' } },
+          { callType: { equals: value, mode: 'insensitive' } },
+        ])),
+      })
+    }
+
+    const attributeWhere = andConditions.length > 0 ? { AND: andConditions } : {}
+
+    type DateRange = { gte?: Date; lte?: Date }
+    const userDateRange: DateRange = {}
+    if (dateFrom) userDateRange.gte = new Date(dateFrom)
+    if (dateTo) userDateRange.lte = new Date(`${dateTo}T23:59:59.999`)
+
+    const effectiveDateCondition = (range: DateRange) => ({
+      OR: [
+        { callStartTime: { not: null, ...range } },
+        { callStartTime: null, createdAt: range },
+      ],
+    })
+
+    const intersectDateRanges = (user: DateRange, window: DateRange): DateRange | null => {
+      const gteCandidates = [user.gte, window.gte].filter((value): value is Date => !!value)
+      const lteCandidates = [user.lte, window.lte].filter((value): value is Date => !!value)
+      const gte = gteCandidates.length
+        ? new Date(Math.max(...gteCandidates.map(value => value.getTime())))
+        : undefined
+      const lte = lteCandidates.length
+        ? new Date(Math.min(...lteCandidates.map(value => value.getTime())))
+        : undefined
+      if (gte && lte && gte.getTime() > lte.getTime()) return null
+      const range: DateRange = {}
+      if (gte) range.gte = gte
+      if (lte) range.lte = lte
+      return range
+    }
+
+    const recordWhere = dateFrom || dateTo
+      ? { AND: [attributeWhere, effectiveDateCondition(userDateRange)] }
+      : attributeWhere
+
+    const countInWindow = (windowStart: Date, extra: Record<string, unknown> = {}) => {
+      const range = intersectDateRanges(userDateRange, { gte: windowStart })
+      if (!range) return Promise.resolve(0)
+      return prisma.call_records.count({
+        where: {
+          AND: [attributeWhere, extra, effectiveDateCondition(range)],
+        },
+      })
+    }
 
     // Get call statistics
     const totalCalls = await prisma.call_records.count({
-      where: dateFilter
+      where: recordWhere
     })
 
     const validCalls = await prisma.call_records.count({
       where: {
-        ...dateFilter,
-        callValidity: 'valid'
+        AND: [
+          recordWhere,
+          { callValidity: { equals: 'valid', mode: 'insensitive' } },
+        ],
       }
     })
 
@@ -76,14 +224,14 @@ export async function GET(request: NextRequest) {
 
     const totalCases = await prisma.call_records.count({
       where: {
-        ...dateFilter,
+        ...recordWhere,
         isCase: 'YES'
       }
     })
 
     const pendingCases = await prisma.call_records.count({
       where: {
-        ...dateFilter,
+        ...recordWhere,
         isCase: 'YES',
         status: 'OPEN'
       }
@@ -91,7 +239,7 @@ export async function GET(request: NextRequest) {
 
     const closedCases = await prisma.call_records.count({
       where: {
-        ...dateFilter,
+        ...recordWhere,
         isCase: 'YES',
         status: 'CLOSED'
       }
@@ -99,7 +247,7 @@ export async function GET(request: NextRequest) {
 
     const overdueCases = await prisma.call_records.count({
       where: {
-        ...dateFilter,
+        ...recordWhere,
         isCase: 'YES',
         status: 'OPEN',
         followUpDate: {
@@ -108,15 +256,33 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Calculate average call duration (mock for now)
-    const averageCallDuration = "15 min"
+    const durationRows = await prisma.call_records.findMany({
+      where: {
+        AND: [
+          recordWhere,
+          { callStartTime: { not: null } },
+          { callEndTime: { not: null } },
+        ],
+      },
+      select: { callStartTime: true, callEndTime: true },
+    })
+    const averageMinutes = durationRows.length > 0
+      ? Math.round(
+          durationRows.reduce((sum, call) => {
+            const start = new Date(call.callStartTime!).getTime()
+            const end = new Date(call.callEndTime!).getTime()
+            return sum + Math.max(0, end - start)
+          }, 0) / durationRows.length / 1000 / 60
+        )
+      : 0
+    const averageCallDuration = averageMinutes > 0 ? `${averageMinutes} min` : 'N/A'
     const caseConversionRate = totalCalls > 0 ? `${Math.round((totalCases / totalCalls) * 100)}%` : "0%"
 
     // Get officer performance data
     const officerStats = await prisma.call_records.groupBy({
       by: ['officerName'],
       where: {
-        ...dateFilter,
+        ...recordWhere,
         officerName: {
           not: null
         }
@@ -130,7 +296,7 @@ export async function GET(request: NextRequest) {
       officerStats.map(async (officer) => {
         const officerCalls = await prisma.call_records.findMany({
           where: {
-            ...dateFilter,
+            ...recordWhere,
             officerName: officer.officerName
           },
           select: {
@@ -143,7 +309,7 @@ export async function GET(request: NextRequest) {
           }
         })
 
-        const validCallsCount = officerCalls.filter(c => c.callValidity === 'valid').length
+        const validCallsCount = officerCalls.filter(c => (c.callValidity || '').toLowerCase() === 'valid').length
         const casesCount = officerCalls.filter(c => c.isCase === 'YES').length
         const pendingCasesCount = officerCalls.filter(c => c.isCase === 'YES' && c.status === 'OPEN').length
         const closedCasesCount = officerCalls.filter(c => c.isCase === 'YES' && c.status === 'CLOSED').length
@@ -183,6 +349,74 @@ export async function GET(request: NextRequest) {
       })
     )
 
+    const unnamedOfficerCalls = await prisma.call_records.findMany({
+      where: {
+        AND: [
+          recordWhere,
+          { OR: [{ officerName: null }, { officerName: '' }] },
+        ],
+      },
+      select: {
+        assignedOfficer: true,
+        callValidity: true,
+        isCase: true,
+        status: true,
+        followUpDate: true,
+        callStartTime: true,
+        callEndTime: true,
+      },
+    })
+
+    const groupedUnnamed = new Map<string, typeof unnamedOfficerCalls>()
+    for (const call of unnamedOfficerCalls) {
+      const name = call.assignedOfficer?.trim() || 'Unassigned'
+      const bucket = groupedUnnamed.get(name) || []
+      bucket.push(call)
+      groupedUnnamed.set(name, bucket)
+    }
+
+    for (const [name, calls] of groupedUnnamed) {
+      const validCallsCount = calls.filter(c => (c.callValidity || '').toLowerCase() === 'valid').length
+      const casesCount = calls.filter(c => c.isCase === 'YES').length
+      const pendingCasesCount = calls.filter(c => c.isCase === 'YES' && c.status === 'OPEN').length
+      const closedCasesCount = calls.filter(c => c.isCase === 'YES' && c.status === 'CLOSED').length
+      const overdueCasesCount = calls.filter(c =>
+        c.isCase === 'YES' &&
+        c.status === 'OPEN' &&
+        c.followUpDate &&
+        new Date(c.followUpDate) < new Date()
+      ).length
+      const callsWithDuration = calls.filter(c => c.callStartTime && c.callEndTime)
+      const avgDurationMinutes = callsWithDuration.length > 0
+        ? Math.round(
+            callsWithDuration.reduce((sum, call) => {
+              return sum + (new Date(call.callEndTime!).getTime() - new Date(call.callStartTime!).getTime())
+            }, 0) / callsWithDuration.length / 1000 / 60
+          )
+        : 0
+
+      const existing = officers.find(officer => officer.name.toLowerCase() === name.toLowerCase())
+      if (existing) {
+        existing.totalCalls += calls.length
+        existing.validCalls += validCallsCount
+        existing.cases += casesCount
+        existing.pendingCases += pendingCasesCount
+        existing.closedCases += closedCasesCount
+        existing.overdueCases += overdueCasesCount
+      } else {
+        officers.push({
+          name,
+          totalCalls: calls.length,
+          validCalls: validCallsCount,
+          cases: casesCount,
+          pendingCases: pendingCasesCount,
+          closedCases: closedCasesCount,
+          overdueCases: overdueCasesCount,
+          avgCallDuration: avgDurationMinutes > 0 ? `${avgDurationMinutes} min` : 'N/A',
+        })
+      }
+    }
+
     // Calculate timeframe dates (used for both calls and purpose)
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -194,7 +428,7 @@ export async function GET(request: NextRequest) {
     const purposeStats = await prisma.call_records.groupBy({
       by: ['purpose'],
       where: {
-        ...dateFilter,
+        ...recordWhere,
         isCase: 'YES',
         purpose: {
           not: null
@@ -219,37 +453,12 @@ export async function GET(request: NextRequest) {
 
     const purposeByTimeframe = await Promise.all(
       allPurposes.map(async (purpose) => {
-        const today = await prisma.call_records.count({
-          where: {
-            isCase: 'YES',
-            purpose: purpose,
-            createdAt: { gte: todayStart }
-          }
-        })
+        const purposeScope = { isCase: 'YES', purpose }
 
-        const week = await prisma.call_records.count({
-          where: {
-            isCase: 'YES',
-            purpose: purpose,
-            createdAt: { gte: weekStart }
-          }
-        })
-
-        const month = await prisma.call_records.count({
-          where: {
-            isCase: 'YES',
-            purpose: purpose,
-            createdAt: { gte: monthStart }
-          }
-        })
-
-        const year = await prisma.call_records.count({
-          where: {
-            isCase: 'YES',
-            purpose: purpose,
-            createdAt: { gte: yearStart }
-          }
-        })
+        const today = await countInWindow(todayStart, purposeScope)
+        const week = await countInWindow(weekStart, purposeScope)
+        const month = await countInWindow(monthStart, purposeScope)
+        const year = await countInWindow(yearStart, purposeScope)
 
         return {
           purpose,
@@ -266,7 +475,7 @@ export async function GET(request: NextRequest) {
     const provinceStats = await prisma.call_records.groupBy({
       by: ['callerProvince'],
       where: {
-        ...dateFilter,
+        ...recordWhere,
         callerProvince: {
           not: null
         }
@@ -283,33 +492,41 @@ export async function GET(request: NextRequest) {
       'Matabeleland North', 'Matabeleland South', 'Midlands'
     ]
 
-    const callsByProvince = await Promise.all(
-      allProvinces.map(async (provinceName) => {
-        const provinceData = provinceStats.find(p => 
-          p.callerProvince?.toLowerCase() === provinceName.toLowerCase()
+    const provincesToShow = !isAll(province)
+      ? allProvinces.filter(name => name.toLowerCase() === province.toLowerCase())
+      : allProvinces
+
+    const callsByProvince = !isAll(province)
+      ? [{
+          province: provincesToShow[0] || province,
+          calls: totalCalls,
+          validCalls,
+        }]
+      : await Promise.all(
+      provincesToShow.map(async (provinceName) => {
+        const matchingProvinces = provinceStats.filter(p =>
+          (p.callerProvince || '').trim().toLowerCase() === provinceName.toLowerCase()
         )
 
-        const totalCalls = provinceData?._count.id || 0
+        const totalCallsForProvince = matchingProvinces.reduce((sum, p) => sum + p._count.id, 0)
 
-        // Find matching province name (case-insensitive) from stats
-        const matchingProvince = provinceStats.find(p => 
-          p.callerProvince?.toLowerCase() === provinceName.toLowerCase()
-        )
-        
-        // Count valid calls for this province
-        const validCallsInProvince = matchingProvince 
+        const validCallsInProvince = matchingProvinces.length > 0
           ? await prisma.call_records.count({
               where: {
-                ...dateFilter,
-                callerProvince: matchingProvince.callerProvince,
-                callValidity: 'valid'
-              }
+                AND: [
+                  recordWhere,
+                  {
+                    OR: matchingProvinces.map(p => ({ callerProvince: p.callerProvince })),
+                    callValidity: { equals: 'valid', mode: 'insensitive' },
+                  },
+                ],
+              },
             })
           : 0
 
         return {
           province: provinceName,
-          calls: totalCalls,
+          calls: totalCallsForProvince,
           validCalls: validCallsInProvince
         }
       })
@@ -319,7 +536,7 @@ export async function GET(request: NextRequest) {
     const ageStats = await prisma.call_records.groupBy({
       by: ['callerAge'],
       where: {
-        ...dateFilter,
+        ...recordWhere,
         callerAge: { not: null },
       },
       _count: { id: true },
@@ -327,7 +544,7 @@ export async function GET(request: NextRequest) {
 
     const nullOrEmptyAgeCount = await prisma.call_records.count({
       where: {
-        ...dateFilter,
+        ...recordWhere,
         OR: [{ callerAge: null }, { callerAge: '' }],
       },
     })
@@ -363,9 +580,30 @@ export async function GET(request: NextRequest) {
 
     // Age × key population (invalid / unknown age → Zero ↔ Invalid in summaries)
     const demoRows = await prisma.call_records.findMany({
-      where: dateFilter,
-      select: { callerAge: true, callerKeyPopulation: true },
+      where: recordWhere,
+      select: {
+        callerAge: true,
+        callerKeyPopulation: true,
+        callerProvince: true,
+        clientProvince: true,
+        callValidity: true,
+      },
     })
+
+    if (isAll(province)) {
+      const blankProvince = (value?: string | null) => {
+        const normalized = (value || '').trim().toLowerCase()
+        return !normalized || normalized === 'n/a' || normalized === 'na'
+      }
+      for (const row of demoRows) {
+        if (!blankProvince(row.callerProvince)) continue
+        const clientName = (row.clientProvince || '').trim()
+        const target = callsByProvince.find(item => item.province.toLowerCase() === clientName.toLowerCase())
+        if (!target) continue
+        target.calls += 1
+        if ((row.callValidity || '').toLowerCase() === 'valid') target.validCalls += 1
+      }
+    }
 
     type Kp = (typeof KEY_POPULATION_COLUMNS)[number]
     const matrix: Record<string, Record<Kp, number>> = {} as Record<
@@ -404,59 +642,42 @@ export async function GET(request: NextRequest) {
       }),
     }
 
-    // Get calls by gender
-    const genderStats = await prisma.call_records.groupBy({
-      by: ['callerGender'],
-      where: {
-        ...dateFilter,
-        callerGender: {
-          not: null
-        }
-      },
-      _count: {
-        id: true
-      }
+    // Gender uses the caller value, and the client value when the caller gender was not recorded.
+    const genderRows = await prisma.call_records.findMany({
+      where: recordWhere,
+      select: { callerGender: true, clientSex: true },
     })
 
-    const totalWithGender = genderStats.reduce((sum, stat) => sum + stat._count.id, 0)
-    const callsByGender = genderStats.map(stat => ({
-      gender: stat.callerGender || 'Unknown',
-      count: stat._count.id,
-      percentage: totalWithGender > 0 ? Math.round((stat._count.id / totalWithGender) * 100) : 0
-    })).sort((a, b) => b.count - a.count)
+    const canonicalGender = (value?: string | null) => {
+      const normalized = (value || '').trim().toLowerCase()
+      if (normalized === 'male') return 'Male'
+      if (normalized === 'female') return 'Female'
+      if (!normalized || normalized === 'n/a' || normalized === 'na') return 'N/A'
+      return value!.trim()
+    }
 
-    // Calculate calls by timeframe (using dates calculated above)
-    const callsToday = await prisma.call_records.count({
-      where: {
-        createdAt: {
-          gte: todayStart
-        }
-      }
-    })
+    const selectedGender = !isAll(gender) ? canonicalGender(gender) : ''
+    const genderBuckets: Record<string, number> = {}
+    for (const row of genderRows) {
+      const callerLabel = canonicalGender(row.callerGender)
+      const clientLabel = canonicalGender(row.clientSex)
+      const label = selectedGender || (callerLabel !== 'N/A' ? callerLabel : clientLabel)
+      genderBuckets[label] = (genderBuckets[label] || 0) + 1
+    }
 
-    const callsThisWeek = await prisma.call_records.count({
-      where: {
-        createdAt: {
-          gte: weekStart
-        }
-      }
-    })
+    const totalWithGender = genderRows.length
+    const callsByGender = Object.entries(genderBuckets)
+      .map(([label, count]) => ({
+        gender: label,
+        count,
+        percentage: totalWithGender > 0 ? Math.round((count / totalWithGender) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
 
-    const callsThisMonth = await prisma.call_records.count({
-      where: {
-        createdAt: {
-          gte: monthStart
-        }
-      }
-    })
-
-    const callsThisYear = await prisma.call_records.count({
-      where: {
-        createdAt: {
-          gte: yearStart
-        }
-      }
-    })
+    const callsToday = await countInWindow(todayStart)
+    const callsThisWeek = await countInWindow(weekStart)
+    const callsThisMonth = await countInWindow(monthStart)
+    const callsThisYear = await countInWindow(yearStart)
 
     const callsByTimeframe = {
       today: callsToday,

@@ -39,23 +39,62 @@ interface OfficerPerformance {
   avgCallDuration: string
 }
 
+const EMPTY_FILTERS = {
+  officerName: '',
+  dateFrom: '',
+  dateTo: '',
+  province: 'all',
+  callerIdNumber: '',
+  caseNumber: '',
+  gender: 'all',
+  validCalls: 'all',
+  purpose: 'all',
+  language: 'all',
+  communicationMode: 'all'
+}
+
+type SummaryFilters = typeof EMPTY_FILTERS
+
+function filtersToQuery(activeFilters: SummaryFilters) {
+  const params = new URLSearchParams()
+  if (activeFilters.officerName.trim()) params.set('officerName', activeFilters.officerName.trim())
+  if (activeFilters.dateFrom) params.set('dateFrom', activeFilters.dateFrom)
+  if (activeFilters.dateTo) params.set('dateTo', activeFilters.dateTo)
+  if (activeFilters.province && activeFilters.province !== 'all') params.set('province', activeFilters.province)
+  if (activeFilters.callerIdNumber.trim()) params.set('callerId', activeFilters.callerIdNumber.trim())
+  if (activeFilters.caseNumber.trim()) params.set('caseNumber', activeFilters.caseNumber.trim())
+  if (activeFilters.gender && activeFilters.gender !== 'all') params.set('gender', activeFilters.gender)
+  if (activeFilters.validCalls && activeFilters.validCalls !== 'all') params.set('validCalls', activeFilters.validCalls)
+  if (activeFilters.purpose && activeFilters.purpose !== 'all') params.set('purpose', activeFilters.purpose)
+  if (activeFilters.language && activeFilters.language !== 'all') params.set('language', activeFilters.language)
+  if (activeFilters.communicationMode && activeFilters.communicationMode !== 'all') {
+    params.set('communicationMode', activeFilters.communicationMode)
+  }
+  return params.toString()
+}
+
+function describeActiveFilters(activeFilters: SummaryFilters) {
+  const labels: string[] = []
+  if (activeFilters.officerName.trim()) labels.push(`Officer: ${activeFilters.officerName.trim()}`)
+  if (activeFilters.dateFrom) labels.push(`From ${activeFilters.dateFrom}`)
+  if (activeFilters.dateTo) labels.push(`To ${activeFilters.dateTo}`)
+  if (activeFilters.province !== 'all') labels.push(`Province: ${activeFilters.province}`)
+  if (activeFilters.callerIdNumber.trim()) labels.push(`Caller ID: ${activeFilters.callerIdNumber.trim()}`)
+  if (activeFilters.caseNumber.trim()) labels.push(`Case: ${activeFilters.caseNumber.trim()}`)
+  if (activeFilters.gender !== 'all') labels.push(`Gender: ${activeFilters.gender}`)
+  if (activeFilters.validCalls !== 'all') labels.push(activeFilters.validCalls === 'valid' ? 'Valid calls only' : 'Invalid calls only')
+  if (activeFilters.purpose !== 'all') labels.push(`Purpose: ${activeFilters.purpose}`)
+  if (activeFilters.language !== 'all') labels.push(`Language: ${activeFilters.language}`)
+  if (activeFilters.communicationMode !== 'all') labels.push(`Mode: ${activeFilters.communicationMode}`)
+  return labels
+}
+
 export default function CallCentreDataSummaryPage() {
   const { data: session } = useSession()
   
   // All hooks must be at the top before any conditional logic
-  const [filters, setFilters] = useState({
-    officerName: '',
-    dateFrom: '',
-    dateTo: '',
-    province: 'all',
-    callerIdNumber: '',
-    caseNumber: '',
-    gender: 'all',
-    validCalls: 'all',
-    purpose: 'all',
-    language: 'all',
-    communicationMode: 'all'
-  })
+  const [filters, setFilters] = useState<SummaryFilters>(EMPTY_FILTERS)
+  const [appliedFilters, setAppliedFilters] = useState<SummaryFilters>(EMPTY_FILTERS)
   
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({
     totalCalls: 0,
@@ -91,12 +130,15 @@ export default function CallCentreDataSummaryPage() {
   const [callsByTimeframe, setCallsByTimeframe] = useState<{today: number, week: number, month: number, year: number}>({today: 0, week: 0, month: 0, year: 0})
 
   useEffect(() => {
-    fetchSummaryData()
+    fetchSummaryData(EMPTY_FILTERS)
   }, [])
 
-  const fetchSummaryData = async () => {
+  const fetchSummaryData = async (activeFilters: SummaryFilters = filters) => {
     try {
-      const response = await fetch('/api/call-centre/summary')
+      setLoading(true)
+      setError('')
+      const query = filtersToQuery(activeFilters)
+      const response = await fetch(`/api/call-centre/summary${query ? `?${query}` : ''}`)
       if (!response.ok) {
         throw new Error('Failed to fetch summary data')
       }
@@ -110,6 +152,7 @@ export default function CallCentreDataSummaryPage() {
       setAgeKeyPopulationCrossTab(data.ageKeyPopulationCrossTab || null)
       setCallsByGender(data.callsByGender || [])
       setCallsByTimeframe(data.callsByTimeframe || {today: 0, week: 0, month: 0, year: 0})
+      setAppliedFilters(activeFilters)
     } catch (error) {
       console.error('Error fetching summary data:', error)
       setError('Failed to load summary data')
@@ -183,19 +226,13 @@ export default function CallCentreDataSummaryPage() {
   }
 
   const clearFilters = () => {
-    setFilters({
-      officerName: '',
-      dateFrom: '',
-      dateTo: '',
-      province: 'all',
-      callerIdNumber: '',
-      caseNumber: '',
-      gender: 'all',
-      validCalls: 'all',
-      purpose: 'all',
-      language: 'all',
-      communicationMode: 'all'
-    })
+    setFilters(EMPTY_FILTERS)
+    fetchSummaryData(EMPTY_FILTERS)
+  }
+
+  const applyFilters = (nextFilters: SummaryFilters = filters) => {
+    setFilters(nextFilters)
+    fetchSummaryData(nextFilters)
   }
 
   const metadata = {
@@ -264,25 +301,25 @@ export default function CallCentreDataSummaryPage() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Filters</h3>
         <div className="space-y-2">
           <button 
-            onClick={() => handleFilterChange('validCalls', 'valid')}
+            onClick={() => applyFilters({ ...filters, validCalls: 'valid' })}
             className="w-full text-left p-3 text-sm text-green-700 hover:bg-green-50 rounded-lg border border-green-200 hover:border-green-300 transition-colors font-medium"
           >
             Valid Calls Only
           </button>
           <button 
-            onClick={() => handleFilterChange('validCalls', 'invalid')}
+            onClick={() => applyFilters({ ...filters, validCalls: 'invalid' })}
             className="w-full text-left p-3 text-sm text-orange-700 hover:bg-orange-50 rounded-lg border border-orange-200 hover:border-orange-300 transition-colors font-medium"
           >
             Invalid Calls Only
           </button>
           <button 
-            onClick={() => handleFilterChange('purpose', 'HIV Information & Counselling')}
+            onClick={() => applyFilters({ ...filters, purpose: 'HIV/AIDS' })}
             className="w-full text-left p-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors font-medium"
           >
             HIV Counselling
           </button>
           <button 
-            onClick={() => handleFilterChange('purpose', 'Mental Health Support')}
+            onClick={() => applyFilters({ ...filters, purpose: 'Mental Health' })}
             className="w-full text-left p-3 text-sm text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors font-medium"
           >
             Mental Health
@@ -442,16 +479,27 @@ export default function CallCentreDataSummaryPage() {
           </div>
 
           <div className="mt-6 flex space-x-4">
-            <button className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium shadow-sm">
-              Apply Filters
+            <button
+              type="button"
+              onClick={() => applyFilters()}
+              disabled={loading}
+              className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium shadow-sm disabled:opacity-60"
+            >
+              {loading ? 'Applying...' : 'Apply Filters'}
             </button>
             <button 
+              type="button"
               onClick={clearFilters}
               className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Clear Filters
             </button>
           </div>
+          {describeActiveFilters(appliedFilters).length > 0 && (
+            <p className="mt-4 text-sm text-gray-600">
+              Applied across all tables: {describeActiveFilters(appliedFilters).join(' · ')}
+            </p>
+          )}
         </div>
 
         {/* Officer Performance Table */}
@@ -507,7 +555,7 @@ export default function CallCentreDataSummaryPage() {
                       <h3 className="text-sm font-medium text-gray-900 mb-2">Error Loading Data</h3>
                       <p className="text-sm text-gray-500 mb-4">{error}</p>
                       <button 
-                        onClick={fetchSummaryData}
+                        onClick={() => fetchSummaryData(appliedFilters)}
                         className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-orange-600 hover:bg-orange-700 transition-colors shadow-sm"
                       >
                         Try Again
