@@ -66,11 +66,11 @@ export async function GET(request: NextRequest) {
 
     const isAll = (value: string) => !value || value.toLowerCase() === 'all'
     const andConditions: Prisma.call_recordsWhereInput[] = []
-    const equalsIgnoreCase = (value: string): Prisma.StringNullableFilter => ({
+    const equalsIgnoreCase = (value: string) => ({
       equals: value,
       mode: Prisma.QueryMode.insensitive,
     })
-    const containsIgnoreCase = (value: string): Prisma.StringNullableFilter => ({
+    const containsIgnoreCase = (value: string) => ({
       contains: value,
       mode: Prisma.QueryMode.insensitive,
     })
