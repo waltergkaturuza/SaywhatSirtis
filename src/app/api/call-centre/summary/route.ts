@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
+import { Prisma } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 import { rateLimit, getClientIP } from '@/lib/production-helpers'
@@ -64,13 +65,21 @@ export async function GET(request: NextRequest) {
     const communicationMode = searchParams.get('communicationMode')?.trim() || ''
 
     const isAll = (value: string) => !value || value.toLowerCase() === 'all'
-    const andConditions: Record<string, unknown>[] = []
+    const andConditions: Prisma.call_recordsWhereInput[] = []
+    const equalsIgnoreCase = (value: string): Prisma.StringNullableFilter => ({
+      equals: value,
+      mode: Prisma.QueryMode.insensitive,
+    })
+    const containsIgnoreCase = (value: string): Prisma.StringNullableFilter => ({
+      contains: value,
+      mode: Prisma.QueryMode.insensitive,
+    })
 
     if (officerName) {
       andConditions.push({
         OR: [
-          { officerName: { contains: officerName, mode: 'insensitive' } },
-          { assignedOfficer: { contains: officerName, mode: 'insensitive' } },
+          { officerName: containsIgnoreCase(officerName) },
+          { assignedOfficer: containsIgnoreCase(officerName) },
         ],
       })
     }
@@ -78,8 +87,8 @@ export async function GET(request: NextRequest) {
     if (!isAll(province)) {
       andConditions.push({
         OR: [
-          { callerProvince: { equals: province, mode: 'insensitive' } },
-          { clientProvince: { equals: province, mode: 'insensitive' } },
+          { callerProvince: equalsIgnoreCase(province) },
+          { clientProvince: equalsIgnoreCase(province) },
         ],
       })
     }
@@ -87,37 +96,45 @@ export async function GET(request: NextRequest) {
     if (callerId) {
       andConditions.push({
         OR: [
-          { callerPhone: { contains: callerId, mode: 'insensitive' } },
-          { callNumber: { contains: callerId, mode: 'insensitive' } },
+          { callerPhone: containsIgnoreCase(callerId) },
+          { callNumber: containsIgnoreCase(callerId) },
         ],
       })
     }
 
     if (caseNumber) {
       andConditions.push({
-        caseNumber: { contains: caseNumber, mode: 'insensitive' },
+        caseNumber: containsIgnoreCase(caseNumber),
       })
     }
 
     if (!isAll(gender)) {
-      const genderMatch = (field: 'callerGender' | 'clientSex') => ({
+      const blankCallerGender: Prisma.call_recordsWhereInput = {
         OR: [
-          { [field]: null },
-          { [field]: '' },
-          { [field]: { equals: 'N/A', mode: 'insensitive' } },
-          { [field]: { equals: 'NA', mode: 'insensitive' } },
+          { callerGender: null },
+          { callerGender: '' },
+          { callerGender: equalsIgnoreCase('N/A') },
+          { callerGender: equalsIgnoreCase('NA') },
         ],
-      })
+      }
+      const blankClientSex: Prisma.call_recordsWhereInput = {
+        OR: [
+          { clientSex: null },
+          { clientSex: '' },
+          { clientSex: equalsIgnoreCase('N/A') },
+          { clientSex: equalsIgnoreCase('NA') },
+        ],
+      }
 
       if (gender.toLowerCase() === 'n/a') {
         andConditions.push({
-          AND: [genderMatch('callerGender'), genderMatch('clientSex')],
+          AND: [blankCallerGender, blankClientSex],
         })
       } else {
         andConditions.push({
           OR: [
-            { callerGender: { equals: gender, mode: 'insensitive' } },
-            { clientSex: { equals: gender, mode: 'insensitive' } },
+            { callerGender: equalsIgnoreCase(gender) },
+            { clientSex: equalsIgnoreCase(gender) },
           ],
         })
       }
@@ -125,23 +142,23 @@ export async function GET(request: NextRequest) {
 
     if (validCallsFilter === 'valid') {
       andConditions.push({
-        callValidity: { equals: 'valid', mode: 'insensitive' },
+        callValidity: equalsIgnoreCase('valid'),
       })
     } else if (validCallsFilter === 'invalid') {
       andConditions.push({
-        NOT: { callValidity: { equals: 'valid', mode: 'insensitive' } },
+        NOT: { callValidity: equalsIgnoreCase('valid') },
       })
     }
 
     if (!isAll(purposeFilter)) {
       andConditions.push({
-        purpose: { equals: purposeFilter, mode: 'insensitive' },
+        purpose: equalsIgnoreCase(purposeFilter),
       })
     }
 
     if (!isAll(language)) {
       andConditions.push({
-        language: { equals: language, mode: 'insensitive' },
+        language: equalsIgnoreCase(language),
       })
     }
 
@@ -156,25 +173,37 @@ export async function GET(request: NextRequest) {
       const aliases = modeAliases[communicationMode.toLowerCase()] || [communicationMode]
       andConditions.push({
         OR: aliases.flatMap((value) => ([
-          { modeOfCommunication: { equals: value, mode: 'insensitive' } },
-          { callType: { equals: value, mode: 'insensitive' } },
+          { modeOfCommunication: equalsIgnoreCase(value) },
+          { callType: equalsIgnoreCase(value) },
         ])),
       })
     }
 
-    const attributeWhere = andConditions.length > 0 ? { AND: andConditions } : {}
+    const attributeWhere: Prisma.call_recordsWhereInput = andConditions.length > 0 ? { AND: andConditions } : {}
 
     type DateRange = { gte?: Date; lte?: Date }
     const userDateRange: DateRange = {}
     if (dateFrom) userDateRange.gte = new Date(dateFrom)
     if (dateTo) userDateRange.lte = new Date(`${dateTo}T23:59:59.999`)
 
-    const effectiveDateCondition = (range: DateRange) => ({
-      OR: [
-        { callStartTime: { not: null, ...range } },
-        { callStartTime: null, createdAt: range },
-      ],
-    })
+    const effectiveDateCondition = (range: DateRange): Prisma.call_recordsWhereInput => {
+      const callStartTime: Prisma.DateTimeNullableFilter = { not: null }
+      const createdAt: Prisma.DateTimeFilter = {}
+      if (range.gte) {
+        callStartTime.gte = range.gte
+        createdAt.gte = range.gte
+      }
+      if (range.lte) {
+        callStartTime.lte = range.lte
+        createdAt.lte = range.lte
+      }
+      return {
+        OR: [
+          { callStartTime },
+          { callStartTime: null, createdAt },
+        ],
+      }
+    }
 
     const intersectDateRanges = (user: DateRange, window: DateRange): DateRange | null => {
       const gteCandidates = [user.gte, window.gte].filter((value): value is Date => !!value)
@@ -192,11 +221,11 @@ export async function GET(request: NextRequest) {
       return range
     }
 
-    const recordWhere = dateFrom || dateTo
+    const recordWhere: Prisma.call_recordsWhereInput = dateFrom || dateTo
       ? { AND: [attributeWhere, effectiveDateCondition(userDateRange)] }
       : attributeWhere
 
-    const countInWindow = (windowStart: Date, extra: Record<string, unknown> = {}) => {
+    const countInWindow = (windowStart: Date, extra: Prisma.call_recordsWhereInput = {}) => {
       const range = intersectDateRanges(userDateRange, { gte: windowStart })
       if (!range) return Promise.resolve(0)
       return prisma.call_records.count({
@@ -215,7 +244,7 @@ export async function GET(request: NextRequest) {
       where: {
         AND: [
           recordWhere,
-          { callValidity: { equals: 'valid', mode: 'insensitive' } },
+          { callValidity: equalsIgnoreCase('valid') },
         ],
       }
     })
@@ -517,7 +546,7 @@ export async function GET(request: NextRequest) {
                   recordWhere,
                   {
                     OR: matchingProvinces.map(p => ({ callerProvince: p.callerProvince })),
-                    callValidity: { equals: 'valid', mode: 'insensitive' },
+                    callValidity: equalsIgnoreCase('valid'),
                   },
                 ],
               },
