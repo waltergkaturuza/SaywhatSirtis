@@ -119,37 +119,39 @@ const COLORS = [
 
 const RADIAN = Math.PI / 180
 
+function chartNumber(value: number | string | undefined) {
+  const number = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
 function renderCallTypeLabel(props: {
-  cx?: number
-  cy?: number
-  midAngle?: number
-  outerRadius?: number
-  percentage?: number
+  cx?: number | string
+  cy?: number | string
+  midAngle?: number | string
+  outerRadius?: number | string
+  percentage?: number | string
   type?: string
   fill?: string
 }) {
-  const percentage = Number(props.percentage)
-  if (
-    props.cx == null ||
-    props.cy == null ||
-    props.midAngle == null ||
-    props.outerRadius == null ||
-    !Number.isFinite(percentage) ||
-    percentage <= 10
-  ) {
+  const cx = chartNumber(props.cx)
+  const cy = chartNumber(props.cy)
+  const midAngle = chartNumber(props.midAngle)
+  const outerRadius = chartNumber(props.outerRadius)
+  const percentage = chartNumber(props.percentage)
+  if (cx == null || cy == null || midAngle == null || outerRadius == null || percentage == null || percentage <= 10) {
     return null
   }
 
-  const radius = props.outerRadius + 16
-  const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN)
-  const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN)
+  const radius = outerRadius + 16
+  const x = cx + radius * Math.cos(-midAngle * RADIAN)
+  const y = cy + radius * Math.sin(-midAngle * RADIAN)
 
   return (
     <text
       x={x}
       y={y}
       fill={props.fill || '#374151'}
-      textAnchor={x > props.cx ? 'start' : 'end'}
+      textAnchor={x > cx ? 'start' : 'end'}
       dominantBaseline="central"
       fontSize={12}
     >
