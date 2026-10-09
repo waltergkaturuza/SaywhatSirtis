@@ -7,21 +7,31 @@ import {
   ChartBarIcon,
   ArrowPathIcon,
   CloudArrowUpIcon,
-  TrashIcon,
-  DocumentArrowDownIcon,
   PlayIcon,
   StopIcon,
   Cog6ToothIcon
 } from '@heroicons/react/24/outline'
 import LoadingSpinner from '@/components/ui/loading-spinner'
 
+interface BackupSchedule {
+  enabled: boolean
+  frequency: 'daily' | 'weekly'
+  weekday: number
+  retentionCount: number
+}
+
 interface DatabaseStats {
   connection: any
   tables: any[]
   performance: any
   backups: any[]
+  backupSchedule?: BackupSchedule
   migrations: any[]
   recentActivity: any[]
+  health?: {
+    status: 'good' | 'attention'
+    checks: Array<{ name: string; ok: boolean; detail: string }>
+  }
 }
 
 interface AdminDatabaseProps {
@@ -33,10 +43,18 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const [backingUp, setBackingUp] = useState(false)
+  const [notice, setNotice] = useState('')
+  const [schedule, setSchedule] = useState<BackupSchedule>({
+    enabled: true,
+    frequency: 'daily',
+    weekday: 0,
+    retentionCount: 14,
+  })
 
-  const fetchDatabaseStats = async () => {
+  const fetchDatabaseStats = async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const response = await fetch('/api/admin/database')
       
       if (!response.ok) {
@@ -44,9 +62,15 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
       }
       
       const data = await response.json()
+      setError(null)
       setDbStats(data.data || null)
+      if (data.data?.backupSchedule) {
+        setSchedule(data.data.backupSchedule)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch database stats')
+      const message = err instanceof Error ? err.message : 'Failed to fetch database stats'
+      if (silent) setNotice(message)
+      else setError(message)
     } finally {
       setLoading(false)
     }
@@ -58,6 +82,8 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
 
   const handleDatabaseAction = async (action: string, params?: any) => {
     try {
+      if (action === 'backup_database') setBackingUp(true)
+      setNotice('')
       const response = await fetch('/api/admin/database', {
         method: 'POST',
         headers: {
@@ -69,18 +95,22 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
         }),
       })
 
+      const result = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(`Failed to ${action}`)
+        throw new Error(result.error || result.message || `Failed to ${action}`)
       }
 
-      const result = await response.json()
-      alert(result.message || 'Action completed successfully')
+      setNotice(result.message || 'Action completed successfully')
       
-      if (action === 'backup_database' || action === 'optimize_database') {
-        await fetchDatabaseStats()
+      if (['backup_database', 'save_backup_schedule', 'optimize_database', 'vacuum_database', 'analyze_table', 'check_health'].includes(action)) {
+        await fetchDatabaseStats(true)
+        if (action === 'backup_database') setActiveTab('backups')
+        if (action === 'check_health' || action === 'vacuum_database' || action === 'optimize_database') setActiveTab('maintenance')
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${action}`)
+      setNotice(err instanceof Error ? err.message : `Failed to ${action}`)
+    } finally {
+      setBackingUp(false)
     }
   }
 
@@ -130,20 +160,27 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleDatabaseAction('backup_database')}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+            disabled={backingUp}
+            className="flex items-center space-x-2 rounded-full bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
           >
-            <CloudArrowUpIcon className="h-5 w-5" />
-            <span>Backup Now</span>
+            <CloudArrowUpIcon className="h-4 w-4" />
+            <span>{backingUp ? 'Backing up...' : 'Backup Now'}</span>
           </button>
           <button
             onClick={() => handleDatabaseAction('optimize_database')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            className="flex items-center space-x-2 rounded-full bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
           >
-            <ArrowPathIcon className="h-5 w-5" />
+            <ArrowPathIcon className="h-4 w-4" />
             <span>Optimize</span>
           </button>
         </div>
       </div>
+
+      {notice && (
+        <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800">
+          {notice}
+        </div>
+      )}
 
       {/* Connection Status */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -192,19 +229,20 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
 
       {/* Tabs */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
+        <div className="border-b border-gray-100">
+          <nav className="flex flex-wrap gap-2 px-4 py-3" aria-label="Tabs">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={`${
                   activeTab === tab.id
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm`}
+                    ? 'border-orange-600 bg-orange-600 text-white shadow-sm'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-700'
+                } inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors`}
               >
-                <tab.icon className="h-5 w-5" />
+                <tab.icon className="h-3.5 w-3.5" />
                 <span>{tab.name}</span>
               </button>
             ))}
@@ -220,7 +258,7 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Query Performance</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Total Queries</span>
+                      <span className="text-sm text-gray-600">Transactions</span>
                       <span className="text-sm font-medium">{dbStats?.performance?.queries?.total?.toLocaleString() || 0}</span>
                     </div>
                     <div className="flex justify-between">
@@ -228,7 +266,7 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                       <span className="text-sm font-medium text-yellow-600">{dbStats?.performance?.queries?.slow || 0}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Failed Queries</span>
+                      <span className="text-sm text-gray-600">Rolled back</span>
                       <span className="text-sm font-medium text-red-600">{dbStats?.performance?.queries?.failed || 0}</span>
                     </div>
                   </div>
@@ -238,15 +276,15 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Storage</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Total Size</span>
+                      <span className="text-sm text-gray-600">Database size</span>
                       <span className="text-sm font-medium">{dbStats?.performance?.storage?.total || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Used Space</span>
+                      <span className="text-sm text-gray-600">Tables</span>
                       <span className="text-sm font-medium">{dbStats?.performance?.storage?.used || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Free Space</span>
+                      <span className="text-sm text-gray-600">Indexes</span>
                       <span className="text-sm font-medium text-green-600">{dbStats?.performance?.storage?.free || 'N/A'}</span>
                     </div>
                   </div>
@@ -279,12 +317,7 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                     dbStats.recentActivity.slice(0, 5).map((activity, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          activity.type === 'SELECT' ? 'bg-blue-100 text-blue-800' :
-                          activity.type === 'INSERT' ? 'bg-green-100 text-green-800' :
-                          activity.type === 'UPDATE' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
+                        <span className="inline-flex max-w-[10rem] truncate rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800">
                           {activity.type}
                         </span>
                         <div>
@@ -293,9 +326,8 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">{activity.duration}ms</p>
                         <p className="text-xs text-gray-500">
-                          {new Date(activity.timestamp).toLocaleTimeString()}
+                          {new Date(activity.timestamp).toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -341,27 +373,28 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                             {table.name}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {table.rows.toLocaleString()}
+                            {Number(table.rows || 0).toLocaleString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {table.size}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(table.lastModified).toLocaleDateString()}
+                            {table.lastModified ? new Date(table.lastModified).toLocaleString() : 'Not recorded'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button
+                              type="button"
                               onClick={() => handleDatabaseAction('analyze_table', { table: table.name })}
-                              className="text-indigo-600 hover:text-indigo-900 mr-3"
+                              className="mr-2 rounded-full bg-orange-600 px-3 py-1 text-xs font-medium text-white hover:bg-orange-700"
                             >
                               Analyze
                             </button>
-                            <button
-                              onClick={() => handleDatabaseAction('export_data', { table: table.name })}
-                              className="text-green-600 hover:text-green-900"
+                            <a
+                              href={`/api/admin/database/tables/${encodeURIComponent(table.name)}/export`}
+                              className="inline-flex rounded-full bg-orange-600 px-3 py-1 text-xs font-medium text-white hover:bg-orange-700"
                             >
                               Export
-                            </button>
+                            </a>
                           </td>
                         </tr>
                       ))
@@ -379,7 +412,65 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
           )}
 
           {activeTab === 'backups' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <h4 className="text-lg font-medium text-gray-900">Automated backup</h4>
+                <p className="mt-1 text-sm text-gray-600">
+                  Runs every day at 02:00 UTC when enabled. Weekly backups run on the selected day. Files are kept in the documents container.
+                </p>
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={schedule.enabled}
+                      onChange={(event) => setSchedule(current => ({ ...current, enabled: event.target.checked }))}
+                    />
+                    Enabled
+                  </label>
+                  <label className="text-sm text-gray-700">
+                    Frequency
+                    <select
+                      value={schedule.frequency}
+                      onChange={(event) => setSchedule(current => ({ ...current, frequency: event.target.value as 'daily' | 'weekly' }))}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </label>
+                  <label className="text-sm text-gray-700">
+                    Weekday
+                    <select
+                      value={schedule.weekday}
+                      disabled={schedule.frequency !== 'weekly'}
+                      onChange={(event) => setSchedule(current => ({ ...current, weekday: Number(event.target.value) }))}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-100"
+                    >
+                      {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) => (
+                        <option key={day} value={index}>{day}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-sm text-gray-700">
+                    Keep latest
+                    <input
+                      type="number"
+                      min={1}
+                      max={90}
+                      value={schedule.retentionCount}
+                      onChange={(event) => setSchedule(current => ({ ...current, retentionCount: Number(event.target.value) }))}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDatabaseAction('save_backup_schedule', schedule)}
+                  className="mt-4 rounded-full bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+                >
+                  Save schedule
+                </button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -428,15 +519,12 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleDatabaseAction('restore_backup', { backupId: backup.id })}
-                            className="text-blue-600 hover:text-blue-900 mr-3"
+                          <a
+                            href={`/api/admin/database/backups/${backup.id}/download`}
+                            className="inline-flex rounded-full bg-orange-600 px-3 py-1 text-xs font-medium text-white hover:bg-orange-700"
                           >
-                            Restore
-                          </button>
-                          <button className="text-green-600 hover:text-green-900">
                             Download
-                          </button>
+                          </a>
                         </td>
                       </tr>
                       ))
@@ -460,26 +548,41 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                   <h4 className="text-lg font-medium text-gray-900 mb-4">Database Maintenance</h4>
                   <div className="space-y-3">
                     <button
+                      type="button"
                       onClick={() => handleDatabaseAction('vacuum_database')}
-                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
+                      className="flex w-full items-center justify-center gap-2 rounded-full bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
                     >
-                      <ArrowPathIcon className="h-5 w-5" />
+                      <ArrowPathIcon className="h-4 w-4" />
                       <span>Vacuum Database</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDatabaseAction('optimize_database')}
-                      className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center space-x-2"
+                      className="flex w-full items-center justify-center gap-2 rounded-full bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
                     >
-                      <ChartBarIcon className="h-5 w-5" />
-                      <span>Optimize Database</span>
+                      <ChartBarIcon className="h-4 w-4" />
+                      <span>Refresh Statistics</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDatabaseAction('check_health')}
-                      className="w-full bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 flex items-center justify-center space-x-2"
+                      className="flex w-full items-center justify-center gap-2 rounded-full bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
                     >
-                      <Cog6ToothIcon className="h-5 w-5" />
+                      <Cog6ToothIcon className="h-4 w-4" />
                       <span>Health Check</span>
                     </button>
+                    {dbStats?.health && (
+                      <div className="space-y-2 pt-2">
+                        {dbStats.health.checks.map((check) => (
+                          <div key={check.name} className="flex items-center justify-between rounded-lg bg-white px-3 py-2">
+                            <span className="text-sm text-gray-700">{check.name}</span>
+                            <span className={`text-xs font-medium ${check.ok ? 'text-green-700' : 'text-orange-700'}`}>
+                              {check.detail}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -494,7 +597,13 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
                           <p className="text-xs text-gray-500">{migration.id}</p>
                         </div>
                         <div className="text-right">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                          <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                            migration.status === 'applied'
+                              ? 'bg-green-100 text-green-800'
+                              : migration.status === 'rolled back'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-orange-100 text-orange-800'
+                          }`}>
                             {migration.status}
                           </span>
                           <p className="text-xs text-gray-500">

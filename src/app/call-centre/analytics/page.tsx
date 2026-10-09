@@ -103,13 +103,60 @@ interface AnalyticsData {
   hourlyData: HourlyData[]
   metadata: {
     dataRange: string
+    trendGranularity?: 'day' | 'month'
     lastUpdated: string
     totalAgents: number
     averageResolutionHours: number
   }
 }
 
-const COLORS = ['#FF8C00', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'] // SAYWHAT Orange as primary color
+const COLORS = [
+  '#FF8C00', '#EF4444', '#3B82F6', '#10B981', '#8B5CF6',
+  '#F59E0B', '#06B6D4', '#EC4899', '#84CC16', '#6366F1',
+  '#F97316', '#14B8A6', '#A855F7', '#EAB308', '#0EA5E9',
+  '#22C55E', '#F43F5E', '#78716C',
+]
+
+const RADIAN = Math.PI / 180
+
+function renderCallTypeLabel(props: {
+  cx?: number
+  cy?: number
+  midAngle?: number
+  outerRadius?: number
+  percentage?: number
+  type?: string
+  fill?: string
+}) {
+  const percentage = Number(props.percentage)
+  if (
+    props.cx == null ||
+    props.cy == null ||
+    props.midAngle == null ||
+    props.outerRadius == null ||
+    !Number.isFinite(percentage) ||
+    percentage <= 10
+  ) {
+    return null
+  }
+
+  const radius = props.outerRadius + 16
+  const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN)
+  const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN)
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill={props.fill || '#374151'}
+      textAnchor={x > props.cx ? 'start' : 'end'}
+      dominantBaseline="central"
+      fontSize={12}
+    >
+      {`${props.type}: ${percentage}%`}
+    </text>
+  )
+}
 
 export default function CallCentreAnalyticsPage() {
   const { data: session } = useSession()
@@ -148,7 +195,7 @@ export default function CallCentreAnalyticsPage() {
   const fetchAnalyticsData = async (days: string = selectedPeriod) => {
     try {
       setError(null)
-      const response = await fetch(`/api/call-centre/analytics?days=${days}`)
+      const response = await fetch(`/api/call-centre/analytics?period=${encodeURIComponent(days)}`)
       
       if (!response.ok) {
         const errorData = await response.json()
@@ -197,7 +244,7 @@ export default function CallCentreAnalyticsPage() {
     
     const exportData = {
       generatedAt: new Date().toISOString(),
-      period: `${selectedPeriod} days`,
+      period: analyticsData.metadata.dataRange,
       ...analyticsData
     }
     
@@ -205,7 +252,7 @@ export default function CallCentreAnalyticsPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `call-centre-analytics-${selectedPeriod}days-${new Date().toISOString().split('T')[0]}.json`
+    a.download = `call-centre-analytics-${selectedPeriod}-${new Date().toISOString().split('T')[0]}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -256,13 +303,18 @@ export default function CallCentreAnalyticsPage() {
       actions={
         <div className="flex items-center space-x-4">
           <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-40">
               <SelectValue placeholder="Period" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="7">Last 7 days</SelectItem>
               <SelectItem value="30">Last 30 days</SelectItem>
               <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="this-year">This year</SelectItem>
+              {Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 1 - index).map(year => (
+                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+              ))}
+              <SelectItem value="all">All time</SelectItem>
             </SelectContent>
           </Select>
           <Button 
@@ -406,11 +458,21 @@ export default function CallCentreAnalyticsPage() {
 
             {/* Analytics Tabs */}
             <Tabs defaultValue="overview" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="overview">Call Overview</TabsTrigger>
-                <TabsTrigger value="performance">Agent Performance</TabsTrigger>
-                <TabsTrigger value="trends">Call Trends</TabsTrigger>
-                <TabsTrigger value="insights">Insights</TabsTrigger>
+              <TabsList className="inline-flex h-auto w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+                {[
+                  { value: 'overview', label: 'Call Overview' },
+                  { value: 'performance', label: 'Agent Performance' },
+                  { value: 'trends', label: 'Call Trends' },
+                  { value: 'insights', label: 'Insights' },
+                ].map(tab => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="h-8 rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:border-orange-300 hover:text-orange-700 data-[state=active]:border-orange-600 data-[state=active]:bg-orange-600 data-[state=active]:text-white data-[state=active]:shadow-sm"
+                  >
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -418,13 +480,13 @@ export default function CallCentreAnalyticsPage() {
                   {/* Call Volume Trends */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Daily Call Volume</CardTitle>
+                      <CardTitle>{analyticsData.metadata.trendGranularity === 'month' ? 'Monthly Call Volume' : 'Daily Call Volume'}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={300}>
                         <ComposedChart data={analyticsData.callTrends}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="day" />
+                          <XAxis dataKey="day" interval={analyticsData.callTrends.length > 12 ? Math.floor(analyticsData.callTrends.length / 8) : 0} />
                           <YAxis yAxisId="left" />
                           <Tooltip />
                           <Legend />
@@ -442,24 +504,55 @@ export default function CallCentreAnalyticsPage() {
                       <CardTitle>Call Types Distribution</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                          <Pie
-                            data={analyticsData.callTypes}
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={100}
-                            fill="#8884d8"
-                            dataKey="count"
-                            label={({ type, percentage }) => `${type}: ${percentage}%`}
-                          >
-                            {analyticsData.callTypes.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
+                      {(() => {
+                        const callTypeSlices = [...analyticsData.callTypes].sort((a, b) => b.count - a.count)
+                        return (
+                          <>
+                            <ResponsiveContainer width="100%" height={320}>
+                              <PieChart margin={{ top: 28, right: 72, bottom: 28, left: 72 }}>
+                                <Pie
+                                  data={callTypeSlices}
+                                  nameKey="type"
+                                  cx="50%"
+                                  cy="50%"
+                                  outerRadius={88}
+                                  fill="#8884d8"
+                                  dataKey="count"
+                                  label={renderCallTypeLabel}
+                                  labelLine={false}
+                                >
+                                  {callTypeSlices.map((entry, index) => (
+                                    <Cell key={entry.type} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  formatter={(value, _name, item) => {
+                                    const slice = item?.payload as CallType | undefined
+                                    const percentage = slice?.percentage ?? 0
+                                    return [`${value} (${percentage}%)`, slice?.type || 'Calls']
+                                  }}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 max-h-48 overflow-y-auto pr-1">
+                              {callTypeSlices.map((entry, index) => (
+                                <li key={entry.type} className="flex items-center justify-between gap-2 text-sm min-w-0">
+                                  <span className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                    />
+                                    <span className="truncate text-gray-700">{entry.type}</span>
+                                  </span>
+                                  <span className="shrink-0 font-medium text-gray-900">
+                                    {entry.count} ({entry.percentage}%)
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )
+                      })()}
                     </CardContent>
                   </Card>
                 </div>
@@ -555,7 +648,7 @@ export default function CallCentreAnalyticsPage() {
                       <ResponsiveContainer width="100%" height={300}>
                         <AreaChart data={analyticsData.callTrends}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="day" />
+                          <XAxis dataKey="day" interval={analyticsData.callTrends.length > 12 ? Math.floor(analyticsData.callTrends.length / 8) : 0} />
                           <YAxis />
                           <Tooltip />
                           <Legend />
@@ -574,7 +667,7 @@ export default function CallCentreAnalyticsPage() {
                       <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={analyticsData.callTrends}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="day" />
+                          <XAxis dataKey="day" interval={analyticsData.callTrends.length > 12 ? Math.floor(analyticsData.callTrends.length / 8) : 0} />
                           <YAxis />
                           <Tooltip />
                           <Legend />

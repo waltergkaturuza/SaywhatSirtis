@@ -16,6 +16,21 @@
   "functions": {
     "app/api/**": {
       "maxDuration": 30
+    },
+    "app/api/admin/database/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/admin/database/tables/[table]/export/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/database-backup/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/database-backup",
+      "schedule": "0 2 * * *"
+    }
+  ]
 }

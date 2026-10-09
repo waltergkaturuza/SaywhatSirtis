@@ -44,11 +44,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(response, { status })
     }
 
-    // Get date range from query parameters (default to last 30 days)
+    // Period applies to every metric and chart: 7, 30, 90, this-year, a calendar year, or all.
     const { searchParams } = new URL(request.url)
-    const days = parseInt(searchParams.get('days') || '30')
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
+    const periodParam = (searchParams.get('period') || searchParams.get('days') || '30').trim()
+    const now = new Date()
+    let rangeStart: Date | null = null
+    let rangeEnd: Date | null = null
+    let rangeLabel = 'Last 30 days'
+
+    if (periodParam === 'all') {
+      rangeLabel = 'All time'
+    } else if (periodParam === 'this-year') {
+      rangeStart = new Date(now.getFullYear(), 0, 1)
+      rangeLabel = `This year (${now.getFullYear()})`
+    } else if (/^\d{4}$/.test(periodParam)) {
+      const year = parseInt(periodParam, 10)
+      rangeStart = new Date(year, 0, 1)
+      rangeEnd = new Date(year, 11, 31, 23, 59, 59, 999)
+      rangeLabel = String(year)
+    } else {
+      const days = [7, 30, 90].includes(parseInt(periodParam, 10)) ? parseInt(periodParam, 10) : 30
+      rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      rangeStart.setDate(rangeStart.getDate() - (days - 1))
+      rangeLabel = `Last ${days} days`
+    }
+
+    const createdAtFilter: { gte?: Date; lte?: Date } = {}
+    if (rangeStart) createdAtFilter.gte = rangeStart
+    if (rangeEnd) createdAtFilter.lte = rangeEnd
+    const dateWhere = rangeStart || rangeEnd ? { createdAt: createdAtFilter } : {}
 
     // Execute all queries in parallel for better performance
     const [
@@ -57,95 +81,61 @@ export async function GET(request: NextRequest) {
       pendingCalls,
       validCalls,
       callsWithSatisfaction,
-      callsLast7Days,
-      callsLast30Days,
-      hourlyCallsToday,
+      trendRecords,
       agentPerformanceData,
       callsByType,
       averageSatisfaction,
       averageResolutionTime
     ] = await Promise.all([
-      // Basic metrics
-      prisma.call_records.count(),
+      prisma.call_records.count({ where: dateWhere }),
       prisma.call_records.count({
-        where: { OR: [{ status: 'CLOSED' }, { status: 'RESOLVED' }] }
+        where: { ...dateWhere, OR: [{ status: 'CLOSED' }, { status: 'RESOLVED' }] }
       }),
       prisma.call_records.count({
-        where: { status: 'OPEN' }
+        where: { ...dateWhere, status: 'OPEN' }
       }),
       prisma.call_records.count({
-        where: { callValidity: 'valid' }
+        where: { ...dateWhere, callValidity: 'valid' }
       }),
       prisma.call_records.count({
-        where: { 
-          satisfactionRating: { 
-            gt: 0
-          } 
+        where: {
+          ...dateWhere,
+          satisfactionRating: { gt: 0 }
         }
       }),
 
-      // Trend data
       prisma.call_records.findMany({
-        where: {
-          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
-        },
+        where: dateWhere,
         select: { createdAt: true, status: true }
       }),
-      
+
       prisma.call_records.findMany({
-        where: {
-          createdAt: { gte: startDate }
-        },
-        select: { createdAt: true, status: true, callValidity: true }
+        where: dateWhere,
+        select: { assignedOfficer: true, officerName: true, satisfactionRating: true }
       }),
 
-      // Hourly data for today
-      prisma.call_records.findMany({
-        where: {
-          createdAt: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0))
-          }
-        },
-        select: { createdAt: true }
-      }),
-
-      // Agent performance data (skip null officers for now)
-      prisma.call_records.findMany({
-        where: {
-          assignedOfficer: { 
-            not: null 
-          },
-          createdAt: { gte: startDate }
-        },
-        select: { assignedOfficer: true, satisfactionRating: true }
-      }),
-
-      // Call types distribution
       prisma.call_records.groupBy({
         by: ['purpose'],
+        where: dateWhere,
         _count: { id: true }
       }),
 
-      // Average satisfaction rating (only where rating exists)
       prisma.call_records.aggregate({
         _avg: { satisfactionRating: true },
-        where: { 
-          satisfactionRating: { 
-            gt: 0
-          } 
+        where: {
+          ...dateWhere,
+          satisfactionRating: { gt: 0 }
         }
       }),
 
-      // Average resolution time (for resolved calls)
       prisma.call_records.findMany({
         where: {
-          resolvedAt: {
-            not: null
-          }
+          ...dateWhere,
+          resolvedAt: { not: null }
         },
-        select: { 
-          createdAt: true, 
-          resolvedAt: true 
+        select: {
+          createdAt: true,
+          resolvedAt: true
         }
       })
     ])
@@ -169,44 +159,64 @@ export async function GET(request: NextRequest) {
       avgResolutionHours = totalResolutionTime / (averageResolutionTime.length * 1000 * 60 * 60) // Convert to hours
     }
 
-    // Process daily trends for last 7 days
-    const dailyTrends = []
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const dayStart = new Date(date.setHours(0, 0, 0, 0))
-      const dayEnd = new Date(date.setHours(23, 59, 59, 999))
-      
-      const dayData = callsLast7Days.filter(call => 
-        call.createdAt >= dayStart && call.createdAt <= dayEnd
-      )
-      
-      dailyTrends.push({
-        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        date: date.toISOString().split('T')[0],
-        calls: dayData.length,
-        answered: dayData.filter(call => call.status !== 'MISSED').length,
-        resolved: dayData.filter(call => ['CLOSED', 'RESOLVED'].includes(call.status || '')).length
-      })
+    const trendEnd = rangeEnd ?? now
+    const earliestRecord = trendRecords.reduce<Date | null>((earliest, call) => {
+      if (!earliest || call.createdAt < earliest) return call.createdAt
+      return earliest
+    }, null)
+    const trendStart = rangeStart ?? earliestRecord ?? now
+    const spanDays = Math.max(1, Math.ceil((trendEnd.getTime() - trendStart.getTime()) / (24 * 60 * 60 * 1000)) + 1)
+    const useMonthly = periodParam === 'all' || periodParam === 'this-year' || /^\d{4}$/.test(periodParam) || spanDays > 92
+
+    const dailyTrends: Array<{ day: string; date: string; calls: number; answered: number; resolved: number }> = []
+    if (useMonthly) {
+      const cursor = new Date(trendStart.getFullYear(), trendStart.getMonth(), 1)
+      const lastMonth = new Date(trendEnd.getFullYear(), trendEnd.getMonth(), 1)
+      while (cursor <= lastMonth) {
+        const monthStart = new Date(cursor)
+        const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 23, 59, 59, 999)
+        const monthData = trendRecords.filter(call => call.createdAt >= monthStart && call.createdAt <= monthEnd)
+        dailyTrends.push({
+          day: monthStart.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+          date: monthStart.toISOString().split('T')[0],
+          calls: monthData.length,
+          answered: monthData.filter(call => call.status !== 'MISSED').length,
+          resolved: monthData.filter(call => ['CLOSED', 'RESOLVED'].includes(call.status || '')).length
+        })
+        cursor.setMonth(cursor.getMonth() + 1)
+      }
+    } else {
+      const cursor = new Date(trendStart.getFullYear(), trendStart.getMonth(), trendStart.getDate())
+      const lastDay = new Date(trendEnd.getFullYear(), trendEnd.getMonth(), trendEnd.getDate())
+      while (cursor <= lastDay) {
+        const dayStart = new Date(cursor)
+        const dayEnd = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 23, 59, 59, 999)
+        const dayData = trendRecords.filter(call => call.createdAt >= dayStart && call.createdAt <= dayEnd)
+        dailyTrends.push({
+          day: spanDays <= 14
+            ? dayStart.toLocaleDateString('en-US', { weekday: 'short' })
+            : dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          date: dayStart.toISOString().split('T')[0],
+          calls: dayData.length,
+          answered: dayData.filter(call => call.status !== 'MISSED').length,
+          resolved: dayData.filter(call => ['CLOSED', 'RESOLVED'].includes(call.status || '')).length
+        })
+        cursor.setDate(cursor.getDate() + 1)
+      }
     }
 
-    // Process hourly data for today
     const hourlyData = Array.from({ length: 24 }, (_, hour) => {
-      const hourCalls = hourlyCallsToday.filter(call => {
-        const callHour = call.createdAt.getUTCHours()
-        return callHour === hour
-      })
-      
+      const hourCalls = trendRecords.filter(call => call.createdAt.getUTCHours() === hour)
       return {
         hour: `${hour.toString().padStart(2, '0')}:00`,
         calls: hourCalls.length,
-        answered: hourCalls.length // Assuming all logged calls were answered
+        answered: hourCalls.length
       }
     })
 
     // Process agent performance
     const agentStats = agentPerformanceData.reduce((acc: Record<string, { calls: number, totalSatisfaction: number, ratingCount: number }>, call) => {
-      const officer = call.assignedOfficer || 'Unassigned'
+      const officer = call.officerName || call.assignedOfficer || 'Unassigned'
       if (!acc[officer]) {
         acc[officer] = { calls: 0, totalSatisfaction: 0, ratingCount: 0 }
       }
@@ -222,9 +232,9 @@ export async function GET(request: NextRequest) {
       name,
       callsHandled: stats.calls,
       avgSatisfaction: stats.ratingCount > 0 ? Math.round((stats.totalSatisfaction / stats.ratingCount) * 10) / 10 : 0,
-      responseTime: '< 30s', // This would need actual timing data
-      efficiency: Math.min(100, Math.round((stats.calls / Math.max(1, totalCallsCount)) * 100 * 10)) // Calculated efficiency
-    })).slice(0, 10) // Top 10 agents
+      responseTime: '< 30s',
+      efficiency: Math.min(100, Math.round((stats.calls / Math.max(1, totalCallsCount)) * 100 * 10))
+    })).sort((a, b) => b.callsHandled - a.callsHandled).slice(0, 10)
 
     // Process call types
     const callTypesData = callsByType.map(type => ({
@@ -233,42 +243,13 @@ export async function GET(request: NextRequest) {
       percentage: Math.round(((type._count.id / Math.max(1, totalCallsCount)) * 100) * 10) / 10
     }))
 
-    // Generate monthly volume data for charts (last 12 months)
-    const monthlyVolume = [];
-    for (let i = 11; i >= 0; i--) {
-      const monthDate = new Date();
-      monthDate.setMonth(monthDate.getMonth() - i);
-      monthDate.setDate(1);
-      monthDate.setHours(0, 0, 0, 0);
-      
-      const nextMonth = new Date(monthDate);
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-      const monthCalls = await prisma.call_records.count({
-        where: {
-          createdAt: {
-            gte: monthDate,
-            lt: nextMonth
-          }
-        }
-      });
-
-      const monthResolved = await prisma.call_records.count({
-        where: {
-          createdAt: {
-            gte: monthDate,
-            lt: nextMonth
-          },
-          OR: [{ status: 'CLOSED' }, { status: 'RESOLVED' }]
-        }
-      });
-
-      monthlyVolume.push({
-        month: monthDate.toLocaleString('default', { month: 'short', year: '2-digit' }),
-        calls: monthCalls,
-        resolved: monthResolved
-      });
-    }
+    const monthlyVolume = dailyTrends
+      .filter(() => useMonthly)
+      .map(point => ({
+        month: point.day,
+        calls: point.calls,
+        resolved: point.resolved
+      }))
 
     // Prepare comprehensive analytics data
     const analytics = {
@@ -301,7 +282,8 @@ export async function GET(request: NextRequest) {
 
       // Additional metadata
       metadata: {
-        dataRange: `${days} days`,
+        dataRange: rangeLabel,
+        trendGranularity: useMonthly ? 'month' : 'day',
         lastUpdated: new Date().toISOString(),
         totalAgents: Object.keys(agentStats).length,
         averageResolutionHours: Math.round(avgResolutionHours * 10) / 10

@@ -73,6 +73,17 @@ function filtersToQuery(activeFilters: SummaryFilters) {
   return params.toString()
 }
 
+function csvCell(value: string | number) {
+  const text = String(value ?? '')
+  const safe = /^[=+\-@]/.test(text) ? `'${text}` : text
+  if (/[",\n\r]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`
+  return safe
+}
+
+function csvRow(values: Array<string | number>) {
+  return values.map(csvCell).join(',')
+}
+
 function describeActiveFilters(activeFilters: SummaryFilters) {
   const labels: string[] = []
   if (activeFilters.officerName.trim()) labels.push(`Officer: ${activeFilters.officerName.trim()}`)
@@ -95,6 +106,7 @@ export default function CallCentreDataSummaryPage() {
   // All hooks must be at the top before any conditional logic
   const [filters, setFilters] = useState<SummaryFilters>(EMPTY_FILTERS)
   const [appliedFilters, setAppliedFilters] = useState<SummaryFilters>(EMPTY_FILTERS)
+  const [showFilters, setShowFilters] = useState(false)
   
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({
     totalCalls: 0,
@@ -163,22 +175,109 @@ export default function CallCentreDataSummaryPage() {
 
   // Export functions
   const exportToCSV = () => {
-    const headers = ['Officer Name', 'Total Calls', 'Valid Calls', 'Cases', 'Pending Cases', 'Closed Cases', 'Overdue Cases', 'Avg Call Duration']
-    const csvContent = [
-      headers.join(','),
-      ...officerPerformance.map(officer => [
-        officer.name,
-        officer.totalCalls,
-        officer.validCalls,
-        officer.cases,
-        officer.pendingCases,
-        officer.closedCases,
-        officer.overdueCases,
-        officer.avgCallDuration
-      ].join(','))
-    ].join('\n')
+    const applied = describeActiveFilters(appliedFilters)
+    const purposePercentages = new Map(casesByPurpose.map(item => [item.purpose, item.percentage]))
+    const sections: string[] = [
+      csvRow(['Call Centre Data Summary']),
+      csvRow(['Applied filters', applied.length > 0 ? applied.join(' | ') : 'None']),
+      '',
+      csvRow(['Summary Stats']),
+      csvRow(['Metric', 'Value']),
+      csvRow(['Total Calls', summaryStats.totalCalls]),
+      csvRow(['Valid Calls', summaryStats.validCalls]),
+      csvRow(['Invalid Calls', summaryStats.invalidCalls]),
+      csvRow(['Total Cases', summaryStats.totalCases]),
+      csvRow(['Pending Cases', summaryStats.pendingCases]),
+      csvRow(['Closed Cases', summaryStats.closedCases]),
+      csvRow(['Overdue Cases', summaryStats.overdueCases]),
+      csvRow(['Average Call Duration', summaryStats.averageCallDuration]),
+      csvRow(['Case Conversion Rate', summaryStats.caseConversionRate]),
+      '',
+      csvRow(['Officer Performance Overview']),
+      csvRow(['Officer Name', 'Total Calls', 'Valid Calls', 'Cases Created', 'Pending Cases', 'Closed Cases', 'Overdue Cases', 'Avg Call Duration']),
+      ...(officerPerformance.length > 0
+        ? officerPerformance.map(officer => csvRow([
+            officer.name,
+            officer.totalCalls,
+            officer.validCalls,
+            officer.cases,
+            officer.pendingCases,
+            officer.closedCases,
+            officer.overdueCases,
+            officer.avgCallDuration,
+          ]))
+        : [csvRow(['No officer performance data'])]),
+      '',
+      csvRow(['Calls by Timeframe']),
+      csvRow(['Period', 'Calls']),
+      csvRow(['Today', callsByTimeframe.today]),
+      csvRow(['This Week', callsByTimeframe.week]),
+      csvRow(['This Month', callsByTimeframe.month]),
+      csvRow(['This Year', callsByTimeframe.year]),
+      '',
+      csvRow(['Cases by Purpose']),
+      csvRow(['Purpose', 'Today', 'This Week', 'This Month', 'This Year', 'Total', 'Percentage']),
+      ...(purposeByTimeframe.length > 0
+        ? [...purposeByTimeframe]
+            .sort((a, b) => b.total - a.total)
+            .map(item => csvRow([
+              item.purpose,
+              item.today,
+              item.week,
+              item.month,
+              item.year,
+              item.total,
+              purposePercentages.get(item.purpose) ?? '',
+            ]))
+        : casesByPurpose.length > 0
+          ? casesByPurpose.map(item => csvRow([item.purpose, '', '', '', '', item.count, item.percentage]))
+          : [csvRow(['No case purpose data'])]),
+      '',
+      csvRow(['Calls by Province']),
+      csvRow(['Province', 'Valid Calls', 'Total Calls']),
+      ...(callsByProvince.length > 0
+        ? callsByProvince.map(item => csvRow([item.province, item.validCalls, item.calls]))
+        : [csvRow(['No province data'])]),
+      '',
+      csvRow(['Calls Distribution by Age Group']),
+      csvRow(['Age Group', 'Count', 'Percentage']),
+      ...(callsByAgeGroup.length > 0
+        ? callsByAgeGroup.map(item => csvRow([item.ageGroup, item.count, item.percentage]))
+        : [csvRow(['No age data'])]),
+      '',
+      csvRow(['Calls Distribution by Gender']),
+      csvRow(['Gender', 'Count', 'Percentage']),
+      ...(callsByGender.length > 0
+        ? callsByGender.map(item => csvRow([item.gender, item.count, item.percentage]))
+        : [csvRow(['No gender data'])]),
+      '',
+      csvRow(['Calls by Age Group and Key Population']),
+    ]
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    if (ageKeyPopulationCrossTab && ageKeyPopulationCrossTab.rows.some(row => row.rowTotal > 0)) {
+      sections.push(csvRow(['Age group', ...ageKeyPopulationCrossTab.keyPopulations, 'Total']))
+      ageKeyPopulationCrossTab.rows.forEach(row => {
+        sections.push(csvRow([
+          row.ageGroup,
+          ...row.cells.map(cell => cell.count),
+          row.rowTotal,
+        ]))
+      })
+    } else {
+      sections.push(csvRow(['No age and key population data']))
+    }
+
+    sections.push(
+      '',
+      csvRow(['Case Management Overview']),
+      csvRow(['Metric', 'Value']),
+      csvRow(['Total Cases', summaryStats.totalCases]),
+      csvRow(['Pending Cases', summaryStats.pendingCases]),
+      csvRow(['Closed Cases', summaryStats.closedCases]),
+      csvRow(['Overdue Cases', summaryStats.overdueCases]),
+    )
+
+    const blob = new Blob([`\uFEFF${sections.join('\n')}`], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     const url = URL.createObjectURL(blob)
     link.setAttribute('href', url)
@@ -187,6 +286,7 @@ export default function CallCentreDataSummaryPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   // NOTE: PDF export temporarily disabled due to build issues with nested template literals.
@@ -338,9 +438,43 @@ export default function CallCentreDataSummaryPage() {
   return (
     <ModulePage metadata={metadata} actions={actions} sidebar={sidebar}>
       {/* Search and Filter Panel */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <h2 className="text-xl font-semibold text-black mb-6 border-b border-gray-200 pb-3">Search Parameters</h2>
-          
+        <div className="bg-white shadow-lg rounded-xl border border-gray-100 overflow-hidden">
+          <div className="bg-gradient-to-r from-saywhat-dark via-gray-800 to-saywhat-dark px-6 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-white">Search Parameters</h2>
+                {describeActiveFilters(appliedFilters).length > 0 ? (
+                  <p className="mt-1 text-sm text-gray-300">
+                    Applied across all tables: {describeActiveFilters(appliedFilters).join(' · ')}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-sm text-gray-300">All call centre records</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`inline-flex shrink-0 items-center justify-center px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 shadow-md hover:shadow-lg ${
+                  showFilters
+                    ? "bg-gradient-to-r from-saywhat-orange to-orange-600 text-white"
+                    : "bg-white text-saywhat-dark border-2 border-saywhat-orange hover:bg-saywhat-orange hover:text-white"
+                }`}
+              >
+                <FunnelIcon className="mr-2 h-5 w-5" />
+                Filters
+                {describeActiveFilters(appliedFilters).length > 0 && (
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                    showFilters ? "bg-white/30 text-white" : "bg-saywhat-orange text-white"
+                  }`}>
+                    {describeActiveFilters(appliedFilters).length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {showFilters && (
+          <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -495,10 +629,7 @@ export default function CallCentreDataSummaryPage() {
               Clear Filters
             </button>
           </div>
-          {describeActiveFilters(appliedFilters).length > 0 && (
-            <p className="mt-4 text-sm text-gray-600">
-              Applied across all tables: {describeActiveFilters(appliedFilters).join(' · ')}
-            </p>
+          </div>
           )}
         </div>
 
