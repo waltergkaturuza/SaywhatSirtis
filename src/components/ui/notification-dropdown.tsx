@@ -23,6 +23,7 @@ export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const fetchNotifications = async () => {
@@ -30,15 +31,21 @@ export function NotificationDropdown() {
 
     try {
       setLoading(true)
+      setLoadError('')
       const response = await fetch('/api/notifications?limit=10')
       if (response.ok) {
         const data = await response.json()
         const notifs = data.data?.notifications || []
         setNotifications(notifs)
-        setUnreadCount(notifs.filter((n: Notification) => !n.isRead).length)
+        setUnreadCount(typeof data.data?.unreadCount === 'number'
+          ? data.data.unreadCount
+          : notifs.filter((n: Notification) => !n.isRead).length)
+      } else {
+        setLoadError('Notifications could not be loaded.')
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
+      setLoadError('Notifications could not be loaded.')
     } finally {
       setLoading(false)
     }
@@ -59,6 +66,7 @@ export function NotificationDropdown() {
   }, [session?.user?.id])
 
   const markAsRead = async (notificationId: string) => {
+    if (notificationId.startsWith('live-')) return
     try {
       await fetch(`/api/notifications/${notificationId}/read`, {
         method: 'POST',
@@ -77,8 +85,8 @@ export function NotificationDropdown() {
       await fetch('/api/notifications/read-all', {
         method: 'POST',
       })
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
-      setUnreadCount(0)
+      setNotifications(prev => prev.map(n => n.id.startsWith('live-') ? n : { ...n, isRead: true }))
+      setUnreadCount(notifications.filter(n => n.id.startsWith('live-') && !n.isRead).length)
     } catch (error) {
       console.error('Error marking all as read:', error)
     }
@@ -119,7 +127,7 @@ export function NotificationDropdown() {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <Menu.Items className="absolute right-0 z-50 mt-2.5 w-96 origin-top-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 dark:ring-gray-700 focus:outline-none">
+        <Menu.Items className="absolute right-0 z-[80] mt-2.5 w-96 origin-top-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 dark:ring-gray-700 focus:outline-none">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -139,6 +147,10 @@ export function NotificationDropdown() {
             {loading ? (
               <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                 Loading...
+              </div>
+            ) : loadError ? (
+              <div className="px-4 py-8 text-center text-sm text-red-600">
+                {loadError}
               </div>
             ) : notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">

@@ -523,7 +523,7 @@ export async function POST(request: NextRequest) {
         comment: comment,
         // System Fields
         category: 'INQUIRY',
-        priority: priority || 'MEDIUM',
+        priority: priority || '',
         subject: subject || callDescription || 'Call inquiry',
         description: description || callDescription || comment,
         summary: callDescription || comment || 'Call inquiry',

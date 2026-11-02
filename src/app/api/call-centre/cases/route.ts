@@ -78,7 +78,7 @@ function transformCallToCase(call: {
     purpose: call.summary || call.purpose || 'General Inquiry',
     officer: call.assignedOfficer,
     status: normalizeStatus(call.status),
-    priority: (call.priority || 'MEDIUM').toLowerCase(),
+    priority: call.priority ? String(call.priority).toLowerCase() : '',
     createdDate: formatLocalDate(createdDate),
     dueDate: finished ? formatLocalDate(new Date(closedOn)) : formatLocalDate(dueDate),
     dateLabel: finished ? (resolved ? 'Resolved' : 'Closed') : 'Due Date',

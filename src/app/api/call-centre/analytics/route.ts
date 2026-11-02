@@ -63,10 +63,11 @@ export async function GET(request: NextRequest) {
       rangeEnd = new Date(year, 11, 31, 23, 59, 59, 999)
       rangeLabel = String(year)
     } else {
-      const days = [7, 30, 90].includes(parseInt(periodParam, 10)) ? parseInt(periodParam, 10) : 30
+      const parsedDays = parseInt(periodParam, 10)
+      const days = [7, 30, 90, 365, 1825].includes(parsedDays) ? parsedDays : 30
       rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       rangeStart.setDate(rangeStart.getDate() - (days - 1))
-      rangeLabel = `Last ${days} days`
+      rangeLabel = days === 1825 ? 'Last 5 years' : days === 365 ? 'Last year' : `Last ${days} days`
     }
 
     const createdAtFilter: { gte?: Date; lte?: Date } = {}

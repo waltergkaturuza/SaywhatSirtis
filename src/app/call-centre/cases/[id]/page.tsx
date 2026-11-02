@@ -114,13 +114,15 @@ export default function CaseViewPage() {
                 {caseData.status}
               </span>
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                caseData.priority === 'High' 
+                ['High', 'HIGH'].includes(caseData.priority)
                   ? 'bg-red-100 text-red-800'
-                  : caseData.priority === 'Medium'
+                  : ['Medium', 'MEDIUM'].includes(caseData.priority)
                   ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-blue-100 text-blue-800'
+                  : caseData.priority
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-gray-100 text-gray-700'
               }`}>
-                {caseData.priority} Priority
+                {caseData.priority ? `${caseData.priority} Priority` : 'Priority not set'}
               </span>
               <Link
                 href={`/call-centre/cases/${params.id}/edit`}
@@ -150,7 +152,7 @@ export default function CaseViewPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Case Type</label>
-                  <p className="text-gray-900">{caseData.caseType}</p>
+                  <p className="text-gray-900">{caseData.caseType || caseData.purpose || 'Not set'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Officer</label>

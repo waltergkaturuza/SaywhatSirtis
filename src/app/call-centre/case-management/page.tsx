@@ -575,7 +575,7 @@ export default function CaseManagementPage() {
                           {caseItem.status}
                         </span>
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(caseItem.priority)}`}>
-                          {caseItem.priority} priority
+                          {caseItem.priority ? `${caseItem.priority} priority` : 'Priority not set'}
                         </span>
                         {caseItem.isOverdue && (
                           <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">

@@ -2,9 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
+:root,
+html.light {
+  --background: #f8fafc;
   --foreground: #171717;
+  color-scheme: light;
   /* SAYWHAT SIRTIS Brand Colors */
   --saywhat-orange: #ff6b35;
   --saywhat-red: #dc2626;
@@ -13,11 +15,13 @@
   --saywhat-light-grey: #f3f4f6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html.dark {
+  --background: #0f1115;
+  --foreground: #e5e7eb;
+  color-scheme: dark;
+  --saywhat-grey: #c4c9d4;
+  --saywhat-dark: #f3f4f6;
+  --saywhat-light-grey: #1c1f26;
 }
 
 body {
@@ -26,15 +30,42 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html.dark .bg-white {
+  background-color: #1c1f26;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+html.dark .bg-gray-50,
+html.dark .bg-saywhat-light-grey {
+  background-color: #12141a;
+}
+
+html.dark .bg-gray-100 {
+  background-color: #262a33;
+}
+
+html.dark .text-gray-900,
+html.dark .text-black,
+html.dark .text-saywhat-dark {
+  color: #f3f4f6;
+}
+
+html.dark .text-gray-700,
+html.dark .text-gray-600,
+html.dark .text-gray-500,
+html.dark .text-saywhat-grey {
+  color: #c4c9d4;
+}
+
+html.dark .border-gray-200,
+html.dark .border-gray-100,
+html.dark .border-saywhat-grey {
+  border-color: #2e333d;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #1c1f26;
+  color: #f3f4f6;
+  border-color: #2e333d;
 }

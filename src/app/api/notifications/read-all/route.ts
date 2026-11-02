@@ -16,18 +16,14 @@ export async function POST(request: NextRequest) {
     const employee = await prisma.employees.findUnique({
       where: { userId: session.user.id },
       select: { id: true }
-    })
+    }).catch(() => null)
 
-    if (!employee) {
-      return NextResponse.json({ success: true })
-    }
-
-    // Mark all user's notifications as read
     await prisma.notifications.updateMany({
       where: {
         OR: [
           { recipientId: session.user.id },
-          { employeeId: employee.id }
+          { userId: session.user.id },
+          ...(employee ? [{ employeeId: employee.id }] : []),
         ],
         isRead: false
       },

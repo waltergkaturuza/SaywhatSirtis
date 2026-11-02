@@ -20,7 +20,7 @@ export async function POST(
     // Verify notification belongs to user
     const notification = await prisma.notifications.findUnique({
       where: { id },
-      select: { recipientId: true, employeeId: true }
+      select: { recipientId: true, employeeId: true, userId: true }
     })
 
     if (!notification) {
@@ -35,6 +35,7 @@ export async function POST(
 
     const ownsNotification = 
       notification.recipientId === session.user.id ||
+      notification.userId === session.user.id ||
       (employee && notification.employeeId === employee.id)
 
     if (!ownsNotification) {

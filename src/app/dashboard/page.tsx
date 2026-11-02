@@ -49,7 +49,6 @@ import {
   FileText,
   Building,
   Globe,
-  Zap,
   Shield
 } from 'lucide-react'
 
@@ -61,6 +60,8 @@ interface DashboardMetrics {
   totalCalls: number
   callsToday: number
   callsThisMonth: number
+  callsInPeriod?: number
+  periodLabel?: string
   avgCallDuration: number
   callSuccessRate: number
   totalPrograms: number
@@ -117,6 +118,44 @@ const generateMemberGrowthData = (currentTotal: number) => {
   return data
 }
 
+function periodRange(period: string) {
+  const end = new Date()
+  const start = new Date(end)
+  start.setHours(0, 0, 0, 0)
+  let analytics = '30'
+  let label = 'Last 30 days'
+  let allTime = false
+  if (period === 'all') {
+    analytics = 'all'
+    label = 'All time'
+    allTime = true
+  } else if (period === '7d') {
+    start.setDate(start.getDate() - 6)
+    analytics = '7'
+    label = 'Last 7 days'
+  } else if (period === '90d') {
+    start.setDate(start.getDate() - 89)
+    analytics = '90'
+    label = 'Last 90 days'
+  } else if (period === '1y') {
+    start.setFullYear(start.getFullYear() - 1)
+    analytics = '365'
+    label = 'Last year'
+  } else if (period === '5y') {
+    start.setFullYear(start.getFullYear() - 5)
+    analytics = '1825'
+    label = 'Last 5 years'
+  } else {
+    start.setDate(start.getDate() - 29)
+  }
+  const dateKey = (date: Date) => {
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${date.getFullYear()}-${month}-${day}`
+  }
+  return { dateFrom: allTime ? '' : dateKey(start), dateTo: allTime ? '' : dateKey(end), analytics, label, allTime }
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const [selectedPeriod, setSelectedPeriod] = useState('30d')
@@ -131,18 +170,25 @@ export default function DashboardPage() {
   const [callsByAgeGroup, setCallsByAgeGroup] = useState<Array<{ageGroup: string, count: number, percentage: number}>>([])
   const [callsByGender, setCallsByGender] = useState<Array<{gender: string, count: number, percentage: number}>>([])
   const [totalCases, setTotalCases] = useState(0)
-  const [newCasesThisMonth, setNewCasesThisMonth] = useState(0)
+  const activePeriod = periodRange(selectedPeriod)
 
-  // Fetch dashboard metrics
+  // Fetch dashboard metrics for the selected time filter
   useEffect(() => {
     const fetchMetrics = async () => {
+      const range = periodRange(selectedPeriod)
       try {
+        const summaryParams = new URLSearchParams()
+        if (!range.allTime) {
+          summaryParams.set('dateFrom', range.dateFrom)
+          summaryParams.set('dateTo', range.dateTo)
+        }
+        const summaryQuery = summaryParams.toString()
         const [metricsResponse, callAnalyticsResponse, totalCallsResponse, programAnalyticsResponse, callSummaryResponse] = await Promise.all([
-          fetch('/api/dashboard/metrics'),
-          fetch('/api/call-centre/analytics'),
+          fetch(`/api/dashboard/metrics?period=${encodeURIComponent(selectedPeriod)}`),
+          fetch(`/api/call-centre/analytics?period=${encodeURIComponent(range.analytics)}`),
           fetch('/api/call-centre/stats?period=all'),
           fetch('/api/programs/analytics'),
-          fetch('/api/call-centre/summary')
+          fetch(summaryQuery ? `/api/call-centre/summary?${summaryQuery}` : '/api/call-centre/summary')
         ])
         
         if (metricsResponse.ok) {
@@ -197,12 +243,6 @@ export default function DashboardPage() {
           setCallsByAgeGroup(summaryData.callsByAgeGroup || [])
           setCallsByGender(summaryData.callsByGender || [])
           setTotalCases(summaryData.stats?.totalCases || 0)
-          
-          // Calculate new cases this month from purposeByTimeframe
-          if (summaryData.purposeByTimeframe && summaryData.purposeByTimeframe.length > 0) {
-            const totalNewCases = summaryData.purposeByTimeframe.reduce((sum: number, item: any) => sum + (item.month || 0), 0)
-            setNewCasesThisMonth(totalNewCases)
-          }
         }
       } catch (error) {
         console.error('Failed to fetch dashboard metrics:', error)
@@ -258,7 +298,7 @@ export default function DashboardPage() {
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      const response = await fetch('/api/dashboard/metrics')
+      const response = await fetch(`/api/dashboard/metrics?period=${encodeURIComponent(selectedPeriod)}`)
       if (response.ok) {
         const data = await response.json()
         setMetrics(data)
@@ -298,7 +338,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center space-x-4">
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                <SelectTrigger className="w-32 border-saywhat-grey">
+                <SelectTrigger className="w-40 border-saywhat-grey">
                   <SelectValue placeholder="Period" />
                 </SelectTrigger>
                 <SelectContent>
@@ -306,6 +346,8 @@ export default function DashboardPage() {
                   <SelectItem value="30d">Last 30 days</SelectItem>
                   <SelectItem value="90d">Last 90 days</SelectItem>
                   <SelectItem value="1y">Last year</SelectItem>
+                  <SelectItem value="5y">Last 5 years</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
                 </SelectContent>
               </Select>
               <Button 
@@ -331,12 +373,7 @@ export default function DashboardPage() {
 
         <div className="space-y-6">
           {/* Welcome Section with SAYWHAT Branding */}
-          <div 
-            className="rounded-lg p-8 text-white"
-            style={{
-              background: `linear-gradient(135deg, ${SAYWHAT_COLORS.orange} 0%, ${SAYWHAT_COLORS.red} 50%, ${SAYWHAT_COLORS.dark} 100%)`
-            }}
-          >
+          <div className="rounded-lg p-8 text-white bg-saywhat-orange">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold mb-2">SIRTIS</h1>
@@ -363,9 +400,6 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-              <div className="hidden md:block">
-                <Zap className="h-16 w-16 text-orange-200" />
-              </div>
             </div>
           </div>
 
@@ -381,7 +415,7 @@ export default function DashboardPage() {
                     </p>
                     <p className="text-xs flex items-center mt-1" style={{ color: SAYWHAT_COLORS.orange }}>
                       <TrendingUp className="h-3 w-3 mr-1" />
-                      +{newCasesThisMonth} this month
+                      {activePeriod.label}
                     </p>
                   </div>
                   <div 
@@ -400,11 +434,11 @@ export default function DashboardPage() {
                   <div>
                     <p className="text-sm font-medium text-saywhat-grey">Call Statistics</p>
                     <p className="text-2xl font-bold text-saywhat-dark">
-                      {metrics ? metrics.callsToday.toLocaleString() : '---'}
+                      {metrics ? (metrics.callsInPeriod ?? metrics.callsThisMonth).toLocaleString() : '---'}
                     </p>
                     <p className="text-xs flex items-center mt-1" style={{ color: SAYWHAT_COLORS.red }}>
                       <Phone className="h-3 w-3 mr-1" />
-                      {metrics ? metrics.callsThisMonth.toLocaleString() : '---'} this month
+                      {metrics?.periodLabel || activePeriod.label}
                     </p>
                   </div>
                   <div 
@@ -465,12 +499,7 @@ export default function DashboardPage() {
           </div>
 
           {/* SAYWHAT Program Performance Banner */}
-          <div 
-            className="rounded-lg p-6 text-white"
-            style={{
-              background: `linear-gradient(135deg, ${SAYWHAT_COLORS.red} 0%, ${SAYWHAT_COLORS.dark} 100%)`
-            }}
-          >
+          <div className="rounded-lg p-6 text-white bg-saywhat-orange">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
@@ -478,7 +507,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold">Program Management Active</h3>
-                  <p className="text-red-100">
+                  <p className="text-orange-100">
                     User engagement tracking • Program performance analytics • Real-time user insights
                   </p>
                 </div>
@@ -727,6 +756,12 @@ export default function DashboardPage() {
                         <span className="text-saywhat-grey">Calls Today</span>
                         <span className="text-2xl font-bold text-saywhat-dark">
                           {metrics ? metrics.callsToday : '---'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-saywhat-grey">{metrics?.periodLabel || activePeriod.label}</span>
+                        <span className="text-2xl font-bold text-saywhat-dark">
+                          {metrics ? (metrics.callsInPeriod ?? metrics.callsThisMonth).toLocaleString() : '---'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">

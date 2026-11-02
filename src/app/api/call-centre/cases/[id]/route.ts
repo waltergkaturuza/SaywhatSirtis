@@ -4,6 +4,47 @@ import { authOptions } from '@/lib/auth';
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection';
 import { canonicalCaseStatus, caseDateKey, recordCaseHistory, trackChange } from '@/lib/case-audit';
 
+const CATEGORY_CODES = new Set(['INQUIRY', 'CASE', 'GENERAL'])
+
+function isAutomaticMedium(value: unknown) {
+  const normalized = String(value || '').trim().toUpperCase()
+  return normalized === '' || normalized === 'MEDIUM' || normalized === 'MED'
+}
+
+function purposeFromCaseFields(purpose: unknown, category: unknown) {
+  const candidates = [purpose, category]
+  for (const candidate of candidates) {
+    const raw = String(candidate || '').trim()
+    if (!raw || CATEGORY_CODES.has(raw.toUpperCase())) continue
+    return raw
+  }
+  return ''
+}
+
+async function officerChosePriority(call: { id: string; caseNumber: string | null }) {
+  try {
+    const logs = await prisma.audit_logs.findMany({
+      where: {
+        resource: 'CASE',
+        OR: [
+          { resourceId: call.id },
+          ...(call.caseNumber ? [{ resourceId: call.caseNumber }] : []),
+        ],
+      },
+      select: { details: true },
+      orderBy: { timestamp: 'desc' },
+      take: 100,
+    })
+    return logs.some((log) => {
+      const details = log.details as { changes?: Record<string, unknown> } | null
+      return Boolean(details?.changes && Object.prototype.hasOwnProperty.call(details.changes, 'priority'))
+    })
+  } catch (error) {
+    console.warn('Could not read case priority history:', error)
+    return true
+  }
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -46,13 +87,19 @@ export async function GET(
       return NextResponse.json({ error: 'Case not found' }, { status: 404 });
     }
 
+    const priorityChosen = await officerChosePriority(call)
+    const storedPurpose = purposeFromCaseFields(call.purpose, call.category)
+    const priority = !isAutomaticMedium(call.priority) || priorityChosen
+      ? (call.priority || '')
+      : ''
+
     // Return actual case data from database (no transformation/mock data)
     const caseData = {
       id: call.id,
       caseNumber: call.caseNumber, // Use actual case number from database
       callNumber: call.callNumber, // Use actual call number from database
       status: call.status || 'OPEN',
-      priority: call.priority || 'MEDIUM',
+      priority,
       // Client Information (use actual database fields)
       clientName: call.callerName || call.clientName || '',
       clientPhone: call.callerPhone || '',
@@ -65,7 +112,7 @@ export async function GET(
       callType: call.callType || '',
       modeOfCommunication: call.modeOfCommunication || '',
       callDescription: call.callDescription || '',
-      purpose: call.purpose || '',
+      purpose: storedPurpose,
       // Case Management
       assignedOfficer: call.assignedOfficer || '',
       notes: call.notes || '',
@@ -84,8 +131,8 @@ export async function GET(
       // Additional fields for frontend compatibility
       createdDate: call.createdAt.toISOString().split('T')[0],
       lastUpdated: call.updatedAt.toISOString().split('T')[0],
-      callPurpose: call.subject || 'General Inquiry',
-      caseType: call.category || 'General',
+      callPurpose: call.subject || storedPurpose || '',
+      caseType: storedPurpose,
       description: call.description || '',
       actionsTaken: call.notes || '',
       nextAction: call.resolution || '',
@@ -159,9 +206,18 @@ export async function PUT(
     const nextStatus = body.status !== undefined && body.status !== null && String(body.status).trim() !== ''
       ? canonicalCaseStatus(body.status)
       : canonicalCaseStatus(call.status) || 'OPEN'
-    const nextPriority = body.priority !== undefined && String(body.priority).trim() !== ''
-      ? String(body.priority).toUpperCase()
-      : (call.priority || 'MEDIUM')
+    const priorityChosen = await officerChosePriority(call)
+    const incomingPriority = body.priority !== undefined ? String(body.priority).trim() : ''
+    const nextPriority = incomingPriority
+      ? incomingPriority.toUpperCase()
+      : (!priorityChosen && isAutomaticMedium(call.priority) ? '' : (call.priority || ''))
+    const purposeFromType = body.caseType !== undefined && !CATEGORY_CODES.has(String(body.caseType || '').trim().toUpperCase())
+      ? String(body.caseType || '').trim()
+      : ''
+    const nextPurpose = body.purpose !== undefined && String(body.purpose).trim() !== ''
+      ? String(body.purpose).trim()
+      : (purposeFromType || call.purpose || '')
+    const priorityBaseline = !priorityChosen && isAutomaticMedium(call.priority) ? '' : (call.priority || '')
     const notesChanged = body.notes !== undefined && String(body.notes).trim() !== String(call.notes || '').trim()
     const actionsChanged = body.actionsTaken !== undefined && String(body.actionsTaken).trim() !== String(call.notes || '').trim()
     const nextNotes = notesChanged
@@ -217,10 +273,9 @@ export async function PUT(
     trackChange(changes, 'callerAddress', 'Address', call.callerAddress, valueOrCurrent(body.clientAddress ?? body.callerAddress, call.callerAddress))
     trackChange(changes, 'callerProvince', 'Province', call.callerProvince, valueOrCurrent(body.clientProvince ?? body.callerProvince, call.callerProvince))
     trackChange(changes, 'status', 'Status', canonicalCaseStatus(call.status) || 'OPEN', nextStatus)
-    trackChange(changes, 'priority', 'Priority', call.priority, nextPriority)
+    trackChange(changes, 'priority', 'Priority', priorityBaseline, nextPriority)
     trackChange(changes, 'assignedOfficer', 'Assigned Officer', call.assignedOfficer, valueOrCurrent(body.assignedOfficer, call.assignedOfficer))
-    trackChange(changes, 'category', 'Case Type', call.category, valueOrCurrent(body.caseType ?? body.category, call.category))
-    trackChange(changes, 'purpose', 'Purpose', call.purpose, valueOrCurrent(body.purpose, call.purpose))
+    trackChange(changes, 'purpose', 'Case Type/Purpose', call.purpose, nextPurpose)
     trackChange(changes, 'summary', 'Summary', call.summary, valueOrCurrent(body.summary, call.summary))
     trackChange(changes, 'description', 'Description', call.description, valueOrCurrent(body.description, call.description))
     trackChange(changes, 'callDescription', 'Call Description', call.callDescription, valueOrCurrent(body.callDescription, call.callDescription))
@@ -265,7 +320,7 @@ export async function PUT(
         callerAddress: valueOrCurrent(body.clientAddress ?? body.callerAddress, call.callerAddress),
         callerProvince: valueOrCurrent(body.clientProvince ?? body.callerProvince, call.callerProvince),
         subject: subjectIncoming || call.subject,
-        category: valueOrCurrent(body.caseType ?? body.category, call.category),
+        category: valueOrCurrent(body.category, call.category),
         description: valueOrCurrent(body.description, call.description),
         summary: valueOrCurrent(body.summary, call.summary),
         notes: nextNotes,
@@ -277,7 +332,7 @@ export async function PUT(
         followUpDate: nextFollowUp,
         callEndTime: nextCallEndTime,
         callDescription: valueOrCurrent(body.callDescription, call.callDescription),
-        purpose: valueOrCurrent(body.purpose, call.purpose),
+        purpose: nextPurpose,
         referral: valueOrCurrent(body.referrals ?? body.referral, call.referral),
         resolvedAt,
         updatedAt: new Date()

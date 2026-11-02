@@ -22,6 +22,33 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const firstDayOfYear = new Date(now.getFullYear(), 0, 1)
+    const period = request.nextUrl.searchParams.get('period') || '30d'
+    const periodStart = new Date(now)
+    periodStart.setHours(0, 0, 0, 0)
+    let periodLabel = 'Last 30 days'
+    let periodWhere: { createdAt?: { gte: Date; lte: Date } } = {}
+    if (period === 'all') {
+      periodLabel = 'All time'
+    } else if (period === '7d') {
+      periodStart.setDate(periodStart.getDate() - 6)
+      periodLabel = 'Last 7 days'
+      periodWhere = { createdAt: { gte: periodStart, lte: now } }
+    } else if (period === '90d') {
+      periodStart.setDate(periodStart.getDate() - 89)
+      periodLabel = 'Last 90 days'
+      periodWhere = { createdAt: { gte: periodStart, lte: now } }
+    } else if (period === '1y') {
+      periodStart.setFullYear(periodStart.getFullYear() - 1)
+      periodLabel = 'Last year'
+      periodWhere = { createdAt: { gte: periodStart, lte: now } }
+    } else if (period === '5y') {
+      periodStart.setFullYear(periodStart.getFullYear() - 5)
+      periodLabel = 'Last 5 years'
+      periodWhere = { createdAt: { gte: periodStart, lte: now } }
+    } else {
+      periodStart.setDate(periodStart.getDate() - 29)
+      periodWhere = { createdAt: { gte: periodStart, lte: now } }
+    }
 
     // Get member count from users table with safe query execution
     const totalMembers = await safeQuery(async (prisma) => {
@@ -33,7 +60,7 @@ export async function GET(request: NextRequest) {
     }).catch(() => 0)
 
     // Get call statistics with safe query execution
-    const [callsThisMonth, callsThisYear, callsToday, successfulCalls, totalCallsForRate] = await Promise.all([
+    const [callsThisMonth, callsThisYear, callsToday, callsInPeriod, successfulCalls, totalCallsForRate] = await Promise.all([
       safeQuery(async (prisma) => {
         return await prisma.call_records.count({
           where: {
@@ -61,19 +88,27 @@ export async function GET(request: NextRequest) {
           }
         })
       }).catch(() => 0),
-      // Count successful calls (resolved or in progress calls)
+      safeQuery(async (prisma) => {
+        return await prisma.call_records.count({
+          where: periodWhere
+        })
+      }).catch(() => 0),
+      // Count successful calls in the selected period
       safeQuery(async (prisma) => {
         return await prisma.call_records.count({
           where: {
+            ...periodWhere,
             status: {
-              in: ['RESOLVED', 'IN_PROGRESS', 'CLOSED']
+              in: ['RESOLVED', 'IN_PROGRESS', 'CLOSED', 'Resolved', 'Closed']
             }
           }
         })
       }).catch(() => 0),
-      // Total calls for success rate calculation
+      // Total calls in the selected period for the success rate
       safeQuery(async (prisma) => {
-        return await prisma.call_records.count()
+        return await prisma.call_records.count({
+          where: periodWhere
+        })
       }).catch(() => 0)
     ])
 
@@ -118,6 +153,9 @@ export async function GET(request: NextRequest) {
       totalCalls: callsThisYear,
       callsToday,
       callsThisMonth,
+      callsInPeriod,
+      period,
+      periodLabel,
       avgCallDuration: 5.2, // Default value
       callSuccessRate, // Now dynamic based on actual data
       totalPrograms,

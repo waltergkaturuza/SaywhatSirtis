@@ -7,6 +7,52 @@ import Link from 'next/link'
 import { ArrowLeftIcon, ExclamationTriangleIcon, CheckCircleIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import CaseHistory from '@/components/call-centre/CaseHistory'
 
+const PURPOSE_OPTIONS = [
+  'HIV/AIDS',
+  'Information',
+  'Counselling',
+  'Information and Counselling',
+  'In-house Case',
+  'Cancer Screening',
+  'Child Protection',
+  'Contraception',
+  'DSA',
+  'Dropped Call',
+  'GBV',
+  'Legal Assistance',
+  'Medical Assistance',
+  'MHM',
+  'Mental Health',
+  'Prank Call',
+  'PrEP & PEP',
+  'Pre & Post Natal Care',
+  'Relationship Issues',
+  'Reproductive System Disorders',
+  'PAC',
+  'STIs',
+  'Sexual Harassment',
+  'TB',
+  'Test Call',
+  'Employment Support',
+  'Skills Training',
+  'Scholarship/Bursary',
+  'Business Development',
+  'HIV Counselling',
+  'General Inquiry',
+  'Other',
+]
+
+const CATEGORY_CODES = new Set(['INQUIRY', 'CASE', 'GENERAL'])
+
+function resolvePurpose(...values: unknown[]) {
+  for (const value of values) {
+    const raw = String(value || '').trim()
+    if (!raw || CATEGORY_CODES.has(raw.toUpperCase())) continue
+    return PURPOSE_OPTIONS.find((option) => option.toLowerCase() === raw.toLowerCase()) || raw
+  }
+  return ''
+}
+
 export default function EditCasePage() {
   const { data: session } = useSession()
   const params = useParams()
@@ -44,7 +90,7 @@ export default function EditCasePage() {
     if (v.includes('high')) return 'High'
     if (v.includes('medium') || v === 'med') return 'Medium'
     if (v.includes('low')) return 'Low'
-    return 'Medium'
+    return ''
   }
 
   // Employees (Assigned Officer)
@@ -73,7 +119,7 @@ export default function EditCasePage() {
             caseNumber: c.caseNumber || '',
             duration: c.duration || '',
             status: normalizeStatus(c.status) || 'Open',
-            priority: normalizePriority(c.priority) || 'Medium',
+            priority: normalizePriority(c.priority),
             clientName: c.clientName || '',
             clientPhone: c.clientPhone || '',
             clientEmail: c.clientEmail || '',
@@ -87,7 +133,8 @@ export default function EditCasePage() {
             resolution: c.resolution || '',
             callDescription: c.callDescription || '',
             followUpDate: c.followUpDate ? String(c.followUpDate).split('T')[0] : '',
-            caseType: c.caseType || '',
+            caseType: resolvePurpose(c.purpose, c.caseType),
+            purpose: resolvePurpose(c.purpose, c.caseType),
             description: c.description || '',
             actionsTaken: c.actionsTaken || '',
             nextAction: c.nextAction || '',
@@ -222,18 +269,27 @@ export default function EditCasePage() {
 
   const handleSave = async () => {
     if (!caseData) return
+    if (!caseData.priority) {
+      setSaveError('Please choose a priority.')
+      return
+    }
     if (!caseData.changeReason || !caseData.changeReason.trim()) {
       setSaveError('Please provide a reason for the changes in the summary section.')
       return
     }
-    await handleSaveCase(caseData)
+    await handleSaveCase({ ...caseData, purpose: caseData.caseType || caseData.purpose })
   }
 
   const handleClose = async () => {
     if (!caseData) return
+    if (!caseData.priority) {
+      setSaveError('Please choose a priority before closing this case.')
+      return
+    }
     if (confirm('Are you sure you want to close this case?')) {
       const updatedData = {
         ...caseData,
+        purpose: caseData.caseType || caseData.purpose,
         status: 'Closed',
         resolution: caseData.resolution || 'Case resolved successfully',
         outcome: caseData.outcome || 'Closed',
@@ -308,7 +364,7 @@ export default function EditCasePage() {
                 <div className="text-orange-100/90 text-sm">Case Number</div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold drop-shadow-sm">{caseData.priority || 'N/A'}</div>
+                <div className="text-2xl font-bold drop-shadow-sm">{caseData.priority || 'Not set'}</div>
                 <div className="text-orange-100/90 text-sm">Priority</div>
               </div>
             </div>
@@ -339,6 +395,7 @@ export default function EditCasePage() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">Priority</label>
                     <select value={caseData.priority} onChange={(e) => handleInputChange('priority', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                      <option value="">Select priority...</option>
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
                       <option value="High">High</option>
@@ -347,40 +404,23 @@ export default function EditCasePage() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">Case Type/Purpose</label>
-                    <select value={caseData.caseType} onChange={(e) => handleInputChange('caseType', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <select
+                      value={caseData.caseType}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        setCaseData((prev: any) => ({ ...prev, caseType: value, purpose: value }))
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    >
                       <option value="">Select purpose...</option>
-                      <option value="HIV/AIDS">HIV/AIDS</option>
-                      <option value="Information">Information</option>
-                      <option value="Counselling">Counselling</option>
-                      <option value="Information and Counselling">Information and Counselling (legacy)</option>
-                      <option value="In-house Case">In-house Case</option>
-                      <option value="Cancer Screening">Cancer Screening</option>
-                      <option value="Child Protection">Child Protection</option>
-                      <option value="Contraception">Contraception</option>
-                      <option value="DSA">DSA</option>
-                      <option value="Dropped Call">Dropped Call</option>
-                      <option value="GBV">GBV</option>
-                      <option value="Legal Assistance">Legal Assistance</option>
-                      <option value="Medical Assistance">Medical Assistance</option>
-                      <option value="MHM">MHM</option>
-                      <option value="Mental Health">Mental Health</option>
-                      <option value="Prank Call">Prank Call</option>
-                      <option value="PrEP & PEP">PrEP & PEP</option>
-                      <option value="Pre & Post Natal Care">Pre & Post Natal Care</option>
-                      <option value="Relationship Issues">Relationship Issues</option>
-                      <option value="Reproductive System Disorders">Reproductive System Disorders</option>
-                      <option value="PAC">PAC</option>
-                      <option value="STIs">STIs</option>
-                      <option value="Sexual Harassment">Sexual Harassment</option>
-                      <option value="TB">TB</option>
-                      <option value="Test Call">Test Call</option>
-                      <option value="Employment Support">Employment Support</option>
-                      <option value="Skills Training">Skills Training</option>
-                      <option value="Scholarship/Bursary">Scholarship/Bursary</option>
-                      <option value="Business Development">Business Development</option>
-                      <option value="HIV Counselling">HIV Counselling</option>
-                      <option value="General Inquiry">General Inquiry</option>
-                      <option value="Other">Other</option>
+                      {caseData.caseType && !PURPOSE_OPTIONS.includes(caseData.caseType) && (
+                        <option value={caseData.caseType}>{caseData.caseType}</option>
+                      )}
+                      {PURPOSE_OPTIONS.map((purpose) => (
+                        <option key={purpose} value={purpose}>
+                          {purpose === 'Information and Counselling' ? 'Information and Counselling (legacy)' : purpose}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
