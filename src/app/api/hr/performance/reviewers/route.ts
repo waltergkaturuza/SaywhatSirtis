@@ -44,7 +44,6 @@ export async function GET(request: NextRequest) {
       return prisma.employees.findMany({
         where: {
           is_reviewer: true,
-          userId: { not: null },
           status: { in: ['ACTIVE', 'active', 'Active'] }
         },
         select: { userId: true }
