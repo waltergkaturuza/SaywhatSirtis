@@ -18,6 +18,9 @@ interface BackupSchedule {
   frequency: 'daily' | 'weekly'
   weekday: number
   retentionCount: number
+  lastSuccessAt?: string | null
+  lastAttemptAt?: string | null
+  lastError?: string | null
 }
 
 interface DatabaseStats {
@@ -416,8 +419,14 @@ export function AdminDatabase({ className = '' }: AdminDatabaseProps) {
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <h4 className="text-lg font-medium text-gray-900">Automated backup</h4>
                 <p className="mt-1 text-sm text-gray-600">
-                  Runs every day at 02:00 UTC when enabled. Weekly backups run on the selected day. Files are kept in the documents container.
+                  Checked every day at 02:00 UTC. A weekly backup runs on the selected day, and a missed run is taken on the next check. Files are kept in the documents container.
                 </p>
+                <p className="mt-1 text-sm text-gray-700">
+                  Last automatic backup: {schedule.lastSuccessAt ? new Date(schedule.lastSuccessAt).toLocaleString() : 'never'}
+                </p>
+                {schedule.lastError && (
+                  <p className="mt-1 text-sm text-red-700">Last attempt failed: {schedule.lastError}</p>
+                )}
                 <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
                   <label className="flex items-center gap-2 text-sm text-gray-700">
                     <input

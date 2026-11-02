@@ -50,6 +50,15 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  if (pathname.startsWith('/api/cron')) {
+    const secret = process.env.CRON_SECRET
+    const authorization = request.headers.get('authorization')
+    const bearerOk = Boolean(secret) && authorization === `Bearer ${secret}`
+    const vercelCron = request.headers.get('x-vercel-cron') === '1'
+    if (bearerOk || vercelCron) return NextResponse.next()
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   // Allow public routes
   if (
     pathname.startsWith('/auth') ||

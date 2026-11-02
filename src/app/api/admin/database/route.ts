@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -8,6 +8,7 @@ import {
   createDatabaseBackup,
   getBackupSchedule,
   listDatabaseBackups,
+  runScheduledBackupIfDue,
   saveBackupSchedule,
 } from '@/lib/database-backup'
 import { analyzeUserTable, refreshPlannerStatistics, vacuumDatabase } from '@/lib/database-maintenance'
@@ -425,6 +426,12 @@ export async function GET(request: NextRequest) {
       recentActivity,
       health: buildHealth(connection, indexes, backups, tables),
     }
+
+    after(() => {
+      runScheduledBackupIfDue().catch((error) => {
+        console.error('Deferred scheduled backup failed:', error)
+      })
+    })
 
     return NextResponse.json({
       success: true,

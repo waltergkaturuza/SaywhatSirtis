@@ -14,22 +14,18 @@ export interface BackupSchedule {
   frequency: BackupFrequency
   weekday: number
   retentionCount: number
+  lastSuccessAt?: string | null
+  lastAttemptAt?: string | null
+  lastError?: string | null
 }
+
+const RUN_HOUR_UTC = 2
 
 const DEFAULT_SCHEDULE: BackupSchedule = {
   enabled: true,
   frequency: 'daily',
   weekday: 0,
   retentionCount: 14,
-}
-
-function scheduleJson(schedule: BackupSchedule): Prisma.InputJsonObject {
-  return {
-    enabled: schedule.enabled,
-    frequency: schedule.frequency,
-    weekday: schedule.weekday,
-    retentionCount: schedule.retentionCount,
-  }
 }
 
 function serializeValue(value: unknown): unknown {
@@ -62,12 +58,46 @@ export async function getBackupSchedule(): Promise<BackupSchedule> {
   const retentionCount = Number.isInteger(value.retentionCount)
     ? Math.min(90, Math.max(1, Number(value.retentionCount)))
     : DEFAULT_SCHEDULE.retentionCount
+  const lastScheduled = await latestScheduledBackupAt()
   return {
     enabled: value.enabled !== false,
     frequency,
     weekday,
     retentionCount,
+    lastSuccessAt: lastScheduled?.toISOString() || (typeof value.lastSuccessAt === 'string' ? value.lastSuccessAt : null),
+    lastAttemptAt: typeof value.lastAttemptAt === 'string' ? value.lastAttemptAt : null,
+    lastError: typeof value.lastError === 'string' ? value.lastError : null,
   }
+}
+
+async function writeScheduleState(patch: Record<string, unknown>) {
+  const row = await prisma.system_config.findUnique({ where: { key: SCHEDULE_KEY } })
+  const current = (row?.value && typeof row.value === 'object' ? row.value : {}) as Record<string, unknown>
+  const value = { ...current, ...patch }
+  await prisma.system_config.upsert({
+    where: { key: SCHEDULE_KEY },
+    create: {
+      id: randomUUID(),
+      key: SCHEDULE_KEY,
+      value: value as Prisma.InputJsonObject,
+      description: 'Automated database backup schedule',
+      category: 'backup',
+      updatedAt: new Date(),
+    },
+    update: {
+      value: value as Prisma.InputJsonObject,
+      updatedAt: new Date(),
+    },
+  })
+}
+
+export async function recordBackupAttempt(result: { ok: boolean; error?: string }) {
+  const now = new Date().toISOString()
+  await writeScheduleState({
+    lastAttemptAt: now,
+    lastError: result.ok ? null : (result.error || 'Backup failed'),
+    ...(result.ok ? { lastSuccessAt: now } : {}),
+  })
 }
 
 export async function saveBackupSchedule(input: Partial<BackupSchedule>): Promise<BackupSchedule> {
@@ -81,23 +111,14 @@ export async function saveBackupSchedule(input: Partial<BackupSchedule>): Promis
       : current.retentionCount,
   }
 
-  await prisma.system_config.upsert({
-    where: { key: SCHEDULE_KEY },
-    create: {
-      id: randomUUID(),
-      key: SCHEDULE_KEY,
-      value: scheduleJson(next),
-      description: 'Automated database backup schedule',
-      category: 'backup',
-      updatedAt: new Date(),
-    },
-    update: {
-      value: scheduleJson(next),
-      updatedAt: new Date(),
-    },
+  await writeScheduleState({
+    enabled: next.enabled,
+    frequency: next.frequency,
+    weekday: next.weekday,
+    retentionCount: next.retentionCount,
   })
 
-  return next
+  return getBackupSchedule()
 }
 
 export async function listDatabaseBackups() {
@@ -250,8 +271,69 @@ export async function createDatabaseBackup(options: { trigger: 'manual' | 'sched
   }
 }
 
-export function scheduledBackupIsDue(schedule: BackupSchedule, now = new Date()) {
+export function lastScheduledSlot(schedule: BackupSchedule, now = new Date()) {
+  const slot = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    RUN_HOUR_UTC,
+    0,
+    0,
+    0
+  ))
+  if (schedule.frequency === 'daily') {
+    if (now.getTime() < slot.getTime()) slot.setUTCDate(slot.getUTCDate() - 1)
+    return slot
+  }
+  const daysBack = (slot.getUTCDay() - schedule.weekday + 7) % 7
+  slot.setUTCDate(slot.getUTCDate() - daysBack)
+  if (now.getTime() < slot.getTime()) slot.setUTCDate(slot.getUTCDate() - 7)
+  return slot
+}
+
+export async function latestScheduledBackupAt() {
+  const row = await prisma.documents.findFirst({
+    where: {
+      isDeleted: false,
+      AND: [
+        { tags: { has: DATABASE_BACKUP_TAG } },
+        { tags: { has: 'scheduled' } },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  })
+  return row?.createdAt ?? null
+}
+
+export async function scheduledBackupIsDue(schedule: BackupSchedule, now = new Date()) {
   if (!schedule.enabled) return false
-  if (schedule.frequency === 'weekly' && now.getUTCDay() !== schedule.weekday) return false
-  return true
+  if (schedule.lastAttemptAt) {
+    const attempt = new Date(schedule.lastAttemptAt).getTime()
+    const success = schedule.lastSuccessAt ? new Date(schedule.lastSuccessAt).getTime() : 0
+    if (Number.isFinite(attempt) && attempt > success && now.getTime() - attempt < 20 * 60 * 1000) {
+      return false
+    }
+  }
+  const slot = lastScheduledSlot(schedule, now)
+  if (now.getTime() < slot.getTime()) return false
+  const last = await latestScheduledBackupAt()
+  return !last || last.getTime() < slot.getTime()
+}
+
+export async function runScheduledBackupIfDue() {
+  const schedule = await getBackupSchedule()
+  if (!(await scheduledBackupIsDue(schedule))) {
+    return { ran: false as const, schedule }
+  }
+  await writeScheduleState({ lastAttemptAt: new Date().toISOString(), lastError: null })
+  try {
+    const backup = await createDatabaseBackup({ trigger: 'scheduled', userId: 'system' })
+    await recordBackupAttempt({ ok: true })
+    return { ran: true as const, backup }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Scheduled backup failed'
+    await recordBackupAttempt({ ok: false, error: message })
+    throw error
+  }
 }
