@@ -54,6 +54,9 @@ export async function GET(request: NextRequest) {
         where.followUpDate = {
           lt: new Date()
         }
+        where.status = {
+          notIn: ['CLOSED', 'RESOLVED', 'Closed', 'Resolved', 'closed', 'resolved', 'DONE', 'Done']
+        }
       }
 
       if (assignedTo) {
@@ -75,6 +78,7 @@ export async function GET(request: NextRequest) {
           summary: true,
           followUpDate: true,
           followUpRequired: true,
+          resolvedAt: true,
           createdAt: true,
           updatedAt: true
         },
@@ -87,15 +91,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform the data for frontend consumption
-    const tasks = calls.map(call => ({
+    const tasks = calls.map(call => {
+      const normalizedStatus = String(call.status || '').toUpperCase().replace(/[\s-]+/g, '_')
+      const finished = normalizedStatus === 'CLOSED' || normalizedStatus === 'RESOLVED' || normalizedStatus === 'DONE'
+      const closedOn = call.resolvedAt || call.updatedAt
+      return ({
       id: call.id,
       title: `Follow-up: ${call.caseNumber}`,
       description: call.summary || `Follow-up call for ${call.callerName}`,
       type: 'follow-up',
       priority: call.priority,
-      status: call.followUpDate && call.followUpDate < new Date() ? 'overdue' : 'pending',
+      status: finished ? 'completed' : (call.followUpDate && call.followUpDate < new Date() ? 'overdue' : 'pending'),
       assignedTo: call.assignedOfficer || 'Unassigned',
-      dueDate: call.followUpDate?.toISOString(),
+      dueDate: finished ? closedOn?.toISOString() : call.followUpDate?.toISOString(),
       callDetails: {
         caseNumber: call.caseNumber,
         callerName: call.callerName,
@@ -105,7 +113,8 @@ export async function GET(request: NextRequest) {
       },
       createdAt: call.createdAt.toISOString(),
       updatedAt: call.updatedAt.toISOString()
-    }))
+      })
+    })
 
     // Add some sample task types for demonstration
     const sampleTasks = [

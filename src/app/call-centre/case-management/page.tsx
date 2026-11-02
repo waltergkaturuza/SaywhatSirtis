@@ -30,6 +30,7 @@ interface CaseData {
   priority: string
   createdDate: string
   dueDate?: string
+  dateLabel?: string
   lastUpdate: string
   isOverdue: boolean
   description: string
@@ -40,6 +41,7 @@ interface CaseStats {
   openCases: number
   inProgressCases: number
   pendingCases: number
+  resolvedCases: number
   closedCases: number
   overdueCases: number
 }
@@ -59,6 +61,7 @@ export default function CaseManagementPage() {
     openCases: 0,
     inProgressCases: 0,
     pendingCases: 0,
+    resolvedCases: 0,
     closedCases: 0,
     overdueCases: 0,
   })
@@ -210,6 +213,7 @@ export default function CaseManagementPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'resolved': return 'bg-emerald-100 text-emerald-800'
       case 'open': return 'bg-blue-100 text-blue-800'
       case 'in-progress': return 'bg-yellow-100 text-yellow-800'
       case 'pending': return 'bg-gray-100 text-gray-800'
@@ -269,6 +273,10 @@ export default function CaseManagementPage() {
             <div className="text-2xl font-bold text-yellow-600">{stats.openCases + stats.inProgressCases + stats.pendingCases}</div>
             <div className="text-sm text-yellow-800">Active Cases</div>
           </div>
+          <div className="bg-emerald-50 p-3 rounded">
+            <div className="text-2xl font-bold text-emerald-600">{stats.resolvedCases}</div>
+            <div className="text-sm text-emerald-800">Resolved Cases</div>
+          </div>
           <div className="bg-green-50 p-3 rounded">
             <div className="text-2xl font-bold text-green-600">{stats.closedCases}</div>
             <div className="text-sm text-green-800">Closed Cases</div>
@@ -284,7 +292,7 @@ export default function CaseManagementPage() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Officer Workload</h3>
         <div className="space-y-2">
           {officers.map((officer) => {
-            const officerCases = safeFilter(cases, (c: CaseData) => c.officer === officer && c.status !== 'closed')
+            const officerCases = safeFilter(cases, (c: CaseData) => c.officer === officer && c.status !== 'closed' && c.status !== 'resolved')
             const overdueCount = safeFilter(cases, (c: CaseData) => c.officer === officer && c.isOverdue).length
             
             return (
@@ -305,6 +313,12 @@ export default function CaseManagementPage() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Filters</h3>
         <div className="space-y-2">
+          <button
+            onClick={() => setActiveTab('resolved')}
+            className="w-full text-left p-2 text-sm text-emerald-600 hover:bg-emerald-50 rounded"
+          >
+            Resolved Cases
+          </button>
           <button 
             onClick={() => setActiveTab('overdue')}
             className="w-full text-left p-2 text-sm text-red-600 hover:bg-red-50 rounded"
@@ -496,10 +510,11 @@ export default function CaseManagementPage() {
             <nav className="-mb-px flex flex-wrap gap-x-8 gap-y-2">
               {[
                 { key: 'all', label: 'All Cases', count: stats.totalCases },
+                { key: 'resolved', label: 'Resolved', count: stats.resolvedCases },
+                { key: 'closed', label: 'Closed', count: stats.closedCases },
                 { key: 'open', label: 'Open', count: stats.openCases },
                 { key: 'in-progress', label: 'In Progress', count: stats.inProgressCases },
                 { key: 'pending', label: 'Pending', count: stats.pendingCases },
-                { key: 'closed', label: 'Closed', count: stats.closedCases },
                 { key: 'overdue', label: 'Overdue', count: stats.overdueCases }
               ].map((tab) => (
                 <button
@@ -591,7 +606,7 @@ export default function CaseManagementPage() {
                           <span className="font-medium">Created:</span> {caseItem.createdDate}
                         </div>
                         <div className={caseItem.isOverdue ? 'text-red-600' : ''}>
-                          <span className="font-medium">Due Date:</span> {caseItem.dueDate}
+                          <span className="font-medium">{caseItem.dateLabel || 'Due Date'}:</span> {caseItem.dueDate}
                         </div>
                         <div>
                           <span className="font-medium">Last Update:</span> {caseItem.lastUpdate}

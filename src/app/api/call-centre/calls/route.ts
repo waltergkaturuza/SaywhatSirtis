@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 import { randomUUID } from 'crypto'
 import { rateLimit, getClientIP, withErrorHandling } from '@/lib/production-helpers'
+import { recordCaseHistory, trackChange, type CaseChange } from '@/lib/case-audit'
 
 export async function GET(request: NextRequest) {
   try {
@@ -361,9 +362,12 @@ export async function POST(request: NextRequest) {
       assignedTo
     } = body
 
-    // Generate systematic case number if not provided
-    let finalCaseNumber = caseNumber
-    if (!finalCaseNumber) {
+    const createCase = String(isCase || 'NO').trim().toUpperCase() === 'YES'
+
+    // A call is only a case when Case is YES. Non-cases keep a unique
+    // internal number so they never join the case sequence or case list.
+    let finalCaseNumber = createCase ? caseNumber : `NC-${randomUUID()}`
+    if (createCase && !finalCaseNumber) {
       const currentYear = new Date().getFullYear()
       
       // Use a simpler but robust approach - check and retry if needed
@@ -503,7 +507,7 @@ export async function POST(request: NextRequest) {
         language: language || 'English',
         callDescription: callDescription,
         purpose: purpose || 'HIV/AIDS',
-        isCase: isCase || 'NO',
+        isCase: createCase ? 'YES' : 'NO',
         // Client Information
         clientName: clientName,
         clientAge: clientAge,
@@ -524,13 +528,32 @@ export async function POST(request: NextRequest) {
         description: description || callDescription || comment,
         summary: callDescription || comment || 'Call inquiry',
         notes: comment || description,
-        assignedOfficer: assignedTo || session.user.name,
+        assignedOfficer: createCase ? (assignedTo || session.user.name) : null,
         status: 'OPEN',
         callStartTime: finalCallStartTime,
         callEndTime: finalCallEndTime,
         updatedAt: new Date()
       }
     })
+
+    if (createCase) {
+      const openedChanges: Record<string, CaseChange> = {}
+      trackChange(openedChanges, 'status', 'Status', '', 'OPEN')
+      trackChange(openedChanges, 'assignedOfficer', 'Assigned Officer', '', call.assignedOfficer)
+      trackChange(openedChanges, 'purpose', 'Purpose', '', call.purpose)
+      trackChange(openedChanges, 'summary', 'Summary', '', call.summary)
+      await recordCaseHistory({
+        caseId: call.id,
+        caseNumber: call.caseNumber,
+        action: 'CREATE',
+        changes: openedChanges,
+        reason: 'Case opened from a new call',
+        userId: session.user.id,
+        userName: session.user.name,
+        userEmail: session.user.email,
+        request,
+      })
+    }
 
     return NextResponse.json({
       success: true,

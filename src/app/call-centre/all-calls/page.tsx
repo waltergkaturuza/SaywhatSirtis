@@ -983,7 +983,11 @@ export default function AllCallsPage() {
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Case Number:</span>
-                    <span className="ml-2 text-saywhat-dark">{selectedCall.caseNumber}</span>
+                    <span className="ml-2 text-saywhat-dark">
+                      {selectedCall.isCase === 'YES' && selectedCall.caseNumber && !selectedCall.caseNumber.startsWith('NC-')
+                        ? selectedCall.caseNumber
+                        : 'N/A'}
+                    </span>
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Date & Time:</span>
@@ -1608,10 +1612,10 @@ function EditCallPopup({ call, onClose, onSave }: EditCallPopupProps) {
                   onChange={(e) => setFormData({...formData, status: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
-                  <option value="OPEN">Open</option>
-                  <option value="IN_PROGRESS">In Progress</option>
                   <option value="RESOLVED">Resolved</option>
                   <option value="CLOSED">Closed</option>
+                  <option value="OPEN">Open</option>
+                  <option value="IN_PROGRESS">In Progress</option>
                 </select>
               </div>
               <div>

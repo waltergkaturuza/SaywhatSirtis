@@ -81,10 +81,11 @@ export async function GET(request: NextRequest) {
         } 
       }),
       
-      // Overdue cases (open cases older than 7 days OR past follow-up date)
+      // Overdue cases are open cases only. Closed and resolved cases are never overdue.
       prisma.call_records.count({ 
         where: { 
-          status: 'OPEN',
+          isCase: { in: ['YES', 'yes', 'Yes'] },
+          status: { in: ['OPEN', 'Open', 'open', 'IN_PROGRESS', 'In Progress', 'PENDING', 'Pending'] },
           OR: [
             { createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
             { 

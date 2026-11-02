@@ -103,10 +103,12 @@ export default function CaseViewPage() {
             </div>
             <div className="flex items-center space-x-3">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                caseData.status === 'Open' 
-                  ? 'bg-green-100 text-green-800'
-                  : caseData.status === 'Closed'
+                ['RESOLVED', 'Resolved'].includes(caseData.status)
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : ['CLOSED', 'Closed'].includes(caseData.status)
                   ? 'bg-gray-100 text-gray-800'
+                  : ['OPEN', 'Open'].includes(caseData.status)
+                  ? 'bg-green-100 text-green-800'
                   : 'bg-yellow-100 text-yellow-800'
               }`}>
                 {caseData.status}
@@ -245,6 +247,14 @@ export default function CaseViewPage() {
                   <span className="text-gray-600">Last Updated:</span>
                   <span className="font-medium">{new Date(caseData.lastUpdated).toLocaleDateString()}</span>
                 </div>
+                {caseData.closedDate && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">
+                      {['RESOLVED', 'Resolved'].includes(caseData.status) ? 'Resolved:' : 'Closed:'}
+                    </span>
+                    <span className="font-medium">{new Date(caseData.closedDate).toLocaleDateString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Call Purpose:</span>
                   <span className="font-medium">{caseData.callPurpose}</span>

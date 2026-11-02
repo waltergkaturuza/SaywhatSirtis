@@ -3,16 +3,42 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection';
 
+const OPEN_STATUSES = ['OPEN', 'Open', 'open'];
+const IN_PROGRESS_STATUSES = ['IN_PROGRESS', 'IN PROGRESS', 'In Progress', 'in_progress', 'in-progress'];
+const PENDING_STATUSES = ['PENDING', 'Pending', 'pending', 'ON_HOLD', 'On Hold'];
+const RESOLVED_STATUSES = ['RESOLVED', 'Resolved', 'resolved', 'DONE', 'Done', 'done'];
+const CLOSED_STATUSES = ['CLOSED', 'Closed', 'closed'];
+const FINISHED_STATUSES = [...RESOLVED_STATUSES, ...CLOSED_STATUSES];
+
 const TAB_STATUS_MAP: Record<string, string[] | null> = {
   all: null,
-  open: ['OPEN'],
-  'in-progress': ['IN_PROGRESS'],
-  pending: ['PENDING'],
-  closed: ['CLOSED', 'RESOLVED'],
+  resolved: RESOLVED_STATUSES,
+  open: OPEN_STATUSES,
+  'in-progress': IN_PROGRESS_STATUSES,
+  pending: PENDING_STATUSES,
+  closed: CLOSED_STATUSES,
 };
 
+function canonicalStatus(status?: string | null) {
+  return (status || 'OPEN').toUpperCase().replace(/[\s-]+/g, '_');
+}
+
+function isFinishedStatus(status?: string | null) {
+  const normalized = canonicalStatus(status);
+  return normalized === 'CLOSED' || normalized === 'RESOLVED' || normalized === 'DONE';
+}
+
 function normalizeStatus(status?: string | null) {
-  return (status || 'OPEN').toLowerCase().replace('_', '-');
+  const normalized = canonicalStatus(status);
+  if (normalized === 'RESOLVED' || normalized === 'DONE') return 'resolved';
+  if (normalized === 'CLOSED') return 'closed';
+  if (normalized === 'IN_PROGRESS') return 'in-progress';
+  if (normalized === 'PENDING' || normalized === 'ON_HOLD') return 'pending';
+  return 'open';
+}
+
+function formatLocalDate(date: Date) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Harare' }).format(date);
 }
 
 function transformCallToCase(call: {
@@ -31,6 +57,7 @@ function transformCallToCase(call: {
   updatedAt: Date;
   notes: string | null;
   description: string | null;
+  resolvedAt: Date | null;
 }) {
   const now = new Date();
   const referenceDate = call.callStartTime ?? call.createdAt;
@@ -38,7 +65,9 @@ function transformCallToCase(call: {
   const dueDate = new Date(createdDate);
   dueDate.setDate(dueDate.getDate() + 7);
 
-  const dbStatus = (call.status || 'OPEN').toUpperCase();
+  const finished = isFinishedStatus(call.status);
+  const resolved = canonicalStatus(call.status) === 'RESOLVED' || canonicalStatus(call.status) === 'DONE';
+  const closedOn = call.resolvedAt ?? call.updatedAt;
 
   return {
     id: call.id,
@@ -50,10 +79,11 @@ function transformCallToCase(call: {
     officer: call.assignedOfficer,
     status: normalizeStatus(call.status),
     priority: (call.priority || 'MEDIUM').toLowerCase(),
-    createdDate: createdDate.toISOString().split('T')[0],
-    dueDate: dueDate.toISOString().split('T')[0],
-    lastUpdate: call.updatedAt.toISOString().split('T')[0],
-    isOverdue: now > dueDate && !['CLOSED', 'RESOLVED'].includes(dbStatus),
+    createdDate: formatLocalDate(createdDate),
+    dueDate: finished ? formatLocalDate(new Date(closedOn)) : formatLocalDate(dueDate),
+    dateLabel: finished ? (resolved ? 'Resolved' : 'Closed') : 'Due Date',
+    lastUpdate: formatLocalDate(call.updatedAt),
+    isOverdue: !finished && now > dueDate,
     description: call.notes || call.description || 'No description available',
   };
 }
@@ -68,7 +98,15 @@ function buildBaseConditions(searchParams: URLSearchParams) {
 
   const andConditions: Record<string, unknown>[] = [
     {
-      OR: [{ isCase: 'YES' }, { assignedOfficer: { not: null } }],
+      OR: [
+        { isCase: { in: ['YES', 'yes', 'Yes'] } },
+        {
+          AND: [
+            { assignedOfficer: { not: null } },
+            { OR: [{ isCase: null }, { isCase: '' }] },
+          ],
+        },
+      ],
     },
   ];
 
@@ -116,7 +154,7 @@ function buildTabCondition(tab: string) {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return [
-      { status: { notIn: ['CLOSED', 'RESOLVED'] } },
+      { status: { notIn: FINISHED_STATUSES } },
       {
         OR: [
           { callStartTime: { lt: sevenDaysAgo } },
@@ -189,9 +227,10 @@ export async function GET(request: NextRequest) {
       updatedAt: true,
       notes: true,
       description: true,
+      resolvedAt: true,
     };
 
-    const [calls, totalCount, totalAllCount, openCount, inProgressCount, pendingCount, closedCount, overdueCount] =
+    const [calls, totalCount, totalAllCount, openCount, inProgressCount, pendingCount, resolvedCount, closedCount, overdueCount] =
       await Promise.all([
         prisma.call_records.findMany({
           where,
@@ -202,21 +241,26 @@ export async function GET(request: NextRequest) {
         }),
         prisma.call_records.count({ where }),
         prisma.call_records.count({ where: statsWhere }),
-        prisma.call_records.count({ where: { AND: [...baseConditions, { status: 'OPEN' }] } }),
         prisma.call_records.count({
-          where: { AND: [...baseConditions, { status: 'IN_PROGRESS' }] },
+          where: { AND: [...baseConditions, { status: { in: OPEN_STATUSES } }] },
         }),
         prisma.call_records.count({
-          where: { AND: [...baseConditions, { status: 'PENDING' }] },
+          where: { AND: [...baseConditions, { status: { in: IN_PROGRESS_STATUSES } }] },
         }),
         prisma.call_records.count({
-          where: { AND: [...baseConditions, { status: { in: ['CLOSED', 'RESOLVED'] } }] },
+          where: { AND: [...baseConditions, { status: { in: PENDING_STATUSES } }] },
+        }),
+        prisma.call_records.count({
+          where: { AND: [...baseConditions, { status: { in: RESOLVED_STATUSES } }] },
+        }),
+        prisma.call_records.count({
+          where: { AND: [...baseConditions, { status: { in: CLOSED_STATUSES } }] },
         }),
         prisma.call_records.count({
           where: {
             AND: [
               ...baseConditions,
-              { status: { notIn: ['CLOSED', 'RESOLVED'] } },
+              { status: { notIn: FINISHED_STATUSES } },
               {
                 OR: [
                   { callStartTime: { lt: sevenDaysAgo } },
@@ -241,6 +285,7 @@ export async function GET(request: NextRequest) {
         openCases: openCount,
         inProgressCases: inProgressCount,
         pendingCases: pendingCount,
+        resolvedCases: resolvedCount,
         closedCases: closedCount,
         overdueCases: overdueCount,
       },

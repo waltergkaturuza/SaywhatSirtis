@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
+import { canonicalCaseStatus, recordCaseHistory, trackChange, type CaseChange } from '@/lib/case-audit'
 
 export async function PUT(
   request: NextRequest,
@@ -90,6 +91,19 @@ export async function PUT(
       updatedAt: new Date()
     };
 
+    const nextStatus = String(updateData.status || '').toUpperCase().replace(/[\s-]+/g, '_');
+    const previousStatus = String(existingCall.status || '').toUpperCase().replace(/[\s-]+/g, '_');
+    const finishedStatuses = ['CLOSED', 'RESOLVED', 'DONE'];
+    const nextIsFinished = finishedStatuses.includes(nextStatus);
+    const wasFinished = finishedStatuses.includes(previousStatus);
+    if (nextIsFinished && nextStatus !== previousStatus) {
+      updateData.resolvedAt = new Date();
+    } else if (nextIsFinished && !existingCall.resolvedAt) {
+      updateData.resolvedAt = existingCall.updatedAt;
+    } else if (!nextIsFinished && wasFinished) {
+      updateData.resolvedAt = null;
+    }
+
     // Handle duration update - convert to callEndTime if callStartTime exists
     if (body.duration && body.duration !== 'N/A' && existingCall.callStartTime) {
       const durationMatch = body.duration.match(/(\d+)/);
@@ -105,6 +119,40 @@ export async function PUT(
       where: { id: callId },
       data: updateData
     });
+
+    const wasCase = String(existingCall.isCase || '').toUpperCase() === 'YES'
+    const isCaseNow = String(updatedCall.isCase || '').toUpperCase() === 'YES'
+    if (wasCase || isCaseNow) {
+      const changes: Record<string, CaseChange> = {}
+      trackChange(changes, 'status', 'Status', canonicalCaseStatus(existingCall.status), canonicalCaseStatus(updatedCall.status))
+      trackChange(changes, 'isCase', 'Case', existingCall.isCase, updatedCall.isCase)
+      trackChange(changes, 'callerName', 'Caller Name', existingCall.callerName, updatedCall.callerName)
+      trackChange(changes, 'callerPhone', 'Phone', existingCall.callerPhone, updatedCall.callerPhone)
+      trackChange(changes, 'purpose', 'Purpose', existingCall.purpose, updatedCall.purpose)
+      trackChange(changes, 'callDescription', 'Call Description', existingCall.callDescription, updatedCall.callDescription)
+      trackChange(changes, 'notes', 'Notes', existingCall.notes, updatedCall.notes)
+      trackChange(changes, 'comment', 'Comment', existingCall.comment, updatedCall.comment)
+      trackChange(changes, 'referral', 'Referral', existingCall.referral, updatedCall.referral)
+      trackChange(changes, 'assignedOfficer', 'Assigned Officer', existingCall.assignedOfficer, updatedCall.assignedOfficer)
+      const markedAsCase = !wasCase && isCaseNow
+      if (markedAsCase || Object.keys(changes).length > 0) {
+        await recordCaseHistory({
+          caseId: existingCall.id,
+          caseNumber: existingCall.caseNumber,
+          action: markedAsCase ? 'CREATE' : canonicalCaseStatus(updatedCall.status) === 'CLOSED' && canonicalCaseStatus(existingCall.status) !== 'CLOSED'
+            ? 'CLOSE'
+            : canonicalCaseStatus(updatedCall.status) === 'RESOLVED' && canonicalCaseStatus(existingCall.status) !== 'RESOLVED'
+              ? 'RESOLVE'
+              : 'UPDATE',
+          changes,
+          reason: markedAsCase ? 'Call marked as a case' : 'Case updated from the call record',
+          userId: session.user.id,
+          userName: session.user.name,
+          userEmail: session.user.email,
+          request,
+        })
+      }
+    }
 
     return NextResponse.json({
       success: true,

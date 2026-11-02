@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection';
+import { canonicalCaseStatus, caseDateKey, recordCaseHistory, trackChange } from '@/lib/case-audit';
 
 export async function GET(
   request: NextRequest,
@@ -88,8 +89,9 @@ export async function GET(
       description: call.description || '',
       actionsTaken: call.notes || '',
       nextAction: call.resolution || '',
-      referrals: '', // Empty string instead of 'N/A'
-      outcome: call.status === 'RESOLVED' ? 'Resolved' : 'Pending'
+      referrals: call.referral || '',
+      outcome: call.status === 'RESOLVED' ? 'Resolved' : call.status === 'CLOSED' ? 'Closed' : 'Pending',
+      closedDate: call.resolvedAt || (['CLOSED', 'RESOLVED'].includes(String(call.status || '').toUpperCase()) ? call.updatedAt : null)
     };
 
     return NextResponse.json({
@@ -149,45 +151,100 @@ export async function PUT(
       return NextResponse.json({ error: 'Case not found' }, { status: 404 });
     }
 
-    // Create detailed change tracking
-    const changes: any = {};
-    const unchangedFields = ['id', 'caseNumber', 'callNumber', 'createdAt']; // Fields that should never change
-    
-    // Track all field changes
-    const fieldsToTrack = [
-      'callerName', 'callerPhone', 'callerEmail', 'callerAge', 'callerGender', 
-      'callerAddress', 'callerProvince', 'subject', 'category', 'description', 
-      'summary', 'notes', 'resolution', 'status', 'priority', 'assignedOfficer', 
-      'followUpRequired', 'followUpDate', 'callDescription', 'purpose', 'duration'
-    ];
+    const valueOrCurrent = (incoming: unknown, current: string | null) => {
+      if (incoming === undefined || incoming === null) return current || ''
+      return String(incoming)
+    }
 
-    fieldsToTrack.forEach(field => {
-      const newValue = body[field] || body[field.replace('caller', 'client')] || body[field.replace('subject', 'callPurpose')] || body[field.replace('category', 'caseType')];
-      const oldValue = (call as any)[field];
-      
-      // Handle special field mappings
-      let finalNewValue = newValue;
-      if (field === 'status' && newValue) {
-        finalNewValue = newValue.toUpperCase().replace(' ', '_');
-      }
-      if (field === 'priority' && newValue) {
-        finalNewValue = newValue.toUpperCase();
-      }
-      if (field === 'followUpDate' && newValue) {
-        finalNewValue = new Date(newValue);
-      }
-      
-      // Only track actual changes
-      if (finalNewValue !== undefined && finalNewValue !== oldValue && finalNewValue !== null && finalNewValue !== '') {
-        changes[field] = {
-          from: oldValue,
-          to: finalNewValue,
-          fieldLabel: field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
-        };
-      }
-    });
+    const nextStatus = body.status !== undefined && body.status !== null && String(body.status).trim() !== ''
+      ? canonicalCaseStatus(body.status)
+      : canonicalCaseStatus(call.status) || 'OPEN'
+    const nextPriority = body.priority !== undefined && String(body.priority).trim() !== ''
+      ? String(body.priority).toUpperCase()
+      : (call.priority || 'MEDIUM')
+    const notesChanged = body.notes !== undefined && String(body.notes).trim() !== String(call.notes || '').trim()
+    const actionsChanged = body.actionsTaken !== undefined && String(body.actionsTaken).trim() !== String(call.notes || '').trim()
+    const nextNotes = notesChanged
+      ? String(body.notes)
+      : actionsChanged
+        ? String(body.actionsTaken)
+        : (call.notes || '')
+    const resolutionChanged = body.resolution !== undefined && String(body.resolution).trim() !== String(call.resolution || '').trim()
+    const nextActionChanged = body.nextAction !== undefined && String(body.nextAction).trim() !== String(call.resolution || '').trim()
+    const nextResolution = resolutionChanged
+      ? String(body.resolution)
+      : nextActionChanged
+        ? String(body.nextAction)
+        : (call.resolution || '')
+    const nextFollowUp = body.followUpDate === undefined
+      ? call.followUpDate
+      : body.followUpDate
+        ? new Date(body.followUpDate)
+        : null
 
-    // If no changes detected, return success without updating
+    let nextCallEndTime = call.callEndTime
+    let nextDurationLabel = call.callEndTime && call.callStartTime
+      ? `${Math.round((new Date(call.callEndTime).getTime() - new Date(call.callStartTime).getTime()) / 60000)} min`
+      : 'N/A'
+    if (body.duration && body.duration !== 'N/A' && call.callStartTime) {
+      const durationMatch = String(body.duration).match(/(\d+)/)
+      if (durationMatch) {
+        const minutes = parseInt(durationMatch[1], 10)
+        nextCallEndTime = new Date(new Date(call.callStartTime).getTime() + minutes * 60000)
+        nextDurationLabel = `${minutes} min`
+      }
+    }
+
+    const finishedStatuses = ['CLOSED', 'RESOLVED']
+    const nextIsFinished = finishedStatuses.includes(nextStatus)
+    const wasFinished = finishedStatuses.includes(canonicalCaseStatus(call.status))
+    const statusChanged = nextStatus !== canonicalCaseStatus(call.status)
+    let resolvedAt = call.resolvedAt
+    if (nextIsFinished && statusChanged) {
+      resolvedAt = new Date()
+    } else if (nextIsFinished && !call.resolvedAt) {
+      resolvedAt = call.updatedAt
+    } else if (!nextIsFinished && wasFinished) {
+      resolvedAt = null
+    }
+
+    const changes: Record<string, { from: string; to: string; fieldLabel: string }> = {}
+    trackChange(changes, 'callerName', 'Client Name', call.callerName, valueOrCurrent(body.clientName ?? body.callerName, call.callerName))
+    trackChange(changes, 'callerPhone', 'Phone', call.callerPhone, valueOrCurrent(body.clientPhone ?? body.callerPhone, call.callerPhone))
+    trackChange(changes, 'callerEmail', 'Email', call.callerEmail, valueOrCurrent(body.clientEmail ?? body.callerEmail, call.callerEmail))
+    trackChange(changes, 'callerAge', 'Age', call.callerAge, valueOrCurrent(body.clientAge ?? body.callerAge, call.callerAge))
+    trackChange(changes, 'callerGender', 'Gender', call.callerGender, valueOrCurrent(body.clientGender ?? body.callerGender, call.callerGender))
+    trackChange(changes, 'callerAddress', 'Address', call.callerAddress, valueOrCurrent(body.clientAddress ?? body.callerAddress, call.callerAddress))
+    trackChange(changes, 'callerProvince', 'Province', call.callerProvince, valueOrCurrent(body.clientProvince ?? body.callerProvince, call.callerProvince))
+    trackChange(changes, 'status', 'Status', canonicalCaseStatus(call.status) || 'OPEN', nextStatus)
+    trackChange(changes, 'priority', 'Priority', call.priority, nextPriority)
+    trackChange(changes, 'assignedOfficer', 'Assigned Officer', call.assignedOfficer, valueOrCurrent(body.assignedOfficer, call.assignedOfficer))
+    trackChange(changes, 'category', 'Case Type', call.category, valueOrCurrent(body.caseType ?? body.category, call.category))
+    trackChange(changes, 'purpose', 'Purpose', call.purpose, valueOrCurrent(body.purpose, call.purpose))
+    trackChange(changes, 'summary', 'Summary', call.summary, valueOrCurrent(body.summary, call.summary))
+    trackChange(changes, 'description', 'Description', call.description, valueOrCurrent(body.description, call.description))
+    trackChange(changes, 'callDescription', 'Call Description', call.callDescription, valueOrCurrent(body.callDescription, call.callDescription))
+    trackChange(changes, 'notes', 'Notes', call.notes, nextNotes)
+    if (actionsChanged && String(body.actionsTaken).trim() !== nextNotes.trim()) {
+      trackChange(changes, 'actionsTaken', 'Actions Taken', call.notes, body.actionsTaken)
+    }
+    trackChange(changes, 'resolution', 'Resolution', call.resolution, nextResolution)
+    if (nextActionChanged && String(body.nextAction).trim() !== nextResolution.trim()) {
+      trackChange(changes, 'nextAction', 'Next Action', call.resolution, body.nextAction)
+    }
+    trackChange(changes, 'referral', 'Referral', call.referral, valueOrCurrent(body.referrals ?? body.referral, call.referral))
+    const previousOutcome = canonicalCaseStatus(call.status) === 'RESOLVED'
+      ? 'Resolved'
+      : canonicalCaseStatus(call.status) === 'CLOSED'
+        ? 'Closed'
+        : 'Pending'
+    trackChange(changes, 'outcome', 'Outcome', previousOutcome, valueOrCurrent(body.outcome, previousOutcome))
+    trackChange(changes, 'followUpDate', 'Follow-up Date', caseDateKey(call.followUpDate), caseDateKey(nextFollowUp))
+    trackChange(changes, 'duration', 'Duration', call.callEndTime && call.callStartTime
+      ? `${Math.round((new Date(call.callEndTime).getTime() - new Date(call.callStartTime).getTime()) / 60000)} min`
+      : 'N/A', nextDurationLabel)
+    trackChange(changes, 'resolvedAt', nextStatus === 'RESOLVED' ? 'Resolved On' : 'Closed On', caseDateKey(call.resolvedAt), caseDateKey(resolvedAt))
+
     if (Object.keys(changes).length === 0) {
       return NextResponse.json({
         success: true,
@@ -196,81 +253,53 @@ export async function PUT(
       });
     }
 
-    // Create audit log entry before updating
-    const changeDetails = {
-      action: 'CASE_UPDATE',
-      changes: changes,
-      changeCount: Object.keys(changes).length,
-      caseNumber: call.caseNumber,
-      reason: body.changeReason || 'Case information updated',
-      userAgent: request.headers.get('user-agent'),
-      ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    };
-
-    // Log the change to audit_logs (with proper error handling for foreign key)
-    try {
-      await prisma.audit_logs.create({
-        data: {
-          id: require('crypto').randomUUID(),
-          userId: session.user.id || session.user.email || 'system',
-          action: 'UPDATE',
-          resource: 'CASE',
-          resourceId: caseId,
-          details: changeDetails,
-          ipAddress: changeDetails.ipAddress,
-          userAgent: changeDetails.userAgent,
-          timestamp: new Date()
-        }
-      });
-    } catch (auditError) {
-      console.warn('Failed to create audit log entry:', auditError);
-      // Continue with the update even if audit logging fails
-    }
-
-    // Update the call record with proper field mapping
+    const subjectIncoming = valueOrCurrent(body.subject ?? body.callPurpose, call.subject)
     const updatedCall = await prisma.call_records.update({
       where: { id: call.id },
       data: {
-        // Client Information
-        callerName: body.clientName || body.callerName || call.callerName,
-        callerPhone: body.clientPhone || body.callerPhone || call.callerPhone,
-        callerEmail: body.clientEmail || body.callerEmail || call.callerEmail,
-        callerAge: body.clientAge || body.callerAge || call.callerAge,
-        callerGender: body.clientGender || body.callerGender || call.callerGender,
-        callerAddress: body.clientAddress || body.callerAddress || call.callerAddress,
-        callerProvince: body.clientProvince || body.callerProvince || call.callerProvince,
-        // Case Details
-        subject: body.subject || body.callPurpose || call.subject,
-        category: body.category || body.caseType || call.category,
-        description: body.description || call.description,
-        summary: body.summary || call.summary,
-        notes: body.notes || body.actionsTaken || call.notes,
-        resolution: body.resolution || body.nextAction || call.resolution,
-        // Management
-        status: changes.status ? changes.status.to : call.status,
-        priority: changes.priority ? changes.priority.to : call.priority,
-        assignedOfficer: body.assignedOfficer || call.assignedOfficer,
-        // Follow-up
+        callerName: valueOrCurrent(body.clientName ?? body.callerName, call.callerName) || call.callerName,
+        callerPhone: valueOrCurrent(body.clientPhone ?? body.callerPhone, call.callerPhone),
+        callerEmail: valueOrCurrent(body.clientEmail ?? body.callerEmail, call.callerEmail),
+        callerAge: valueOrCurrent(body.clientAge ?? body.callerAge, call.callerAge),
+        callerGender: valueOrCurrent(body.clientGender ?? body.callerGender, call.callerGender),
+        callerAddress: valueOrCurrent(body.clientAddress ?? body.callerAddress, call.callerAddress),
+        callerProvince: valueOrCurrent(body.clientProvince ?? body.callerProvince, call.callerProvince),
+        subject: subjectIncoming || call.subject,
+        category: valueOrCurrent(body.caseType ?? body.category, call.category),
+        description: valueOrCurrent(body.description, call.description),
+        summary: valueOrCurrent(body.summary, call.summary),
+        notes: nextNotes,
+        resolution: nextResolution,
+        status: nextStatus,
+        priority: nextPriority,
+        assignedOfficer: valueOrCurrent(body.assignedOfficer, call.assignedOfficer),
         followUpRequired: body.followUpRequired !== undefined ? body.followUpRequired : call.followUpRequired,
-        followUpDate: changes.followUpDate ? changes.followUpDate.to : call.followUpDate,
-        // Duration handling - convert manual duration to callEndTime
-        callEndTime: body.duration && body.duration !== 'N/A' && call.callStartTime ? 
-          (() => {
-            const durationMatch = body.duration.match(/(\d+)/);
-            if (durationMatch) {
-              const minutes = parseInt(durationMatch[1]);
-              const startTime = new Date(call.callStartTime);
-              return new Date(startTime.getTime() + minutes * 60000);
-            }
-            return call.callEndTime;
-          })() : call.callEndTime,
-        // Call Details
-        callDescription: body.callDescription || call.callDescription,
-        purpose: body.purpose || call.purpose,
-        // Update timestamp
+        followUpDate: nextFollowUp,
+        callEndTime: nextCallEndTime,
+        callDescription: valueOrCurrent(body.callDescription, call.callDescription),
+        purpose: valueOrCurrent(body.purpose, call.purpose),
+        referral: valueOrCurrent(body.referrals ?? body.referral, call.referral),
+        resolvedAt,
         updatedAt: new Date()
       }
     });
+
+    const historyAction = statusChanged && nextStatus === 'CLOSED'
+      ? 'CLOSE'
+      : statusChanged && nextStatus === 'RESOLVED'
+        ? 'RESOLVE'
+        : 'UPDATE'
+    const historySaved = await recordCaseHistory({
+      caseId: call.id,
+      caseNumber: call.caseNumber,
+      action: historyAction,
+      changes,
+      reason: body.changeReason,
+      userId: session.user.id,
+      userName: session.user.name,
+      userEmail: session.user.email,
+      request,
+    })
 
     return NextResponse.json({
       success: true,
@@ -281,7 +310,7 @@ export async function PUT(
         fields: Object.keys(changes),
         details: changes
       },
-      auditLogCreated: true
+      auditLogCreated: historySaved
     });
 
   } catch (error) {

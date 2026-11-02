@@ -259,9 +259,8 @@ export default function NewCallEntryPage() {
         callEndTime: new Date().toISOString(), // Set call end time for duration calculation
         // Remove auto-generated fields so backend generates them properly
         callNumber: undefined, // Let backend generate systematic call number
-        caseNumber: caseGenerated ? undefined : undefined, // Let backend generate systematic case number
-        // Add case-specific data if it's a case
-        ...(caseGenerated && { isCase: 'YES' })
+        caseNumber: undefined, // Backend assigns a case number only when Case is YES
+        isCase: formData.isCase === 'YES' ? 'YES' : 'NO',
       }
 
       console.log('Submitting call data:', submissionData)

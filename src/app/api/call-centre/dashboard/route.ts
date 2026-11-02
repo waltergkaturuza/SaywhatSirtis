@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
           prisma.call_records.count({ where: { status: 'OPEN' } }),
           prisma.call_records.count({ where: { status: 'RESOLVED' } }),
           prisma.call_records.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
-          prisma.call_records.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] }, createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } })
+          prisma.call_records.count({ where: { isCase: { in: ['YES', 'yes', 'Yes'] }, status: { in: ['OPEN', 'IN_PROGRESS', 'Open', 'In Progress'] }, createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } })
         ]),
         new Promise((_, reject) => setTimeout(() => reject(new Error('All-time metrics timeout')), queryTimeout))
       ]);

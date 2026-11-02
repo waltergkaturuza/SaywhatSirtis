@@ -1,217 +1,123 @@
-import React, { useState, useEffect } from 'react'
-import { ClockIcon, UserIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline'
+'use client'
 
-interface CaseHistoryProps {
-  caseId: string
+import { useEffect, useState } from 'react'
+import { ClockIcon } from '@heroicons/react/24/outline'
+
+type CaseChange = {
+  from?: string
+  to?: string
+  fieldLabel?: string
 }
 
-interface HistoryEntry {
+type HistoryEntry = {
   id: string
   timestamp: string
   action: string
-  user: {
-    name: string
-    email?: string
-  }
-  changes: Record<string, {
-    from: any
-    to: any
-    fieldLabel: string
-  }>
+  user: { name: string; email?: string | null }
+  changes: Record<string, CaseChange>
   changeCount: number
   reason: string
-  ipAddress: string
 }
 
-export default function CaseHistory({ caseId }: CaseHistoryProps) {
+const ACTION_LABELS: Record<string, string> = {
+  CREATE: 'Opened',
+  UPDATE: 'Updated',
+  CLOSE: 'Closed',
+  RESOLVE: 'Resolved',
+}
+
+export default function CaseHistory({ caseId }: { caseId: string }) {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string>('')
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    const fetchHistory = async () => {
+    if (!caseId) return
+    let cancelled = false
+
+    const loadHistory = async () => {
       try {
         setLoading(true)
-        console.log('[CASE_HISTORY] Fetching history for case:', caseId)
+        setError('')
         const response = await fetch(`/api/call-centre/cases/${caseId}/history`)
-        console.log('[CASE_HISTORY] Response status:', response.status)
         const data = await response.json()
-        console.log('[CASE_HISTORY] Response data:', data)
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch case history')
-        }
-
-        if (data.success) {
-          console.log('[CASE_HISTORY] Setting history entries:', data.history?.length || 0)
-          setHistory(data.history || [])
-        }
+        if (!response.ok) throw new Error(data?.error || 'Failed to load case history')
+        if (!cancelled) setHistory(Array.isArray(data.history) ? data.history : [])
       } catch (err) {
-        console.error('Error fetching case history:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load case history')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load case history')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
-    if (caseId) {
-      fetchHistory()
+    loadHistory()
+    return () => {
+      cancelled = true
     }
   }, [caseId])
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    })
-  }
-
-  const formatValue = (value: any) => {
-    if (value === null || value === undefined || value === '') return 'Empty'
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-    if (typeof value === 'string' && value.includes('T')) {
-      // Check if it's a date string
-      const date = new Date(value)
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString()
-      }
-    }
-    return String(value)
-  }
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Case History</h3>
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Loading history...</span>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Case History</h3>
-        <div className="text-center py-8">
-          <ExclamationCircleIcon className="mx-auto h-12 w-12 text-red-500" />
-          <p className="mt-2 text-sm text-gray-600">{error}</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-6">
-        Case History 
-        {history.length > 0 && (
-          <span className="ml-2 text-sm font-normal text-gray-500">
-            ({history.length} {history.length === 1 ? 'entry' : 'entries'})
-          </span>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-900">Update History</h2>
+        {!loading && !error && (
+          <span className="text-sm text-gray-500">{history.length} update{history.length === 1 ? '' : 's'}</span>
         )}
-      </h3>
+      </div>
 
-      {history.length === 0 ? (
-        <div className="text-center py-8">
-          <ClockIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-sm text-gray-600">No history entries found for this case.</p>
-          <p className="text-xs text-gray-500">Changes will appear here when the case is updated.</p>
+      {loading && (
+        <div className="flex items-center text-sm text-gray-500">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500 mr-2"></div>
+          Loading updates...
         </div>
-      ) : (
-        <div className="space-y-6">
-          {history.map((entry, index) => (
-            <div key={entry.id} className="relative">
-              {/* Timeline line */}
-              {index !== history.length - 1 && (
-                <div className="absolute left-4 top-12 bottom-0 w-0.5 bg-gray-200"></div>
-              )}
-              
-              <div className="flex items-start space-x-4">
-                {/* Timeline dot */}
-                <div className="flex-shrink-0">
-                  <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-                    <ClockIcon className="w-4 h-4 text-blue-600" />
+      )}
+
+      {error && (
+        <p className="text-sm text-red-600">{error}</p>
+      )}
+
+      {!loading && !error && history.length === 0 && (
+        <p className="text-sm text-gray-500">No updates have been recorded for this case yet. Changes saved from case management will appear here.</p>
+      )}
+
+      {!loading && !error && history.length > 0 && (
+        <ol className="space-y-4">
+          {history.map((entry) => {
+            const changeList = Object.values(entry.changes || {})
+            return (
+              <li key={entry.id} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        {ACTION_LABELS[entry.action] || entry.action}
+                      </span>
+                      <span className="text-sm font-medium text-gray-900">{entry.user?.name || 'Unknown User'}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-600">{entry.reason}</p>
+                  </div>
+                  <div className="flex items-center text-xs text-gray-500">
+                    <ClockIcon className="h-4 w-4 mr-1" />
+                    {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Unknown time'}
                   </div>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0 bg-gray-50 rounded-lg p-4">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <UserIcon className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm font-medium text-gray-900">
-                        {entry.user.name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        updated {entry.changeCount} {entry.changeCount === 1 ? 'field' : 'fields'}
-                      </span>
-                    </div>
-                    <time className="text-xs text-gray-500">
-                      {formatDate(entry.timestamp)}
-                    </time>
-                  </div>
-
-                  {/* Reason */}
-                  {entry.reason && entry.reason !== 'Case information updated' && (
-                    <div className="mb-3">
-                      <p className="text-sm text-gray-700">
-                        <span className="font-medium">Reason:</span> {entry.reason}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Changes */}
-                  {Object.keys(entry.changes).length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-gray-700 uppercase tracking-wide">
-                        Changes Made:
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {Object.entries(entry.changes).map(([field, change]) => (
-                          <div key={field} className="bg-white rounded p-3 border border-gray-200">
-                            <div className="text-xs font-medium text-gray-700 mb-2">
-                              {change.fieldLabel}
-                            </div>
-                            <div className="space-y-1">
-                              <div className="flex items-center text-xs">
-                                <span className="text-red-600 bg-red-50 px-2 py-1 rounded mr-2">From:</span>
-                                <span className="text-gray-900">{formatValue(change.from)}</span>
-                              </div>
-                              <div className="flex items-center text-xs">
-                                <span className="text-green-600 bg-green-50 px-2 py-1 rounded mr-2">To:</span>
-                                <span className="text-gray-900">{formatValue(change.to)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Technical details (collapsed by default) */}
-                  <details className="mt-3">
-                    <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-                      Technical Details
-                    </summary>
-                    <div className="mt-2 text-xs text-gray-500 space-y-1">
-                      <div>IP Address: {entry.ipAddress}</div>
-                      <div>Action ID: {entry.id}</div>
-                    </div>
-                  </details>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                {changeList.length > 0 && (
+                  <ul className="mt-3 space-y-2">
+                    {changeList.map((change, index) => (
+                      <li key={`${entry.id}-${change.fieldLabel || index}`} className="text-sm text-gray-700">
+                        <span className="font-medium">{change.fieldLabel || 'Field'}:</span>{' '}
+                        <span className="text-gray-500">{change.from || '—'}</span>
+                        <span className="mx-1 text-gray-400">→</span>
+                        <span>{change.to || '—'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            )
+          })}
+        </ol>
       )}
     </div>
   )

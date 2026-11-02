@@ -56,7 +56,11 @@ export async function GET(
     const auditHistory = await prisma.audit_logs.findMany({
       where: {
         resource: 'CASE',
-        resourceId: caseRecord.id  // Use the actual database ID
+        OR: [
+          { resourceId: caseRecord.id },
+          { resourceId: caseRecord.caseNumber },
+          { resourceId: caseId },
+        ],
       },
       include: {
         users: {
@@ -78,16 +82,19 @@ export async function GET(
     // Transform history data for frontend display
     const historyEntries = auditHistory.map(entry => {
       const details = entry.details as any;
+      const linkedName = entry.users
+        ? `${entry.users.firstName || ''} ${entry.users.lastName || ''}`.trim() || entry.users.email
+        : ''
       return {
         id: entry.id,
         timestamp: entry.timestamp,
         action: entry.action,
         user: {
-          name: entry.users ? `${entry.users.firstName || ''} ${entry.users.lastName || ''}`.trim() || entry.users.email : 'Unknown User',
-          email: entry.users?.email
+          name: linkedName || details?.updatedBy || 'Unknown User',
+          email: entry.users?.email || details?.updatedByEmail || null
         },
         changes: details?.changes || {},
-        changeCount: details?.changeCount || 0,
+        changeCount: details?.changeCount || Object.keys(details?.changes || {}).length,
         reason: details?.reason || 'No reason provided',
         ipAddress: entry.ipAddress,
         userAgent: entry.userAgent

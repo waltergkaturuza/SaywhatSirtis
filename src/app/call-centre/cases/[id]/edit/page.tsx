@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeftIcon, ExclamationTriangleIcon, CheckCircleIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import CaseHistory from '@/components/call-centre/CaseHistory'
 
 export default function EditCasePage() {
   const { data: session } = useSession()
@@ -28,10 +29,11 @@ export default function EditCasePage() {
   const normalizeStatus = (value: any): string => {
     const v = String(value || '').toLowerCase().replace(/[_-]/g, ' ').trim()
     if (!v) return ''
+    if (['resolved', 'done'].includes(v)) return 'Resolved'
+    if (['closed'].includes(v)) return 'Closed'
     if (['open'].includes(v)) return 'Open'
     if (['in progress', 'inprogress', 'progress'].includes(v)) return 'In Progress'
     if (['pending', 'on hold', 'onhold'].includes(v)) return 'Pending'
-    if (['closed', 'resolved', 'done'].includes(v)) return 'Closed'
     return 'Open'
   }
 
@@ -234,7 +236,8 @@ export default function EditCasePage() {
         ...caseData,
         status: 'Closed',
         resolution: caseData.resolution || 'Case resolved successfully',
-        outcome: 'Resolved'
+        outcome: caseData.outcome || 'Closed',
+        changeReason: caseData.changeReason?.trim() || 'Case closed'
       }
       await handleSaveCase(updatedData)
     }
@@ -326,10 +329,11 @@ export default function EditCasePage() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">Status</label>
                     <select value={caseData.status} onChange={(e) => handleInputChange('status', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500">
+                      <option value="Resolved">Resolved</option>
+                      <option value="Closed">Closed</option>
                       <option value="Open">Open</option>
                       <option value="In Progress">In Progress</option>
                       <option value="Pending">Pending</option>
-                      <option value="Closed">Closed</option>
                     </select>
                   </div>
                   <div>
@@ -570,7 +574,7 @@ export default function EditCasePage() {
                     />
                   </div>
 
-                  {caseData.status === 'Closed' && (
+                  {(caseData.status === 'Closed' || caseData.status === 'Resolved') && (
                     <>
                       <div>
                         <label className="block text-sm font-semibold text-gray-800 mb-2">Resolution</label>
@@ -626,7 +630,7 @@ export default function EditCasePage() {
                       <PaperAirplaneIcon className="h-5 w-5 mr-2" />
                       {isSaving ? 'Saving...' : 'Save Changes'}
                     </button>
-                    {caseData.status !== 'Closed' && (
+                    {caseData.status !== 'Closed' && caseData.status !== 'Resolved' && (
                       <button onClick={handleClose} disabled={isSaving} className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 transition-colors">
                         <CheckCircleIcon className="h-5 w-5 mr-2" />
                         Close Case
@@ -641,6 +645,10 @@ export default function EditCasePage() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="mt-8">
+          <CaseHistory caseId={caseId} />
         </div>
       </div>
     </div>
