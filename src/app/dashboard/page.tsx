@@ -331,10 +331,11 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="px-6">
         {/* Header Section with SAYWHAT Branding */}
-        <div className="mb-8">
+        <div className="mb-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-saywhat-dark">WELCOME TO SIRTIS</h1>
+              <p className="mt-1 text-sm text-saywhat-grey">SAYWHAT Integrated Real-Time Information System</p>
             </div>
             <div className="flex items-center space-x-4">
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -371,16 +372,13 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Welcome Section with SAYWHAT Branding */}
-          <div className="rounded-lg p-8 text-white bg-saywhat-orange">
+          <div className="rounded-lg px-6 py-4 text-white bg-saywhat-orange">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold mb-2">SIRTIS</h1>
-                <p className="text-orange-100 text-lg">
-                  SAYWHAT Integrated Real-Time Information System
-                </p>
-                <div className="mt-4 flex space-x-6 text-sm">
+                <h1 className="text-3xl font-bold">SIRTIS</h1>
+                <div className="mt-2 flex space-x-6 text-sm">
                   <div>
                     <span className="block text-orange-100">Last Updated</span>
                     <span className="font-semibold">{new Date().toLocaleString()}</span>
@@ -406,7 +404,7 @@ export default function DashboardPage() {
           {/* Key Performance Indicators - Updated per client feedback */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="border-saywhat-grey">
-              <CardContent className="p-6">
+              <CardContent className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-saywhat-grey">Total Cases</p>
@@ -429,7 +427,7 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="border-saywhat-grey">
-              <CardContent className="p-6">
+              <CardContent className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-saywhat-grey">Call Statistics</p>
@@ -452,7 +450,7 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="border-saywhat-grey">
-              <CardContent className="p-6">
+              <CardContent className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-saywhat-grey">Program Performance</p>
@@ -475,7 +473,7 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="border-saywhat-grey">
-              <CardContent className="p-6">
+              <CardContent className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-saywhat-grey">Call Success Rate</p>
@@ -499,7 +497,7 @@ export default function DashboardPage() {
           </div>
 
           {/* SAYWHAT Program Performance Banner */}
-          <div className="rounded-lg p-6 text-white bg-saywhat-orange">
+          <div className="rounded-lg px-6 py-3 text-white bg-saywhat-orange">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
