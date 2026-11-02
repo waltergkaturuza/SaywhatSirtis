@@ -209,7 +209,7 @@ function AdminSidebar() {
     { href: "/admin", name: "Admin Dashboard", icon: ChartBarIcon },
     { href: "/admin/users", name: "User Management", icon: UsersIcon },
     { href: "/admin/roles", name: "Role Management", icon: ShieldCheckIcon },
-    { href: "/admin/settings", name: "System Settings", icon: Cog6ToothIcon },
+    { href: "/settings", name: "System Settings", icon: Cog6ToothIcon },
     { href: "/admin/audit", name: "Audit Logs", icon: DocumentTextIcon },
     { href: "/admin/api-keys", name: "API Keys", icon: KeyIcon },
     { href: "/admin/database", name: "Database Management", icon: ServerIcon },

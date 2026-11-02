@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       { title: 'Inventory', description: 'Asset and inventory management', url: '/inventory' },
       { title: 'Call Centre', description: 'Call center operations and management', url: '/call-centre' },
       { title: 'Training', description: 'Employee training and development', url: '/hr/training' },
-      { title: 'System Settings', description: 'Configure system preferences', url: '/admin/settings' }
+      { title: 'System Settings', description: 'Configure system preferences', url: '/settings' }
     ]
 
     commonPages.forEach(page => {

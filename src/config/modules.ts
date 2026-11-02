@@ -750,7 +750,7 @@ export const modulesConfig: ModuleConfig[] = [
       {
         id: "system-settings",
         name: "System Settings",
-        href: "/admin/settings",
+        href: "/settings",
         icon: CogIcon,
         description: "Configure system-wide settings"
       },
