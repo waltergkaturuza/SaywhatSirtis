@@ -564,22 +564,6 @@ export default function RiskManagementPage() {
             </table>
           </div>
         </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          <Link href="/risk-management/assessment" className="block px-3 py-2 bg-white border border-gray-200 rounded-md">
-            <h3 className="text-sm font-semibold text-gray-900">Risk Assessment</h3>
-            <p className="text-xs text-gray-500">Submit risk evaluations</p>
-          </Link>
-          <Link href="/risk-management/reports" className="block px-3 py-2 bg-white border border-gray-200 rounded-md">
-            <h3 className="text-sm font-semibold text-gray-900">Risk Reports</h3>
-            <p className="text-xs text-gray-500">Analytics and generated files</p>
-          </Link>
-          <Link href="/risk-management/audit-logs" className="block px-3 py-2 bg-white border border-gray-200 rounded-md">
-            <h3 className="text-sm font-semibold text-gray-900">Audit Trail</h3>
-            <p className="text-xs text-gray-500">Change history</p>
-          </Link>
-        </div>
       </div>
     </div>
   )
