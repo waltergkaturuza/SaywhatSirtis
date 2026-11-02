@@ -505,6 +505,7 @@ export default function EmployeeProfilePage() {
     <ModulePage
       metadata={{
         title: "",
+        description: "",
         breadcrumbs: [
           { name: "Home", href: "/" },
           { name: "Employee Portal", href: "/employee" },
