@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { riskVisibilityOrFilter } from '@/lib/risk-management/session-risk-access'
+import { canManageRisks, riskVisibilityOrFilter } from '@/lib/risk-management/session-risk-access'
 import type { RiskImpact, RiskProbability } from '@prisma/client'
 
 type RiskProbabilityDb = RiskProbability
@@ -31,18 +31,7 @@ function normalizeRiskImpact(value: string): RiskImpactDb {
 function canCreateAssessment(session: {
   user?: { permissions?: string[]; roles?: string[] }
 }): boolean {
-  const userPermissions = session.user?.permissions || []
-  const userRoles = session.user?.roles || []
-  return (
-    userPermissions.includes('risk.create') ||
-    userPermissions.includes('admin.access') ||
-    userPermissions.includes('risks_edit') ||
-    userPermissions.includes('risks.edit') ||
-    userPermissions.includes('risk.edit') ||
-    userRoles.some((role) =>
-      ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase())
-    )
-  )
+  return canManageRisks(session.user?.permissions || [], session.user?.roles || [])
 }
 
 /** List assessments for risks the user is allowed to see */

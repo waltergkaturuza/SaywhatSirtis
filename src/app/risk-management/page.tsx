@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { canManageRisks } from '@/lib/risk-management/session-risk-access'
 import { 
   Shield, 
   AlertTriangle, 
@@ -82,10 +83,7 @@ export default function RiskManagementPage() {
   // Check user permissions for edit access
   const userPermissions = session?.user?.permissions || []
   const userRoles = session?.user?.roles || []
-  const canEditRisks = userPermissions.includes('risks_edit') || 
-                      userPermissions.includes('risks.edit') || 
-                      userPermissions.includes('admin.access') ||
-                      userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))
+  const canEditRisks = canManageRisks(userPermissions, userRoles)
 
   // Risk categories
   const riskCategories = [
@@ -142,6 +140,7 @@ export default function RiskManagementPage() {
       if (selectedStatus) params.append('status', selectedStatus)
       if (selectedDepartment) params.append('department', selectedDepartment)
       if (searchTerm) params.append('search', searchTerm)
+      params.append('limit', '500')
       
       // Fetch risks from API
       const response = await fetch(`/api/risk-management/risks?${params.toString()}`)
@@ -258,17 +257,17 @@ export default function RiskManagementPage() {
   // Calculate summary statistics
   const riskStats = {
     total: risks.length,
-    high: risks.filter(r => r.riskScore >= 7).length,
-    medium: risks.filter(r => r.riskScore >= 4 && r.riskScore < 7).length,
-    low: risks.filter(r => r.riskScore < 4).length,
+    high: risks.filter(r => r.riskScore >= 6).length,
+    medium: risks.filter(r => r.riskScore >= 3 && r.riskScore < 6).length,
+    low: risks.filter(r => r.riskScore < 3).length,
     open: risks.filter(r => r.status === 'OPEN').length,
     mitigated: risks.filter(r => r.status === 'MITIGATED').length
   }
 
   // Get risk color based on score
   const getRiskColor = (score: number) => {
-    if (score >= 7) return 'bg-red-100 text-red-800 border-red-200'
-    if (score >= 4) return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    if (score >= 6) return 'bg-red-100 text-red-800 border-red-200'
+    if (score >= 3) return 'bg-yellow-100 text-yellow-800 border-yellow-200'
     return 'bg-green-100 text-green-800 border-green-200'
   }
 

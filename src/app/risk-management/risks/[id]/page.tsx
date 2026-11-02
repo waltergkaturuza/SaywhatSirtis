@@ -59,6 +59,14 @@ export default function RiskDetailPage() {
   
   const [risk, setRisk] = useState<Risk | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showMitigationForm, setShowMitigationForm] = useState(false)
+  const [savingMitigation, setSavingMitigation] = useState(false)
+  const [mitigationForm, setMitigationForm] = useState({
+    strategy: '',
+    controlMeasure: '',
+    deadline: '',
+    status: 'PLANNED'
+  })
 
   useEffect(() => {
     if (riskId) {
@@ -92,20 +100,53 @@ export default function RiskDetailPage() {
     }
   }
 
+  const saveMitigation = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!risk || !mitigationForm.strategy.trim()) {
+      alert('Enter a mitigation strategy')
+      return
+    }
+    try {
+      setSavingMitigation(true)
+      const response = await fetch('/api/risk-management/mitigation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          riskId: risk.id,
+          strategy: mitigationForm.strategy.trim(),
+          controlMeasure: mitigationForm.controlMeasure.trim() || null,
+          deadline: mitigationForm.deadline || null,
+          status: mitigationForm.status
+        })
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || result.success === false) {
+        alert(result.error || 'Failed to save mitigation')
+        return
+      }
+      setMitigationForm({ strategy: '', controlMeasure: '', deadline: '', status: 'PLANNED' })
+      setShowMitigationForm(false)
+      await loadRisk()
+    } catch (error) {
+      console.error('Error saving mitigation:', error)
+      alert('Failed to save mitigation')
+    } finally {
+      setSavingMitigation(false)
+    }
+  }
+
   const getRiskScoreColor = (score: number) => {
-    if (score <= 5) return 'bg-green-100 text-green-800'
-    if (score <= 10) return 'bg-yellow-100 text-yellow-800'
-    if (score <= 15) return 'bg-orange-100 text-orange-800'
-    return 'bg-red-100 text-red-800'
+    if (score >= 6) return 'bg-red-100 text-red-800'
+    if (score >= 3) return 'bg-yellow-100 text-yellow-800'
+    return 'bg-green-100 text-green-800'
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'OPEN': return 'bg-red-100 text-red-800'
-      case 'IN_PROGRESS': return 'bg-yellow-100 text-yellow-800'
+      case 'ESCALATED': return 'bg-orange-100 text-orange-800'
       case 'MITIGATED': return 'bg-green-100 text-green-800'
       case 'CLOSED': return 'bg-gray-100 text-gray-800'
-      case 'ACCEPTED': return 'bg-blue-100 text-blue-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -115,7 +156,7 @@ export default function RiskDetailPage() {
       case 'PLANNED': return 'bg-gray-100 text-gray-800'
       case 'IN_PROGRESS': return 'bg-yellow-100 text-yellow-800'
       case 'COMPLETED': return 'bg-green-100 text-green-800'
-      case 'CANCELLED': return 'bg-red-100 text-red-800'
+      case 'OVERDUE': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -241,20 +282,78 @@ export default function RiskDetailPage() {
 
             {/* Risk Mitigations */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                Risk Mitigations ({risk.mitigations?.length || 0})
-              </h2>
-              
-              {(!risk.mitigations || risk.mitigations.length === 0) ? (
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Risk Mitigations ({risk.mitigations?.length || 0})
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowMitigationForm((open) => !open)}
+                  className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                >
+                  Add Mitigation
+                </button>
+              </div>
+
+            {showMitigationForm && (
+              <form onSubmit={saveMitigation} className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Strategy</label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={mitigationForm.strategy}
+                    onChange={(e) => setMitigationForm((prev) => ({ ...prev, strategy: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Control measure</label>
+                  <textarea
+                    rows={2}
+                    value={mitigationForm.controlMeasure}
+                    onChange={(e) => setMitigationForm((prev) => ({ ...prev, controlMeasure: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                  <input
+                    type="date"
+                    value={mitigationForm.deadline}
+                    onChange={(e) => setMitigationForm((prev) => ({ ...prev, deadline: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={mitigationForm.status}
+                    onChange={(e) => setMitigationForm((prev) => ({ ...prev, status: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="PLANNED">Planned</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="OVERDUE">Overdue</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={savingMitigation}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {savingMitigation ? 'Saving...' : 'Save mitigation'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {(!risk.mitigations || risk.mitigations.length === 0) ? (
                 <div className="text-center py-8">
                   <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600">No mitigations defined for this risk</p>
-                  <Link
-                    href={`/risk-management/risks/${risk.id}/edit`}
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mt-4"
-                  >
-                    Add Mitigation
-                  </Link>
                 </div>
               ) : (
                 <div className="space-y-4">

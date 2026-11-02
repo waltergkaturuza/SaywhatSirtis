@@ -7,9 +7,29 @@ import { promises as fs } from "fs"
 import path from "path"
 import { resolveCategoryInfo, buildFolderPath } from "@/lib/documents/category-utils"
 import { uploadToSupabaseStorage, ensureBucketExists } from "@/lib/storage/supabase-storage"
-import { riskVisibilityOrFilter, userCanSeeAllRisks } from "@/lib/risk-management/session-risk-access"
+import { canManageRisks, riskVisibilityOrFilter, userCanSeeAllRisks } from "@/lib/risk-management/session-risk-access"
 
 const REPORT_TAG = "risk-management-report"
+
+function periodRange(period: string | null) {
+  if (!period) return null
+  const now = new Date()
+  const startOf = (year: number, month: number) => new Date(year, month, 1)
+  if (period === "current_month") {
+    return { gte: startOf(now.getFullYear(), now.getMonth()), lt: startOf(now.getFullYear(), now.getMonth() + 1) }
+  }
+  if (period === "last_month") {
+    return { gte: startOf(now.getFullYear(), now.getMonth() - 1), lt: startOf(now.getFullYear(), now.getMonth()) }
+  }
+  if (period === "quarter") {
+    const quarterStart = Math.floor(now.getMonth() / 3) * 3
+    return { gte: startOf(now.getFullYear(), quarterStart), lt: startOf(now.getFullYear(), quarterStart + 3) }
+  }
+  if (period === "year") {
+    return { gte: startOf(now.getFullYear(), 0), lt: startOf(now.getFullYear() + 1, 0) }
+  }
+  return null
+}
 
 function withVis(session: Parameters<typeof riskVisibilityOrFilter>[0], filter: Record<string, unknown>) {
   const v = riskVisibilityOrFilter(session)
@@ -40,6 +60,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const reportTypeFilter = searchParams.get("reportType")
+    const period = searchParams.get("period")
+    const identified = periodRange(period)
+    const periodFilter = identified ? { dateIdentified: identified } : {}
 
     const vis = riskVisibilityOrFilter(session)
 
@@ -53,22 +76,22 @@ export async function GET(request: NextRequest) {
       overdueMitigations,
       categoryGroups,
     ] = await Promise.all([
-      prisma.risks.count({ where: withVis(session, {}) }),
-      prisma.risks.count({ where: withVis(session, { riskScore: { gte: 6 } }) }),
-      prisma.risks.count({ where: withVis(session, { riskScore: { gte: 3, lte: 5 } }) }),
-      prisma.risks.count({ where: withVis(session, { riskScore: { lte: 2 } }) }),
-      prisma.risks.count({ where: withVis(session, { status: "OPEN" }) }),
-      prisma.risks.count({ where: withVis(session, { status: "MITIGATED" }) }),
+      prisma.risks.count({ where: withVis(session, periodFilter) }),
+      prisma.risks.count({ where: withVis(session, { ...periodFilter, riskScore: { gte: 6 } }) }),
+      prisma.risks.count({ where: withVis(session, { ...periodFilter, riskScore: { gte: 3, lte: 5 } }) }),
+      prisma.risks.count({ where: withVis(session, { ...periodFilter, riskScore: { lte: 2 } }) }),
+      prisma.risks.count({ where: withVis(session, { ...periodFilter, status: "OPEN" }) }),
+      prisma.risks.count({ where: withVis(session, { ...periodFilter, status: "MITIGATED" }) }),
       prisma.risk_mitigations.count({
         where: {
           deadline: { lt: new Date() },
           status: { not: "COMPLETED" },
-          ...(vis ? { risks: { is: vis as object } } : {}),
+          ...(vis ? { risks: vis as object } : {}),
         },
       }),
       prisma.risks.groupBy({
         by: ["category"],
-        where: withVis(session, {}),
+        where: withVis(session, periodFilter),
         _count: { _all: true },
       }),
     ])
@@ -266,5 +289,46 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     console.error("risk reports POST", e)
     return NextResponse.json({ error: "Failed to upload report" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    const user = session.user as { permissions?: string[]; roles?: string[] }
+    if (!canManageRisks(user.permissions || [], user.roles || [])) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+    }
+
+    const id = new URL(request.url).searchParams.get("id")
+    if (!id) {
+      return NextResponse.json({ error: "Report id is required" }, { status: 400 })
+    }
+
+    const document = await prisma.documents.findFirst({
+      where: { id, isDeleted: false, tags: { has: REPORT_TAG } },
+      select: { id: true },
+    })
+    if (!document) {
+      return NextResponse.json({ error: "Report not found" }, { status: 404 })
+    }
+
+    await prisma.documents.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: session.user.id,
+        updatedAt: new Date(),
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (e) {
+    console.error("risk reports DELETE", e)
+    return NextResponse.json({ error: "Failed to delete report" }, { status: 500 })
   }
 }

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Plus, FileText, Calendar, User, AlertTriangle, CheckCircle } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { ArrowLeft, Plus, FileText, Trash2, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
+import { canManageRisks } from '@/lib/risk-management/session-risk-access'
 
 // Import Prisma types for consistency
 import type { RiskCategory, RiskProbability, RiskImpact, RiskStatus } from '@prisma/client'
@@ -42,6 +44,8 @@ interface Risk {
 }
 
 export default function RiskAssessmentPage() {
+  const { data: session } = useSession()
+  const canDelete = canManageRisks(session?.user?.permissions || [], session?.user?.roles || [])
   const [assessments, setAssessments] = useState<RiskAssessment[]>([])
   const [risks, setRisks] = useState<Risk[]>([])
   const [loading, setLoading] = useState(true)
@@ -82,43 +86,28 @@ export default function RiskAssessmentPage() {
     try {
       setLoading(true)
       
-      // Load risks for the dropdown
-      const risksResponse = await fetch('/api/risk-management/risks')
+      const [risksResponse, assessmentsResponse] = await Promise.all([
+        fetch('/api/risk-management/risks?limit=500'),
+        fetch('/api/risk-management/assessments')
+      ])
+
       if (risksResponse.ok) {
         const risksData = await risksResponse.json()
         if (risksData.success) {
           setRisks(risksData.data.risks || [])
         }
       }
-      
-      // For now, we'll use mock assessments since the API might not be implemented yet
-      setAssessments([
-        {
-          id: '1',
-          riskId: 'RISK-2025-001',
-          assessorId: 'user1',
-          assessmentDate: '2025-09-01',
-          probability: 'HIGH',
-          impact: 'MEDIUM',
-          riskScore: 12,
-          findings: 'Security vulnerabilities identified in system access controls.',
-          recommendations: 'Implement multi-factor authentication and regular security audits.',
-          nextAssessmentDate: '2025-12-01',
-          status: 'COMPLETED',
-          assessor: {
-            firstName: 'John',
-            lastName: 'Doe',
-            email: 'john.doe@saywhat.org'
-          },
-          risk: {
-            id: '1',
-            riskId: 'RISK-2025-001',
-            title: 'Cybersecurity Breach',
-            category: 'CYBERSECURITY',
-            status: 'OPEN'
-          }
+
+      if (assessmentsResponse.ok) {
+        const assessmentsData = await assessmentsResponse.json()
+        if (assessmentsData.success) {
+          setAssessments(assessmentsData.data.assessments || [])
+        } else {
+          setAssessments([])
         }
-      ])
+      } else {
+        setAssessments([])
+      }
       
     } catch (error) {
       console.error('Error loading assessments and risks:', error)
@@ -143,10 +132,17 @@ export default function RiskAssessmentPage() {
     }
     
     try {
-      // Here you would make an API call to create the assessment
-      console.log('Creating assessment:', formData)
-      
-      // For now, simulate success
+      const response = await fetch('/api/risk-management/assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || result.success === false) {
+        alert(result.error || 'Failed to create assessment. Please try again.')
+        return
+      }
+
       alert('Risk assessment created successfully!')
       setShowCreateForm(false)
       setFormData({
@@ -167,11 +163,21 @@ export default function RiskAssessmentPage() {
     }
   }
 
+  const handleDelete = async (assessment: RiskAssessment) => {
+    if (!confirm(`Delete the assessment for ${assessment.risk.riskId}?`)) return
+    const response = await fetch(`/api/risk-management/assessments/${assessment.id}`, { method: 'DELETE' })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok || result.success === false) {
+      alert(result.error || 'Failed to delete assessment')
+      return
+    }
+    await loadAssessmentsAndRisks()
+  }
+
   const getRiskScoreColor = (score: number) => {
-    if (score <= 5) return 'bg-green-100 text-green-800'
-    if (score <= 10) return 'bg-yellow-100 text-yellow-800'
-    if (score <= 15) return 'bg-orange-100 text-orange-800'
-    return 'bg-red-100 text-red-800'
+    if (score >= 6) return 'bg-red-100 text-red-800'
+    if (score >= 3) return 'bg-yellow-100 text-yellow-800'
+    return 'bg-green-100 text-green-800'
   }
 
   const formatDate = (dateString: string) => {
@@ -185,10 +191,10 @@ export default function RiskAssessmentPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100/30">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
           <div className="animate-pulse">
-            <div className="h-12 bg-gradient-to-r from-orange-200 to-orange-300 rounded-xl w-1/3 mb-8"></div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-orange-100/50 p-8">
+            <div className="h-12 bg-gradient-to-r from-orange-200 to-orange-300 rounded-xl w-1/3 mb-3"></div>
+            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 p-3">
               <div className="h-6 bg-gradient-to-r from-orange-200 to-orange-300 rounded-xl w-3/4 mb-6"></div>
               <div className="h-6 bg-gradient-to-r from-orange-200 to-orange-300 rounded-xl w-1/2"></div>
             </div>
@@ -200,19 +206,19 @@ export default function RiskAssessmentPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100/30">
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
         {/* Navigation */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <Link
               href="/"
-              className="inline-flex items-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+              className="inline-flex items-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-sm  font-semibold"
             >
               🏠
             </Link>
             <Link
               href="/risk-management"
-              className="inline-flex items-center px-4 py-2 text-orange-700 hover:text-orange-900 bg-white/70 backdrop-blur-sm rounded-xl border border-orange-200/50 hover:bg-orange-50/80 transition-all duration-300 shadow-lg hover:shadow-xl"
+              className="inline-flex items-center px-4 py-2 text-orange-700 hover:text-orange-900 bg-white/70 backdrop-blur-sm rounded-xl border border-orange-200/50 hover:bg-orange-50/80 transition-all duration-300 shadow-lg hover:shadow-sm"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Risk Management
@@ -221,23 +227,23 @@ export default function RiskAssessmentPage() {
         </div>
 
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-3">
           <div className="flex items-center justify-center mb-6">
             <button
               onClick={() => setShowCreateForm(true)}
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+              className="inline-flex items-center px-3 py-1.5 text-sm bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-lg hover:shadow-sm "
             >
               <Plus className="h-5 w-5 mr-2" />
               New Assessment
             </button>
           </div>
           
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 via-orange-500 to-orange-700 bg-clip-text text-transparent mb-4">
+          <div className="text-center mb-3">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-orange-600 via-orange-500 to-orange-700 bg-clip-text text-transparent mb-4">
               Risk Assessment
             </h1>
-            <p className="text-lg text-orange-700/80 max-w-2xl mx-auto">
-              Submit and manage comprehensive risk assessments with SAYWHAT precision
+            <p className="text-sm text-gray-600">
+              Assessments saved against risks in the register.
             </p>
           </div>
         </div>
@@ -245,9 +251,9 @@ export default function RiskAssessmentPage() {
         {/* Create Form Modal */}
         {showCreateForm && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white/95 backdrop-blur-lg rounded-2xl p-8 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto shadow-2xl border border-orange-200/50">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent mb-2">
+            <div className="bg-white/95 backdrop-blur-lg rounded-lg p-3 w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto shadow-sm border border-orange-200/50">
+              <div className="text-center mb-3">
+                <h2 className="text-lg font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent mb-2">
                   New Risk Assessment
                 </h2>
                 <p className="text-orange-700/70">Create a comprehensive risk evaluation</p>
@@ -367,7 +373,7 @@ export default function RiskAssessmentPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+                    className="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-sm "
                   >
                     Create Assessment
                   </button>
@@ -378,8 +384,8 @@ export default function RiskAssessmentPage() {
         )}
 
         {/* Assessments List */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-orange-100/50 overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-8">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 overflow-hidden">
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-3">
             <h2 className="text-2xl font-bold text-white">Risk Assessments</h2>
             <p className="text-orange-100 mt-2">Comprehensive evaluation tracking</p>
           </div>
@@ -388,33 +394,38 @@ export default function RiskAssessmentPage() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-orange-50 to-orange-100/50">
                 <tr>
-                  <th className="px-8 py-4 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
                     Risk
                   </th>
-                  <th className="px-8 py-4 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
                     Assessor
                   </th>
-                  <th className="px-8 py-4 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-8 py-4 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
                     Risk Score
                   </th>
-                  <th className="px-8 py-4 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-8 py-4 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
                     Next Assessment
                   </th>
+                  {canDelete && (
+                    <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white/60 divide-y divide-orange-100">
                 {assessments.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-8 py-16 text-center">
+                    <td colSpan={canDelete ? 7 : 6} className="px-3 py-6 text-center">
                       <div className="flex flex-col items-center">
-                        <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-full p-6 mb-6">
-                          <FileText className="h-16 w-16 text-orange-500" />
+                        <div className="bg-orange-50 rounded-full p-2 mb-2">
+                          <FileText className="h-6 w-6 text-orange-500" />
                         </div>
                         <h3 className="text-xl font-semibold text-orange-800 mb-2">No risk assessments yet</h3>
                         <p className="text-orange-600 mb-6">
@@ -422,7 +433,7 @@ export default function RiskAssessmentPage() {
                         </p>
                         <button
                           onClick={() => setShowCreateForm(true)}
-                          className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+                          className="px-3 py-1.5 text-sm bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-sm "
                         >
                           Create First Assessment
                         </button>
@@ -432,7 +443,7 @@ export default function RiskAssessmentPage() {
                 ) : (
                   assessments.map((assessment) => (
                     <tr key={assessment.id} className="hover:bg-orange-50/60 transition-all duration-300">
-                      <td className="px-8 py-6 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-bold text-orange-900">
                             {assessment.risk.riskId}
@@ -442,7 +453,7 @@ export default function RiskAssessmentPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-8 py-6 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <div className="text-sm font-semibold text-orange-900">
                           {assessment.assessor.firstName} {assessment.assessor.lastName}
                         </div>
@@ -450,25 +461,34 @@ export default function RiskAssessmentPage() {
                           {assessment.assessor.email}
                         </div>
                       </td>
-                      <td className="px-8 py-6 whitespace-nowrap text-sm font-semibold text-orange-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm font-semibold text-orange-900">
                         {formatDate(assessment.assessmentDate)}
                       </td>
-                      <td className="px-8 py-6 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold shadow-md ${getRiskScoreColor(assessment.riskScore)}`}>
                           {assessment.riskScore}
                         </span>
                       </td>
-                      <td className="px-8 py-6 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-green-100 to-green-200 text-green-800 shadow-md">
                           <CheckCircle className="h-4 w-4 mr-2" />
                           {assessment.status}
                         </span>
                       </td>
-                      <td className="px-8 py-6 whitespace-nowrap text-sm font-semibold text-orange-900">
-                        {assessment.nextAssessmentDate ? formatDate(assessment.nextAssessmentDate) : (
-                          <span className="text-orange-600">Not scheduled</span>
-                        )}
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                        {assessment.nextAssessmentDate ? formatDate(assessment.nextAssessmentDate) : 'Not scheduled'}
                       </td>
+                      {canDelete && (
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <button
+                            onClick={() => handleDelete(assessment)}
+                            className="inline-flex items-center px-2 py-1 border border-red-200 text-red-700 rounded-md hover:bg-red-50 text-xs"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-1" />
+                            Delete
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

@@ -62,6 +62,97 @@ interface Risk {
   }>
 }
 
+function toApiCategory(category: string) {
+  const map: Record<string, string> = {
+    operational: 'OPERATIONAL',
+    financial: 'FINANCIAL',
+    technical: 'OPERATIONAL',
+    political: 'STRATEGIC',
+    environmental: 'ENVIRONMENTAL',
+    security: 'CYBERSECURITY'
+  }
+  return map[category] || 'OPERATIONAL'
+}
+
+function toApiLevel(value: string) {
+  const normalized = value.toUpperCase()
+  if (normalized === 'VERY_LOW' || normalized === 'LOW') return 'LOW'
+  if (normalized === 'HIGH' || normalized === 'VERY_HIGH') return 'HIGH'
+  return 'MEDIUM'
+}
+
+function fromApiLevel(value: string): 'low' | 'medium' | 'high' {
+  const normalized = String(value || '').toUpperCase()
+  if (normalized === 'LOW') return 'low'
+  if (normalized === 'HIGH') return 'high'
+  return 'medium'
+}
+
+function fromApiCategory(value: string): Risk['category'] {
+  const map: Record<string, Risk['category']> = {
+    OPERATIONAL: 'operational',
+    FINANCIAL: 'financial',
+    ENVIRONMENTAL: 'environmental',
+    CYBERSECURITY: 'security',
+    STRATEGIC: 'political',
+    COMPLIANCE: 'political',
+    REPUTATIONAL: 'political',
+    HR_PERSONNEL: 'operational'
+  }
+  return map[value] || 'operational'
+}
+
+function fromApiStatus(value: string): Risk['status'] {
+  if (value === 'MITIGATED') return 'mitigating'
+  if (value === 'ESCALATED') return 'assessing'
+  if (value === 'CLOSED') return 'closed'
+  return 'identified'
+}
+
+function toApiStatus(value: string) {
+  if (value === 'mitigating' || value === 'monitoring') return 'MITIGATED'
+  if (value === 'assessing') return 'ESCALATED'
+  if (value === 'closed') return 'CLOSED'
+  return 'OPEN'
+}
+
+function mapApiRisk(row: any): Risk {
+  const ownerName = [row.owner?.firstName, row.owner?.lastName].filter(Boolean).join(' ').trim()
+    || row.owner?.email
+    || 'Unassigned'
+  const identified = row.dateIdentified ? new Date(row.dateIdentified).toISOString() : new Date().toISOString()
+  const reviewed = row.lastAssessed || row.updatedAt || row.dateIdentified || identified
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description || '',
+    category: fromApiCategory(row.category),
+    probability: fromApiLevel(row.probability),
+    impact: fromApiLevel(row.impact),
+    riskScore: row.riskScore || 0,
+    status: fromApiStatus(row.status),
+    owner: ownerName,
+    identifiedDate: identified,
+    lastReviewDate: new Date(reviewed).toISOString(),
+    mitigation: {
+      strategy: '',
+      actions: [],
+      timeline: '',
+      budget: 0,
+      responsible: ownerName,
+      status: 'planned'
+    },
+    contingency: { plan: '', trigger: '', actions: [], responsible: ownerName },
+    monitoring: {
+      indicators: [],
+      frequency: 'weekly',
+      lastCheck: new Date(reviewed).toISOString(),
+      nextCheck: new Date(reviewed).toISOString()
+    },
+    history: []
+  }
+}
+
 interface RiskFormData {
   title: string
   description: string
@@ -109,8 +200,13 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
   const loadRisks = async () => {
     setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setRisks(getMockRisks())
+      const response = await fetch('/api/risk-management/risks?limit=500')
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        setRisks([])
+        return
+      }
+      setRisks((data.data?.risks || []).map(mapApiRisk))
     } catch (error) {
       console.error('Error loading risks:', error)
     } finally {
@@ -118,265 +214,31 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
     }
   }
 
-  const getMockRisks = (): Risk[] => {
-    return [
-      {
-        id: 'risk-1',
-        title: 'Construction Delays Due to Weather',
-        description: 'Heavy rains during construction season may delay facility construction by 2-4 weeks',
-        category: 'environmental',
-        probability: 'high',
-        impact: 'medium',
-        riskScore: 12,
-        status: 'mitigating',
-        owner: 'Robert Kim',
-        identifiedDate: '2025-01-15',
-        lastReviewDate: '2025-07-10',
-        mitigation: {
-          strategy: 'Schedule buffer and weather-resistant construction methods',
-          actions: [
-            'Add 3-week buffer to construction timeline',
-            'Use weather-resistant materials where possible',
-            'Establish covered work areas',
-            'Monitor weather forecasts closely'
-          ],
-          timeline: '2 weeks',
-          budget: 15000,
-          responsible: 'Construction Manager',
-          status: 'in_progress'
-        },
-        contingency: {
-          plan: 'Accelerated construction plan with overtime workers',
-          trigger: 'More than 1 week delay due to weather',
-          actions: [
-            'Deploy additional construction teams',
-            'Work extended hours when weather permits',
-            'Consider temporary shelter solutions'
-          ],
-          responsible: 'Project Manager'
-        },
-        monitoring: {
-          indicators: ['Daily weather reports', 'Construction progress percentage', 'Days lost to weather'],
-          frequency: 'daily',
-          lastCheck: '2025-07-16',
-          nextCheck: '2025-07-17'
-        },
-        history: [
-          {
-            date: '2025-01-15',
-            action: 'Risk Identified',
-            description: 'Identified potential weather delays during project planning',
-            user: 'Sarah Johnson'
-          },
-          {
-            date: '2025-03-01',
-            action: 'Mitigation Started',
-            description: 'Began implementing weather mitigation strategies',
-            user: 'Robert Kim'
-          }
-        ]
-      },
-      {
-        id: 'risk-2',
-        title: 'Equipment Procurement Delays',
-        description: 'Medical equipment supply chain disruptions could delay facility opening',
-        category: 'operational',
-        probability: 'medium',
-        impact: 'high',
-        riskScore: 12,
-        status: 'monitoring',
-        owner: 'Lisa Wang',
-        identifiedDate: '2025-02-01',
-        lastReviewDate: '2025-07-15',
-        mitigation: {
-          strategy: 'Multiple supplier strategy and early procurement',
-          actions: [
-            'Identify 2-3 backup suppliers for each equipment type',
-            'Place orders 3 months early',
-            'Negotiate expedited shipping options',
-            'Consider equipment leasing as backup'
-          ],
-          timeline: '4 weeks',
-          budget: 8000,
-          responsible: 'Procurement Manager',
-          status: 'completed'
-        },
-        contingency: {
-          plan: 'Equipment leasing and phased opening',
-          trigger: 'Critical equipment delivery delayed by >30 days',
-          actions: [
-            'Lease essential equipment temporarily',
-            'Open facility with basic services first',
-            'Gradually add services as equipment arrives'
-          ],
-          responsible: 'Operations Manager'
-        },
-        monitoring: {
-          indicators: ['Supplier delivery confirmations', 'Equipment arrival status', 'Installation timeline'],
-          frequency: 'weekly',
-          lastCheck: '2025-07-15',
-          nextCheck: '2025-07-22'
-        },
-        history: [
-          {
-            date: '2025-02-01',
-            action: 'Risk Identified',
-            description: 'Supply chain analysis revealed potential delays',
-            user: 'Lisa Wang'
-          }
-        ]
-      },
-      {
-        id: 'risk-3',
-        title: 'Regulatory Approval Delays',
-        description: 'Changes in health regulations could require additional approvals',
-        category: 'political',
-        probability: 'low',
-        impact: 'high',
-        riskScore: 8,
-        status: 'monitoring',
-        owner: 'James Rodriguez',
-        identifiedDate: '2025-01-20',
-        lastReviewDate: '2025-07-12',
-        mitigation: {
-          strategy: 'Early engagement with regulatory bodies and compliance buffer',
-          actions: [
-            'Regular meetings with health department',
-            'Stay updated on regulatory changes',
-            'Build compliance buffer into timeline',
-            'Engage regulatory consultant'
-          ],
-          timeline: 'Ongoing',
-          budget: 12000,
-          responsible: 'Regulatory Affairs',
-          status: 'in_progress'
-        },
-        contingency: {
-          plan: 'Expedited approval process through political channels',
-          trigger: 'Approval process extends beyond 60 days',
-          actions: [
-            'Escalate through government contacts',
-            'Consider interim operating permits',
-            'Engage legal counsel if necessary'
-          ],
-          responsible: 'Executive Director'
-        },
-        monitoring: {
-          indicators: ['Regulatory submission status', 'Government communication', 'Approval timeline'],
-          frequency: 'weekly',
-          lastCheck: '2025-07-12',
-          nextCheck: '2025-07-19'
-        },
-        history: []
-      },
-      {
-        id: 'risk-4',
-        title: 'Budget Overrun on Construction',
-        description: 'Material cost increases and scope changes may exceed budget',
-        category: 'financial',
-        probability: 'medium',
-        impact: 'medium',
-        riskScore: 9,
-        status: 'assessing',
-        owner: 'Sarah Johnson',
-        identifiedDate: '2025-03-10',
-        lastReviewDate: '2025-07-14',
-        mitigation: {
-          strategy: 'Cost monitoring and change control process',
-          actions: [
-            'Weekly budget reviews',
-            'Strict change control process',
-            'Negotiate fixed-price contracts where possible',
-            'Maintain 10% contingency fund'
-          ],
-          timeline: '2 weeks',
-          budget: 5000,
-          responsible: 'Finance Manager',
-          status: 'planned'
-        },
-        contingency: {
-          plan: 'Scope reduction and additional funding',
-          trigger: 'Budget variance exceeds 15%',
-          actions: [
-            'Review and reduce non-essential scope',
-            'Seek additional donor funding',
-            'Negotiate payment terms with suppliers'
-          ],
-          responsible: 'Project Director'
-        },
-        monitoring: {
-          indicators: ['Weekly budget reports', 'Material cost trends', 'Change order values'],
-          frequency: 'weekly',
-          lastCheck: '2025-07-14',
-          nextCheck: '2025-07-21'
-        },
-        history: []
-      }
-    ]
-  }
-
-  const calculateRiskScore = (probability: string, impact: string): number => {
-    const probabilityValues = { very_low: 1, low: 2, medium: 3, high: 4, very_high: 5 }
-    const impactValues = { very_low: 1, low: 2, medium: 3, high: 4, very_high: 5 }
-    return probabilityValues[probability as keyof typeof probabilityValues] * impactValues[impact as keyof typeof impactValues]
-  }
-
   const getRiskLevel = (score: number): { level: string, color: string } => {
-    if (score >= 16) return { level: 'Critical', color: 'bg-red-500' }
-    if (score >= 12) return { level: 'High', color: 'bg-orange-500' }
-    if (score >= 6) return { level: 'Medium', color: 'bg-yellow-500' }
-    if (score >= 3) return { level: 'Low', color: 'bg-blue-500' }
-    return { level: 'Very Low', color: 'bg-green-500' }
+    if (score >= 6) return { level: 'High', color: 'bg-red-500' }
+    if (score >= 3) return { level: 'Medium', color: 'bg-yellow-500' }
+    return { level: 'Low', color: 'bg-green-500' }
   }
 
   const createRisk = async (riskData: RiskFormData) => {
     setIsLoading(true)
     try {
-      const riskScore = calculateRiskScore(riskData.probability, riskData.impact)
-      const newRisk: Risk = {
-        id: `risk-${Date.now()}`,
-        title: riskData.title,
-        description: riskData.description,
-        category: riskData.category,
-        probability: riskData.probability,
-        impact: riskData.impact,
-        riskScore,
-        status: 'identified',
-        owner: riskData.owner,
-        identifiedDate: new Date().toISOString().split('T')[0],
-        lastReviewDate: new Date().toISOString().split('T')[0],
-        mitigation: {
-          strategy: riskData.mitigationStrategy,
-          actions: riskData.mitigationActions.filter(a => a.trim()),
-          timeline: '',
-          budget: 0,
-          responsible: riskData.owner,
-          status: 'planned'
-        },
-        contingency: {
-          plan: riskData.contingencyPlan,
-          trigger: '',
-          actions: [],
-          responsible: riskData.owner
-        },
-        monitoring: {
-          indicators: riskData.monitoringIndicators.filter(i => i.trim()),
-          frequency: 'weekly',
-          lastCheck: new Date().toISOString().split('T')[0],
-          nextCheck: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        },
-        history: [
-          {
-            date: new Date().toISOString().split('T')[0],
-            action: 'Risk Identified',
-            description: 'New risk identified and added to register',
-            user: 'Current User'
-          }
-        ]
+      const response = await fetch('/api/risk-management/risks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: riskData.title,
+          description: riskData.description,
+          category: toApiCategory(riskData.category),
+          probability: toApiLevel(riskData.probability),
+          impact: toApiLevel(riskData.impact)
+        })
+      })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || 'Failed to create risk')
       }
-
-      await new Promise(resolve => setTimeout(resolve, 500))
-      setRisks(prev => [...prev, newRisk])
+      await loadRisks()
       setShowRiskModal(false)
       resetRiskForm()
     } catch (error) {
@@ -389,17 +251,23 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
   const updateRisk = async (riskId: string, updates: Partial<Risk>) => {
     setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      setRisks(prev => prev.map(risk => 
-        risk.id === riskId ? { 
-          ...risk, 
-          ...updates,
-          lastReviewDate: new Date().toISOString().split('T')[0],
-          riskScore: updates.probability && updates.impact 
-            ? calculateRiskScore(updates.probability, updates.impact)
-            : risk.riskScore
-        } : risk
-      ))
+      const response = await fetch(`/api/risk-management/risks/${riskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: updates.title,
+          description: updates.description,
+          category: updates.category ? toApiCategory(updates.category) : undefined,
+          probability: updates.probability ? toApiLevel(updates.probability) : undefined,
+          impact: updates.impact ? toApiLevel(updates.impact) : undefined,
+          status: updates.status ? toApiStatus(updates.status) : undefined
+        })
+      })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || 'Failed to update risk')
+      }
+      await loadRisks()
       setEditingRisk(null)
       setShowRiskModal(false)
       resetRiskForm()
@@ -415,8 +283,12 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
     
     setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      setRisks(prev => prev.filter(risk => risk.id !== riskId))
+      const response = await fetch(`/api/risk-management/risks/${riskId}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || 'Failed to delete risk')
+      }
+      await loadRisks()
     } catch (error) {
       console.error('Error deleting risk:', error)
     } finally {
@@ -489,12 +361,16 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
     return matchesSearch && matchesCategory && matchesStatus && matchesRiskLevel
   })
 
-  const riskMatrix = Array.from({length: 5}, (_, impactIndex) => 
-    Array.from({length: 5}, (_, probIndex) => {
-      const score = (probIndex + 1) * (5 - impactIndex)
-      const risksInCell = filteredRisks.filter(risk => risk.riskScore === score)
-      return { score, risks: risksInCell, impact: 5 - impactIndex, probability: probIndex + 1 }
-    })
+  const matrixRanks = { very_low: 1, low: 2, medium: 3, high: 4, very_high: 5 }
+  const matrixRows = ['very_high', 'high', 'medium', 'low', 'very_low'] as const
+  const matrixCols = ['very_low', 'low', 'medium', 'high', 'very_high'] as const
+  const riskMatrix = matrixRows.map((probability) =>
+    matrixCols.map((impact) => ({
+      score: matrixRanks[probability] * matrixRanks[impact],
+      risks: filteredRisks.filter((risk) => risk.probability === probability && risk.impact === impact),
+      impact,
+      probability
+    }))
   )
 
   if (!mounted) return null
@@ -568,7 +444,6 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
           className="px-3 py-2 border border-gray-300 rounded-md text-sm"
         >
           <option value="all">All Risk Levels</option>
-          <option value="critical">Critical</option>
           <option value="high">High</option>
           <option value="medium">Medium</option>
           <option value="low">Low</option>
@@ -586,10 +461,10 @@ export function RiskManagement({ permissions, selectedProject, onProjectSelect }
       </div>
 
       {/* Risk Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {['Critical', 'High', 'Medium', 'Low', 'Very Low'].map(level => {
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {['High', 'Medium', 'Low'].map(level => {
           const count = risks.filter(risk => getRiskLevel(risk.riskScore).level === level).length
-          const { color } = getRiskLevel(level === 'Critical' ? 20 : level === 'High' ? 15 : level === 'Medium' ? 9 : level === 'Low' ? 4 : 1)
+          const { color } = getRiskLevel(level === 'High' ? 9 : level === 'Medium' ? 4 : 1)
           
           return (
             <div key={level} className="bg-white p-6 rounded-lg border">

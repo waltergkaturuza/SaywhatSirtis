@@ -2,6 +2,75 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { canManageRisks } from '@/lib/risk-management/session-risk-access'
+
+type RiskProbability = 'LOW' | 'MEDIUM' | 'HIGH'
+type RiskImpact = 'LOW' | 'MEDIUM' | 'HIGH'
+
+function normalizeRiskProbability(value: string): RiskProbability {
+  const v = String(value || '').toUpperCase()
+  if (v === 'VERY_LOW' || v === 'LOW') return 'LOW'
+  if (v === 'HIGH' || v === 'VERY_HIGH') return 'HIGH'
+  return 'MEDIUM'
+}
+
+function normalizeRiskImpact(value: string): RiskImpact {
+  const v = String(value || '').toUpperCase()
+  if (v === 'VERY_LOW' || v === 'LOW') return 'LOW'
+  if (v === 'HIGH' || v === 'VERY_HIGH') return 'HIGH'
+  return 'MEDIUM'
+}
+
+function calculateRiskScore(probability: RiskProbability, impact: RiskImpact): number {
+  const score = { LOW: 1, MEDIUM: 2, HIGH: 3 }
+  return score[probability] * score[impact]
+}
+
+type RiskStatus = 'OPEN' | 'MITIGATED' | 'ESCALATED' | 'CLOSED'
+
+function normalizeRiskStatus(value: unknown): RiskStatus {
+  const v = String(value || '').toUpperCase()
+  if (v === 'MITIGATED') return 'MITIGATED'
+  if (v === 'ESCALATED' || v === 'UNDER_REVIEW' || v === 'TRANSFERRED') return 'ESCALATED'
+  if (v === 'CLOSED' || v === 'ACCEPTED') return 'CLOSED'
+  return 'OPEN'
+}
+
+const mitigationInclude = {
+  include: {
+    users_risk_mitigations_ownerIdTousers: {
+      select: { id: true, firstName: true, lastName: true, email: true }
+    }
+  }
+}
+
+function presentMitigation(mitigation: any) {
+  const owner = mitigation.users_risk_mitigations_ownerIdTousers || null
+  return {
+    ...mitigation,
+    title: mitigation.title || mitigation.strategy || 'Mitigation',
+    description: mitigation.description || mitigation.controlMeasure || mitigation.notes || '',
+    implementationProgress: mitigation.implementationProgress ?? 0,
+    assignedTo: owner
+  }
+}
+
+function presentRisk(risk: any) {
+  return {
+    ...risk,
+    owner: risk.users_risks_ownerIdTousers || null,
+    createdBy: risk.users_risks_createdByIdTousers || null,
+    mitigations: (risk.risk_mitigations || []).map(presentMitigation),
+    assignedToId: risk.ownerId || null,
+    _count: risk._count
+      ? {
+          mitigations: risk._count.risk_mitigations,
+          assessments: risk._count.risk_assessments,
+          documents: risk._count.risk_documents
+        }
+      : undefined
+  }
+}
 
 // GET /api/risk-management/risks/[id] - Get single risk
 export async function GET(
@@ -34,15 +103,7 @@ export async function GET(
             email: true
           }
         },
-        risk_mitigations: {
-          select: {
-            id: true,
-            strategy: true,
-            controlMeasure: true,
-            status: true,
-            implementationProgress: true
-          }
-        },
+        risk_mitigations: mitigationInclude,
         risk_assessments: true,
         _count: {
           select: {
@@ -60,7 +121,7 @@ export async function GET(
 
     return Response.json({
       success: true,
-      data: { risk }
+      data: { risk: presentRisk(risk) }
     })
 
   } catch (error) {
@@ -84,14 +145,9 @@ export async function PUT(
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permissions for updating risks - Include HR users with risks_edit
     const userPermissions = session.user.permissions || [];
     const userRoles = session.user.roles || [];
-    if (!userPermissions.includes('risk.edit') && 
-        !userPermissions.includes('admin.access') &&
-        !userPermissions.includes('risks_edit') &&
-        !userPermissions.includes('risks.edit') &&
-        !userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))) {
+    if (!canManageRisks(userPermissions, userRoles)) {
       return Response.json({ error: 'Insufficient permissions to edit risks' }, { status: 403 });
     }
 
@@ -105,43 +161,39 @@ export async function PUT(
       impact,
       status,
       ownerId,
+      assignedToId,
       tags
     } = body
 
-    // Calculate risk score
-    const probabilityMap: Record<string, number> = {
-      'VERY_LOW': 1,
-      'LOW': 2,
-      'MEDIUM': 3,
-      'HIGH': 4,
-      'VERY_HIGH': 5
+    const existing = await prisma.risks.findUnique({ where: { id } })
+    if (!existing) {
+      return Response.json({ error: 'Risk not found' }, { status: 404 })
     }
-    const probabilityScore = probabilityMap[probability] || 3
 
-    const impactMap: Record<string, number> = {
-      'VERY_LOW': 1,
-      'LOW': 2,
-      'MEDIUM': 3,
-      'HIGH': 4,
-      'VERY_HIGH': 5
-    }
-    const impactScore = impactMap[impact] || 3
-
-    const riskScore = probabilityScore * impactScore
+    const probabilityProvided = probability !== undefined && probability !== ''
+    const impactProvided = impact !== undefined && impact !== ''
+    const probabilityDb = probabilityProvided ? normalizeRiskProbability(probability) : existing.probability
+    const impactDb = impactProvided ? normalizeRiskImpact(impact) : existing.impact
+    const ownerProvided = ownerId !== undefined || assignedToId !== undefined
+    const nextOwnerId = ownerId || assignedToId || null
 
     const risk = await prisma.risks.update({
       where: { id },
       data: {
-        title,
-        description,
-        category,
-        department,
-        probability,
-        impact,
-        riskScore,
-        status,
-        ownerId: ownerId || null,
-        tags: tags || [],
+        ...(title !== undefined ? { title } : {}),
+        ...(description !== undefined ? { description } : {}),
+        ...(category !== undefined ? { category } : {}),
+        ...(department !== undefined ? { department: department || null } : {}),
+        ...(probabilityProvided || impactProvided
+          ? {
+              probability: probabilityDb,
+              impact: impactDb,
+              riskScore: calculateRiskScore(probabilityDb, impactDb)
+            }
+          : {}),
+        ...(status !== undefined ? { status: normalizeRiskStatus(status) } : {}),
+        ...(ownerProvided ? { ownerId: nextOwnerId } : {}),
+        ...(tags !== undefined ? { tags: tags || [] } : {}),
         updatedAt: new Date()
       },
       include: {
@@ -161,7 +213,7 @@ export async function PUT(
             email: true
           }
         },
-        risk_mitigations: true,
+        risk_mitigations: mitigationInclude,
         _count: {
           select: {
             risk_mitigations: true,
@@ -172,9 +224,19 @@ export async function PUT(
       }
     })
 
+    await prisma.risk_audit_logs.create({
+      data: {
+        id: crypto.randomUUID(),
+        riskId: risk.id,
+        action: 'UPDATE',
+        userId: session.user.id,
+        description: `Risk "${risk.title}" updated`
+      }
+    })
+
     return Response.json({
       success: true,
-      data: { risk }
+      data: { risk: presentRisk(risk) }
     })
 
   } catch (error) {
@@ -198,14 +260,9 @@ export async function DELETE(
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check permissions for deleting risks - Include HR users with risks_edit
     const userPermissions = session.user.permissions || [];
     const userRoles = session.user.roles || [];
-    if (!userPermissions.includes('risk.delete') && 
-        !userPermissions.includes('admin.access') &&
-        !userPermissions.includes('risks_edit') &&
-        !userPermissions.includes('risks.edit') &&
-        !userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))) {
+    if (!canManageRisks(userPermissions, userRoles)) {
       return Response.json({ error: 'Insufficient permissions to delete risks' }, { status: 403 });
     }
 

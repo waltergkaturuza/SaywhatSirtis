@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { canManageRisks } from '@/lib/risk-management/session-risk-access'
 import { ArrowLeft, Save, X } from 'lucide-react'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
@@ -43,10 +44,7 @@ export default function EditRiskPage() {
   // Check user permissions for edit access
   const userPermissions = session?.user?.permissions || []
   const userRoles = session?.user?.roles || []
-  const canEditRisks = userPermissions.includes('risks_edit') || 
-                      userPermissions.includes('risks.edit') || 
-                      userPermissions.includes('admin.access') ||
-                      userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))
+  const canEditRisks = canManageRisks(userPermissions, userRoles)
 
   // If user doesn't have permissions, show access denied
   if (session && !canEditRisks) {
@@ -120,10 +118,9 @@ export default function EditRiskPage() {
 
   const riskStatuses = [
     { value: 'OPEN', label: 'Open' },
-    { value: 'IN_PROGRESS', label: 'In Progress' },
+    { value: 'ESCALATED', label: 'Escalated' },
     { value: 'MITIGATED', label: 'Mitigated' },
-    { value: 'CLOSED', label: 'Closed' },
-    { value: 'ACCEPTED', label: 'Accepted' }
+    { value: 'CLOSED', label: 'Closed' }
   ]
 
   useEffect(() => {
@@ -152,7 +149,7 @@ export default function EditRiskPage() {
             impact: riskInfo.impact,
             status: riskInfo.status,
             targetResolutionDate: riskInfo.targetResolutionDate ? new Date(riskInfo.targetResolutionDate).toISOString().split('T')[0] : '',
-            assignedToId: riskInfo.assignedToId || '',
+            assignedToId: riskInfo.ownerId || riskInfo.assignedToId || '',
             tags: riskInfo.tags || [],
             newTag: ''
           })
@@ -164,7 +161,10 @@ export default function EditRiskPage() {
       if (usersResponse.ok) {
         const usersData = await usersResponse.json()
         if (usersData.success) {
-          setUsers(usersData.data.users || [])
+          const list = Array.isArray(usersData.data)
+            ? usersData.data
+            : usersData.data?.users || usersData.users || []
+          setUsers(list)
         }
       }
       
@@ -251,6 +251,7 @@ export default function EditRiskPage() {
           status: formData.status,
           targetResolutionDate: formData.targetResolutionDate || null,
           assignedToId: formData.assignedToId || null,
+          ownerId: formData.assignedToId || null,
           tags: formData.tags
         })
       })

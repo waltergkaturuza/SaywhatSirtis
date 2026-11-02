@@ -6,6 +6,7 @@ import { ArrowLeft, Save, X, Plus, Upload, FileText, Calendar, User, AlertTriang
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { canManageRisks } from '@/lib/risk-management/session-risk-access'
 
 interface RiskFormData {
   title: string
@@ -26,6 +27,7 @@ interface RiskFormData {
 
 interface DepartmentOption {
   id: string
+  name: string
   label: string
 }
 
@@ -42,16 +44,7 @@ export default function AddRiskPage() {
   // Check user permissions for edit access
   const userPermissions = session?.user?.permissions || []
   const userRoles = session?.user?.roles || []
-  const canEditRisks =
-    userPermissions.includes('risk.create') ||
-    userPermissions.includes('risks_edit') ||
-    userPermissions.includes('risks.edit') ||
-    userPermissions.includes('admin.access') ||
-    userRoles.some((role) =>
-      ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(
-        role.toLowerCase()
-      )
-    )
+  const canEditRisks = canManageRisks(userPermissions, userRoles)
 
   // If user doesn't have permissions, show access denied
   if (session && !canEditRisks) {
@@ -115,6 +108,7 @@ export default function AddRiskPage() {
         setDepartments(
           flat.map((d: { id: string; name: string; displayName?: string }) => ({
             id: d.id,
+            name: d.name,
             label: d.displayName || d.name
           }))
         )
@@ -189,33 +183,19 @@ export default function AddRiskPage() {
   }
 
   const calculateRiskScore = () => {
-    const probabilityValues = {
-      'VERY_LOW': 1,
-      'LOW': 2,
-      'MEDIUM': 3,
-      'HIGH': 4,
-      'VERY_HIGH': 5
+    const level = (value: string) => {
+      const normalized = value.toUpperCase()
+      if (normalized === 'VERY_LOW' || normalized === 'LOW') return 1
+      if (normalized === 'HIGH' || normalized === 'VERY_HIGH') return 3
+      return 2
     }
-    
-    const impactValues = {
-      'VERY_LOW': 1,
-      'LOW': 2,
-      'MEDIUM': 3,
-      'HIGH': 4,
-      'VERY_HIGH': 5
-    }
-    
-    const prob = probabilityValues[formData.probability as keyof typeof probabilityValues] || 3
-    const imp = impactValues[formData.impact as keyof typeof impactValues] || 3
-    
-    return prob * imp
+    return level(formData.probability) * level(formData.impact)
   }
 
   const getRiskLevel = (score: number) => {
-    if (score <= 4) return { level: 'Low', color: 'text-green-600 bg-green-100' }
-    if (score <= 9) return { level: 'Medium', color: 'text-yellow-600 bg-yellow-100' }
-    if (score <= 16) return { level: 'High', color: 'text-orange-600 bg-orange-100' }
-    return { level: 'Critical', color: 'text-red-600 bg-red-100' }
+    if (score >= 6) return { level: 'High', color: 'text-red-600 bg-red-100' }
+    if (score >= 3) return { level: 'Medium', color: 'text-yellow-600 bg-yellow-100' }
+    return { level: 'Low', color: 'text-green-600 bg-green-100' }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -389,7 +369,7 @@ export default function AddRiskPage() {
                     <>
                       <option value="">Select Department</option>
                       {departments.map((dept) => (
-                        <option key={dept.id} value={dept.label}>
+                        <option key={dept.id} value={dept.name}>
                           {dept.label}
                         </option>
                       ))}
@@ -515,11 +495,9 @@ export default function AddRiskPage() {
                 className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
               >
                 <option value="OPEN">Open</option>
-                <option value="UNDER_REVIEW">Under Review</option>
-                <option value="IN_PROGRESS">In Progress</option>
+                <option value="ESCALATED">Escalated</option>
                 <option value="MITIGATED">Mitigated</option>
                 <option value="CLOSED">Closed</option>
-                <option value="TRANSFERRED">Transferred</option>
               </select>
             </div>
           </div>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { riskVisibilityOrFilter } from '@/lib/risk-management/session-risk-access';
+import { canManageRisks, riskVisibilityOrFilter } from '@/lib/risk-management/session-risk-access';
 
 // Define types for risk enums
 type RiskCategory = 'OPERATIONAL' | 'STRATEGIC' | 'FINANCIAL' | 'COMPLIANCE' | 'REPUTATIONAL' | 'ENVIRONMENTAL' | 'CYBERSECURITY' | 'HR_PERSONNEL';
@@ -30,6 +30,31 @@ function normalizeRiskImpact(value: string): RiskImpact {
   if (v === 'VERY_LOW' || v === 'LOW') return 'LOW';
   if (v === 'HIGH' || v === 'VERY_HIGH') return 'HIGH';
   return 'MEDIUM';
+}
+
+const RISK_CATEGORIES: RiskCategory[] = [
+  'OPERATIONAL',
+  'STRATEGIC',
+  'FINANCIAL',
+  'COMPLIANCE',
+  'REPUTATIONAL',
+  'ENVIRONMENTAL',
+  'CYBERSECURITY',
+  'HR_PERSONNEL',
+];
+
+function normalizeRiskStatus(value: unknown): RiskStatus {
+  const v = String(value || '').toUpperCase();
+  if (v === 'MITIGATED') return 'MITIGATED';
+  if (v === 'ESCALATED' || v === 'UNDER_REVIEW' || v === 'TRANSFERRED') return 'ESCALATED';
+  if (v === 'CLOSED' || v === 'ACCEPTED') return 'CLOSED';
+  return 'OPEN';
+}
+
+function parseDate(value: unknown): Date | null {
+  if (!value) return null;
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 // Helper function to generate risk ID
@@ -151,14 +176,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check permissions for creating risks - Updated to support HR and ADVANCE_USER_1
     const userPermissions = session.user.permissions || [];
     const userRoles = session.user.roles || [];
-    if (!userPermissions.includes('risk.create') && 
-        !userPermissions.includes('admin.access') &&
-        !userPermissions.includes('risks_edit') &&
-        !userPermissions.includes('risks.edit') &&
-        !userRoles.some(role => ['hr', 'advance_user_1', 'advance_user_2', 'admin', 'manager'].includes(role.toLowerCase()))) {
+    if (!canManageRisks(userPermissions, userRoles)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -170,8 +190,13 @@ export async function POST(request: NextRequest) {
       department,
       probability,
       impact,
+      status,
       ownerId,
-      tags = []
+      tags = [],
+      dateIdentified,
+      mitigationStrategy,
+      targetDate,
+      actualCost,
     } = body;
 
     // Validate required fields
@@ -182,48 +207,83 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!RISK_CATEGORIES.includes(category)) {
+      return NextResponse.json({ error: 'Invalid risk category' }, { status: 400 });
+    }
+
     const probabilityDb = normalizeRiskProbability(probability);
     const impactDb = normalizeRiskImpact(impact);
     const riskScore = calculateRiskScore(probabilityDb, impactDb);
+    const statusDb = status ? normalizeRiskStatus(status) : 'OPEN';
+    const identified = parseDate(dateIdentified);
+    const strategy = String(mitigationStrategy || '').trim();
+    const deadline = parseDate(targetDate);
+    const costNote =
+      actualCost !== undefined && actualCost !== null && actualCost !== ''
+        ? `Estimated cost: ${actualCost}`
+        : null;
 
     // Generate unique risk ID
     const riskId = generateRiskId();
+    const now = new Date();
 
-    const risk = await prisma.risks.create({
-      data: {
-        id: crypto.randomUUID(),
-        riskId,
-        title,
-        description,
-        category,
-        department: department || session.user.department,
-        probability: probabilityDb,
-        impact: impactDb,
-        riskScore,
-        ownerId: ownerId || session.user.id,
-        createdById: session.user.id,
-        tags,
-        updatedAt: new Date()
-      },
-      include: {
-        users_risks_ownerIdTousers: {
-          select: { id: true, firstName: true, lastName: true, email: true }
+    const risk = await prisma.$transaction(async (tx) => {
+      const created = await tx.risks.create({
+        data: {
+          id: crypto.randomUUID(),
+          riskId,
+          title,
+          description,
+          category,
+          department: department || session.user.department,
+          probability: probabilityDb,
+          impact: impactDb,
+          riskScore,
+          status: statusDb,
+          ...(identified ? { dateIdentified: identified } : {}),
+          ownerId: ownerId || session.user.id,
+          createdById: session.user.id,
+          tags: Array.isArray(tags) ? tags : [],
+          updatedAt: now
         },
-        users_risks_createdByIdTousers: {
-          select: { id: true, firstName: true, lastName: true, email: true }
+        include: {
+          users_risks_ownerIdTousers: {
+            select: { id: true, firstName: true, lastName: true, email: true }
+          },
+          users_risks_createdByIdTousers: {
+            select: { id: true, firstName: true, lastName: true, email: true }
+          }
         }
-      }
-    });
+      });
 
-    // Create audit log
-    await prisma.risk_audit_logs.create({
-      data: {
-        id: crypto.randomUUID(),
-        riskId: risk.id,
-        action: 'CREATE',
-        userId: session.user.id,
-        description: `Risk "${title}" created`
+      if (strategy) {
+        await tx.risk_mitigations.create({
+          data: {
+            id: crypto.randomUUID(),
+            riskId: created.id,
+            strategy,
+            deadline,
+            notes: costNote,
+            ownerId: ownerId || session.user.id,
+            status: 'PLANNED',
+            lastUpdated: now,
+            updatedAt: now,
+            createdById: session.user.id,
+          }
+        });
       }
+
+      await tx.risk_audit_logs.create({
+        data: {
+          id: crypto.randomUUID(),
+          riskId: created.id,
+          action: 'CREATE',
+          userId: session.user.id,
+          description: `Risk "${title}" created`
+        }
+      });
+
+      return created;
     });
 
     return NextResponse.json({
