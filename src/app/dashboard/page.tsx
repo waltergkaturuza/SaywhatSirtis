@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   BarChart,
   Bar,
@@ -330,12 +329,26 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="px-6">
-        {/* Header Section with SAYWHAT Branding */}
         <div className="mb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-saywhat-dark">WELCOME TO SIRTIS</h1>
-              <p className="mt-1 text-sm text-saywhat-grey">SAYWHAT Integrated Real-Time Information System</p>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+              <div>
+                <span className="block text-xs text-saywhat-grey">Last Updated</span>
+                <span className="font-semibold text-saywhat-dark">{new Date().toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="block text-xs text-saywhat-grey">System Status</span>
+                <span className="font-semibold text-green-600 flex items-center">
+                  <Shield className="h-4 w-4 mr-1" />
+                  All Systems Operational
+                </span>
+              </div>
+              {metrics && (
+                <div>
+                  <span className="block text-xs text-saywhat-grey">Active Users</span>
+                  <span className="font-semibold text-saywhat-dark">{metrics.activeMembers}</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center space-x-4">
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -373,34 +386,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-4">
-          {/* Welcome Section with SAYWHAT Branding */}
-          <div className="rounded-lg px-6 py-4 text-white bg-saywhat-orange">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold">SIRTIS</h1>
-                <div className="mt-2 flex space-x-6 text-sm">
-                  <div>
-                    <span className="block text-orange-100">Last Updated</span>
-                    <span className="font-semibold">{new Date().toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className="block text-orange-100">System Status</span>
-                    <span className="font-semibold text-green-300 flex items-center">
-                      <Shield className="h-4 w-4 mr-1" />
-                      All Systems Operational
-                    </span>
-                  </div>
-                  {metrics && (
-                    <div>
-                      <span className="block text-orange-100">Active Users</span>
-                      <span className="font-semibold">{metrics.activeMembers}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Key Performance Indicators - Updated per client feedback */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="border-saywhat-grey">
@@ -494,35 +479,6 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-
-          {/* SAYWHAT Program Performance Banner */}
-          <div className="rounded-lg px-6 py-3 text-white bg-saywhat-orange">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="h-12 w-12 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Target className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">Program Management Active</h3>
-                  <p className="text-orange-100">
-                    User engagement tracking • Program performance analytics • Real-time user insights
-                  </p>
-                </div>
-              </div>
-              <div className="flex space-x-3">
-                <Button 
-                  variant="outline" 
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                  onClick={() => window.location.href = '/programs'}
-                >
-                  View Programs
-                </Button>
-                <Badge variant="secondary" className="bg-white/20 text-white">
-                  {metrics ? metrics.activePrograms : 0} Active
-                </Badge>
-              </div>
-            </div>
           </div>
 
           {/* Main Analytics Tabs - Focused on relevant data */}

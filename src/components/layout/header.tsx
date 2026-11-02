@@ -42,7 +42,7 @@ export default function Header({ onMenuClick, currentModule }: HeaderProps) {
 
   return (
     <div className="sticky top-0 z-40 lg:mx-auto lg:max-w-[98vw] lg:px-4">
-      <div className="flex h-16 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-0 lg:shadow-none">
+      <div className="flex min-h-16 items-center gap-x-4 border-b border-gray-200 bg-white px-4 py-2 shadow-sm sm:gap-x-6 sm:px-6 lg:px-0 lg:shadow-none">
         <button
           type="button"
           className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
@@ -54,6 +54,11 @@ export default function Header({ onMenuClick, currentModule }: HeaderProps) {
 
         {/* Separator */}
         <div className="h-6 w-px bg-gray-200 lg:hidden" aria-hidden="true" />
+
+        <div className="min-w-0 leading-tight">
+          <h1 className="truncate text-lg font-bold text-gray-900">WELCOME TO SIRTIS</h1>
+          <p className="truncate text-xs text-gray-500">SAYWHAT Integrated Real-Time Information System</p>
+        </div>
 
         {/* Current Module Indicator - Left side */}
         {currentModule && (

@@ -203,17 +203,17 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <div className={cn("bg-white shadow rounded-lg", className)}>
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-4 py-2 border-b border-gray-200">
         {/* Top row: Navigation Controls and Actions */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center gap-3">
           {/* Left side: Navigation Controls */}
-          <div className="flex items-center">
+          <div className="flex items-center shrink-0">
             {navigationControls}
           </div>
           
           {/* Right side: Actions */}
           {actions && (
-            <div className="flex space-x-3">
+            <div className="flex items-center justify-end min-w-0">
               {actions}
             </div>
           )}
@@ -221,16 +221,16 @@ export function PageHeader({
 
         {/* Breadcrumbs */}
         {breadcrumbs.length > 0 && (
-          <div className="mb-4">
+          <div className="mt-2">
             <Breadcrumbs items={breadcrumbs} />
           </div>
         )}
 
         {/* Title and Description */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+        <div className="mt-2">
+          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
           {description && (
-            <p className="mt-2 text-base text-gray-600">{description}</p>
+            <p className="mt-1 text-sm text-gray-600">{description}</p>
           )}
         </div>
       </div>

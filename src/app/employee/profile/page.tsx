@@ -10,7 +10,6 @@ import {
   PencilIcon,
   CheckIcon,
   XMarkIcon,
-  CameraIcon,
   PhoneIcon,
   EnvelopeIcon,
   MapPinIcon,
@@ -513,6 +512,88 @@ export default function EmployeeProfilePage() {
           { name: "Profile", href: "/employee/profile" }
         ]
       }}
+      actions={profile ? (
+        <div className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-saywhat-orange to-green-600 px-3 py-1.5 text-white shadow-sm">
+          <label className={`relative h-10 w-10 shrink-0 rounded-full bg-white p-0.5 ${editMode ? 'cursor-pointer' : ''}`}>
+            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
+              {(formData.profilePicture || profile.profilePicture) ? (
+                <img
+                  src={formData.profilePicture || profile.profilePicture}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <UserIcon className="h-5 w-5 text-gray-400" />
+              )}
+            </div>
+            {editMode && (
+              <input
+                type="file"
+                accept="image/*"
+                className="absolute inset-0 cursor-pointer opacity-0"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setFormData(prev => ({ ...prev, profilePicture: event.target?.result as string }));
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+            )}
+          </label>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-sm font-semibold">{profile.firstName} {profile.lastName}</p>
+            <p className="truncate text-xs text-white/90">{profile.position || 'System Administrator'}</p>
+            <p className="truncate text-xs text-white/80">
+              Employee ID: {profile.employeeId} · {profile.email}
+            </p>
+          </div>
+          {!editMode ? (
+            <button
+              onClick={() => setEditMode(true)}
+              className="inline-flex shrink-0 items-center rounded-lg border border-white/40 bg-white/20 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/30"
+            >
+              <PencilIcon className="mr-1 h-3.5 w-3.5" />
+              Edit Profile
+            </button>
+          ) : (
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                onClick={handleSaveProfile}
+                disabled={saving}
+                className="inline-flex items-center rounded-lg bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                <CheckIcon className="mr-1 h-3.5 w-3.5" />
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                onClick={() => {
+                  setEditMode(false);
+                  setFormData({
+                    phoneNumber: profile.phoneNumber || '',
+                    alternativePhone: profile.alternativePhone || '',
+                    personalEmail: profile.personalEmail || '',
+                    alternativeEmail: profile.alternativeEmail || '',
+                    address: profile.address || '',
+                    emergencyContact: profile.emergencyContact || '',
+                    emergencyPhone: profile.emergencyPhone || '',
+                    emergencyContactAddress: profile.emergencyContactAddress || '',
+                    emergencyContactRelationship: profile.emergencyContactRelationship || '',
+                    profilePicture: profile.profilePicture || ''
+                  });
+                }}
+                className="inline-flex items-center rounded-lg border border-white/40 bg-white/20 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/30"
+              >
+                <XMarkIcon className="mr-1 h-3.5 w-3.5" />
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      ) : undefined}
     >
       <div className="space-y-8">
         {loading && (
@@ -536,112 +617,6 @@ export default function EmployeeProfilePage() {
 
         {profile && (
           <>
-            {/* Hero Profile Header with Gradient */}
-            <div className="relative bg-gradient-to-br from-saywhat-orange via-orange-500 to-green-600 rounded-2xl shadow-2xl overflow-hidden">
-              <div className="absolute inset-0 bg-black/10"></div>
-              <div className="relative px-8 py-12">
-                <div className="flex flex-col lg:flex-row items-center lg:items-start space-y-6 lg:space-y-0 lg:space-x-8">
-                  {/* Profile Picture */}
-                  <div className="relative group">
-                    <div className="h-40 w-40 bg-white/20 backdrop-blur-sm rounded-full p-2 shadow-2xl">
-                      <div className="h-full w-full bg-white rounded-full flex items-center justify-center overflow-hidden shadow-lg">
-                        {(formData.profilePicture || profile.profilePicture) ? (
-                          <img 
-                            src={formData.profilePicture || profile.profilePicture} 
-                            alt="Profile" 
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <UserIcon className="h-20 w-20 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                    {editMode && (
-                      <label className="absolute bottom-2 right-2 h-10 w-10 bg-white rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-50 shadow-lg transition-all duration-200 hover:scale-110">
-                        <CameraIcon className="h-5 w-5 text-saywhat-orange" />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onload = (e) => {
-                                setFormData(prev => ({ ...prev, profilePicture: e.target?.result as string }));
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                        />
-                      </label>
-                    )}
-                  </div>
-
-                  {/* Employee Information */}
-                  <div className="text-center lg:text-left text-white flex-1">
-                    <h1 className="text-4xl font-bold mb-2">{profile.firstName} {profile.lastName}</h1>
-                    <div className="space-y-2 mb-6">
-                      <p className="text-xl text-white/90 font-medium">{profile.position || 'System Administrator'}</p>
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-6 space-y-2 lg:space-y-0">
-                        <div className="flex items-center justify-center lg:justify-start space-x-2">
-                          <div className="h-2 w-2 bg-green-300 rounded-full animate-pulse"></div>
-                          <span className="text-white/80">Employee ID: {profile.employeeId}</span>
-                        </div>
-                        <div className="flex items-center justify-center lg:justify-start space-x-2">
-                          <EnvelopeIcon className="h-4 w-4 text-white/80" />
-                          <span className="text-white/80">{profile.email}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    {!editMode ? (
-                      <button
-                        onClick={() => setEditMode(true)}
-                        className="inline-flex items-center px-6 py-3 bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-xl text-white font-medium hover:bg-white/30 transition-all duration-200 hover:scale-105 shadow-lg"
-                      >
-                        <PencilIcon className="mr-2 h-5 w-5" />
-                        Edit Profile
-                      </button>
-                    ) : (
-                      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                        <button
-                          onClick={handleSaveProfile}
-                          disabled={saving}
-                          className="inline-flex items-center px-6 py-3 bg-green-600 border-2 border-green-500 rounded-xl text-white font-medium hover:bg-green-700 disabled:opacity-50 transition-all duration-200 hover:scale-105 shadow-lg"
-                        >
-                          <CheckIcon className="mr-2 h-5 w-5" />
-                          {saving ? 'Saving...' : 'Save Changes'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditMode(false);
-                            setFormData({
-                              phoneNumber: profile.phoneNumber || '',
-                              alternativePhone: profile.alternativePhone || '',
-                              personalEmail: profile.personalEmail || '',
-                              alternativeEmail: profile.alternativeEmail || '',
-                              address: profile.address || '',
-                              emergencyContact: profile.emergencyContact || '',
-                              emergencyPhone: profile.emergencyPhone || '',
-                              emergencyContactAddress: profile.emergencyContactAddress || '',
-                              emergencyContactRelationship: profile.emergencyContactRelationship || '',
-                              profilePicture: profile.profilePicture || ''
-                            });
-                          }}
-                          className="inline-flex items-center px-6 py-3 bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-xl text-white font-medium hover:bg-white/30 transition-all duration-200 hover:scale-105 shadow-lg"
-                        >
-                          <XMarkIcon className="mr-2 h-5 w-5" />
-                          Cancel
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Main Content Grid - Tabs and Sidebar */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
               {/* Left Column - Tab Navigation and Content */}
