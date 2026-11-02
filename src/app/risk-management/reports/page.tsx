@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { ArrowLeft, Download, FileText, BarChart3, PieChart, TrendingUp, Calendar, Filter, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { canManageRisks } from '@/lib/risk-management/session-risk-access'
 
@@ -134,19 +134,6 @@ export default function RiskReportsPage() {
     URL.revokeObjectURL(url)
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'ready':
-        return <FileText className="h-5 w-5 text-green-600" />
-      case 'generating':
-        return <div className="h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      case 'error':
-        return <FileText className="h-5 w-5 text-red-600" />
-      default:
-        return <FileText className="h-5 w-5 text-gray-400" />
-    }
-  }
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -222,19 +209,14 @@ export default function RiskReportsPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 p-3 mb-3">
+        <div className="bg-white border border-gray-200 rounded-md px-3 py-2 mb-3">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center space-x-3">
-              <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl p-2">
-                <Filter className="h-5 w-5 text-orange-600" />
-              </div>
-              <span className="text-lg font-bold text-orange-800">Smart Filters:</span>
-            </div>
+            <span className="text-sm font-medium text-gray-700">Filters</span>
             
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/80 backdrop-blur-sm font-semibold text-orange-800"
+              className="px-2 py-1.5 text-sm border border-gray-300 rounded-md"
             >
               <option value="all">All time</option>
               <option value="current_month">Current Month</option>
@@ -246,7 +228,7 @@ export default function RiskReportsPage() {
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/80 backdrop-blur-sm font-semibold text-orange-800"
+              className="px-2 py-1.5 text-sm border border-gray-300 rounded-md"
             >
               <option value="all">All Report Types</option>
               <option value="summary">Summary Reports</option>
@@ -260,53 +242,17 @@ export default function RiskReportsPage() {
         {/* Risk Metrics Overview */}
         {metrics && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 p-3 hover:shadow-sm transition-all duration-300 ">
-              <div className="flex items-center">
-                <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-md p-1.5">
-                  <BarChart3 className="h-4 w-4 text-blue-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-bold text-orange-700 uppercase tracking-wide">Total Risks</p>
-                  <p className="text-lg font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">{metrics.totalRisks}</p>
-                </div>
+            {[
+              ['Total Risks', metrics.totalRisks],
+              ['High Risk', metrics.highRisks],
+              ['Open Risks', metrics.openRisks],
+              ['Overdue', metrics.overdueMitigations],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="bg-white border border-gray-200 rounded-md px-3 py-2">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+                <p className="text-lg font-semibold text-gray-900">{value}</p>
               </div>
-            </div>
-            
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 p-3 hover:shadow-sm transition-all duration-300 ">
-              <div className="flex items-center">
-                <div className="bg-gradient-to-br from-red-100 to-red-200 rounded-md p-1.5">
-                  <TrendingUp className="h-4 w-4 text-red-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-bold text-orange-700 uppercase tracking-wide">High Risk</p>
-                  <p className="text-lg font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">{metrics.highRisks}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 p-3 hover:shadow-sm transition-all duration-300 ">
-              <div className="flex items-center">
-                <div className="bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-md p-1.5">
-                  <PieChart className="h-4 w-4 text-yellow-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-bold text-orange-700 uppercase tracking-wide">Open Risks</p>
-                  <p className="text-lg font-bold bg-gradient-to-r from-yellow-600 to-yellow-700 bg-clip-text text-transparent">{metrics.openRisks}</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 p-3 hover:shadow-sm transition-all duration-300 ">
-              <div className="flex items-center">
-                <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-md p-1.5">
-                  <Calendar className="h-4 w-4 text-orange-600" />
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-bold text-orange-700 uppercase tracking-wide">Overdue</p>
-                  <p className="text-lg font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent">{metrics.overdueMitigations}</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         )}
 
@@ -321,24 +267,19 @@ export default function RiskReportsPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
             {[
-              { type: 'summary', label: 'Summary Report', icon: FileText, description: 'High-level risk overview', color: 'blue' },
-              { type: 'detailed', label: 'Detailed Report', icon: BarChart3, description: 'Comprehensive risk analysis', color: 'green' },
-              { type: 'analytics', label: 'Analytics Report', icon: TrendingUp, description: 'Trends and insights', color: 'purple' },
-              { type: 'compliance', label: 'Compliance Report', icon: PieChart, description: 'Regulatory compliance', color: 'red' }
-            ].map(({ type, label, icon: Icon, description, color }) => (
+              { type: 'summary', label: 'Summary Report', description: 'High-level risk overview' },
+              { type: 'detailed', label: 'Detailed Report', description: 'Comprehensive risk analysis' },
+              { type: 'analytics', label: 'Analytics Report', description: 'Trends and insights' },
+              { type: 'compliance', label: 'Compliance Report', description: 'Regulatory compliance' }
+            ].map(({ type, label, description }) => (
               <button
                 key={type}
                 onClick={() => handleGenerateReport(type)}
                 disabled={generating === type}
-                className="p-3 border-2 border-orange-200 rounded-lg hover:bg-orange-50/60 text-left disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-sm  bg-white/60 backdrop-blur-sm"
+                className="px-3 py-2 border border-gray-200 rounded-md hover:bg-gray-50 text-left disabled:opacity-50 bg-white"
               >
-                <div className="flex items-center mb-4">
-                  <div className={`bg-gradient-to-br from-${color}-100 to-${color}-200 rounded-xl p-3`}>
-                    <Icon className={`h-6 w-6 text-${color}-600`} />
-                  </div>
-                  <span className="font-bold text-orange-800 ml-3">{label}</span>
-                </div>
-                <p className="text-sm text-orange-700 mb-4">{description}</p>
+                <span className="block text-sm font-medium text-gray-900">{label}</span>
+                <p className="text-xs text-gray-500 mt-0.5">{description}</p>
                 {generating === type && (
                   <div className="mt-4">
                     <div className="h-2 bg-orange-100 rounded-full overflow-hidden">
@@ -386,32 +327,15 @@ export default function RiskReportsPage() {
               <tbody className="bg-white/60 divide-y divide-orange-100">
                 {reports.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-8 py-6 text-center">
-                      <div className="flex flex-col items-center">
-                        <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-full p-3 mb-6">
-                          <FileText className="h-6 w-6 text-orange-500" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-orange-800 mb-2">No reports available</h3>
-                        <p className="text-orange-600 mb-6">
-                          Generate your first comprehensive risk intelligence report using the options above
-                        </p>
-                      </div>
+                    <td colSpan={6} className="px-3 py-4 text-center text-sm text-gray-500">
+                      No reports yet. Generate one above.
                     </td>
                   </tr>
                 ) : (
                   reports.map((report) => (
                     <tr key={report.id} className="hover:bg-orange-50/60 transition-all duration-300">
-                      <td className="px-3 py-2">
-                        <div className="flex items-center">
-                          <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl p-2 mr-4">
-                            {getStatusIcon(report.status)}
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold text-orange-900">
-                              {report.title}
-                            </div>
-                          </div>
-                        </div>
+                      <td className="px-3 py-2 text-sm text-gray-900">
+                        {report.title}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md">

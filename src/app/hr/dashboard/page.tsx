@@ -297,99 +297,26 @@ export default function HRDashboard() {
               </div>
 
               {/* Key Metrics Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl border-2 border-orange-600 p-5 hover:shadow-xl hover:shadow-orange-200 transition-all transform hover:-translate-y-1 text-white">
-                  <div className="flex items-center">
-                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <UserGroupIcon className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-xl font-bold text-white">
-                        {loading ? (
-                          <div className="w-10 h-5 bg-white/20 animate-pulse rounded"></div>
-                        ) : (
-                          stats?.totalEmployees || '0'
-                        )}
-                      </h3>
-                      <p className="text-xs text-orange-100 font-medium">Total Employees</p>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center text-xs">
-                    <ArrowTrendingUpIcon className="w-4 h-4 text-green-300 mr-1" />
-                    <span className="text-green-200 font-semibold">
-                      +{loading ? '0' : stats?.newEmployeesThisMonth || '0'}
-                    </span>
-                    <span className="text-orange-100 ml-1">this month</span>
-                  </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
+                  <p className="text-lg font-semibold text-gray-900">{loading ? '—' : stats?.totalEmployees || '0'}</p>
+                  <p className="text-xs text-gray-500">Total Employees</p>
+                  <p className="text-xs text-gray-400">+{loading ? '0' : stats?.newEmployeesThisMonth || '0'} this month</p>
                 </div>
-
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-4 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <AcademicCapIcon className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-2xl font-bold text-white">
-                        {loading ? (
-                          <div className="w-12 h-6 bg-white/20 animate-pulse rounded"></div>
-                        ) : (
-                          stats?.activeTrainings || '0'
-                        )}
-                      </h3>
-                      <p className="text-sm text-green-100 font-medium">Training Sessions</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center text-sm">
-                    <div className="w-2 h-2 bg-green-200 rounded-full mr-2"></div>
-                    <span className="text-green-200 font-semibold">Active</span>
-                    <span className="text-green-100 ml-1">this month</span>
-                  </div>
+                <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
+                  <p className="text-lg font-semibold text-gray-900">{loading ? '—' : stats?.activeTrainings || '0'}</p>
+                  <p className="text-xs text-gray-500">Training Sessions</p>
+                  <p className="text-xs text-gray-400">Active this month</p>
                 </div>
-
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-4 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <StarIcon className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-2xl font-bold text-white">
-                        {loading ? (
-                          <div className="w-12 h-6 bg-white/20 animate-pulse rounded"></div>
-                        ) : (
-                          stats?.averagePerformance || '4.7'
-                        )}
-                      </h3>
-                      <p className="text-sm text-green-100 font-medium">Avg Performance</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center text-sm">
-                    <span className="text-green-100">Out of 5.0 - </span>
-                    <span className="text-green-200 font-semibold ml-1">Excellent</span>
-                  </div>
+                <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
+                  <p className="text-lg font-semibold text-gray-900">{loading ? '—' : stats?.averagePerformance || '0'}</p>
+                  <p className="text-xs text-gray-500">Avg Performance</p>
+                  <p className="text-xs text-gray-400">Out of 5.0</p>
                 </div>
-
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl border-2 border-green-600 p-4 hover:shadow-xl hover:shadow-green-200 transition-all transform hover:-translate-y-1 text-white">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                      <UsersIcon className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="ml-4">
-                      <h3 className="text-2xl font-bold text-white">
-                        {loading ? (
-                          <div className="w-12 h-6 bg-white/20 animate-pulse rounded"></div>
-                        ) : (
-                          stats?.activeEmployees || '0'
-                        )}
-                      </h3>
-                      <p className="text-sm text-green-100 font-medium">Active Employees</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center text-sm">
-                    <ArrowTrendingUpIcon className="w-4 h-4 text-green-200 mr-1" />
-                    <span className="text-green-200 font-semibold">
-                      +{loading ? '0' : stats?.newHires || '0'} new
-                    </span>
-                  </div>
+                <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
+                  <p className="text-lg font-semibold text-gray-900">{loading ? '—' : stats?.activeEmployees || '0'}</p>
+                  <p className="text-xs text-gray-500">Active Employees</p>
+                  <p className="text-xs text-gray-400">+{loading ? '0' : stats?.newHires || '0'} new</p>
                 </div>
               </div>
 
@@ -402,26 +329,13 @@ export default function HRDashboard() {
                   sidebarOpen ? 'lg:col-span-3' : 'lg:col-span-1'
                 }`}>
                   <h2 className="text-xl font-bold text-gray-900 mb-4">HR Management Modules</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
                   {hrModules.map((module, index) => (
                     <Link key={index} href={module.href}>
-                      <div 
-                        className={`p-5 rounded-xl border-2 hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${getColorClasses(module.color)}`}
-                        onClick={() => handleIconClick(index)}
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="p-3 bg-white rounded-lg shadow-sm">
-                            <module.icon 
-                              className={`h-7 w-7 transition-colors duration-200 ${getIconColorClasses(module.color)}`} 
-                            />
-                          </div>
-                          <ChevronRightIcon className="h-6 w-6 opacity-50" />
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-3 text-lg">{module.title}</h3>
-                        <p className="text-sm text-gray-700 mb-3 leading-relaxed">{module.description}</p>
-                        <div className="text-sm font-semibold text-gray-600 bg-white bg-opacity-50 px-3 py-2 rounded-lg">
-                          {module.stats}
-                        </div>
+                      <div className="px-3 py-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50">
+                        <h3 className="text-sm font-semibold text-gray-900">{module.title}</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">{module.description}</p>
+                        <p className="text-xs text-gray-700 mt-1">{module.stats}</p>
                       </div>
                     </Link>
                   ))}
