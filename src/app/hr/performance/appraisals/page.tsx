@@ -4,6 +4,7 @@ import { ModulePage } from "@/components/layout/enhanced-layout"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
+import { canViewAllPerformance } from "@/lib/hr/performance-access"
 import {
   DocumentCheckIcon,
   PlusIcon,
@@ -32,6 +33,7 @@ export default function PerformanceAppraisalsPage() {
   const [departments, setDepartments] = useState<any[]>([])
   const [periods, setPeriods] = useState<any[]>([])
   const [performanceAppraisals, setPerformanceAppraisals] = useState<any[]>([])
+  const [viewerEmployeeId, setViewerEmployeeId] = useState<string | null>(null)
   const [planDeliverables, setPlanDeliverables] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -84,9 +86,11 @@ export default function PerformanceAppraisalsPage() {
   // Check user permissions for HR access
   const userPermissions = session?.user?.permissions || []
   const userRoles = session?.user?.roles || []
-  const isHRStaff = userPermissions.includes('hr.full_access')
   const isSecretariatMember = userPermissions.includes('hr.secretariat_access')
-  const canViewAllAppraisals = isHRStaff || userPermissions.includes('hr.view_all_performance')
+  const canViewAllAppraisals = canViewAllPerformance(
+    { roles: userRoles },
+    { user: { roles: userRoles, permissions: userPermissions } }
+  )
   
   // Check if user can delete (Admin or HR)
   const isAdmin = userRoles.some((r: string) => ['ADMIN', 'SYSTEM_ADMINISTRATOR', 'SUPERUSER', 'admin'].includes(r))
@@ -140,10 +144,11 @@ export default function PerformanceAppraisalsPage() {
       
       setLoading(true)
       try {
+        const analyticsQuery = selectedPeriod ? `?period=${encodeURIComponent(selectedPeriod)}` : ''
         const [appraisalsRes, deliverablesRes, statisticsRes, departmentsRes, periodsRes, notificationsRes] = await Promise.all([
           fetch('/api/hr/performance/appraisals'),
           fetch('/api/hr/performance/deliverables'),
-          fetch('/api/hr/performance/appraisals/analytics'),
+          fetch(`/api/hr/performance/appraisals/analytics${analyticsQuery}`),
           fetch('/api/hr/departments'),
           fetch('/api/hr/performance/periods'),
           fetch('/api/hr/performance/notifications')
@@ -159,6 +164,7 @@ export default function PerformanceAppraisalsPage() {
           const appraisalsList = appraisalsData.appraisals || appraisalsData.data || []
           console.log('   Setting appraisals list with', appraisalsList.length, 'items')
           setPerformanceAppraisals(appraisalsList)
+          setViewerEmployeeId(appraisalsData.viewerEmployeeId || null)
         } else {
           const errorData = await appraisalsRes.json().catch(() => ({}))
           console.error('❌ Failed to fetch appraisals:', appraisalsRes.status, errorData)
@@ -227,7 +233,7 @@ export default function PerformanceAppraisalsPage() {
     }
     
     fetchData()
-  }, [session?.user?.id, canViewAllAppraisals])
+  }, [session?.user?.id, canViewAllAppraisals, selectedPeriod])
 
   const sidebar = (
     <div className="space-y-6">
@@ -594,7 +600,15 @@ export default function PerformanceAppraisalsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {performanceAppraisals.map((appraisal) => (
+                      {performanceAppraisals.filter((appraisal) => {
+                        if (activeTab === 'my-appraisals' && canViewAllAppraisals && viewerEmployeeId && appraisal.employeeId !== viewerEmployeeId) {
+                          return false
+                        }
+                        if (selectedDepartment !== 'All Departments' && appraisal.department !== selectedDepartment) {
+                          return false
+                        }
+                        return true
+                      }).map((appraisal) => (
                         <tr key={appraisal.id} className="hover:bg-orange-50 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">

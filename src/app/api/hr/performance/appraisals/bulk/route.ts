@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { executeQuery } from '@/lib/prisma';
+import { canViewAllPerformance } from '@/lib/hr/performance-access';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
         id: true,
         email: true,
         role: true,
+        roles: true,
         department: true,
         isActive: true
       }
@@ -35,90 +37,87 @@ export async function GET(request: NextRequest) {
       });
     }
 
-  const canViewAllAppraisals = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role);
+    const canViewAllAppraisals = canViewAllPerformance(user, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    });
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const department = searchParams.get('department');
-    const period = searchParams.get('period');
 
-    // Build where clause
-    const whereClause: any = {};
-    
-    if (status && status !== 'all') {
-  // Schema uses reviewStatus
-  whereClause.reviewStatus = status.toUpperCase();
-    }
-    
+    const filters: any[] = []
     if (department && department !== 'all') {
-      whereClause.employees = { department };
+      filters.push({ employees: { departments: { name: department } } })
     }
-
-    if (period && period !== 'all') {
-  whereClause.reviewPeriod = period;
-    }
-
-    // If user can't view all appraisals, limit to their department or direct reports
     if (!canViewAllAppraisals) {
-      if (user.department) {
-        whereClause.employees = { ...(whereClause.employees || {}), department: user.department };
-      } else {
-        // If no department, return empty list
-        return NextResponse.json({
-          success: true,
-          data: [],
-          total: 0,
-          message: 'No appraisals available for your access level'
-        });
-      }
+      const employee = await executeQuery(async (prisma) => {
+        return prisma.employees.findUnique({ where: { userId: user.id }, select: { id: true } })
+      })
+      filters.push({
+        OR: [
+          { supervisorId: user.id },
+          { reviewerId: user.id },
+          ...(employee ? [{ employeeId: employee.id }, { supervisorId: employee.id }, { reviewerId: employee.id }] : [])
+        ]
+      })
     }
+    const whereClause = filters.length > 0 ? { AND: filters } : {}
 
     try {
-      // Fetch performance reviews from database
-      const performanceReviews = await executeQuery(async (prisma) => {
-        return prisma.performance_reviews.findMany({
-        where: whereClause,
-        include: {
-          employees: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              department: true,
-              position: true
+      const appraisals = await executeQuery(async (prisma) => {
+        return prisma.performance_appraisals.findMany({
+          where: whereClause,
+          include: {
+            employees: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                position: true,
+                departments: { select: { name: true } }
+              }
+            },
+            performance_plans: { select: { planYear: true, planPeriod: true, endDate: true } },
+            users_performance_appraisals_supervisorIdTousers: {
+              select: { firstName: true, lastName: true }
             }
           },
-          users_performance_reviews_supervisorIdTousers: {
-            select: { id: true, firstName: true, lastName: true }
-          }
-        },
-        orderBy: {
-          reviewDate: 'asc'
-        }
+          orderBy: { updatedAt: 'desc' }
         });
       });
 
-      // Transform data to match frontend interface
-      const transformedAppraisals = performanceReviews.map(review => ({
-        id: review.id,
-        employeeName: review.employees 
-          ? `${review.employees.firstName || ''} ${review.employees.lastName || ''}`.trim()
-          : 'Unknown Employee',
-        employeeId: review.employees?.id || review.employeeId,
-        department: review.employees?.department || 'Unknown',
-        position: review.employees?.position || 'Unknown',
-        period: review.reviewPeriod || 'Unknown',
-        overallRating: review.overallRating,
-        status: review.reviewStatus?.toLowerCase() || 'draft',
-        supervisor: review.users_performance_reviews_supervisorIdTousers 
-          ? `${review.users_performance_reviews_supervisorIdTousers.firstName || ''} ${review.users_performance_reviews_supervisorIdTousers.lastName || ''}`.trim()
-          : 'Unknown Supervisor',
-        dueDate: review.reviewDate?.toISOString().split('T')[0] || null,
-        lastUpdated: review.updatedAt?.toISOString().split('T')[0] || review.createdAt?.toISOString().split('T')[0] || null,
-        completionPercentage: calculateCompletionPercentage(review)
-      }));
+      const transformedAppraisals = appraisals.map(appraisal => {
+        const overdue = appraisal.submittedAt
+          && !appraisal.approvedAt
+          && appraisal.submittedAt.getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000
+        let listStatus = 'draft'
+        if (overdue && !['approved', 'completed'].includes(appraisal.status)) listStatus = 'overdue'
+        else if (appraisal.status === 'draft') listStatus = 'draft'
+        else if (['submitted', 'supervisor_review'].includes(appraisal.status)) listStatus = 'pending-review'
+        else if (['supervisor_approved', 'reviewer_assessment', 'revision_requested'].includes(appraisal.status)) listStatus = 'in-progress'
+        else if (['approved', 'completed'].includes(appraisal.status)) listStatus = 'completed'
+
+        return {
+          id: appraisal.id,
+          employeeName: `${appraisal.employees?.firstName || ''} ${appraisal.employees?.lastName || ''}`.trim() || 'Unknown Employee',
+          employeeId: appraisal.employees?.id || appraisal.employeeId,
+          department: appraisal.employees?.departments?.name || 'Unknown',
+          position: appraisal.employees?.position || 'Unknown',
+          period: appraisal.performance_plans?.planPeriod || String(appraisal.performance_plans?.planYear || ''),
+          overallRating: appraisal.overallRating,
+          status: listStatus,
+          supervisor: appraisal.users_performance_appraisals_supervisorIdTousers
+            ? `${appraisal.users_performance_appraisals_supervisorIdTousers.firstName || ''} ${appraisal.users_performance_appraisals_supervisorIdTousers.lastName || ''}`.trim()
+            : 'Unknown Supervisor',
+          dueDate: appraisal.performance_plans?.endDate?.toISOString().split('T')[0] || null,
+          lastUpdated: appraisal.updatedAt?.toISOString().split('T')[0] || appraisal.createdAt?.toISOString().split('T')[0] || null,
+          completionPercentage: calculateCompletionPercentage(appraisal)
+        }
+      }).filter((appraisal) => !status || status === 'all' || appraisal.status === status);
 
       return NextResponse.json({
         success: true,
@@ -154,11 +153,11 @@ function calculateCompletionPercentage(review: any): number {
   let completedFields = 0;
   let totalFields = 5; // Adjust based on your review structure
 
-  if (review.selfAssessment) completedFields++;
-  if (review.supervisorFeedback) completedFields++;
-  if (review.goals && review.goals.length > 0) completedFields++;
+  if (review.comments) completedFields++;
+  if (review.supervisorApprovedAt) completedFields++;
+  if (review.reviewerApprovedAt) completedFields++;
   if (review.overallRating) completedFields++;
-  if (review.status && review.status !== 'DRAFT') completedFields++;
+  if (review.status && review.status !== 'draft') completedFields++;
 
   return Math.round((completedFields / totalFields) * 100);
 }
@@ -176,12 +175,18 @@ export async function POST(request: NextRequest) {
       where: { id: session.user.id },
       select: {
         id: true,
-        role: true
+        role: true,
+        roles: true
       }
       });
     });
 
-    if (!user || !['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role)) {
+    if (!user || !canViewAllPerformance(user, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    })) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -191,14 +196,15 @@ export async function POST(request: NextRequest) {
       case 'bulk_approve':
         // Update multiple appraisals to approved status
         await executeQuery(async (prisma) => {
-          await prisma.performance_reviews.updateMany({
+          await prisma.performance_appraisals.updateMany({
           where: {
             id: {
               in: appraisalIds
             }
           },
           data: {
-            reviewStatus: 'COMPLETED',
+            status: 'approved',
+            approvedAt: new Date(),
             updatedAt: new Date()
           }
           });
@@ -211,14 +217,14 @@ export async function POST(request: NextRequest) {
 
       case 'bulk_status_update':
         await executeQuery(async (prisma) => {
-          await prisma.performance_reviews.updateMany({
+          await prisma.performance_appraisals.updateMany({
           where: {
             id: {
               in: appraisalIds
             }
           },
           data: {
-            reviewStatus: data.status.toUpperCase(),
+            status: String(data.status || 'draft').toLowerCase().replace(/-/g, '_'),
             updatedAt: new Date()
           }
           });

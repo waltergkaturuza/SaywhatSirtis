@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { safeQuery } from '@/lib/prisma'
+import { canViewAllPerformance } from '@/lib/hr/performance-access'
 
 export async function GET() {
   try {
@@ -20,7 +21,8 @@ export async function GET() {
         where: { email: session.user.email },
         select: { 
           id: true, 
-          role: true, 
+          role: true,
+          roles: true,
           email: true,
           firstName: true,
           lastName: true
@@ -36,7 +38,19 @@ export async function GET() {
     }
 
     // Check if user can view performance data
-    const canViewAll = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN' || currentUser.role === 'HR_MANAGER'
+    const canViewAll = canViewAllPerformance(currentUser, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    })
+    const ownScope = {
+      OR: [
+        { employees: { email: session.user.email } },
+        { supervisorId: currentUser.id },
+        { reviewerId: currentUser.id }
+      ]
+    }
 
     // Get performance statistics
     const [
@@ -51,11 +65,7 @@ export async function GET() {
       // Total reviews count
       safeQuery(async (prisma) => {
         return await prisma.performance_reviews.count(
-          canViewAll ? undefined : {
-            where: {
-              employees: { email: session.user.email }
-            }
-          }
+          canViewAll ? undefined : { where: ownScope }
         )
       }).catch(() => 0),
 
@@ -64,9 +74,7 @@ export async function GET() {
         return await prisma.performance_reviews.count({
           where: {
             reviewStatus: 'completed',
-            ...(canViewAll ? {} : {
-              employees: { email: session.user.email }
-            })
+            ...(canViewAll ? {} : ownScope)
           }
         })
       }).catch(() => 0),
@@ -76,9 +84,7 @@ export async function GET() {
         return await prisma.performance_reviews.count({
           where: {
             reviewStatus: { in: ['draft', 'submitted'] },
-            ...(canViewAll ? {} : {
-              employees: { email: session.user.email }
-            })
+            ...(canViewAll ? {} : ownScope)
           }
         })
       }).catch(() => 0),
@@ -89,9 +95,7 @@ export async function GET() {
           where: {
             reviewStatus: { in: ['draft', 'submitted'] },
             nextReviewDate: { lt: new Date() },
-            ...(canViewAll ? {} : {
-              employees: { email: session.user.email }
-            })
+            ...(canViewAll ? {} : ownScope)
           }
         })
       }).catch(() => 0),
@@ -101,9 +105,7 @@ export async function GET() {
         const result = await prisma.performance_reviews.aggregate({
           where: {
             overallRating: { not: null },
-            ...(canViewAll ? {} : {
-              employees: { email: session.user.email }
-            })
+            ...(canViewAll ? {} : ownScope)
           },
           _avg: { overallRating: true }
         })
@@ -113,9 +115,7 @@ export async function GET() {
       // Recent reviews with employee details
       safeQuery(async (prisma) => {
         return await prisma.performance_reviews.findMany({
-          where: canViewAll ? undefined : {
-            employees: { email: session.user.email }
-          },
+          where: canViewAll ? undefined : ownScope,
           include: {
             employees: {
               select: {
@@ -141,9 +141,7 @@ export async function GET() {
       // Performance goals/plans
       safeQuery(async (prisma) => {
         return await prisma.performance_plans.findMany({
-          where: canViewAll ? undefined : {
-            employees: { email: session.user.email }
-          },
+          where: canViewAll ? undefined : ownScope,
           include: {
             employees: {
               select: {
@@ -174,9 +172,7 @@ export async function GET() {
             gte: new Date(`${currentYear - 1}-01-01`),
             lt: new Date(`${currentYear}-01-01`)
           },
-          ...(canViewAll ? {} : {
-            employees: { email: session.user.email }
-          })
+          ...(canViewAll ? {} : ownScope)
         }
       })
     }).catch(() => 0)

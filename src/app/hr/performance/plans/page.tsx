@@ -4,6 +4,7 @@ import { ModulePage } from "@/components/layout/enhanced-layout"
 import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
+import { canViewAllPerformance } from "@/lib/hr/performance-access"
 import { useSearchParams, useRouter } from "next/navigation"
 import {
   ClipboardDocumentListIcon,
@@ -29,7 +30,7 @@ function PerformancePlansContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState("my-plans")
-  const [selectedYear, setSelectedYear] = useState("2024")
+  const [selectedYear, setSelectedYear] = useState(() => String(new Date().getFullYear()))
   const [showProgressModal, setShowProgressModal] = useState(false)
   const [selectedDeliverable, setSelectedDeliverable] = useState<any>(null)
   const [progressValue, setProgressValue] = useState(0)
@@ -97,6 +98,8 @@ function PerformancePlansContent() {
     completedPlans: number;
   }>>([])
   const [availableYears, setAvailableYears] = useState<number[]>([])
+  const [listDepartment, setListDepartment] = useState("all")
+  const [listStatus, setListStatus] = useState("all")
 
   // Get status filter for tab
   const getStatusForTab = (tab: string) => {
@@ -169,6 +172,9 @@ function PerformancePlansContent() {
 
       if (activeTab !== 'all-plans') {
         params.append('status', getStatusForTab(activeTab))
+      }
+      if (activeTab === 'my-plans' && canViewAllPlans) {
+        params.append('scope', 'mine')
       }
 
       const response = await fetch(`/api/hr/performance/plans?${params}`)
@@ -321,9 +327,11 @@ function PerformancePlansContent() {
   // Check user permissions for HR access
   const userPermissions = session?.user?.permissions || []
   const userRoles = session?.user?.roles || []
-  const isHRStaff = userPermissions.includes('hr.full_access')
   const isSecretariatMember = userPermissions.includes('hr.secretariat_access')
-  const canViewAllPlans = isHRStaff || userPermissions.includes('hr.view_all_performance')
+  const canViewAllPlans = canViewAllPerformance(
+    { roles: userRoles },
+    { user: { roles: userRoles, permissions: userPermissions } }
+  )
   
   // Check if user can delete (Admin or HR)
   const isAdmin = userRoles.some((r: string) => ['ADMIN', 'SYSTEM_ADMINISTRATOR', 'SUPERUSER', 'admin'].includes(r))
@@ -715,10 +723,16 @@ function PerformancePlansContent() {
     }
   }
 
+  const planListTabs = ["my-plans", "all-plans", "draft", "pending", "approved"]
   const tabs = [
     { id: "my-plans", name: "My Plans", icon: ClipboardDocumentListIcon },
     ...(canViewAllPlans ? [
-      { id: "all-plans", name: "All Plans", icon: ChartBarIcon },
+      { id: "all-plans", name: "All Plans", icon: ChartBarIcon }
+    ] : []),
+    { id: "draft", name: "Drafts", icon: DocumentTextIcon },
+    { id: "pending", name: "Pending Review", icon: ClockIcon },
+    { id: "approved", name: "Approved", icon: CheckCircleIcon },
+    ...(canViewAllPlans ? [
       { id: "notifications", name: "Notifications", icon: BellIcon }
     ] : []),
     { id: "deliverables", name: "Key Deliverables", icon: FlagIcon }
@@ -870,25 +884,32 @@ function PerformancePlansContent() {
           </div>
 
           <div className="p-6">
-            {(activeTab === "my-plans" || activeTab === "all-plans") && (
+            {planListTabs.includes(activeTab) && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold text-black">
-                    {activeTab === "my-plans" ? "My Performance Plans" : "All Performance Plans"} - {selectedYear}
+                    {activeTab === "my-plans" ? "My Performance Plans" : activeTab === "all-plans" ? "All Performance Plans" : tabs.find((tab) => tab.id === activeTab)?.name} - {selectedYear}
                   </h3>
                   <div className="flex space-x-2">
-                    <select className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-                      <option>All Departments</option>
-                      <option>Operations</option>
-                      <option>Healthcare</option>
-                      <option>Finance</option>
-                      <option>HR</option>
+                    <select
+                      value={listDepartment}
+                      onChange={(event) => setListDepartment(event.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      <option value="all">All Departments</option>
+                      {Array.from(new Set(performancePlans.map((plan) => plan.department).filter(Boolean))).map((department) => (
+                        <option key={department} value={department}>{department}</option>
+                      ))}
                     </select>
-                    <select className="px-3 py-2 border border-gray-300 rounded-md text-sm">
-                      <option>All Status</option>
-                      <option>Approved</option>
-                      <option>Pending Review</option>
-                      <option>Draft</option>
+                    <select
+                      value={listStatus}
+                      onChange={(event) => setListStatus(event.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="draft">Draft</option>
+                      <option value="pending">Pending Review</option>
+                      <option value="approved">Approved</option>
                     </select>
                   </div>
                 </div>
@@ -910,8 +931,22 @@ function PerformancePlansContent() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {performancePlans && Array.isArray(performancePlans) && performancePlans.length > 0 ? (
-                        performancePlans.map((plan) => (
+                      {performancePlans && Array.isArray(performancePlans) && performancePlans.filter((plan) => {
+                        if (listDepartment !== "all" && plan.department !== listDepartment) return false
+                        const workflow = plan.workflowStatus || plan.status
+                        if (listStatus === "draft") return workflow === "draft"
+                        if (listStatus === "pending") return ["submitted", "supervisor_review", "reviewer_assessment"].includes(workflow)
+                        if (listStatus === "approved") return ["approved", "supervisor_approved", "completed"].includes(workflow) || plan.status === "completed"
+                        return true
+                      }).length > 0 ? (
+                        performancePlans.filter((plan) => {
+                        if (listDepartment !== "all" && plan.department !== listDepartment) return false
+                        const workflow = plan.workflowStatus || plan.status
+                        if (listStatus === "draft") return workflow === "draft"
+                        if (listStatus === "pending") return ["submitted", "supervisor_review", "reviewer_assessment"].includes(workflow)
+                        if (listStatus === "approved") return ["approved", "supervisor_approved", "completed"].includes(workflow) || plan.status === "completed"
+                        return true
+                      }).map((plan) => (
                         <tr key={plan.id} className="hover:bg-orange-50 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
@@ -1002,7 +1037,7 @@ function PerformancePlansContent() {
                                 </Link>
                               )}
                               {/* Edit button - only show for drafts owned by current user or HR */}
-                              {plan.status === 'draft' && (plan.employeeId === session?.user?.id || userRole.canSeeAllPlans) && (
+                              {plan.status === 'draft' && (plan.isOwn || canViewAllPlans || userRole.canSeeAllPlans) && (
                                 <Link href={`/hr/performance/plans/create?planId=${plan.id}&edit=true`}>
                                   <button className="text-gray-600 hover:text-black transition-colors" title="Edit Performance Plan">
                                     <PencilIcon className="h-4 w-4" />

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { executeQuery } from '@/lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
+import { canViewAllPerformance } from '@/lib/hr/performance-access';
 
 export async function GET(request: Request) {
   try {
@@ -31,11 +32,16 @@ export async function GET(request: Request) {
       })
     });
 
-    if (!employee) {
+    const canViewAllPlans = canViewAllPerformance(user, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    });
+
+    if (!employee && !canViewAllPlans) {
       return NextResponse.json({ error: 'Employee record not found' }, { status: 404 });
     }
-
-    const canViewAllPlans = ['ADMIN', 'HR_MANAGER'].includes(user.role) || user.roles?.includes('hr');
 
     let whereClause: any = {};
 
@@ -50,13 +56,19 @@ export async function GET(request: Request) {
         const performancePlan = await executeQuery(async (prisma) => {
           return prisma.performance_plans.findUnique({
             where: { id: performancePlanId },
-            select: { employeeId: true, supervisorId: true }
+            select: { employeeId: true, supervisorId: true, reviewerId: true }
           })
         });
 
-        if (!performancePlan || 
-            (performancePlan.employeeId !== employee.id && 
-             performancePlan.supervisorId !== employee.id)) {
+        const canSeePlan = Boolean(performancePlan) && (
+          performancePlan?.employeeId === employee?.id ||
+          performancePlan?.supervisorId === user.id ||
+          performancePlan?.supervisorId === employee?.id ||
+          performancePlan?.reviewerId === user.id ||
+          performancePlan?.reviewerId === employee?.id
+        )
+
+        if (!canSeePlan) {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
       }
@@ -66,8 +78,9 @@ export async function GET(request: Request) {
         whereClause.performance_responsibilities = {
           performance_plans: {
             OR: [
-              { employeeId: employee.id },
-              { supervisorId: employee.id }
+              ...(employee ? [{ employeeId: employee.id }, { supervisorId: employee.id }, { reviewerId: employee.id }] : []),
+              { supervisorId: user.id },
+              { reviewerId: user.id }
             ]
           }
         };

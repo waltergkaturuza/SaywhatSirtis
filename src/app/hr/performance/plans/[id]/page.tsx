@@ -203,7 +203,7 @@ export default function ViewPlanPage() {
             }
             
             // Also check if user is HR/admin - they can review plans too
-            const isHR = session.user.roles?.some((r: string) => ['HR', 'ADMIN', 'HR_MANAGER', 'SUPERUSER', 'admin'].includes(r))
+            const isHR = session.user.roles?.some((r: string) => ['HR', 'ADMIN', 'HR_MANAGER', 'SUPERUSER', 'admin', 'SYSTEM_ADMINISTRATOR', 'SUPER_ADMIN'].includes(r))
             const hasHRPermission = session.user.permissions?.some((p: string) => ['hr.full_access', 'hr.view_all_performance'].includes(p))
             
             // HR/Admin users can act as supervisors/reviewers if needed

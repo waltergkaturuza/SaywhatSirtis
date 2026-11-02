@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { safeQuery } from '@/lib/prisma'
+import { canViewAllPerformance } from '@/lib/hr/performance-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,8 @@ export async function GET(request: NextRequest) {
         where: { email: session.user.email },
         select: { 
           id: true, 
-          role: true, 
+          role: true,
+          roles: true,
           email: true,
           firstName: true,
           lastName: true
@@ -30,7 +32,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user can view analytics data
-    const canViewAll = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN' || currentUser.role === 'HR_MANAGER'
+    const canViewAll = canViewAllPerformance(currentUser, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    })
 
     if (!canViewAll) {
       return NextResponse.json({

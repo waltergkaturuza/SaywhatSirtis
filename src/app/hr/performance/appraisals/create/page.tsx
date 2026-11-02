@@ -277,7 +277,7 @@ function CreateAppraisalContent() {
             const isReviewer = appraisalData.reviewerId === session.user.id
             
             // Also check if user is HR/admin (they can edit submitted appraisals)
-            const isHR = session.user.roles?.some((r: string) => ['HR', 'ADMIN', 'HR_MANAGER', 'SUPERUSER'].includes(r))
+            const isHR = session.user.roles?.some((r: string) => ['HR', 'ADMIN', 'HR_MANAGER', 'SUPERUSER', 'SYSTEM_ADMINISTRATOR', 'SUPER_ADMIN'].includes(r))
             
             // Check if user is the employee owner by comparing employeeId with user's employee record
             let isOwner = false

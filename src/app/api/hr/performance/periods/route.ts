@@ -31,6 +31,23 @@ export async function GET() {
       periodsResult = [];
     }
 
+    try {
+      const planYears = await prisma.performance_plans.findMany({
+        distinct: ['planYear'],
+        select: { planYear: true },
+        orderBy: { planYear: 'desc' }
+      })
+      for (const plan of planYears) {
+        if (!plan.planYear) continue
+        periodsResult.push({
+          reviewDate: new Date(plan.planYear, 0, 1),
+          reviewType: 'annual'
+        })
+      }
+    } catch (planError) {
+      console.error('Failed to load plan years for periods:', planError)
+    }
+
     // Generate period options from the database results
     const periods = periodsResult.map(review => {
       const date = new Date(review.reviewDate);

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { validatePerformanceAppraisal, formatValidationErrors } from '@/lib/validations/performance-validations';
+import { activityProgress, canViewAllPerformance } from '@/lib/hr/performance-access';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,72 +30,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if user can view all appraisals (HR staff)
-    const canViewAll = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role || '');
+    const canViewAll = canViewAllPerformance(user, session);
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const employeeId = searchParams.get('employeeId')
 
-    // Build where clause - filter by supervisor/reviewer if not HR
-    // Note: supervisorId and reviewerId in appraisals are user IDs, not employee IDs
-    const whereClause: any = {};
-    
+    // supervisorId and reviewerId are user IDs. Older rows may store an employee ID.
+    const filters: any[] = []
+    if (employeeId) filters.push({ employeeId })
+
     if (!canViewAll) {
-      // Get the current user's employee record to check if they supervise/review anyone
-      const userEmployee = user.employees;
-      
-      // Build OR clause for supervisor/reviewer filtering
-      // supervisorId and reviewerId in performance_appraisals are user IDs
+      const userEmployee = user.employees
       const permissionFilter: any[] = [
         { supervisorId: user.id },
         { reviewerId: user.id }
       ]
-      
-      // Also check if user is a supervisor/reviewer via employee relationships
-      // This handles cases where appraisals might have been created with employee IDs
+
       if (userEmployee) {
-        // Get employees supervised by this user's employee record
-        const supervisedEmployeeIds = await prisma.employees.findMany({
-          where: { supervisor_id: userEmployee.id },
-          select: { id: true }
-        }).then(emps => emps.map(e => e.id));
-        
-        // Get employees reviewed by this user's employee record
-        const reviewedEmployeeIds = await prisma.employees.findMany({
-          where: { reviewer_id: userEmployee.id },
-          select: { id: true }
-        }).then(emps => emps.map(e => e.id));
-        
-        // If user supervises/reviews employees, also filter by those employee IDs
-        if (supervisedEmployeeIds.length > 0 || reviewedEmployeeIds.length > 0) {
-          const employeeIdFilter: any[] = [];
-          if (supervisedEmployeeIds.length > 0) {
-            employeeIdFilter.push({ employeeId: { in: supervisedEmployeeIds } });
-          }
-          if (reviewedEmployeeIds.length > 0) {
-            employeeIdFilter.push({ employeeId: { in: reviewedEmployeeIds } });
-          }
-          if (employeeIdFilter.length > 0) {
-            permissionFilter.push(...employeeIdFilter);
-          }
-        }
+        permissionFilter.push(
+          { employeeId: userEmployee.id },
+          { supervisorId: userEmployee.id },
+          { reviewerId: userEmployee.id }
+        )
+
+        const [supervised, reviewed] = await Promise.all([
+          prisma.employees.findMany({
+            where: { supervisor_id: userEmployee.id },
+            select: { id: true }
+          }),
+          prisma.employees.findMany({
+            where: { reviewer_id: userEmployee.id },
+            select: { id: true }
+          })
+        ])
+
+        const supervisedIds = supervised.map((emp) => emp.id)
+        const reviewedIds = reviewed.map((emp) => emp.id)
+        if (supervisedIds.length > 0) permissionFilter.push({ employeeId: { in: supervisedIds } })
+        if (reviewedIds.length > 0) permissionFilter.push({ employeeId: { in: reviewedIds } })
       }
-      
-      // If employeeId is provided, add it to the filter
-      if (employeeId) {
-        // Filter by employeeId AND ensure user is supervisor/reviewer
-        whereClause.AND = [
-          { employeeId: employeeId },
-          { OR: permissionFilter }
-        ]
-      } else {
-        whereClause.OR = permissionFilter
-      }
-    } else if (employeeId) {
-      // HR can filter by employeeId directly
-      whereClause.employeeId = employeeId
+
+      filters.push({ OR: permissionFilter })
     }
+
+    const whereClause = filters.length > 0 ? { AND: filters } : {}
 
     console.log('🔍 GET /api/hr/performance/appraisals');
     console.log('   User:', session.user.email);
@@ -138,7 +118,14 @@ export async function GET(request: NextRequest) {
         performance_plans: {
           select: {
             planYear: true,
-            planPeriod: true
+            planPeriod: true,
+            performance_responsibilities: {
+              select: {
+                performance_activities: {
+                  select: { status: true }
+                }
+              }
+            }
           }
         }
       },
@@ -194,7 +181,8 @@ export async function GET(request: NextRequest) {
       period: appraisal.performance_plans?.planPeriod || `${appraisal.performance_plans?.planYear || new Date().getFullYear()}`,
       status: appraisal.status,
       overallRating: appraisal.overallRating || 0,
-      planProgress: 0, // TODO: Calculate from performance plan
+      planProgress: activityProgress(appraisal.performance_plans?.performance_responsibilities),
+      isOwn: Boolean(user.employees?.id) && appraisal.employeeId === user.employees?.id,
       nextAction: getNextAction(appraisal.status, appraisal.supervisorApprovedAt, appraisal.reviewerApprovedAt),
       canUserAct: false, // To be determined by frontend based on user role
       lastUpdated: appraisal.updatedAt?.toISOString() || appraisal.createdAt?.toISOString(),
@@ -224,7 +212,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       appraisals: transformedAppraisals,
-      statistics
+      statistics,
+      viewerEmployeeId: user.employees?.id || null
     });
 
   } catch (error) {

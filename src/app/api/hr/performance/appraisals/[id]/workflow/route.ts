@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { canViewAllPerformance } from '@/lib/hr/performance-access'
 
 export async function POST(
   request: NextRequest,
@@ -29,9 +30,19 @@ export async function POST(
       }
     })
 
-    if (!employee) {
+    const sessionRoles = (session.user as { roles?: string[] }).roles
+    const sessionPermissions = (session.user as { permissions?: string[] }).permissions
+    const actorIsHR = canViewAllPerformance(
+      { roles: sessionRoles },
+      { user: { roles: sessionRoles, permissions: sessionPermissions } }
+    )
+    if (!employee && !actorIsHR) {
       return NextResponse.json({ error: 'Employee record not found' }, { status: 404 })
     }
+    const actorName = employee
+      ? `${employee.firstName} ${employee.lastName}`
+      : ((session.user as { name?: string; email?: string }).name || session.user.email || 'HR')
+    const actorId = employee?.id || session.user.id
 
     // Get the performance appraisal
     const appraisal = await prisma.performance_appraisals.findUnique({
@@ -87,7 +98,7 @@ export async function POST(
     }
 
     // Check if current user is the employee themselves (cannot review own appraisal)
-    const isAppraisalOwner = appraisal.employeeId === employee.id
+    const isAppraisalOwner = Boolean(employee) && appraisal.employeeId === employee?.id
     
     const isHR = session.user.roles?.some(r => [
       'HR',
@@ -113,7 +124,7 @@ export async function POST(
 
     console.log('Workflow permission check:', {
       userId: userId,
-      employeeId: employee.id,
+      employeeId: actorId,
       appraisalEmployeeId: appraisal.employeeId,
       isAppraisalOwner,
       appraisalSupervisorId: appraisal.supervisorId,
@@ -168,8 +179,8 @@ export async function POST(
     // Create new comment entry
     const newComment = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: `${employee.firstName} ${employee.lastName}`,
-      userId: employee.id,
+      name: actorName,
+      userId: actorId,
       comment: comment || '',
       action,
       timestamp: new Date().toISOString()

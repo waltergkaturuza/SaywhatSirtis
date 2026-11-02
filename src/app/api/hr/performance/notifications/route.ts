@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { canViewAllPerformance } from '@/lib/hr/performance-access';
 
 export async function GET() {
   try {
@@ -18,6 +19,7 @@ export async function GET() {
         id: true,
         email: true,
         role: true,
+        roles: true,
         department: true,
         isActive: true
       }
@@ -27,7 +29,12 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const canViewAllAppraisals = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role);
+    const canViewAllAppraisals = canViewAllPerformance(user, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    });
     const now = new Date();
 
     // Calculate date ranges
@@ -98,11 +105,19 @@ export async function GET() {
           completedThisWeek: 0
         };
       } else {
+        const visibleAppraisal = {
+          OR: [
+            { employeeId: employee.id },
+            { supervisorId: user.id },
+            { reviewerId: user.id },
+            { supervisorId: employee.id },
+            { reviewerId: employee.id }
+          ]
+        }
         const [dueThisWeek, progressUpdates, completedThisWeek] = await Promise.all([
-          // Employee's appraisals submitted this week
           prisma.performance_appraisals.count({
             where: {
-              employeeId: employee.id,
+              ...visibleAppraisal,
               submittedAt: {
                 gte: startOfWeek,
                 lte: endOfWeek
@@ -111,10 +126,9 @@ export async function GET() {
             }
           }),
           
-          // Employee's draft appraisals updated this week
           prisma.performance_appraisals.count({
             where: {
-              employeeId: employee.id,
+              ...visibleAppraisal,
               updatedAt: {
                 gte: startOfWeek,
                 lte: endOfWeek
@@ -123,10 +137,9 @@ export async function GET() {
             }
           }),
           
-          // Employee's completed appraisals this week
           prisma.performance_appraisals.count({
             where: {
-              employeeId: employee.id,
+              ...visibleAppraisal,
               approvedAt: {
                 gte: startOfWeek,
                 lte: endOfWeek

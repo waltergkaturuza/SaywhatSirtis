@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { activityProgress, canViewAllPerformance, planMatchesListStatus } from '@/lib/hr/performance-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,83 +29,61 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if user can view all plans (HR staff)
-    const canViewAll = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role || '');
+    // HR, system administrators, and users with HR performance access see every plan.
+    const canViewAll = canViewAllPerformance(user, session);
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const year = searchParams.get('year')
     const status = searchParams.get('status')
     const employeeId = searchParams.get('employeeId')
+    const scope = searchParams.get('scope')
 
-    // Build where clause
-    const whereClause: any = {}
-    
+    const filters: any[] = []
+
     if (year && year !== 'all') {
-      whereClause.planYear = parseInt(year)
-    }
-    
-    if (status && status !== 'all') {
-      whereClause.status = status
+      const planYear = parseInt(year, 10)
+      if (!Number.isNaN(planYear)) filters.push({ planYear })
     }
 
-    // Filter by supervisor/reviewer if not HR
-    // Note: supervisorId and reviewerId in performance_plans are user IDs, not employee IDs
+    if (employeeId) filters.push({ employeeId })
+
+    // supervisorId and reviewerId are user IDs. Older rows may store an employee ID.
     if (!canViewAll) {
-      // Get the current user's employee record to check if they supervise/review anyone
-      const userEmployee = user.employees;
-      
-      // Build OR clause for supervisor/reviewer filtering
-      // supervisorId and reviewerId in performance_plans are user IDs
+      const userEmployee = user.employees
       const permissionFilter: any[] = [
         { supervisorId: user.id },
         { reviewerId: user.id }
       ]
-      
-      // Also check if user is a supervisor/reviewer via employee relationships
-      // This handles cases where plans might have been created with employee IDs
+
       if (userEmployee) {
-        // Get employees supervised by this user's employee record
-        const supervisedEmployeeIds = await prisma.employees.findMany({
-          where: { supervisor_id: userEmployee.id },
-          select: { id: true }
-        }).then(emps => emps.map(e => e.id));
-        
-        // Get employees reviewed by this user's employee record
-        const reviewedEmployeeIds = await prisma.employees.findMany({
-          where: { reviewer_id: userEmployee.id },
-          select: { id: true }
-        }).then(emps => emps.map(e => e.id));
-        
-        // If user supervises/reviews employees, also filter by those employee IDs
-        if (supervisedEmployeeIds.length > 0 || reviewedEmployeeIds.length > 0) {
-          const employeeIdFilter: any[] = [];
-          if (supervisedEmployeeIds.length > 0) {
-            employeeIdFilter.push({ employeeId: { in: supervisedEmployeeIds } });
-          }
-          if (reviewedEmployeeIds.length > 0) {
-            employeeIdFilter.push({ employeeId: { in: reviewedEmployeeIds } });
-          }
-          if (employeeIdFilter.length > 0) {
-            permissionFilter.push(...employeeIdFilter);
-          }
-        }
+        permissionFilter.push(
+          { employeeId: userEmployee.id },
+          { supervisorId: userEmployee.id },
+          { reviewerId: userEmployee.id }
+        )
+
+        const [supervised, reviewed] = await Promise.all([
+          prisma.employees.findMany({
+            where: { supervisor_id: userEmployee.id },
+            select: { id: true }
+          }),
+          prisma.employees.findMany({
+            where: { reviewer_id: userEmployee.id },
+            select: { id: true }
+          })
+        ])
+
+        const supervisedIds = supervised.map((emp) => emp.id)
+        const reviewedIds = reviewed.map((emp) => emp.id)
+        if (supervisedIds.length > 0) permissionFilter.push({ employeeId: { in: supervisedIds } })
+        if (reviewedIds.length > 0) permissionFilter.push({ employeeId: { in: reviewedIds } })
       }
-      
-      // If employeeId is provided, add it to the filter
-      if (employeeId) {
-        // Filter by employeeId AND ensure user is supervisor/reviewer
-        whereClause.AND = [
-          { employeeId: employeeId },
-          { OR: permissionFilter }
-        ]
-      } else {
-        whereClause.OR = permissionFilter
-      }
-    } else if (employeeId) {
-      // HR can filter by employeeId directly
-      whereClause.employeeId = employeeId
+
+      filters.push({ OR: permissionFilter })
     }
+
+    const whereClause = filters.length > 0 ? { AND: filters } : {}
 
     console.log('🔍 GET /api/hr/performance/plans');
     console.log('   User:', session.user.email);
@@ -150,7 +129,10 @@ export async function GET(request: NextRequest) {
             id: true,
             title: true,
             description: true,
-            weight: true
+            weight: true,
+            performance_activities: {
+              select: { status: true }
+            }
           }
         }
       },
@@ -170,43 +152,71 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Calculate statistics
+    const listedPlans = plans.filter((plan) => {
+      if (!planMatchesListStatus(plan, status)) return false
+      if (scope === 'mine') return Boolean(user.employees?.id) && plan.employeeId === user.employees?.id
+      return true
+    })
+
+    const progressValues = plans.map((plan) => activityProgress(plan.performance_responsibilities))
+    const approvedCount = plans.filter((plan) => plan.workflowStatus === 'approved' || plan.status === 'completed').length
+    const pendingReview = plans.filter((plan) => ['submitted', 'supervisor_review', 'reviewer_assessment'].includes(plan.workflowStatus || '')).length
+
+    // Summary cards stay on the full year the user can see. Tabs filter the table only.
     const statistics = {
       total: plans.length,
-      draft: plans.filter(p => p.status === 'draft').length,
-      supervisorReview: plans.filter(p => p.workflowStatus === 'supervisor_review').length,
+      totalPlans: plans.length,
+      draft: plans.filter(p => p.status === 'draft' || p.workflowStatus === 'draft').length,
+      supervisorReview: plans.filter(p => p.workflowStatus === 'supervisor_review' || p.workflowStatus === 'submitted').length,
       supervisorApproved: plans.filter(p => p.workflowStatus === 'supervisor_approved').length,
       reviewerReview: plans.filter(p => p.workflowStatus === 'reviewer_assessment').length,
       reviewerApproved: plans.filter(p => p.workflowStatus === 'approved').length,
-      completed: plans.filter(p => p.status === 'completed').length,
-      pendingReview: plans.filter(p => ['submitted', 'supervisor_review', 'reviewer_assessment'].includes(p.workflowStatus || '')).length,
-      approved: plans.filter(p => p.workflowStatus === 'approved').length
+      completed: plans.filter(p => p.status === 'completed' || p.workflowStatus === 'approved').length,
+      pendingReview,
+      pendingApproval: pendingReview,
+      approved: approvedCount,
+      approvalRate: plans.length > 0 ? Math.round((approvedCount / plans.length) * 100) : 0,
+      avgProgress: progressValues.length > 0
+        ? Math.round(progressValues.reduce((sum, value) => sum + value, 0) / progressValues.length)
+        : 0
     };
 
     // Helper function to determine next action based on workflow status
-    const getNextAction = (workflowStatus: string | null) => {
+    const getNextAction = (workflowStatus: string | null, reviewerId?: string | null) => {
       switch (workflowStatus) {
         case 'draft':
-          return 'Submit for Review';
+        case 'revision_requested':
+          return 'Submit for Supervisor Review';
         case 'submitted':
         case 'supervisor_review':
-          return 'Supervisor Review Pending';
+          return 'Supervisor Approval Required';
         case 'supervisor_approved':
+          return reviewerId ? 'Reviewer Approval Required' : 'Assign Reviewer';
         case 'reviewer_assessment':
-          return 'Final Review Pending';
+          return 'Reviewer Approval Required';
         case 'approved':
-          return 'Approved';
-        case 'revision_requested':
-          return 'Revisions Required';
+          return 'Ready for Final Completion';
         default:
           return 'Pending';
       }
     };
 
-    // Transform plans for frontend
-    const transformedPlans = plans.map(plan => ({
+    const transformedPlans = listedPlans.map(plan => {
+      const isOwner = Boolean(user.employees?.id) && plan.employeeId === user.employees?.id
+      const isSupervisor = plan.supervisorId === user.id || plan.supervisorId === user.employees?.id
+      const isReviewer = plan.reviewerId === user.id || plan.reviewerId === user.employees?.id
+      const workflow = plan.workflowStatus || plan.status || 'draft'
+      const canUserAct = (
+        ((workflow === 'draft' || workflow === 'revision_requested') && (isOwner || canViewAll)) ||
+        ((workflow === 'submitted' || workflow === 'supervisor_review') && (isSupervisor || (canViewAll && !isOwner))) ||
+        ((workflow === 'supervisor_approved' || workflow === 'reviewer_assessment') && (isReviewer || (canViewAll && !isOwner))) ||
+        (workflow === 'approved' && (isReviewer || isOwner || canViewAll))
+      )
+
+      return {
       id: plan.id,
       employeeId: plan.employees?.id || '',
+      isOwn: isOwner,
       employeeName: `${plan.employees?.firstName || ''} ${plan.employees?.lastName || ''}`.trim(),
       email: plan.employees?.email || '',
       position: plan.employees?.position || '',
@@ -218,20 +228,33 @@ export async function GET(request: NextRequest) {
       planPeriod: plan.planPeriod,
       status: plan.status,
       workflowStatus: plan.workflowStatus || 'draft',
-      nextAction: getNextAction(plan.workflowStatus || 'draft'),
-      canUserAct: false, // To be determined by frontend based on user role
+      nextAction: getNextAction(plan.workflowStatus || plan.status || 'draft', plan.reviewerId),
+      canUserAct,
       startDate: plan.startDate?.toISOString(),
       endDate: plan.endDate?.toISOString(),
       createdAt: plan.createdAt?.toISOString(),
       updatedAt: plan.updatedAt?.toISOString(),
       lastUpdated: plan.updatedAt?.toISOString(),
-      responsibilities: plan.performance_responsibilities || []
-    }));
+      progress: activityProgress(plan.performance_responsibilities),
+      responsibilities: (plan.performance_responsibilities || []).map(({ performance_activities, ...responsibility }) => responsibility)
+    }
+    });
 
     return NextResponse.json({
       success: true,
       plans: transformedPlans,
-      statistics
+      statistics,
+      viewerEmployeeId: user.employees?.id || null,
+      userRole: {
+        isHR: canViewAll,
+        isSupervisor: Boolean(user.employees?.is_supervisor) || canViewAll,
+        isReviewer: Boolean(user.employees?.is_reviewer) || canViewAll,
+        canCreatePlans: true,
+        canApprovePlans: canViewAll || Boolean(user.employees?.is_supervisor),
+        canReviewPlans: canViewAll || Boolean(user.employees?.is_reviewer),
+        canSeeAllPlans: canViewAll,
+        canAssignReviewers: canViewAll || Boolean(user.employees?.is_supervisor)
+      }
     });
 
   } catch (error) {

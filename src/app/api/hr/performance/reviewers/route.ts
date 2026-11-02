@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { executeQuery } from '@/lib/prisma'
+import { canViewAllPerformance } from '@/lib/hr/performance-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,20 +22,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const isHR = user.roles?.includes('hr') || user.role === 'ADMIN'
-    const isSupervisor = user.roles?.includes('supervisor')
+    const isHR = canViewAllPerformance(user, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    })
+    const supervisorEmployee = await executeQuery(async (prisma) => {
+      return prisma.employees.findFirst({
+        where: { userId: user.id },
+        select: { id: true, is_supervisor: true }
+      })
+    })
+    const isSupervisor = Boolean(supervisorEmployee?.is_supervisor) || (user.roles || []).includes('supervisor')
 
-    // Only supervisors and HR can assign reviewers
     if (!isHR && !isSupervisor) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Get all users with reviewer role who are active
+    const reviewerEmployees = await executeQuery(async (prisma) => {
+      return prisma.employees.findMany({
+        where: {
+          is_reviewer: true,
+          userId: { not: null },
+          status: { in: ['ACTIVE', 'active', 'Active'] }
+        },
+        select: { userId: true }
+      })
+    })
+    const reviewerUserIds = reviewerEmployees.map((reviewer) => reviewer.userId).filter((id): id is string => Boolean(id))
+
+    // Reviewers are employees flagged as reviewers, plus users explicitly given that role.
     const reviewers = await executeQuery(async (prisma) => {
       return prisma.users.findMany({
         where: {
           isActive: true,
-          OR: [ { roles: { has: 'reviewer' } }, { role: 'ADMIN' } ]
+          OR: [
+            { roles: { has: 'reviewer' } },
+            { role: 'ADMIN' },
+            ...(reviewerUserIds.length > 0 ? [{ id: { in: reviewerUserIds } }] : [])
+          ]
         },
         select: {
           id: true,
@@ -57,7 +84,7 @@ export async function GET(request: NextRequest) {
         by: ['reviewerId'],
         where: {
           reviewerId: { in: reviewerIds },
-          status: { in: ['reviewer-review', 'reviewer-approved'] }
+          workflowStatus: { in: ['reviewer_assessment', 'supervisor_approved', 'approved'] }
         },
         _count: { reviewerId: true }
       })

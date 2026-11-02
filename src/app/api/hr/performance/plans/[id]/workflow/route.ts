@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { canViewAllPerformance } from '@/lib/hr/performance-access'
+
+function readWorkflowComments(value: unknown) {
+  if (!value) return { supervisor: [] as unknown[], reviewer: [] as unknown[] }
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value
+    if (parsed && typeof parsed === 'object') {
+      const comments = parsed as { supervisor?: unknown; reviewer?: unknown }
+      return {
+        supervisor: Array.isArray(comments.supervisor) ? comments.supervisor : [],
+        reviewer: Array.isArray(comments.reviewer) ? comments.reviewer : []
+      }
+    }
+  } catch {
+    return { supervisor: [], reviewer: [] }
+  }
+  return { supervisor: [], reviewer: [] }
+}
 
 export async function POST(
   request: NextRequest,
@@ -15,7 +33,7 @@ export async function POST(
 
     const { id: planId } = await params
     const body = await request.json()
-    const { action, comment, role } = body // action: 'comment' | 'request_changes' | 'approve' | 'final_approve'
+    let { action, comment, role, reviewerId } = body
 
     // Get the current user's employee record
     const employee = await prisma.employees.findFirst({
@@ -29,8 +47,26 @@ export async function POST(
       }
     })
 
-    if (!employee) {
+    const sessionRoles = (session.user as { roles?: string[] }).roles
+    const sessionPermissions = (session.user as { permissions?: string[] }).permissions
+    const isHR = canViewAllPerformance(
+      { roles: sessionRoles },
+      { user: { roles: sessionRoles, permissions: sessionPermissions } }
+    )
+
+    if (!employee && !isHR) {
       return NextResponse.json({ error: 'Employee record not found' }, { status: 404 })
+    }
+
+    if (action === 'supervisor-approve') {
+      action = 'approve'
+      role = role || 'supervisor'
+    } else if (action === 'reviewer-approve') {
+      action = 'final_approve'
+      role = role || 'reviewer'
+    } else if (action === 'complete') {
+      action = 'complete'
+      role = role || 'reviewer'
     }
 
     // Get the performance plan
@@ -55,8 +91,8 @@ export async function POST(
     // Verify permissions
     // Note: supervisorId and reviewerId are USER IDs, not employee IDs
     const userId = session.user.id;
-    let isSupervisor = plan.supervisorId === userId;
-    let isReviewer = plan.reviewerId === userId;
+    let isSupervisor = plan.supervisorId === userId || plan.supervisorId === employee?.id;
+    let isReviewer = plan.reviewerId === userId || plan.reviewerId === employee?.id;
     
     // Also check if user is supervisor via employee relationship
     // This handles cases where the plan's supervisorId might not match but the employee's supervisor does
@@ -96,53 +132,41 @@ export async function POST(
     }
     
     // Check if current user is the employee themselves (cannot review own plan)
-    const isPlanOwner = plan.employeeId === employee.id
+    const isPlanOwner = Boolean(employee) && plan.employeeId === employee?.id
     
     console.log('Workflow permission check:', {
       userId: userId,
       planSupervisorId: plan.supervisorId,
       planReviewerId: plan.reviewerId,
       planEmployeeId: plan.employeeId,
-      employeeId: employee.id,
+      employeeId: employee?.id || null,
       isPlanOwner,
       isSupervisor,
       isReviewer
     });
     
-    const isHR = session.user.roles?.some(r => [
-      'HR',
-      'admin',
-      'SYSTEM_ADMINISTRATOR',
-      'SUPERUSER',
-      'ADVANCE_USER_1',
-      'ADVANCE_USER_2',
-      'HR_MANAGER',
-      'ADMIN'
-    ].includes(r))
-    const hasHRPermission = session.user.permissions?.some(p => [
-      'hr.full_access',
-      'hr.view_all_performance'
-    ].includes(p))
-    
-    // HR/Admin users can act as supervisors/reviewers if needed, BUT NOT for their own plans
-    // Employees cannot review their own plans, even if they have HR permissions
-    const canActAsSupervisor = !isPlanOwner && (isSupervisor || (isHR && !isPlanOwner) || (hasHRPermission && !isPlanOwner))
-    const canActAsReviewer = !isPlanOwner && (isReviewer || (isHR && !isPlanOwner) || (hasHRPermission && !isPlanOwner))
-    
-    const canAct = (role === 'supervisor' && canActAsSupervisor) || (role === 'reviewer' && canActAsReviewer)
+    const canActAsSupervisor = !isPlanOwner && (isSupervisor || isHR)
+    const canActAsReviewer = !isPlanOwner && (isReviewer || isHR)
+    const canSubmit = action === 'submit' && (isPlanOwner || isHR)
+    const canAssignReviewer = action === 'assign-reviewer' && Boolean(reviewerId) && canActAsSupervisor
+    const canComplete = action === 'complete' && (plan.workflowStatus === 'approved' || plan.status === 'approved') && (canActAsReviewer || isPlanOwner || isHR)
+
+    const canAct = canSubmit || canAssignReviewer || canComplete || (role === 'supervisor' && canActAsSupervisor) || (role === 'reviewer' && canActAsReviewer)
 
     if (!canAct) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
 
-    // Get current comments
-    const currentComments = plan.comments ? JSON.parse(plan.comments as string) : { supervisor: [], reviewer: [] }
+    const currentComments = readWorkflowComments(plan.comments)
+    const actorName = employee
+      ? `${employee.firstName} ${employee.lastName}`
+      : ((session.user as { name?: string; email?: string }).name || session.user.email || 'HR')
 
     // Create new comment entry
     const newComment = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: `${employee.firstName} ${employee.lastName}`,
-      userId: employee.id,
+      name: actorName,
+      userId: employee?.id || userId,
       comment: comment || '',
       action,
       timestamp: new Date().toISOString()
@@ -197,6 +221,16 @@ export async function POST(
       newWorkflowStatus = 'approved'
       reviewerApproval = 'approved'
       reviewerApprovedAt = new Date()
+    } else if (action === 'submit') {
+      newStatus = 'submitted'
+      newWorkflowStatus = 'supervisor_review'
+    } else if (action === 'assign-reviewer') {
+      newWorkflowStatus = 'reviewer_assessment'
+    } else if (action === 'complete') {
+      newStatus = 'completed'
+      newWorkflowStatus = 'completed'
+    } else if (!['comment', 'request_changes', 'approve', 'final_approve'].includes(action)) {
+      return NextResponse.json({ error: 'Unknown workflow action' }, { status: 400 })
     }
 
     // Update the plan
@@ -205,7 +239,8 @@ export async function POST(
       data: {
         status: newStatus,
         workflowStatus: newWorkflowStatus,
-        comments: JSON.stringify(currentComments),
+        ...(action === 'assign-reviewer' && reviewerId ? { reviewerId } : {}),
+        comments: currentComments,
         supervisorApproval: supervisorApproval,
         reviewerApproval: reviewerApproval,
         supervisorApprovedAt: supervisorApprovedAt,
@@ -222,7 +257,7 @@ export async function POST(
       plan: {
         id: updatedPlan.id,
         status: updatedPlan.status,
-        comments: JSON.parse(updatedPlan.comments as string)
+        comments: readWorkflowComments(updatedPlan.comments)
       },
       message: `Successfully ${action.replace('_', ' ')}`
     })
@@ -266,7 +301,7 @@ export async function GET(
       return NextResponse.json({ error: 'Performance plan not found' }, { status: 404 })
     }
 
-    const comments = plan.comments ? JSON.parse(plan.comments as string) : { supervisor: [], reviewer: [] }
+    const comments = readWorkflowComments(plan.comments)
 
     return NextResponse.json({
       success: true,

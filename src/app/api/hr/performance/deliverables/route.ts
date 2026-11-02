@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { canViewAllPerformance } from '@/lib/hr/performance-access';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,8 +11,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
+    const user = await prisma.users.findUnique({
+      where: { id: session.user.id },
+      include: { employees: { select: { id: true } } }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const canViewAll = canViewAllPerformance(user, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    })
+
+    const accessWhere = canViewAll ? {} : {
+      performance_plans: {
+        OR: [
+          { supervisorId: user.id },
+          { reviewerId: user.id },
+          ...(user.employees ? [
+            { employeeId: user.employees.id },
+            { supervisorId: user.employees.id },
+            { reviewerId: user.employees.id }
+          ] : [])
+        ]
+      }
+    }
+
     // Get performance plan deliverables (responsibilities) with plan and employee details
     const responsibilities = await prisma.performance_responsibilities.findMany({
+      where: accessWhere,
       include: {
         performance_plans: {
           include: {

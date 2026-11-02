@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { executeQuery } from '@/lib/prisma'
 import { createSuccessResponse, createErrorResponse, HttpStatus, ErrorCodes } from '@/lib/api-utils'
+import { canViewAllPerformance } from '@/lib/hr/performance-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
           id: true,
           email: true,
           role: true,
+          roles: true,
           department: true,
           isActive: true
         }
@@ -85,7 +87,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(response)
     }
 
-    const canViewAllAppraisals = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role)
+    const canViewAllAppraisals = canViewAllPerformance(user, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    })
     const now = new Date()
 
     // Get employee record to check supervisor/reviewer status
@@ -119,6 +126,11 @@ export async function GET(request: NextRequest) {
       
       // Also check if user is a supervisor/reviewer via employee relationships
       if (employee) {
+        permissionFilter.push(
+          { employeeId: employee.id },
+          { supervisorId: employee.id },
+          { reviewerId: employee.id }
+        )
         // Get employees supervised by this user's employee record
         const supervisedEmployeeIds = await executeQuery(async (prisma) => {
           const emps = await prisma.employees.findMany({
@@ -166,8 +178,10 @@ export async function GET(request: NextRequest) {
     // Add period filter
     if (period && period !== 'all') {
       const periodDate = parsePeriod(period)
-      if (periodDate) {
-        whereClause.reviewDate = {
+      if (periodDate?.year && period.startsWith('Annual')) {
+        whereClause.performance_plans = { planYear: periodDate.year }
+      } else if (periodDate) {
+        whereClause.createdAt = {
           gte: periodDate.start,
           lte: periodDate.end
         }
@@ -499,29 +513,31 @@ async function getImprovementAreas(baseWhereClause: any) {
 }
 
 // Helper function to parse period string
-function parsePeriod(period: string): { start: Date; end: Date } | null {
+function parsePeriod(period: string): { start: Date; end: Date; year: number } | null {
   const currentYear = new Date().getFullYear()
-  
+  const parts = period.trim().split(/[\s-]+/)
+
   if (period.startsWith('Q')) {
-    const [quarter, year] = period.split(' ').map((p, i) => 
-      i === 0 ? parseInt(p.replace('Q', '')) : parseInt(p)
-    )
-    const actualYear = year || currentYear
-    
-    const quarterStart = new Date(actualYear, (quarter - 1) * 3, 1)
-    const quarterEnd = new Date(actualYear, quarter * 3, 0, 23, 59, 59, 999)
-    
-    return { start: quarterStart, end: quarterEnd }
+    const quarter = parseInt(parts[0].replace('Q', ''))
+    const actualYear = parseInt(parts[1]) || currentYear
+    if (!quarter || quarter < 1 || quarter > 4) return null
+
+    return {
+      year: actualYear,
+      start: new Date(actualYear, (quarter - 1) * 3, 1),
+      end: new Date(actualYear, quarter * 3, 0, 23, 59, 59, 999)
+    }
   }
-  
+
   if (period.startsWith('Annual')) {
-    const year = parseInt(period.split(' ')[1]) || currentYear
-    const yearStart = new Date(year, 0, 1)
-    const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999)
-    
-    return { start: yearStart, end: yearEnd }
+    const year = parseInt(parts[1]) || currentYear
+    return {
+      year,
+      start: new Date(year, 0, 1),
+      end: new Date(year, 11, 31, 23, 59, 59, 999)
+    }
   }
-  
+
   return null
 }
 

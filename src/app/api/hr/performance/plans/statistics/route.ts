@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { executeQuery } from '@/lib/prisma'
+import { canViewAllPerformance } from '@/lib/hr/performance-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,9 +15,15 @@ export async function GET(request: NextRequest) {
     const year = searchParams.get('year') || new Date().getFullYear().toString()
 
     // Check user permissions
-    const userPermissions = session.user.permissions || []
-    const canViewAll = userPermissions.includes('hr.full_access') || 
-                      userPermissions.includes('hr.view_all_performance')
+    const canViewAll = canViewAllPerformance(
+      { roles: (session.user as { roles?: string[] }).roles },
+      {
+        user: {
+          roles: (session.user as { roles?: string[] }).roles,
+          permissions: (session.user as { permissions?: string[] }).permissions
+        }
+      }
+    )
 
     // Build where clause based on user permissions
     let whereClause: any = {

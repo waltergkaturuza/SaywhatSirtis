@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { canViewAllPerformance } from '@/lib/hr/performance-access'
 
 // GET a single performance plan by ID
 export async function GET(
@@ -67,9 +68,17 @@ export async function GET(
     })
 
     const isOwnPlan = plan.employeeId === employeeRecord?.id
-    const isHR = session.user.roles?.some(r => ['HR', 'admin', 'HR_MANAGER', 'ADMIN'].includes(r))
-    const isSupervisor = plan.supervisorId === session.user.id
-    const isReviewer = plan.reviewerId === session.user.id
+    const isHR = canViewAllPerformance(
+      { roles: (session.user as { roles?: string[] }).roles },
+      {
+        user: {
+          roles: (session.user as { roles?: string[] }).roles,
+          permissions: (session.user as { permissions?: string[] }).permissions
+        }
+      }
+    )
+    const isSupervisor = plan.supervisorId === session.user.id || plan.supervisorId === employeeRecord?.id
+    const isReviewer = plan.reviewerId === session.user.id || plan.reviewerId === employeeRecord?.id
 
     if (!isOwnPlan && !isHR && !isSupervisor && !isReviewer) {
       console.log('Permission denied for user:', session.user.email, 'user.id:', session.user.id)
@@ -301,10 +310,17 @@ export async function PUT(
     })
 
     const isOwnPlan = existingPlan.employeeId === employeeRecord?.id
-    const isHR = session.user.roles?.some(r => ['HR', 'admin'].includes(r))
-    // Note: supervisorId and reviewerId are user IDs, not employee IDs
-    const isSupervisor = existingPlan.supervisorId === session.user.id
-    const isReviewer = existingPlan.reviewerId === session.user.id
+    const isHR = canViewAllPerformance(
+      { roles: (session.user as { roles?: string[] }).roles },
+      {
+        user: {
+          roles: (session.user as { roles?: string[] }).roles,
+          permissions: (session.user as { permissions?: string[] }).permissions
+        }
+      }
+    )
+    const isSupervisor = existingPlan.supervisorId === session.user.id || existingPlan.supervisorId === employeeRecord?.id
+    const isReviewer = existingPlan.reviewerId === session.user.id || existingPlan.reviewerId === employeeRecord?.id
 
     if (!isOwnPlan && !isHR && !isSupervisor && !isReviewer) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })

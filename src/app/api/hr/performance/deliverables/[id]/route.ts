@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { canViewAllPerformance } from '@/lib/hr/performance-access';
 
 // GET: Fetch a single deliverable (performance responsibility)
 export async function GET(
@@ -152,7 +153,12 @@ export async function PUT(
     const isEmployee = plan.employees?.userId === user.id;
     const isSupervisor = plan.supervisorId === user.id;
     const isReviewer = plan.reviewerId === user.id;
-    const isHR = ['ADMIN', 'HR_MANAGER', 'HR'].includes(user.role || '');
+    const isHR = canViewAllPerformance(user, {
+      user: {
+        roles: (session.user as { roles?: string[] }).roles,
+        permissions: (session.user as { permissions?: string[] }).permissions
+      }
+    });
 
     if (!isEmployee && !isSupervisor && !isReviewer && !isHR) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
