@@ -4,6 +4,31 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sanitizeInput } from '@/lib/api-utils'
 
+function toStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean)
+  }
+  if (typeof value === 'string' && value.trim()) {
+    return value.split(',').map((item) => item.trim()).filter(Boolean)
+  }
+  return []
+}
+
+function toValidDate(value: unknown): Date | null | undefined {
+  if (value === undefined) return undefined
+  if (value === null || value === '') return null
+  const date = new Date(String(value))
+  if (Number.isNaN(date.getTime())) return undefined
+  return date
+}
+
+function optionalId(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed || trimmed === 'no-supervisor' || trimmed === 'no-reviewer') return null
+  return trimmed
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -130,7 +155,7 @@ export async function GET(
       
       // Employment Information
       position: employee.position,
-      department: employee.department,
+      department: employee.department || employee.departments?.name || null,
       departmentId: employee.departmentId,
       employmentType: employee.employmentType,
       startDate: employee.startDate,
@@ -211,7 +236,18 @@ export async function GET(
         jobTitle: employee.job_descriptions.jobTitle,
         location: employee.job_descriptions.location,
         jobSummary: employee.job_descriptions.jobSummary,
-        keyResponsibilities: employee.job_descriptions.keyResponsibilities,
+        keyResponsibilities: Array.isArray(employee.job_descriptions.keyResponsibilities)
+          ? employee.job_descriptions.keyResponsibilities
+          : typeof employee.job_descriptions.keyResponsibilities === 'string'
+            ? (() => {
+                try {
+                  const parsed = JSON.parse(employee.job_descriptions.keyResponsibilities)
+                  return Array.isArray(parsed) ? parsed : []
+                } catch {
+                  return []
+                }
+              })()
+            : [],
         essentialExperience: employee.job_descriptions.essentialExperience,
         essentialSkills: employee.job_descriptions.essentialSkills,
         acknowledgment: employee.job_descriptions.acknowledgment,
@@ -312,24 +348,43 @@ export async function PUT(
     if (formData.personalEmail !== undefined) updateData.personalEmail = formData.personalEmail || null
     if (formData.position !== undefined) updateData.position = formData.position
     if (formData.department !== undefined) updateData.department = formData.department
-    if (formData.departmentId !== undefined) updateData.departmentId = formData.departmentId // This field exists in schema
+    if (formData.departmentId !== undefined) updateData.departmentId = optionalId(formData.departmentId)
     if (formData.employeeId !== undefined) updateData.employeeId = formData.employeeId
     if (formData.status !== undefined) updateData.status = formData.status
-    if (formData.dateOfBirth !== undefined) updateData.dateOfBirth = formData.dateOfBirth ? new Date(formData.dateOfBirth) : null
+    if (formData.dateOfBirth !== undefined) {
+      const dateOfBirth = toValidDate(formData.dateOfBirth)
+      if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth
+    }
     if (formData.gender !== undefined) updateData.gender = formData.gender
     if (formData.nationality !== undefined) updateData.nationality = formData.nationality
     if (formData.nationalId !== undefined) updateData.nationalId = formData.nationalId?.trim() || null
     if (formData.alternativePhone !== undefined) updateData.alternativePhone = formData.alternativePhone?.trim() || null
     if (formData.address !== undefined) updateData.address = formData.address
-    if (formData.emergencyContact !== undefined) updateData.emergencyContact = formData.emergencyContact
-    if (formData.emergencyPhone !== undefined) updateData.emergencyPhone = formData.emergencyPhone
+    const emergencyName = formData.emergencyContactName ?? formData.emergencyContact
+    const emergencyPhone = formData.emergencyContactPhone ?? formData.emergencyPhone
+    if (emergencyName !== undefined) updateData.emergencyContact = emergencyName ? sanitizeInput(String(emergencyName)) : null
+    if (emergencyPhone !== undefined) updateData.emergencyPhone = emergencyPhone ? sanitizeInput(String(emergencyPhone)) : null
     if (formData.emergencyContactRelationship !== undefined) updateData.emergencyContactRelationship = formData.emergencyContactRelationship
-    if (formData.startDate !== undefined) updateData.startDate = formData.startDate ? new Date(formData.startDate) : null
-    if (formData.hireDate !== undefined) updateData.hireDate = formData.hireDate ? new Date(formData.hireDate) : null
+    if (formData.startDate !== undefined) {
+      const startDate = toValidDate(formData.startDate)
+      if (startDate !== undefined) updateData.startDate = startDate
+    }
+    if (formData.hireDate !== undefined) {
+      const hireDate = toValidDate(formData.hireDate)
+      if (hireDate !== undefined) updateData.hireDate = hireDate
+    }
     if (formData.employmentType !== undefined) updateData.employmentType = formData.employmentType
     if (formData.isSupervisor !== undefined) updateData.is_supervisor = formData.isSupervisor // Map to snake_case
     if (formData.isReviewer !== undefined) updateData.is_reviewer = formData.isReviewer // Map to snake_case
-    if (formData.salary !== undefined) updateData.salary = formData.salary ? parseFloat(formData.salary) : null
+    const salaryInput = formData.baseSalary !== undefined ? formData.baseSalary : formData.salary
+    if (salaryInput !== undefined) {
+      if (salaryInput === null || salaryInput === '') {
+        updateData.salary = null
+      } else {
+        const salary = Number(salaryInput)
+        if (Number.isFinite(salary)) updateData.salary = salary
+      }
+    }
     if (formData.currency !== undefined) updateData.currency = formData.currency
     
     // Benefits - map camelCase to snake_case database fields
@@ -338,7 +393,7 @@ export async function PUT(
     if (formData.vehicleBenefit !== undefined) updateData.vehicle_benefit = formData.vehicleBenefit
     if (formData.fuelAllowance !== undefined) updateData.fuel_allowance = formData.fuelAllowance
     if (formData.airtimeAllowance !== undefined) updateData.airtime_allowance = formData.airtimeAllowance
-    if (formData.otherBenefits !== undefined) updateData.other_benefits = Array.isArray(formData.otherBenefits) ? formData.otherBenefits : []
+    if (formData.otherBenefits !== undefined) updateData.other_benefits = toStringArray(formData.otherBenefits)
     
     // NEW PERSONAL FIELDS - map camelCase to snake_case
     if (formData.maritalStatus !== undefined) updateData.marital_status = formData.maritalStatus
@@ -352,8 +407,8 @@ export async function PUT(
     
     // NEW EDUCATION FIELDS
     if (formData.education !== undefined) updateData.education = formData.education
-    if (formData.skills !== undefined) updateData.skills = Array.isArray(formData.skills) ? formData.skills : []
-    if (formData.certifications !== undefined) updateData.certifications = Array.isArray(formData.certifications) ? formData.certifications : []
+    if (formData.skills !== undefined) updateData.skills = toStringArray(formData.skills)
+    if (formData.certifications !== undefined) updateData.certifications = toStringArray(formData.certifications)
     
     // NEW ADDITIONAL BENEFITS - map camelCase to snake_case
     if (formData.healthInsurance !== undefined) updateData.health_insurance = formData.healthInsurance
@@ -393,7 +448,7 @@ export async function PUT(
       updateData.access_level = roleConfig.accessLevel
       updateData.document_security_clearance = roleConfig.documentLevel
     }
-    if (formData.systemAccess !== undefined) updateData.system_access = Array.isArray(formData.systemAccess) ? formData.systemAccess : []
+    if (formData.systemAccess !== undefined) updateData.system_access = toStringArray(formData.systemAccess)
     if (formData.documentSecurityClearance !== undefined) updateData.document_security_clearance = formData.documentSecurityClearance
     
     // NEW ONBOARDING FIELDS - map camelCase to snake_case
@@ -734,17 +789,27 @@ export async function PATCH(
     if (formData.email) updateData.email = formData.email.toLowerCase().trim()
     if (formData.phoneNumber !== undefined) updateData.phoneNumber = formData.phoneNumber ? sanitizeInput(formData.phoneNumber) : null
     if (formData.address !== undefined) updateData.address = formData.address ? sanitizeInput(formData.address) : null
-    if (formData.dateOfBirth) updateData.dateOfBirth = new Date(formData.dateOfBirth)
+    if (formData.dateOfBirth) {
+      const dateOfBirth = toValidDate(formData.dateOfBirth)
+      if (dateOfBirth) updateData.dateOfBirth = dateOfBirth
+    }
     if (formData.gender !== undefined) updateData.gender = formData.gender
     if (formData.nationality !== undefined) updateData.nationality = formData.nationality
 
     // Employment Information
     if (formData.position) updateData.position = sanitizeInput(formData.position)
     if (formData.department !== undefined) updateData.department = formData.department ? sanitizeInput(formData.department) : null
-    if (formData.departmentId !== undefined) updateData.departmentId = formData.departmentId
+    if (formData.departmentId !== undefined) updateData.departmentId = optionalId(formData.departmentId)
     if (formData.employmentType !== undefined) updateData.employmentType = formData.employmentType
-    if (formData.startDate) updateData.startDate = new Date(formData.startDate)
-    if (formData.hireDate) updateData.hireDate = new Date(formData.hireDate)
+    if (formData.startDate) {
+      const startDate = toValidDate(formData.startDate)
+      if (startDate) updateData.startDate = startDate
+    }
+    if (formData.hireDate) {
+      const hireDate = toValidDate(formData.hireDate)
+      if (hireDate) updateData.hireDate = hireDate
+    }
+    if (formData.status) updateData.status = sanitizeInput(formData.status)
     if (formData.workLocation !== undefined) updateData.work_location = formData.workLocation ? sanitizeInput(formData.workLocation) : null
 
     // Supervisor Information
@@ -784,7 +849,15 @@ export async function PATCH(
     }
 
     // Compensation
-    if (formData.baseSalary !== undefined) updateData.salary = formData.baseSalary ? parseFloat(formData.baseSalary) : null
+    const patchSalary = formData.baseSalary !== undefined ? formData.baseSalary : formData.salary
+    if (patchSalary !== undefined) {
+      if (patchSalary === null || patchSalary === '') {
+        updateData.salary = null
+      } else {
+        const salary = Number(patchSalary)
+        if (Number.isFinite(salary)) updateData.salary = salary
+      }
+    }
     if (formData.currency !== undefined) updateData.currency = formData.currency
     if (formData.payGrade !== undefined) updateData.pay_grade = formData.payGrade ? sanitizeInput(formData.payGrade) : null
     if (formData.payFrequency !== undefined) updateData.pay_frequency = formData.payFrequency
@@ -813,12 +886,12 @@ export async function PATCH(
     if (formData.vehicleBenefit !== undefined) updateData.vehicle_benefit = formData.vehicleBenefit
     if (formData.fuelAllowance !== undefined) updateData.fuel_allowance = formData.fuelAllowance
     if (formData.airtimeAllowance !== undefined) updateData.airtime_allowance = formData.airtimeAllowance
-    if (formData.otherBenefits !== undefined) updateData.other_benefits = Array.isArray(formData.otherBenefits) ? formData.otherBenefits : []
+    if (formData.otherBenefits !== undefined) updateData.other_benefits = toStringArray(formData.otherBenefits)
 
     // Education & Skills - Missing fields
     if (formData.education !== undefined) updateData.education = formData.education ? sanitizeInput(formData.education) : null
-    if (formData.skills !== undefined) updateData.skills = Array.isArray(formData.skills) ? formData.skills : []
-    if (formData.certifications !== undefined) updateData.certifications = Array.isArray(formData.certifications) ? formData.certifications : []
+    if (formData.skills !== undefined) updateData.skills = toStringArray(formData.skills)
+    if (formData.certifications !== undefined) updateData.certifications = toStringArray(formData.certifications)
 
     // Training Fields - Missing fields
     if (formData.orientationTrainingRequired !== undefined) updateData.orientation_training_required = formData.orientationTrainingRequired
@@ -850,7 +923,7 @@ export async function PATCH(
       updateData.access_level = roleConfig.accessLevel
       updateData.document_security_clearance = roleConfig.documentLevel
     }
-    if (formData.systemAccess !== undefined) updateData.system_access = Array.isArray(formData.systemAccess) ? formData.systemAccess : []
+    if (formData.systemAccess !== undefined) updateData.system_access = toStringArray(formData.systemAccess)
     if (formData.documentSecurityClearance !== undefined) updateData.document_security_clearance = formData.documentSecurityClearance
 
     // Onboarding Fields - Missing fields
@@ -862,8 +935,10 @@ export async function PATCH(
     if (formData.additionalNotes !== undefined) updateData.additional_notes = formData.additionalNotes ? sanitizeInput(formData.additionalNotes) : null
 
     // Emergency Contact
-    if (formData.emergencyContactName !== undefined) updateData.emergencyContact = formData.emergencyContactName ? sanitizeInput(formData.emergencyContactName) : null
-    if (formData.emergencyContactPhone !== undefined) updateData.emergencyPhone = formData.emergencyContactPhone ? sanitizeInput(formData.emergencyContactPhone) : null
+    const patchEmergencyName = formData.emergencyContactName ?? formData.emergencyContact
+    const patchEmergencyPhone = formData.emergencyContactPhone ?? formData.emergencyPhone
+    if (patchEmergencyName !== undefined) updateData.emergencyContact = patchEmergencyName ? sanitizeInput(String(patchEmergencyName)) : null
+    if (patchEmergencyPhone !== undefined) updateData.emergencyPhone = patchEmergencyPhone ? sanitizeInput(String(patchEmergencyPhone)) : null
     if (formData.emergencyContactRelationship !== undefined) updateData.emergencyContactRelationship = formData.emergencyContactRelationship ? sanitizeInput(formData.emergencyContactRelationship) : null
 
     // Set update timestamp
@@ -885,7 +960,7 @@ export async function PATCH(
     if (formData.department) userUpdateData.department = formData.department ? sanitizeInput(formData.department) : null
 
     // Only update users table if there are fields to sync
-    if (Object.keys(userUpdateData).length > 0) {
+    if (existingEmployee.userId && Object.keys(userUpdateData).length > 0) {
       try {
         console.log(`Syncing user data for employee ${employeeId}:`, userUpdateData)
         await prisma.users.update({
@@ -917,18 +992,18 @@ export async function PATCH(
           await prisma.job_descriptions.update({
             where: { id: existingJobDesc.id },
             data: {
-              jobTitle,
-              location,
+              jobTitle: jobTitle || existingJobDesc.jobTitle,
+              location: location || existingJobDesc.location,
               jobSummary,
-              keyResponsibilities,
+              keyResponsibilities: Array.isArray(keyResponsibilities) ? keyResponsibilities : [],
               essentialExperience,
               essentialSkills,
-              acknowledgment,
+              acknowledgment: Boolean(acknowledgment),
               updatedAt: new Date()
             }
           })
           console.log(`✅ Updated job description for employee ${employeeId}`)
-        } else {
+        } else if (jobTitle && location) {
           // Create new job description
           await prisma.job_descriptions.create({
             data: {
@@ -936,11 +1011,11 @@ export async function PATCH(
               employeeId: employeeId,
               jobTitle,
               location,
-              jobSummary,
-              keyResponsibilities,
+              jobSummary: jobSummary || null,
+              keyResponsibilities: Array.isArray(keyResponsibilities) ? keyResponsibilities : [],
               essentialExperience,
               essentialSkills,
-              acknowledgment,
+              acknowledgment: Boolean(acknowledgment),
               version: 1,
               isActive: true,
               createdAt: new Date(),
@@ -963,6 +1038,19 @@ export async function PATCH(
 
   } catch (error) {
     console.error('Error updating employee:', error)
+    const prismaError = error as { code?: string }
+    if (prismaError.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'Email, employee ID, or national ID is already in use.', details: 'A unique field is already used by another employee.' },
+        { status: 409 }
+      )
+    }
+    if (prismaError.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'A linked department, supervisor, or reviewer could not be saved.', details: 'Choose a valid department, supervisor, or reviewer and try again.' },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

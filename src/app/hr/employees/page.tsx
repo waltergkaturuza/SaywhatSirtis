@@ -87,6 +87,19 @@ export default function EmployeesPage() {
     }
   }
 
+  const asResponsibilityList = (value: any) => {
+    if (Array.isArray(value)) return value
+    if (typeof value === 'string' && value.trim()) {
+      try {
+        const parsed = JSON.parse(value)
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  }
+
   // Notification functions
   const showSuccessNotification = (message: string) => {
     setNotification({ type: 'success', message })
@@ -430,102 +443,104 @@ export default function EmployeesPage() {
     }
   }
 
-  // Convert snake_case database fields to camelCase for form
+  const asTextList = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean)
+    if (typeof value === "string" && value.trim()) {
+      return value.split(",").map((item) => item.trim()).filter(Boolean)
+    }
+    return []
+  }
+
+  const firstDefined = (...values: unknown[]) => values.find((value) => value !== undefined && value !== null)
+
+  // Convert API/database fields into the shape the edit form expects
   const convertDbDataToFormFormat = (dbData: any) => {
+    const jobDescription = dbData.jobDescription || dbData.job_descriptions || null
     return {
       id: dbData.id,
       // Personal Information
-      firstName: dbData.firstName,
-      lastName: dbData.lastName,
-      middleName: dbData.middleName,
+      firstName: dbData.firstName || "",
+      lastName: dbData.lastName || "",
+      middleName: dbData.middleName || "",
       dateOfBirth: dbData.dateOfBirth,
-      gender: dbData.gender,
-      maritalStatus: dbData.maritalStatus || "",
-      phoneNumber: dbData.phoneNumber,
-      email: dbData.email,
-      personalEmail: dbData.personalEmail,
-      address: dbData.address,
-      emergencyContactName: dbData.emergencyContact,
-      emergencyContact: dbData.emergencyContact, // For EmployeeForm compatibility
-      emergencyContactPhone: dbData.emergencyPhone,
-      emergencyPhone: dbData.emergencyPhone, // For EmployeeForm compatibility
-      emergencyContactRelationship: dbData.emergencyContactRelationship,
-      emergencyRelationship: dbData.emergencyContactRelationship, // For EmployeeForm compatibility
+      gender: dbData.gender || "",
+      maritalStatus: dbData.maritalStatus || dbData.marital_status || "",
+      phoneNumber: dbData.phoneNumber || "",
+      email: dbData.email || "",
+      personalEmail: dbData.personalEmail || "",
+      address: dbData.address || "",
+      emergencyContactName: dbData.emergencyContactName || dbData.emergencyContact || "",
+      emergencyContact: dbData.emergencyContact || dbData.emergencyContactName || "",
+      emergencyContactPhone: dbData.emergencyContactPhone || dbData.emergencyPhone || "",
+      emergencyPhone: dbData.emergencyPhone || dbData.emergencyContactPhone || "",
+      emergencyContactRelationship: dbData.emergencyContactRelationship || dbData.emergencyRelationship || "",
+      emergencyRelationship: dbData.emergencyContactRelationship || dbData.emergencyRelationship || "",
       
       // Employment Information
-      employeeId: dbData.employeeId,
-      department: dbData.department || "",
-      departmentId: dbData.departmentId,
-      position: dbData.position,
-      supervisorId: dbData.supervisor_id,
-      reviewerId: dbData.reviewerId || "",
+      employeeId: dbData.employeeId || "",
+      department: dbData.department || dbData.departments?.name || "",
+      departmentId: dbData.departmentId || dbData.departments?.id || "",
+      position: dbData.position || "",
+      supervisorId: dbData.supervisorId || dbData.supervisor_id || dbData.supervisor?.id || "",
+      reviewerId: dbData.reviewerId || dbData.reviewer_id || dbData.reviewer?.id || "",
+      supervisor: dbData.supervisor || null,
+      reviewer: dbData.reviewer || null,
       startDate: dbData.startDate,
       hireDate: dbData.hireDate,
       employmentType: dbData.employmentType || "FULL_TIME",
-      workLocation: dbData.workLocation || "",
+      workLocation: dbData.workLocation || dbData.work_location || "",
       country: dbData.country || "",
       province: dbData.province || "",
-      isSupervisor: dbData.is_supervisor || false,
-      isReviewer: dbData.is_reviewer || false,
+      isSupervisor: Boolean(firstDefined(dbData.isSupervisor, dbData.is_supervisor, false)),
+      isReviewer: Boolean(firstDefined(dbData.isReviewer, dbData.is_reviewer, false)),
       
       // Compensation
-      baseSalary: dbData.salary?.toString() || "",
-      salary: dbData.salary?.toString() || "", // For EmployeeForm compatibility
+      baseSalary: (firstDefined(dbData.baseSalary, dbData.salary, "") ?? "").toString(),
+      salary: (firstDefined(dbData.salary, dbData.baseSalary, "") ?? "").toString(),
       currency: dbData.currency || "USD",
-      payGrade: dbData.payGrade || "",
-      payFrequency: dbData.payFrequency || "monthly",
-      benefits: dbData.benefits || [],
+      payGrade: dbData.payGrade || dbData.pay_grade || "",
+      payFrequency: dbData.payFrequency || dbData.pay_frequency || "monthly",
+      benefits: asTextList(dbData.benefits),
       
       // Additional Benefits (new fields)
-      healthInsurance: dbData.healthInsurance || false,
-      dentalCoverage: dbData.dentalCoverage || false,
-      visionCoverage: dbData.visionCoverage || false,
-      lifeInsurance: dbData.lifeInsurance || false,
-      retirementPlan: dbData.retirementPlan || false,
-      flexiblePTO: dbData.flexiblePTO || false,
-      medicalAid: dbData.medical_aid || false,
-      funeralCover: dbData.funeral_cover || false,
-      vehicleBenefit: dbData.vehicle_benefit || false,
-      fuelAllowance: dbData.fuel_allowance || false,
-      airtimeAllowance: dbData.airtime_allowance || false,
-      otherBenefits: dbData.other_benefits || [],
+      healthInsurance: Boolean(firstDefined(dbData.healthInsurance, dbData.health_insurance, false)),
+      dentalCoverage: Boolean(firstDefined(dbData.dentalCoverage, dbData.dental_coverage, false)),
+      visionCoverage: Boolean(firstDefined(dbData.visionCoverage, dbData.vision_coverage, false)),
+      lifeInsurance: Boolean(firstDefined(dbData.lifeInsurance, dbData.life_insurance, false)),
+      retirementPlan: Boolean(firstDefined(dbData.retirementPlan, dbData.retirement_plan, false)),
+      flexiblePTO: Boolean(firstDefined(dbData.flexiblePTO, dbData.flexible_pto, false)),
+      medicalAid: Boolean(firstDefined(dbData.medicalAid, dbData.medical_aid, false)),
+      funeralCover: Boolean(firstDefined(dbData.funeralCover, dbData.funeral_cover, false)),
+      vehicleBenefit: Boolean(firstDefined(dbData.vehicleBenefit, dbData.vehicle_benefit, false)),
+      fuelAllowance: Boolean(firstDefined(dbData.fuelAllowance, dbData.fuel_allowance, false)),
+      airtimeAllowance: Boolean(firstDefined(dbData.airtimeAllowance, dbData.airtime_allowance, false)),
+      otherBenefits: asTextList(firstDefined(dbData.otherBenefits, dbData.other_benefits, [])),
       
       // Education & Skills (updated to match create form)
       education: dbData.education || "",
-      skills: dbData.skills || [],
-      certifications: dbData.certifications || [],
-      orientationTrainingRequired: dbData.orientationTrainingRequired || false,
-      securityTrainingRequired: dbData.securityTrainingRequired || false,
-      departmentSpecificTrainingRequired: dbData.departmentSpecificTrainingRequired || false,
-      trainingRequired: dbData.trainingRequired || [],
+      skills: asTextList(dbData.skills),
+      certifications: asTextList(dbData.certifications),
+      orientationTrainingRequired: Boolean(firstDefined(dbData.orientationTrainingRequired, dbData.orientation_training_required, false)),
+      securityTrainingRequired: Boolean(firstDefined(dbData.securityTrainingRequired, dbData.security_training_required, false)),
+      departmentSpecificTrainingRequired: Boolean(firstDefined(dbData.departmentSpecificTrainingRequired, dbData.department_specific_training_required, false)),
+      trainingRequired: asTextList(dbData.trainingRequired),
       
       // Access & Security (updated)
-      accessLevel: dbData.accessLevel || "basic",
-      userRole: dbData.userRole || "",
+      accessLevel: dbData.accessLevel || dbData.access_level || "basic",
+      userRole: dbData.userRole || dbData.user_role || "",
       securityClearance: dbData.securityClearance || "none",
-      documentSecurityClearance: dbData.documentSecurityClearance || dbData.securityClearance || "PUBLIC",
-      systemAccess: dbData.systemAccess || [],
+      documentSecurityClearance: dbData.documentSecurityClearance || dbData.document_security_clearance || dbData.securityClearance || "PUBLIC",
+      systemAccess: asTextList(firstDefined(dbData.systemAccess, dbData.system_access, [])),
       
       // Job Description (new)
-      jobDescription: dbData.jobDescription || {
-        jobTitle: dbData.position || "",
-        location: dbData.workLocation || "",
-        jobSummary: "",
-        keyResponsibilities: [
-          { description: "", weight: 0, tasks: "" }
-        ],
-        essentialExperience: "",
-        essentialSkills: "",
-        acknowledgment: false,
-        signatureFile: null
-      },
+      jobDescription: jobDescription,
       
-      contractSigned: dbData.contractSigned || false,
-      backgroundCheckCompleted: dbData.backgroundCheckCompleted || false,
-      medicalCheckCompleted: dbData.medicalCheckCompleted || false,
-      trainingCompleted: dbData.trainingCompleted || false,
-      initialTrainingCompleted: dbData.initialTrainingCompleted || false,
-      additionalNotes: dbData.additionalNotes || "",
+      contractSigned: Boolean(firstDefined(dbData.contractSigned, dbData.contract_signed, false)),
+      backgroundCheckCompleted: Boolean(firstDefined(dbData.backgroundCheckCompleted, dbData.background_check_completed, false)),
+      medicalCheckCompleted: Boolean(firstDefined(dbData.medicalCheckCompleted, dbData.medical_check_completed, false)),
+      trainingCompleted: Boolean(firstDefined(dbData.trainingCompleted, dbData.training_completed, false)),
+      initialTrainingCompleted: Boolean(firstDefined(dbData.initialTrainingCompleted, dbData.initial_training_completed, false)),
+      additionalNotes: dbData.additionalNotes || dbData.additional_notes || "",
       
       // Documents
       uploadedDocuments: dbData.uploadedDocuments || [],
@@ -584,17 +599,19 @@ export default function EmployeesPage() {
       email: formData.email,
       personalEmail: formData.personalEmail,
       address: formData.address,
-      emergencyContact: formData.emergencyContactName,
-      emergencyPhone: formData.emergencyContactPhone,
-      emergencyContactRelationship: formData.emergencyContactRelationship,
+      emergencyContact: formData.emergencyContactName || formData.emergencyContact || "",
+      emergencyContactName: formData.emergencyContactName || formData.emergencyContact || "",
+      emergencyPhone: formData.emergencyContactPhone || formData.emergencyPhone || "",
+      emergencyContactPhone: formData.emergencyContactPhone || formData.emergencyPhone || "",
+      emergencyContactRelationship: formData.emergencyContactRelationship || formData.emergencyRelationship || "",
       
       // Employment Information
       employeeId: formData.employeeId,
       department: formData.department,
-      departmentId: formData.departmentId,
+      departmentId: formData.departmentId || null,
       position: formData.position,
-      supervisorId: formData.supervisorId,
-      reviewerId: formData.reviewerId,
+      supervisorId: formData.supervisorId || null,
+      reviewerId: formData.reviewerId || null,
       startDate: formData.startDate,
       hireDate: formData.hireDate,
       employmentType: formData.employmentType,
@@ -605,7 +622,8 @@ export default function EmployeesPage() {
       isReviewer: formData.isReviewer || false,
       
       // Compensation
-      salary: formData.baseSalary,
+      salary: formData.baseSalary ?? formData.salary ?? "",
+      baseSalary: formData.baseSalary ?? formData.salary ?? "",
       currency: formData.currency,
       payGrade: formData.payGrade,
       payFrequency: formData.payFrequency,
@@ -623,14 +641,12 @@ export default function EmployeesPage() {
       vehicleBenefit: formData.vehicleBenefit || false,
       fuelAllowance: formData.fuelAllowance || false,
       airtimeAllowance: formData.airtimeAllowance || false,
-      otherBenefits: formData.otherBenefits ? 
-        (Array.isArray(formData.otherBenefits) ? formData.otherBenefits : formData.otherBenefits.split(',').map((b: string) => b.trim())) 
-        : [],
+      otherBenefits: asTextList(formData.otherBenefits),
       
       // Education & Skills
       education: formData.education,
-      skills: formData.skills,
-      certifications: formData.certifications,
+      skills: asTextList(formData.skills),
+      certifications: asTextList(formData.certifications),
       orientationTrainingRequired: formData.orientationTrainingRequired || false,
       securityTrainingRequired: formData.securityTrainingRequired || false,
       departmentSpecificTrainingRequired: formData.departmentSpecificTrainingRequired || false,
@@ -691,7 +707,7 @@ export default function EmployeesPage() {
         console.log('Employee updated successfully')
       } else {
         console.error('Failed to update employee:', result.error)
-        showErrorNotification('Failed to update employee: ' + (result.error || 'Unknown error'))
+        showErrorNotification('Failed to update employee: ' + (result.details || result.error || 'Unknown error'))
       }
     } catch (error) {
       console.error('Error updating employee:', error)
@@ -798,7 +814,7 @@ export default function EmployeesPage() {
         showSuccessNotification('Employee updated successfully!')
       } else {
         console.error('Failed to update employee:', result.error)
-        showErrorNotification('Failed to update employee: ' + (result.error || 'Unknown error'))
+        showErrorNotification('Failed to update employee: ' + (result.details || result.error || 'Unknown error'))
       }
     } catch (error) {
       console.error('Error updating employee:', error)
@@ -996,7 +1012,16 @@ export default function EmployeesPage() {
           </div>
           
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y-2 divide-saywhat-orange/20">
+            <table className="w-full table-fixed divide-y-2 divide-saywhat-orange/20">
+              <colgroup>
+                <col className="w-[20%]" />
+                <col className="w-[18%]" />
+                <col className="w-[13%]" />
+                <col className="w-[8%]" />
+                <col className="w-[16%]" />
+                <col className="w-[10%]" />
+                <col className="w-[15%]" />
+              </colgroup>
               <thead className="bg-gradient-to-r from-saywhat-orange/10 to-saywhat-green/10">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
@@ -1005,13 +1030,13 @@ export default function EmployeesPage() {
                   <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Contact
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider max-w-40">
+                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Department
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
+                  <th className="w-[16%] max-w-0 px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
                     Position
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-saywhat-black uppercase tracking-wider">
@@ -1025,51 +1050,51 @@ export default function EmployeesPage() {
               <tbody className="bg-saywhat-white divide-y-2 divide-saywhat-green/20">
                 {filteredEmployees.map((employee) => (
                   <tr key={employee.id} className="hover:bg-gradient-to-r hover:from-saywhat-green/5 hover:to-saywhat-orange/5 transition-all duration-200">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-r from-saywhat-orange to-saywhat-red flex items-center justify-center shadow-sm">
+                    <td className="max-w-0 px-6 py-4 overflow-hidden">
+                      <div className="flex items-center min-w-0">
+                        <div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-r from-saywhat-orange to-saywhat-red flex items-center justify-center shadow-sm">
                           <span className="text-sm font-bold text-saywhat-white">
                             {employee.name.split(' ').map((n: string) => n[0]).join('')}
                           </span>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-semibold text-saywhat-black">{employee.name}</div>
-                          <div className="text-sm text-saywhat-grey font-medium">{employee.position}</div>
-                          <div className="text-xs text-saywhat-orange font-medium">ID: {employee.employeeId}</div>
+                        <div className="ml-4 min-w-0">
+                          <div className="truncate text-sm font-semibold text-saywhat-black" title={employee.name}>{employee.name}</div>
+                          <div className="truncate text-sm text-saywhat-grey font-medium" title={employee.position}>{employee.position}</div>
+                          <div className="truncate text-xs text-saywhat-orange font-medium" title={`ID: ${employee.employeeId}`}>ID: {employee.employeeId}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-saywhat-black flex items-center font-medium">
-                        <EnvelopeIcon className="h-4 w-4 mr-2 text-saywhat-green" />
-                        {employee.email}
+                    <td className="max-w-0 px-6 py-4 overflow-hidden">
+                      <div className="text-sm text-saywhat-black flex items-center font-medium min-w-0">
+                        <EnvelopeIcon className="h-4 w-4 mr-2 shrink-0 text-saywhat-green" />
+                        <span className="truncate" title={employee.email}>{employee.email}</span>
                       </div>
-                      <div className="text-sm text-saywhat-grey flex items-center mt-1">
-                        <PhoneIcon className="h-4 w-4 mr-2 text-saywhat-orange" />
-                        {employee.phone}
+                      <div className="text-sm text-saywhat-grey flex items-center mt-1 min-w-0">
+                        <PhoneIcon className="h-4 w-4 mr-2 shrink-0 text-saywhat-orange" />
+                        <span className="truncate" title={employee.phone}>{employee.phone}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 max-w-40">
-                      <div className="text-sm text-saywhat-black font-medium break-words">{employee.department}</div>
-                      <div className="text-sm text-saywhat-grey break-words">{employee.location}</div>
+                    <td className="max-w-0 px-6 py-4 overflow-hidden">
+                      <div className="truncate text-sm text-saywhat-black font-medium" title={employee.department}>{employee.department}</div>
+                      <div className="truncate text-sm text-saywhat-grey" title={employee.location}>{employee.location}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(employee.status)}`}>
+                    <td className="px-6 py-4 overflow-hidden">
+                      <span className={`inline-flex max-w-full truncate px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(employee.status)}`}>
                         {getStatusText(employee.status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-saywhat-black">{employee.position}</div>
-                      <div className="text-xs text-saywhat-grey font-medium">{employee.employmentType || 'Full Time'}</div>
+                    <td className="w-[16%] max-w-0 px-6 py-4 overflow-hidden">
+                      <div className="block w-full truncate text-sm font-semibold text-saywhat-black" title={employee.position}>{employee.position}</div>
+                      <div className="truncate text-xs text-saywhat-grey font-medium" title={employee.employmentType || 'Full Time'}>{employee.employmentType || 'Full Time'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-saywhat-black flex items-center font-medium">
-                        <CalendarIcon className="h-4 w-4 mr-2 text-saywhat-green" />
-                        {formatDate(employee.hireDate)}
+                    <td className="max-w-0 px-6 py-4 overflow-hidden">
+                      <div className="text-sm text-saywhat-black flex items-center font-medium min-w-0">
+                        <CalendarIcon className="h-4 w-4 mr-2 shrink-0 text-saywhat-green" />
+                        <span className="truncate">{formatDate(employee.hireDate)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center space-x-2">
+                    <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-1">
                         <button 
                           onClick={() => handleViewEmployee(employee)}
                           className="text-saywhat-green hover:text-saywhat-white p-2 rounded-lg hover:bg-saywhat-green shadow-sm hover:shadow-md transition-all duration-200"
@@ -1087,8 +1112,8 @@ export default function EmployeesPage() {
                         <DownloadPDFButton
                           data={[employee]}
                           filename={`employee-${employee.employeeId}`}
-                          title={`${employee.name} Profile`}
-                          headers={['Name', 'Email', 'Phone', 'Department', 'Position', 'Employee ID', 'Status']}
+                          title={`${employee.name} - Employee Profile`}
+                          layout="profile"
                           variant="ghost"
                           size="sm"
                           iconOnly={true}
@@ -1209,6 +1234,14 @@ export default function EmployeesPage() {
                         <p className="mt-1 text-sm text-gray-900">{selectedEmployee.nationality || 'Not provided'}</p>
                       </div>
                       <div>
+                        <Label className="text-sm font-medium text-gray-700">Country</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.country || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Province</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.province || 'Not provided'}</p>
+                      </div>
+                      <div>
                         <Label className="text-sm font-medium text-gray-700">National ID</Label>
                         <p className="mt-1 text-sm text-gray-900">{selectedEmployee.nationalId || 'Not provided'}</p>
                       </div>
@@ -1259,7 +1292,11 @@ export default function EmployeesPage() {
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-700">Department</Label>
-                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.department}</p>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.department || selectedEmployee.departments?.name || 'Not assigned'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Status</Label>
+                        <p className="mt-1 text-sm text-gray-900">{selectedEmployee.status || 'Not specified'}</p>
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-700">Supervisor</Label>
@@ -1344,7 +1381,13 @@ export default function EmployeesPage() {
                             { key: 'funeralCover', label: 'Funeral Cover' },
                             { key: 'vehicleBenefit', label: 'Vehicle Benefit' },
                             { key: 'fuelAllowance', label: 'Fuel Allowance' },
-                            { key: 'airtimeAllowance', label: 'Airtime Allowance' }
+                            { key: 'airtimeAllowance', label: 'Airtime Allowance' },
+                            { key: 'healthInsurance', label: 'Health Insurance' },
+                            { key: 'dentalCoverage', label: 'Dental Coverage' },
+                            { key: 'visionCoverage', label: 'Vision Coverage' },
+                            { key: 'lifeInsurance', label: 'Life Insurance' },
+                            { key: 'retirementPlan', label: 'Retirement Plan' },
+                            { key: 'flexiblePTO', label: 'Flexible PTO' }
                           ].map(benefit => (
                             <div key={benefit.key} className="flex items-center">
                               <span className={`w-2 h-2 rounded-full mr-2 ${
@@ -1353,10 +1396,10 @@ export default function EmployeesPage() {
                               <span className="text-sm text-gray-700">{benefit.label}</span>
                             </div>
                           ))}
-                          {selectedEmployee.otherBenefits && selectedEmployee.otherBenefits.length > 0 && (
+                          {asTextList(selectedEmployee.otherBenefits).length > 0 && (
                             <div className="mt-2">
                               <Label className="text-xs font-medium text-gray-600">Other Benefits:</Label>
-                              <p className="text-sm text-gray-900">{selectedEmployee.otherBenefits.join(', ')}</p>
+                              <p className="text-sm text-gray-900">{asTextList(selectedEmployee.otherBenefits).join(', ')}</p>
                             </div>
                           )}
                         </div>
@@ -1385,11 +1428,11 @@ export default function EmployeesPage() {
                           <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{selectedEmployee.jobDescription.jobSummary || 'Not provided'}</p>
                         </div>
 
-                        {selectedEmployee.jobDescription.keyResponsibilities && selectedEmployee.jobDescription.keyResponsibilities.length > 0 && (
+                        {asResponsibilityList(selectedEmployee.jobDescription.keyResponsibilities).length > 0 && (
                           <div>
                             <Label className="text-sm font-medium text-gray-700 mb-3 block">Key Responsibilities</Label>
                             <div className="space-y-3">
-                              {selectedEmployee.jobDescription.keyResponsibilities.map((resp: any, index: number) => (
+                              {asResponsibilityList(selectedEmployee.jobDescription.keyResponsibilities).map((resp: any, index: number) => (
                                 <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                   <div className="flex items-center justify-between mb-2">
                                     <h4 className="text-sm font-semibold text-gray-900">Responsibility {index + 1}</h4>
@@ -1409,11 +1452,11 @@ export default function EmployeesPage() {
                             <div className="mt-3 text-sm">
                               <span className="font-medium text-gray-700">Total Weight: </span>
                               <span className={`font-semibold ${
-                                selectedEmployee.jobDescription.keyResponsibilities.reduce((sum: number, r: any) => sum + (r.weight || 0), 0) === 100 
+                                asResponsibilityList(selectedEmployee.jobDescription.keyResponsibilities).reduce((sum: number, r: any) => sum + (r.weight || 0), 0) === 100 
                                   ? 'text-green-600' 
                                   : 'text-red-600'
                               }`}>
-                                {selectedEmployee.jobDescription.keyResponsibilities.reduce((sum: number, r: any) => sum + (r.weight || 0), 0)}%
+                                {asResponsibilityList(selectedEmployee.jobDescription.keyResponsibilities).reduce((sum: number, r: any) => sum + (r.weight || 0), 0)}%
                               </span>
                             </div>
                           </div>
@@ -1741,7 +1784,7 @@ export default function EmployeesPage() {
                   data={[selectedEmployee]}
                   filename={`employee-${selectedEmployee.employeeId}-profile`}
                   title={`${selectedEmployee.firstName} ${selectedEmployee.lastName} - Employee Profile`}
-                  headers={['Name', 'Email', 'Phone', 'Department', 'Position', 'Status']}
+                  layout="profile"
                   variant="outline"
                   iconOnly={false}
                 />

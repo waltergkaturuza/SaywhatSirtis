@@ -254,6 +254,215 @@ class ExportService {
     }
   }
 
+  async exportEmployeeProfile(employee: any, options: { filename?: string; title?: string } = {}): Promise<void> {
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 16
+    const labelWidth = 46
+    const valueX = margin + labelWidth
+    const valueWidth = pageWidth - margin - valueX
+    let y = margin
+
+    const logoBase64 = await this.getLogoBase64()
+    if (logoBase64) {
+      try {
+        pdf.addImage(logoBase64, 'PNG', margin, y, 28, 14)
+      } catch {
+        pdf.setFillColor(30, 64, 175)
+        pdf.rect(margin, y, 28, 14, 'F')
+      }
+    }
+    pdf.setFontSize(16)
+    pdf.setTextColor(30, 64, 175)
+    pdf.text(this.saywhatBranding.organizationName, margin + 34, y + 6)
+    pdf.setFontSize(11)
+    pdf.setTextColor(100, 116, 139)
+    pdf.text(this.saywhatBranding.systemName, margin + 34, y + 12)
+    y += 24
+
+    const fullName = [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ')
+      || employee.fullName
+      || employee.name
+      || 'Employee'
+    const title = options.title || `${fullName} - Employee Profile`
+    pdf.setFontSize(16)
+    pdf.setTextColor(15, 23, 42)
+    const titleLines = pdf.splitTextToSize(title, pageWidth - margin * 2)
+    pdf.text(titleLines, margin, y)
+    y += titleLines.length * 7 + 2
+
+    pdf.setFontSize(9)
+    pdf.setTextColor(100, 116, 139)
+    pdf.text(`Generated: ${new Date().toLocaleString()}`, margin, y)
+    y += 8
+
+    const display = (value: unknown): string => {
+      if (value === null || value === undefined || value === '') return ''
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+      if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean).join(', ')
+      return String(value)
+    }
+
+    const displayDate = (value: unknown): string => {
+      const text = display(value)
+      if (!text) return ''
+      const date = new Date(text)
+      if (Number.isNaN(date.getTime())) return text
+      return date.toLocaleDateString()
+    }
+
+    const newPage = () => {
+      pdf.addPage()
+      y = margin
+    }
+
+    const section = (heading: string) => {
+      if (y > pageHeight - 28) newPage()
+      pdf.setFillColor(30, 64, 175)
+      pdf.rect(margin, y, pageWidth - margin * 2, 8, 'F')
+      pdf.setFontSize(11)
+      pdf.setTextColor(255, 255, 255)
+      pdf.text(heading, margin + 3, y + 5.5)
+      y += 12
+    }
+
+    const field = (label: string, value: unknown, asDate = false) => {
+      const text = asDate ? displayDate(value) : display(value)
+      if (!text) return
+      pdf.setFontSize(9)
+      const lines: string[] = pdf.splitTextToSize(text, valueWidth)
+      let index = 0
+      let drewLabel = false
+      while (index < lines.length) {
+        const lineHeight = 4.6
+        if (y > pageHeight - 22) newPage()
+        const room = pageHeight - 18 - y
+        const maxLines = Math.max(1, Math.floor(room / lineHeight))
+        const slice = lines.slice(index, index + maxLines)
+        if (!drewLabel) {
+          pdf.setTextColor(100, 116, 139)
+          pdf.text(label, margin, y + 4)
+          drewLabel = true
+        }
+        pdf.setTextColor(15, 23, 42)
+        pdf.text(slice, valueX, y + 4)
+        y += slice.length * lineHeight + 1.5
+        index += slice.length
+      }
+    }
+
+    section('Personal Information')
+    field('Full Name', fullName)
+    field('Employee ID', employee.employeeId)
+    field('Date of Birth', employee.dateOfBirth, true)
+    field('Gender', employee.gender)
+    field('Marital Status', employee.maritalStatus || employee.marital_status)
+    field('Nationality', employee.nationality)
+    field('National ID', employee.nationalId)
+    field('Country', employee.country)
+    field('Province', employee.province)
+
+    section('Contact')
+    field('Email', employee.email)
+    field('Personal Email', employee.personalEmail)
+    field('Phone', employee.phoneNumber || employee.phone)
+    field('Alternative Phone', employee.alternativePhone)
+    field('Address', employee.address)
+    field('Emergency Contact', employee.emergencyContact || employee.emergencyContactName)
+    field('Emergency Phone', employee.emergencyPhone || employee.emergencyContactPhone)
+    field('Relationship', employee.emergencyContactRelationship)
+
+    section('Employment')
+    field('Position', employee.position)
+    field('Department', employee.department || employee.departments?.name)
+    field('Employment Type', employee.employmentType)
+    field('Status', employee.status)
+    field('Start Date', employee.startDate, true)
+    field('Hire Date', employee.hireDate, true)
+    field('Work Location', employee.workLocation || employee.work_location)
+    field('Supervisor', employee.supervisor ? `${employee.supervisor.firstName || ''} ${employee.supervisor.lastName || ''}`.trim() : '')
+    field('Reviewer', employee.reviewer ? `${employee.reviewer.firstName || ''} ${employee.reviewer.lastName || ''}`.trim() : '')
+    field('Is Supervisor', employee.isSupervisor ?? employee.is_supervisor)
+    field('Is Reviewer', employee.isReviewer ?? employee.is_reviewer)
+
+    section('Compensation')
+    const salaryText = employee.salary || employee.baseSalary
+      ? `${employee.currency || 'USD'} ${Number(employee.salary || employee.baseSalary).toLocaleString()}`
+      : ''
+    field('Salary', salaryText)
+    field('Pay Grade', employee.payGrade || employee.pay_grade)
+    field('Pay Frequency', employee.payFrequency || employee.pay_frequency)
+    const benefits = [
+      ['Medical Aid', employee.medicalAid ?? employee.medical_aid],
+      ['Funeral Cover', employee.funeralCover ?? employee.funeral_cover],
+      ['Vehicle Benefit', employee.vehicleBenefit ?? employee.vehicle_benefit],
+      ['Fuel Allowance', employee.fuelAllowance ?? employee.fuel_allowance],
+      ['Airtime Allowance', employee.airtimeAllowance ?? employee.airtime_allowance],
+      ['Health Insurance', employee.healthInsurance ?? employee.health_insurance],
+      ['Dental Coverage', employee.dentalCoverage ?? employee.dental_coverage],
+      ['Vision Coverage', employee.visionCoverage ?? employee.vision_coverage],
+      ['Life Insurance', employee.lifeInsurance ?? employee.life_insurance],
+      ['Retirement Plan', employee.retirementPlan ?? employee.retirement_plan],
+      ['Flexible PTO', employee.flexiblePTO ?? employee.flexible_pto]
+    ].filter(([, enabled]) => enabled).map(([label]) => label).join(', ')
+    field('Benefits', benefits)
+    field('Other Benefits', employee.otherBenefits ?? employee.other_benefits)
+
+    section('Education and Skills')
+    field('Education', employee.education)
+    field('Skills', employee.skills)
+    field('Certifications', employee.certifications)
+    field('Orientation Training', employee.orientationTrainingRequired ?? employee.orientation_training_required)
+    field('Security Training', employee.securityTrainingRequired ?? employee.security_training_required)
+    field('Department Training', employee.departmentSpecificTrainingRequired ?? employee.department_specific_training_required)
+    field('Additional Notes', employee.additionalNotes || employee.additional_notes)
+
+    section('Access and Security')
+    field('User Role', employee.userRole || employee.user_role)
+    field('Access Level', employee.accessLevel || employee.access_level)
+    field('Document Clearance', employee.documentSecurityClearance || employee.document_security_clearance)
+    field('System Access', employee.systemAccess || employee.system_access)
+    field('Contract Signed', employee.contractSigned ?? employee.contract_signed)
+    field('Background Check', employee.backgroundCheckCompleted ?? employee.background_check_completed)
+    field('Medical Check', employee.medicalCheckCompleted ?? employee.medical_check_completed)
+    field('Training Completed', employee.trainingCompleted ?? employee.training_completed)
+
+    const job = employee.jobDescription || employee.job_descriptions
+    if (job) {
+      section('Job Description')
+      field('Job Title', job.jobTitle)
+      field('Location', job.location)
+      field('Job Summary', job.jobSummary)
+      const responsibilities = Array.isArray(job.keyResponsibilities) ? job.keyResponsibilities : []
+      if (responsibilities.length > 0) {
+        const text = responsibilities.map((item: any, index: number) => {
+          const description = item?.description || item?.responsibility || ''
+          const tasks = item?.tasks ? ` Tasks: ${item.tasks}` : ''
+          const weight = item?.weight !== undefined ? ` (${item.weight}%)` : ''
+          return `${index + 1}. ${description}${weight}${tasks}`
+        }).join('\n')
+        field('Responsibilities', text)
+      }
+      field('Essential Experience', job.essentialExperience)
+      field('Essential Skills', job.essentialSkills)
+      field('Acknowledged', job.acknowledgment)
+    }
+
+    const footerY = pageHeight - 10
+    const pageCount = pdf.getNumberOfPages()
+    for (let page = 1; page <= pageCount; page += 1) {
+      pdf.setPage(page)
+      pdf.setFontSize(8)
+      pdf.setTextColor(100, 116, 139)
+      pdf.text(this.saywhatBranding.tagline, margin, footerY)
+      pdf.text(`${page} / ${pageCount}`, pageWidth - margin, footerY, { align: 'right' })
+    }
+
+    const filename = options.filename || `employee-${employee.employeeId || 'profile'}`
+    pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`)
+  }
+
   async exportToExcel(data: ExportData, options: ExportOptions = { format: 'excel' }): Promise<void> {
     const workbook = XLSX.utils.book_new()
     

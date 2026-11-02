@@ -32,7 +32,7 @@ export async function GET() {
     const supervisorEmployees = await executeQuery(async (prisma) => {
       return prisma.employees.findMany({
         where: {
-          status: 'ACTIVE',
+          status: { in: ['ACTIVE', 'active', 'Active'] },
           OR: [
             { is_supervisor: true },
             { is_reviewer: true }
@@ -60,7 +60,7 @@ export async function GET() {
     const positionBasedSupervisors = await executeQuery(async (prisma) => {
       return prisma.employees.findMany({
         where: {
-          status: 'ACTIVE',
+          status: { in: ['ACTIVE', 'active', 'Active'] },
           AND: [
             {
               OR: [
@@ -98,9 +98,9 @@ export async function GET() {
 
     // Transform the data for frontend
     const supervisors = uniqueSupervisors
-      .filter(emp => emp.users && emp.users.isActive) // Only active users
       .map(emp => ({
-        id: emp.users.id,
+        id: emp.id,
+        userId: emp.users?.id || null,
         employeeId: emp.employeeId,
         firstName: emp.firstName,
         lastName: emp.lastName,

@@ -504,8 +504,7 @@ export default function EmployeeProfilePage() {
   return (
     <ModulePage
       metadata={{
-        title: "My Profile",
-        description: "Manage your personal information and contact details",
+        title: "",
         breadcrumbs: [
           { name: "Home", href: "/" },
           { name: "Employee Portal", href: "/employee" },
@@ -513,7 +512,7 @@ export default function EmployeeProfilePage() {
         ]
       }}
       actions={profile ? (
-        <div className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-saywhat-orange to-green-600 px-3 py-1.5 text-white shadow-sm">
+        <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-gray-900">
           <label className={`relative h-10 w-10 shrink-0 rounded-full bg-white p-0.5 ${editMode ? 'cursor-pointer' : ''}`}>
             <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
               {(formData.profilePicture || profile.profilePicture) ? (
@@ -545,16 +544,16 @@ export default function EmployeeProfilePage() {
             )}
           </label>
           <div className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-semibold">{profile.firstName} {profile.lastName}</p>
-            <p className="truncate text-xs text-white/90">{profile.position || 'System Administrator'}</p>
-            <p className="truncate text-xs text-white/80">
+            <p className="truncate text-sm font-semibold text-gray-900">{profile.firstName} {profile.lastName}</p>
+            <p className="truncate text-xs text-gray-600">{profile.position || 'System Administrator'}</p>
+            <p className="truncate text-xs text-gray-500">
               Employee ID: {profile.employeeId} · {profile.email}
             </p>
           </div>
           {!editMode ? (
             <button
               onClick={() => setEditMode(true)}
-              className="inline-flex shrink-0 items-center rounded-lg border border-white/40 bg-white/20 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/30"
+              className="inline-flex shrink-0 items-center rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
             >
               <PencilIcon className="mr-1 h-3.5 w-3.5" />
               Edit Profile
@@ -585,7 +584,7 @@ export default function EmployeeProfilePage() {
                     profilePicture: profile.profilePicture || ''
                   });
                 }}
-                className="inline-flex items-center rounded-lg border border-white/40 bg-white/20 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/30"
+                className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
               >
                 <XMarkIcon className="mr-1 h-3.5 w-3.5" />
                 Cancel
@@ -625,7 +624,7 @@ export default function EmployeeProfilePage() {
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
                   {/* Green Header - Matching Quick Stats */}
                   <div className="bg-gradient-to-r from-green-600 to-green-500 px-6 py-4">
-                    <h3 className="text-lg font-bold text-white flex items-center">
+                    <h3 className="text-sm font-semibold text-white flex items-center">
                       <UserIcon className="mr-2 h-5 w-5" />
                       Employee Profile
                     </h3>
@@ -698,37 +697,37 @@ export default function EmployeeProfilePage() {
                   <div className="space-y-6">
                     <div className="flex items-center mb-4">
                       <UserIcon className="h-6 w-6 text-saywhat-orange mr-3" />
-                      <h3 className="text-xl font-bold text-gray-900">Personal Information</h3>
+                      <h3 className="text-sm font-semibold text-gray-900">Personal Information</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div className="p-4 bg-gradient-to-r from-saywhat-orange/10 to-transparent rounded-xl border-l-4 border-saywhat-orange">
                           <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Employee ID</label>
-                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.employeeId}</p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">{profile.employeeId}</p>
                         </div>
                         <div className="p-4 bg-gradient-to-r from-green-100 to-transparent rounded-xl border-l-4 border-green-500">
                           <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Position</label>
-                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.position || 'System Administrator'}</p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">{profile.position || 'System Administrator'}</p>
                         </div>
                         <div className="p-4 bg-gradient-to-r from-gray-100 to-transparent rounded-xl border-l-4 border-gray-500">
                           <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Department</label>
-                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.departmentName || 'Unassigned'}</p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">{profile.departmentName || 'Unassigned'}</p>
                         </div>
                         <div className="p-4 bg-gradient-to-r from-pink-100 to-transparent rounded-xl border-l-4 border-pink-500">
                           <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Date of Birth</label>
-                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not provided'}</p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">{profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not provided'}</p>
                         </div>
                       </div>
                       <div className="space-y-4">
                         <div className="p-4 bg-gradient-to-r from-blue-100 to-transparent rounded-xl border-l-4 border-blue-500">
                           <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Start Date</label>
-                          <p className="text-lg font-medium text-gray-900 mt-1">{profile.startDate ? new Date(profile.startDate).toLocaleDateString() : '14/9/2025'}</p>
+                          <p className="text-sm font-medium text-gray-900 mt-1">{profile.startDate ? new Date(profile.startDate).toLocaleDateString() : '14/9/2025'}</p>
                         </div>
                         <div className="p-4 bg-gradient-to-r from-purple-100 to-transparent rounded-xl border-l-4 border-purple-500">
                           <label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Status</label>
                           <div className="flex items-center mt-1">
                             <div className="h-3 w-3 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                            <p className="text-lg font-medium text-green-700">Active</p>
+                            <p className="text-sm font-medium text-green-700">Active</p>
                           </div>
                         </div>
                       </div>
@@ -741,7 +740,7 @@ export default function EmployeeProfilePage() {
                   <div className="space-y-6">
                     <div className="flex items-center mb-4">
                       <PhoneIcon className="h-6 w-6 text-saywhat-orange mr-3" />
-                      <h3 className="text-xl font-bold text-gray-900">Contact Information</h3>
+                      <h3 className="text-sm font-semibold text-gray-900">Contact Information</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       <div className="group">
@@ -754,12 +753,12 @@ export default function EmployeeProfilePage() {
                             type="tel"
                             value={formData.phoneNumber}
                             onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
                             placeholder="Enter phone number"
                           />
                         ) : (
                           <div className="p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.phoneNumber || 'Not provided'}</p>
+                            <p className="text-sm font-medium text-gray-900">{profile.phoneNumber || 'Not provided'}</p>
                           </div>
                         )}
                       </div>
@@ -774,12 +773,12 @@ export default function EmployeeProfilePage() {
                             type="tel"
                             value={formData.alternativePhone}
                             onChange={(e) => setFormData(prev => ({ ...prev, alternativePhone: e.target.value }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
                             placeholder="Enter alternative phone"
                           />
                         ) : (
                           <div className="p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl border-l-4 border-green-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.alternativePhone || 'Not provided'}</p>
+                            <p className="text-sm font-medium text-gray-900">{profile.alternativePhone || 'Not provided'}</p>
                           </div>
                         )}
                       </div>
@@ -794,12 +793,12 @@ export default function EmployeeProfilePage() {
                             type="email"
                             value={formData.personalEmail}
                             onChange={(e) => setFormData(prev => ({ ...prev, personalEmail: e.target.value }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
                             placeholder="Enter personal email"
                           />
                         ) : (
                           <div className="p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.personalEmail || 'Not provided'}</p>
+                            <p className="text-sm font-medium text-gray-900">{profile.personalEmail || 'Not provided'}</p>
                           </div>
                         )}
                       </div>
@@ -814,12 +813,12 @@ export default function EmployeeProfilePage() {
                             type="email"
                             value={formData.alternativeEmail}
                             onChange={(e) => setFormData(prev => ({ ...prev, alternativeEmail: e.target.value }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
                             placeholder="Enter alternative email"
                           />
                         ) : (
                           <div className="p-4 bg-gradient-to-r from-indigo-50 to-transparent rounded-xl border-l-4 border-indigo-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.alternativeEmail || 'Not provided'}</p>
+                            <p className="text-sm font-medium text-gray-900">{profile.alternativeEmail || 'Not provided'}</p>
                           </div>
                         )}
                       </div>
@@ -834,12 +833,12 @@ export default function EmployeeProfilePage() {
                             value={formData.address}
                             onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
                             rows={3}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors resize-none"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors resize-none"
                             placeholder="Enter home address"
                           />
                         ) : (
                           <div className="p-4 bg-gradient-to-r from-purple-50 to-transparent rounded-xl border-l-4 border-purple-400">
-                            <p className="text-lg font-medium text-gray-900">{profile.address || 'Not provided'}</p>
+                            <p className="text-sm font-medium text-gray-900">{profile.address || 'Not provided'}</p>
                           </div>
                         )}
                       </div>
@@ -852,10 +851,10 @@ export default function EmployeeProfilePage() {
                   <div className="space-y-6">
                     <div className="flex items-center mb-4">
                       <IdentificationIcon className="h-6 w-6 text-saywhat-orange mr-3" />
-                      <h3 className="text-xl font-bold text-gray-900">Emergency Contacts</h3>
+                      <h3 className="text-sm font-semibold text-gray-900">Emergency Contacts</h3>
                     </div>
                     <div className="p-6 bg-gradient-to-r from-red-50 to-red-25 rounded-xl border border-red-200">
-                      <h4 className="text-lg font-bold text-red-800 mb-4 flex items-center">
+                      <h4 className="text-sm font-semibold text-red-800 mb-4 flex items-center">
                         <span className="inline-block w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse"></span>
                         Emergency Contact Information
                       </h4>
@@ -869,12 +868,12 @@ export default function EmployeeProfilePage() {
                               type="text"
                               value={formData.emergencyContact}
                               onChange={(e) => setFormData(prev => ({ ...prev, emergencyContact: e.target.value }))}
-                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
                               placeholder="Emergency contact name"
                             />
                           ) : (
                             <div className="p-3 bg-white rounded-lg border border-red-200">
-                              <p className="text-lg font-medium text-gray-900">{profile.emergencyContact || 'Not provided'}</p>
+                              <p className="text-sm font-medium text-gray-900">{profile.emergencyContact || 'Not provided'}</p>
                             </div>
                           )}
                         </div>
@@ -887,12 +886,12 @@ export default function EmployeeProfilePage() {
                               type="tel"
                               value={formData.emergencyPhone}
                               onChange={(e) => setFormData(prev => ({ ...prev, emergencyPhone: e.target.value }))}
-                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
                               placeholder="Emergency contact phone"
                             />
                           ) : (
                             <div className="p-3 bg-white rounded-lg border border-red-200">
-                              <p className="text-lg font-medium text-gray-900">{profile.emergencyPhone || 'Not provided'}</p>
+                              <p className="text-sm font-medium text-gray-900">{profile.emergencyPhone || 'Not provided'}</p>
                             </div>
                           )}
                         </div>
@@ -904,7 +903,7 @@ export default function EmployeeProfilePage() {
                             <select
                               value={formData.emergencyContactRelationship}
                               onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactRelationship: e.target.value }))}
-                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
+                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors"
                             >
                               <option value="">Select relationship</option>
                               <option value="spouse">Spouse</option>
@@ -916,7 +915,7 @@ export default function EmployeeProfilePage() {
                             </select>
                           ) : (
                             <div className="p-3 bg-white rounded-lg border border-red-200">
-                              <p className="text-lg font-medium text-gray-900">{profile.emergencyContactRelationship || 'Not provided'}</p>
+                              <p className="text-sm font-medium text-gray-900">{profile.emergencyContactRelationship || 'Not provided'}</p>
                             </div>
                           )}
                         </div>
@@ -929,12 +928,12 @@ export default function EmployeeProfilePage() {
                               value={formData.emergencyContactAddress}
                               onChange={(e) => setFormData(prev => ({ ...prev, emergencyContactAddress: e.target.value }))}
                               rows={3}
-                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors resize-none"
+                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-saywhat-orange focus:border-saywhat-orange transition-colors resize-none"
                               placeholder="Emergency contact address"
                             />
                           ) : (
                             <div className="p-3 bg-white rounded-lg border border-red-200">
-                              <p className="text-lg font-medium text-gray-900">{profile.emergencyContactAddress || 'Not provided'}</p>
+                              <p className="text-sm font-medium text-gray-900">{profile.emergencyContactAddress || 'Not provided'}</p>
                             </div>
                           )}
                         </div>
@@ -948,13 +947,13 @@ export default function EmployeeProfilePage() {
                   <div className="space-y-6">
                     <div className="flex items-center mb-4">
                       <ShieldCheckIcon className="h-6 w-6 text-saywhat-orange mr-3" />
-                      <h3 className="text-xl font-bold text-gray-900">Security Settings</h3>
+                      <h3 className="text-sm font-semibold text-gray-900">Security Settings</h3>
                     </div>
                     {/* Password Management */}
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-xl border-l-4 border-blue-400">
                         <div>
-                          <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                          <h4 className="text-sm font-semibold text-gray-900 flex items-center">
                             <LockClosedIcon className="mr-2 h-5 w-5 text-blue-600" />
                             Password
                           </h4>
@@ -972,7 +971,7 @@ export default function EmployeeProfilePage() {
                       {/* Two-Factor Authentication */}
                       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl border-l-4 border-green-400 mt-4">
                         <div>
-                          <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                          <h4 className="text-sm font-semibold text-gray-900 flex items-center">
                             <ShieldCheckIcon className="mr-2 h-5 w-5 text-green-600" />
                             Two-Factor Authentication
                           </h4>
@@ -1019,7 +1018,7 @@ export default function EmployeeProfilePage() {
                       {/* Password Change Form */}
                       {showPasswordChange && (
                         <div className="mt-4 p-6 bg-gray-50 rounded-xl border border-gray-200">
-                          <h5 className="text-lg font-semibold text-gray-900 mb-4">Change Password</h5>
+                          <h5 className="text-sm font-semibold text-gray-900 mb-4">Change Password</h5>
                           
                           {passwordError && (
                             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -1116,7 +1115,7 @@ export default function EmployeeProfilePage() {
                   <div className="space-y-6">
                     <div className="flex items-center mb-4">
                       <DocumentTextIcon className="h-6 w-6 text-saywhat-orange mr-3" />
-                      <h3 className="text-xl font-bold text-gray-900">Employee Documents</h3>
+                      <h3 className="text-sm font-semibold text-gray-900">Employee Documents</h3>
                     </div>
                     {profile && profile.employeeId && (
                       <EmployeeDocumentsSection employeeId={profile.employeeId} canUpload={true} />
@@ -1129,7 +1128,7 @@ export default function EmployeeProfilePage() {
                 {/* Performance History Section - Inside left column next to sidebar */}
                 <div id="performance-history" className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
                   <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-                    <h3 className="text-xl font-bold text-white flex items-center">
+                    <h3 className="text-sm font-semibold text-white flex items-center">
                       <ClipboardDocumentCheckIcon className="mr-3 h-6 w-6" />
                       Performance History
                     </h3>
@@ -1304,7 +1303,7 @@ export default function EmployeeProfilePage() {
                       ) : (
                         <div className="text-center py-12 text-gray-500">
                           <ClipboardDocumentCheckIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                          <p className="text-lg font-medium">No performance plans found</p>
+                          <p className="text-sm font-medium">No performance plans found</p>
                           <p className="text-sm mt-2">Create your first performance plan to get started.</p>
                           <Link
                             href="/hr/performance/plans/create?self=true"
@@ -1483,7 +1482,7 @@ export default function EmployeeProfilePage() {
                       ) : (
                         <div className="text-center py-12 text-gray-500">
                           <StarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                          <p className="text-lg font-medium">No performance appraisals found</p>
+                          <p className="text-sm font-medium">No performance appraisals found</p>
                           <p className="text-sm mt-2">Create your first appraisal to get started.</p>
                           <Link
                             href="/hr/performance/appraisals/create"
@@ -1504,26 +1503,26 @@ export default function EmployeeProfilePage() {
                 {/* Quick Stats Card - Natural Height */}
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
                   <div className="bg-gradient-to-r from-green-600 to-green-500 px-4 py-3">
-                    <h3 className="text-lg font-bold text-white flex items-center">
+                    <h3 className="text-sm font-semibold text-white flex items-center">
                       <ChartBarIcon className="mr-2 h-5 w-5" />
                       Quick Stats
                     </h3>
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="text-center p-3 bg-gradient-to-br from-saywhat-orange/20 to-saywhat-orange/5 rounded-lg">
-                      <div className="text-2xl font-bold text-saywhat-orange">
+                      <div className="text-sm font-semibold text-saywhat-orange">
                         {loading ? '...' : Math.floor(quickStats.yearsOfService)}
                       </div>
                       <div className="text-xs font-medium text-gray-600">Years of Service</div>
                     </div>
                     <div className="text-center p-3 bg-gradient-to-br from-green-100 to-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">
+                      <div className="text-sm font-semibold text-green-600">
                         {loading ? '...' : quickStats.performanceScore !== null ? `${quickStats.performanceScore}%` : 'N/A'}
                       </div>
                       <div className="text-xs font-medium text-gray-600">Performance Score</div>
                     </div>
                     <div className="text-center p-3 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className="text-sm font-semibold text-blue-600">
                         {loading ? '...' : quickStats.completedTrainings}
                       </div>
                       <div className="text-xs font-medium text-gray-600">Trainings Completed</div>
@@ -1534,7 +1533,7 @@ export default function EmployeeProfilePage() {
                 {/* Enhanced Quick Actions */}
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
                 <div className="bg-gradient-to-r from-black to-gray-800 px-4 py-3">
-                  <h3 className="text-lg font-bold text-white flex items-center">
+                  <h3 className="text-sm font-semibold text-white flex items-center">
                     <StarIcon className="mr-2 h-5 w-5 text-saywhat-orange" />
                     Quick Actions
                   </h3>
@@ -1624,7 +1623,7 @@ export default function EmployeeProfilePage() {
             {supervisorData && (supervisorData.isSupervisor || supervisorData.isReviewer) && supervisorData.employees.length > 0 && (
               <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
                 <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
-                  <h3 className="text-xl font-bold text-white flex items-center">
+                  <h3 className="text-sm font-semibold text-white flex items-center">
                     <UsersIcon className="mr-3 h-6 w-6" />
                     {supervisorData.isSupervisor && supervisorData.isReviewer 
                       ? 'My Team - Supervised & Reviewed Employees'

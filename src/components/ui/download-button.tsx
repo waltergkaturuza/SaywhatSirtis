@@ -30,6 +30,7 @@ interface DownloadButtonProps {
   className?: string
   disabled?: boolean
   iconOnly?: boolean
+  layout?: 'table' | 'profile'
   onDownloadStart?: () => void
   onDownloadComplete?: (success: boolean) => void
   onDownloadError?: (error: string) => void
@@ -48,6 +49,7 @@ export function DownloadButton({
   className,
   disabled = false,
   iconOnly = false,
+  layout = 'table',
   onDownloadStart,
   onDownloadComplete,
   onDownloadError
@@ -111,6 +113,26 @@ export function DownloadButton({
         }),
         title: exportMetadata.title,
         metadata: exportMetadata
+      }
+
+      if (format === 'pdf' && layout === 'profile') {
+        let record = data[0]
+        if (record?.id) {
+          const response = await fetch(`/api/hr/employees/${record.id}`)
+          if (response.ok) {
+            const result = await response.json()
+            if (result?.success && result.data) record = result.data
+          }
+        }
+        await exportService.exportEmployeeProfile(record, {
+          filename: downloadFilename,
+          title: title || exportMetadata.title
+        })
+        toast.success('Successfully downloaded PDF file', {
+          description: `${record.firstName || record.name || 'Employee'} profile exported`
+        })
+        if (onDownloadComplete) onDownloadComplete(true)
+        return
       }
 
       const baseOptions = {

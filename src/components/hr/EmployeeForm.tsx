@@ -171,6 +171,66 @@ interface EmployeeFormData {
   securityClearance: string
 }
 
+function toDateInputValue(value: unknown): string {
+  if (!value) return ""
+  const text = String(value)
+  const dateOnly = text.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (dateOnly) return dateOnly[1]
+  const date = new Date(text)
+  if (Number.isNaN(date.getTime())) return ""
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function asTextList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean)
+  if (typeof value === "string" && value.trim()) {
+    return value.split(",").map((item) => item.trim()).filter(Boolean)
+  }
+  return []
+}
+
+function normalizeToken(value: unknown, options: Record<string, string>, fallback = ""): string {
+  if (value === undefined || value === null || value === "") return fallback
+  const text = String(value).trim()
+  const key = text.toLowerCase().replace(/[\s-]+/g, "_")
+  return options[key] || options[text.toLowerCase()] || text
+}
+
+function normalizeJobDescription(raw: any, position = "", workLocation = "") {
+  const source = raw && typeof raw === "object" ? raw : {}
+  let responsibilities = source.keyResponsibilities
+  if (typeof responsibilities === "string") {
+    try {
+      responsibilities = JSON.parse(responsibilities)
+    } catch {
+      responsibilities = []
+    }
+  }
+  if (!Array.isArray(responsibilities) || responsibilities.length === 0) {
+    responsibilities = [{ description: "", weight: 0, tasks: "" }]
+  }
+  return {
+    jobTitle: source.jobTitle || position || "",
+    location: source.location || workLocation || "",
+    jobSummary: source.jobSummary || "",
+    keyResponsibilities: responsibilities.map((item: any) => {
+      if (typeof item === "string") return { description: item, weight: 0, tasks: "" }
+      return {
+        description: item?.description || item?.responsibility || "",
+        weight: Number(item?.weight) || 0,
+        tasks: item?.tasks || ""
+      }
+    }),
+    essentialExperience: source.essentialExperience || "",
+    essentialSkills: source.essentialSkills || "",
+    acknowledgment: Boolean(source.acknowledgment),
+    signatureFile: null
+  }
+}
+
 interface EmployeeFormProps {
   mode: 'create' | 'edit'
   employeeData?: any // For edit mode
@@ -190,6 +250,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
   }>>([])
   const [supervisors, setSupervisors] = useState<Array<{
     id: string
+    userId?: string | null
     firstName: string
     lastName: string
     position: string
@@ -316,13 +377,26 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
       // Resolve canonical department id/name from relation if available
       const resolvedDepartmentId = employeeData.departmentId || employeeData.departments?.id || ""
       const resolvedDepartmentName = employeeData.department || employeeData.departments?.name || ""
+      const flag = (camel: unknown, snake: unknown) => Boolean(camel ?? snake)
       setFormData({
         firstName: employeeData.firstName || "",
         lastName: employeeData.lastName || "",
         middleName: employeeData.middleName || "",
-        dateOfBirth: employeeData.dateOfBirth ? new Date(employeeData.dateOfBirth).toISOString().split('T')[0] : "",
-        gender: employeeData.gender || "",
-        maritalStatus: employeeData.maritalStatus || "",
+        dateOfBirth: toDateInputValue(employeeData.dateOfBirth),
+        gender: normalizeToken(employeeData.gender, {
+          male: "Male",
+          female: "Female",
+          other: "Other",
+          prefer_not_to_say: "Prefer not to say"
+        }),
+        maritalStatus: normalizeToken(employeeData.maritalStatus || employeeData.marital_status, {
+          single: "Single",
+          married: "Married",
+          divorced: "Divorced",
+          widowed: "Widowed",
+          separated: "Separated",
+          prefer_not_to_say: "Prefer not to say"
+        }),
         phoneNumber: employeeData.phoneNumber || "",
         email: employeeData.email || "",
         personalEmail: employeeData.personalEmail || "",
@@ -334,68 +408,83 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         department: resolvedDepartmentName,
         departmentId: resolvedDepartmentId,
         position: employeeData.position || "",
-        supervisorId: employeeData.supervisorId || "",
-        reviewerId: employeeData.reviewerId || "",
-        startDate: employeeData.startDate ? new Date(employeeData.startDate).toISOString().split('T')[0] : "",
-        hireDate: employeeData.hireDate ? new Date(employeeData.hireDate).toISOString().split('T')[0] : "",
-        employmentType: employeeData.employmentType || "FULL_TIME",
-        workLocation: employeeData.workLocation || "",
+        supervisorId: employeeData.supervisorId || employeeData.supervisor_id || "",
+        reviewerId: employeeData.reviewerId || employeeData.reviewer_id || "",
+        startDate: toDateInputValue(employeeData.startDate),
+        hireDate: toDateInputValue(employeeData.hireDate),
+        employmentType: normalizeToken(employeeData.employmentType, {
+          full_time: "FULL_TIME",
+          fulltime: "FULL_TIME",
+          part_time: "PART_TIME",
+          parttime: "PART_TIME",
+          contract: "CONTRACT",
+          intern: "INTERN",
+          internship: "INTERN",
+          consultant: "CONSULTANT",
+          temporary: "TEMPORARY",
+          temp: "TEMPORARY",
+          volunteer: "VOLUNTEER"
+        }, "FULL_TIME"),
+        workLocation: employeeData.workLocation || employeeData.work_location || "",
         country: employeeData.country || "",
         province: employeeData.province || "",
-        isSupervisor: employeeData.isSupervisor || false,
-        isReviewer: employeeData.isReviewer || false,
-        baseSalary: employeeData.baseSalary || employeeData.salary?.toString() || "",
+        isSupervisor: flag(employeeData.isSupervisor, employeeData.is_supervisor),
+        isReviewer: flag(employeeData.isReviewer, employeeData.is_reviewer),
+        baseSalary: (employeeData.baseSalary ?? employeeData.salary ?? "").toString(),
         currency: employeeData.currency || "USD",
-        payGrade: employeeData.payGrade || "",
-        payFrequency: employeeData.payFrequency || "monthly",
-        healthInsurance: employeeData.healthInsurance || false,
-        dentalCoverage: employeeData.dentalCoverage || false,
-        visionCoverage: employeeData.visionCoverage || false,
-        lifeInsurance: employeeData.lifeInsurance || false,
-        retirementPlan: employeeData.retirementPlan || false,
-        flexiblePTO: employeeData.flexiblePTO || false,
-        medicalAid: employeeData.medicalAid || false,
-        funeralCover: employeeData.funeralCover || false,
-        vehicleBenefit: employeeData.vehicleBenefit || false,
-        fuelAllowance: employeeData.fuelAllowance || false,
-        airtimeAllowance: employeeData.airtimeAllowance || false,
-        otherBenefits: employeeData.otherBenefits || (Array.isArray(employeeData.otherBenefits) ? employeeData.otherBenefits.join(', ') : ""),
+        payGrade: employeeData.payGrade || employeeData.pay_grade || "",
+        payFrequency: normalizeToken(employeeData.payFrequency || employeeData.pay_frequency, {
+          weekly: "weekly",
+          biweekly: "bi-weekly",
+          bi_weekly: "bi-weekly",
+          monthly: "monthly",
+          quarterly: "quarterly",
+          annually: "annually",
+          annual: "annually"
+        }, "monthly"),
+        healthInsurance: flag(employeeData.healthInsurance, employeeData.health_insurance),
+        dentalCoverage: flag(employeeData.dentalCoverage, employeeData.dental_coverage),
+        visionCoverage: flag(employeeData.visionCoverage, employeeData.vision_coverage),
+        lifeInsurance: flag(employeeData.lifeInsurance, employeeData.life_insurance),
+        retirementPlan: flag(employeeData.retirementPlan, employeeData.retirement_plan),
+        flexiblePTO: flag(employeeData.flexiblePTO, employeeData.flexible_pto),
+        medicalAid: flag(employeeData.medicalAid, employeeData.medical_aid),
+        funeralCover: flag(employeeData.funeralCover, employeeData.funeral_cover),
+        vehicleBenefit: flag(employeeData.vehicleBenefit, employeeData.vehicle_benefit),
+        fuelAllowance: flag(employeeData.fuelAllowance, employeeData.fuel_allowance),
+        airtimeAllowance: flag(employeeData.airtimeAllowance, employeeData.airtime_allowance),
+        otherBenefits: asTextList(employeeData.otherBenefits ?? employeeData.other_benefits).join(", "),
         education: employeeData.education || "",
-        skills: employeeData.skills || (Array.isArray(employeeData.skills) ? employeeData.skills.join(', ') : ""),
-        certifications: employeeData.certifications || (Array.isArray(employeeData.certifications) ? employeeData.certifications.join(', ') : ""),
-        orientationTrainingRequired: employeeData.orientationTrainingRequired || false,
-        securityTrainingRequired: employeeData.securityTrainingRequired || false,
-        departmentSpecificTrainingRequired: employeeData.departmentSpecificTrainingRequired || false,
-        accessLevel: employeeData.accessLevel || "basic",
-        userRole: employeeData.userRole || "",
-        systemAccess: employeeData.systemAccess || [],
-        documentSecurityClearance: employeeData.documentSecurityClearance || employeeData.securityClearance || "PUBLIC",
-        jobDescription: employeeData.jobDescription || {
-          jobTitle: employeeData.position || "",
-          location: employeeData.workLocation || "",
-          jobSummary: "",
-          keyResponsibilities: [
-            { description: "", weight: 0, tasks: "" }
-          ],
-          essentialExperience: "",
-          essentialSkills: "",
-          acknowledgment: false,
-          signatureFile: null
-        },
-        contractSigned: employeeData.contractSigned || false,
-        backgroundCheckCompleted: employeeData.backgroundCheckCompleted || false,
-        medicalCheckCompleted: employeeData.medicalCheckCompleted || false,
-        trainingCompleted: employeeData.trainingCompleted || false,
-        initialTrainingCompleted: employeeData.initialTrainingCompleted || false,
-        additionalNotes: employeeData.additionalNotes || "",
+        skills: asTextList(employeeData.skills).join(", "),
+        certifications: asTextList(employeeData.certifications).join(", "),
+        orientationTrainingRequired: flag(employeeData.orientationTrainingRequired, employeeData.orientation_training_required),
+        securityTrainingRequired: flag(employeeData.securityTrainingRequired, employeeData.security_training_required),
+        departmentSpecificTrainingRequired: flag(employeeData.departmentSpecificTrainingRequired, employeeData.department_specific_training_required),
+        accessLevel: employeeData.accessLevel || employeeData.access_level || "basic",
+        userRole: employeeData.userRole || employeeData.user_role || "",
+        systemAccess: asTextList(employeeData.systemAccess ?? employeeData.system_access),
+        documentSecurityClearance: employeeData.documentSecurityClearance || employeeData.document_security_clearance || employeeData.securityClearance || "PUBLIC",
+        jobDescription: normalizeJobDescription(employeeData.jobDescription, employeeData.position, employeeData.workLocation || employeeData.work_location),
+        contractSigned: flag(employeeData.contractSigned, employeeData.contract_signed),
+        backgroundCheckCompleted: flag(employeeData.backgroundCheckCompleted, employeeData.background_check_completed),
+        medicalCheckCompleted: flag(employeeData.medicalCheckCompleted, employeeData.medical_check_completed),
+        trainingCompleted: flag(employeeData.trainingCompleted, employeeData.training_completed),
+        initialTrainingCompleted: flag(employeeData.initialTrainingCompleted, employeeData.initial_training_completed),
+        additionalNotes: employeeData.additionalNotes || employeeData.additional_notes || "",
         uploadedDocuments: employeeData.uploadedDocuments || [],
-        status: employeeData.status || "ACTIVE",
+        status: normalizeToken(employeeData.status, {
+          active: "ACTIVE",
+          inactive: "INACTIVE",
+          on_leave: "ON_LEAVE",
+          onleave: "ON_LEAVE",
+          terminated: "TERMINATED"
+        }, "ACTIVE"),
         alternativePhone: employeeData.alternativePhone || "",
         nationality: employeeData.nationality || "",
         nationalId: employeeData.nationalId || "",
         // Legacy compatibility
-        trainingRequired: employeeData.trainingRequired || [],
-        benefits: employeeData.benefits || [],
+        trainingRequired: asTextList(employeeData.trainingRequired),
+        benefits: asTextList(employeeData.benefits),
         securityClearance: employeeData.securityClearance || "none"
       })
     }
@@ -468,6 +557,16 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
     fetchReviewers()
     fetchRoles()
   }, [])
+
+  useEffect(() => {
+    if (!departments.length) return
+    setFormData((prev) => {
+      if (prev.departmentId && departments.some((dept) => dept.id === prev.departmentId)) return prev
+      const match = departments.find((dept) => dept.name === prev.department)
+      if (!match) return prev
+      return { ...prev, departmentId: match.id, department: match.name }
+    })
+  }, [departments])
 
   // Cleanup temporary URLs when component unmounts
   useEffect(() => {
@@ -799,6 +898,16 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200"
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="personalEmail" className="text-saywhat-black font-semibold">Personal Email</Label>
+            <Input
+              id="personalEmail"
+              type="email"
+              value={formData.personalEmail}
+              onChange={(e) => handleInputChange('personalEmail', e.target.value)}
+              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
+            />
+          </div>
           <div>
             <Label htmlFor="phoneNumber" className="text-saywhat-dark font-medium">Phone Number</Label>
             <Input
@@ -839,7 +948,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
           </div>
           <div>
             <Label htmlFor="gender" className="text-saywhat-dark font-medium">Gender</Label>
-            <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
+            <Select value={formData.gender || undefined} onValueChange={(value) => handleInputChange('gender', value)}>
               <SelectTrigger className="border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-saywhat-orange">
                 <SelectValue placeholder="Select gender" />
               </SelectTrigger>
@@ -848,12 +957,15 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
                 <SelectItem value="Female">Female</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
                 <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                {formData.gender && !["Male", "Female", "Other", "Prefer not to say"].includes(formData.gender) && (
+                  <SelectItem value={formData.gender}>{formData.gender}</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label htmlFor="maritalStatus" className="text-saywhat-dark font-medium">Marital Status</Label>
-            <Select value={formData.maritalStatus} onValueChange={(value) => handleInputChange('maritalStatus', value)}>
+            <Select value={formData.maritalStatus || undefined} onValueChange={(value) => handleInputChange('maritalStatus', value)}>
               <SelectTrigger className="border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-saywhat-orange">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
@@ -864,6 +976,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
                 <SelectItem value="Widowed">Widowed</SelectItem>
                 <SelectItem value="Separated">Separated</SelectItem>
                 <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                {formData.maritalStatus && !["Single", "Married", "Divorced", "Widowed", "Separated", "Prefer not to say"].includes(formData.maritalStatus) && (
+                  <SelectItem value={formData.maritalStatus}>{formData.maritalStatus}</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -873,6 +988,24 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               id="nationality"
               value={formData.nationality}
               onChange={(e) => handleInputChange('nationality', e.target.value)}
+              className="border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-saywhat-orange"
+            />
+          </div>
+          <div>
+            <Label htmlFor="country" className="text-saywhat-dark font-medium">Country</Label>
+            <Input
+              id="country"
+              value={formData.country}
+              onChange={(e) => handleInputChange('country', e.target.value)}
+              className="border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-saywhat-orange"
+            />
+          </div>
+          <div>
+            <Label htmlFor="province" className="text-saywhat-dark font-medium">Province</Label>
+            <Input
+              id="province"
+              value={formData.province}
+              onChange={(e) => handleInputChange('province', e.target.value)}
               className="border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-saywhat-orange"
             />
           </div>
@@ -927,7 +1060,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
           </div>
           <div className="space-y-2">
             <Label htmlFor="emergencyContactRelationship" className="text-saywhat-black font-semibold">Relationship</Label>
-            <Select value={formData.emergencyContactRelationship} onValueChange={(value) => handleInputChange('emergencyContactRelationship', value)}>
+            <Select value={formData.emergencyContactRelationship || undefined} onValueChange={(value) => handleInputChange('emergencyContactRelationship', value)}>
               <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-red focus:ring-2 focus:ring-saywhat-red/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-red/50 transition-all duration-200">
                 <SelectValue placeholder="Select relationship" />
               </SelectTrigger>
@@ -938,6 +1071,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
                 <SelectItem value="Child">Child</SelectItem>
                 <SelectItem value="Friend">Friend</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
+                {formData.emergencyContactRelationship && !["Spouse", "Parent", "Sibling", "Child", "Friend", "Other"].includes(formData.emergencyContactRelationship) && (
+                  <SelectItem value={formData.emergencyContactRelationship}>{formData.emergencyContactRelationship}</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -982,10 +1118,13 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         </div>
         <div>
           <Label htmlFor="department" className="text-saywhat-black font-semibold">Department</Label>
-          <Select value={formData.departmentId} onValueChange={(value) => {
+          <Select value={formData.departmentId || undefined} onValueChange={(value) => {
             const selectedDept = departments.find(d => d.id === value)
-            handleInputChange('departmentId', value)
-            handleInputChange('department', selectedDept?.name || '')
+            setFormData(prev => ({
+              ...prev,
+              departmentId: value,
+              department: selectedDept?.name || prev.department
+            }))
           }}>
             <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select department" />
@@ -1016,6 +1155,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               <SelectItem value="CONSULTANT">Consultant</SelectItem>
               <SelectItem value="TEMPORARY">Temporary</SelectItem>
               <SelectItem value="VOLUNTEER">Volunteer</SelectItem>
+              {formData.employmentType && !["FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT", "TEMPORARY", "VOLUNTEER"].includes(formData.employmentType) && (
+                <SelectItem value={formData.employmentType}>{formData.employmentType}</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -1057,6 +1199,10 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               <SelectItem value="ZWL">ZWL</SelectItem>
               <SelectItem value="EUR">EUR</SelectItem>
               <SelectItem value="GBP">GBP</SelectItem>
+              <SelectItem value="ZAR">ZAR</SelectItem>
+              {formData.currency && !["USD", "ZWL", "EUR", "GBP", "ZAR"].includes(formData.currency) && (
+                <SelectItem value={formData.currency}>{formData.currency}</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -1071,6 +1217,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               <SelectItem value="INACTIVE">Inactive</SelectItem>
               <SelectItem value="ON_LEAVE">On Leave</SelectItem>
               <SelectItem value="TERMINATED">Terminated</SelectItem>
+              {formData.status && !["ACTIVE", "INACTIVE", "ON_LEAVE", "TERMINATED"].includes(formData.status) && (
+                <SelectItem value={formData.status}>{formData.status}</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -1090,6 +1239,14 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
                   {supervisor.firstName} {supervisor.lastName} - {supervisor.position}
                 </SelectItem>
               ))}
+              {formData.supervisorId && !supervisors.some((supervisor) => supervisor.id === formData.supervisorId || supervisor.userId === formData.supervisorId) && (
+                <SelectItem value={formData.supervisorId}>
+                  {employeeData?.supervisor
+                    ? `${employeeData.supervisor.firstName || ''} ${employeeData.supervisor.lastName || ''}`.trim()
+                    : 'Assigned supervisor'}
+                  {employeeData?.supervisor?.position ? ` - ${employeeData.supervisor.position}` : ''}
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -1109,13 +1266,21 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
                   {reviewer.name} - {reviewer.position || 'Reviewer'}
                 </SelectItem>
               ))}
+              {formData.reviewerId && !reviewers.some((reviewer) => reviewer.id === formData.reviewerId) && (
+                <SelectItem value={formData.reviewerId}>
+                  {employeeData?.reviewer
+                    ? `${employeeData.reviewer.firstName || ''} ${employeeData.reviewer.lastName || ''}`.trim() || employeeData.reviewer.name
+                    : 'Assigned reviewer'}
+                  {employeeData?.reviewer?.position ? ` - ${employeeData.reviewer.position}` : ''}
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
         <div>
           <Label htmlFor="workLocation">Work Location</Label>
           <Select 
-            value={formData.workLocation} 
+            value={formData.workLocation || undefined} 
             onValueChange={(value) => handleInputChange('workLocation', value)}
           >
             <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
@@ -1126,6 +1291,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               <SelectItem value="remote">Remote</SelectItem>
               <SelectItem value="hybrid">Hybrid</SelectItem>
               <SelectItem value="field">Field</SelectItem>
+              {formData.workLocation && !["office", "remote", "hybrid", "field"].includes(formData.workLocation) && (
+                <SelectItem value={formData.workLocation}>{formData.workLocation}</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -1205,7 +1373,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         </div>
         <div>
           <Label htmlFor="payGrade">Pay Grade</Label>
-          <Select value={formData.payGrade} onValueChange={(value) => handleInputChange('payGrade', value)}>
+          <Select value={formData.payGrade || undefined} onValueChange={(value) => handleInputChange('payGrade', value)}>
             <SelectTrigger className="bg-white">
               <SelectValue placeholder="Select Pay Grade" />
             </SelectTrigger>
@@ -1220,6 +1388,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               <SelectItem value="Scale 5" className="text-gray-500 hover:bg-gray-50">Scale 5</SelectItem>
               <SelectItem value="Scale 4" className="text-gray-400 hover:bg-gray-50">Scale 4</SelectItem>
               <SelectItem value="M1/M2" className="text-gray-300 hover:bg-gray-50">M1/M2 (Lowest)</SelectItem>
+              {formData.payGrade && !["PO6", "PO4", "PO3", "PO2", "PO1", "SO2", "SO1", "Scale 5", "Scale 4", "M1/M2"].includes(formData.payGrade) && (
+                <SelectItem value={formData.payGrade}>{formData.payGrade}</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -1283,13 +1454,61 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             />
             <Label htmlFor="airtimeAllowance">Airtime Allowance</Label>
           </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="healthInsurance"
+              checked={formData.healthInsurance}
+              onCheckedChange={(checked) => handleInputChange('healthInsurance', checked)}
+            />
+            <Label htmlFor="healthInsurance">Health Insurance</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="dentalCoverage"
+              checked={formData.dentalCoverage}
+              onCheckedChange={(checked) => handleInputChange('dentalCoverage', checked)}
+            />
+            <Label htmlFor="dentalCoverage">Dental Coverage</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="visionCoverage"
+              checked={formData.visionCoverage}
+              onCheckedChange={(checked) => handleInputChange('visionCoverage', checked)}
+            />
+            <Label htmlFor="visionCoverage">Vision Coverage</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="lifeInsurance"
+              checked={formData.lifeInsurance}
+              onCheckedChange={(checked) => handleInputChange('lifeInsurance', checked)}
+            />
+            <Label htmlFor="lifeInsurance">Life Insurance</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="retirementPlan"
+              checked={formData.retirementPlan}
+              onCheckedChange={(checked) => handleInputChange('retirementPlan', checked)}
+            />
+            <Label htmlFor="retirementPlan">Retirement Plan</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="flexiblePTO"
+              checked={formData.flexiblePTO}
+              onCheckedChange={(checked) => handleInputChange('flexiblePTO', checked)}
+            />
+            <Label htmlFor="flexiblePTO">Flexible PTO</Label>
+          </div>
         </div>
 
         <div className="mt-4">
           <Label htmlFor="otherBenefits">Other Benefits (comma-separated)</Label>
           <Input
             id="otherBenefits"
-            value={Array.isArray(formData.otherBenefits) ? formData.otherBenefits.join(', ') : ''}
+            value={Array.isArray(formData.otherBenefits) ? formData.otherBenefits.join(', ') : formData.otherBenefits || ''}
             onChange={(e) => handleInputChange('otherBenefits', e.target.value.split(',').map(b => b.trim()))}
             placeholder="e.g., Housing allowance, Transport allowance"
           />
@@ -1424,6 +1643,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               onChange={(e) => handleInputChange("documentSecurityClearance", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
+              <option value="STANDARD">STANDARD (Standard documents)</option>
               <option value="PUBLIC">PUBLIC (Public documents only)</option>
               <option value="CONFIDENTIAL">CONFIDENTIAL (Internal and confidential documents)</option>
               <option value="SECRET">SECRET (Up to secret level documents)</option>

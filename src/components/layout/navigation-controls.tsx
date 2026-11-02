@@ -226,13 +226,14 @@ export function PageHeader({
           </div>
         )}
 
-        {/* Title and Description */}
-        <div className="mt-2">
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-          {description && (
-            <p className="mt-1 text-sm text-gray-600">{description}</p>
-          )}
-        </div>
+        {(title || description) && (
+          <div className="mt-2">
+            {title && <h1 className="text-2xl font-bold text-gray-900">{title}</h1>}
+            {description && (
+              <p className="mt-1 text-sm text-gray-600">{description}</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

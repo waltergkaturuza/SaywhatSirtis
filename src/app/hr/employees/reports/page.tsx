@@ -74,6 +74,33 @@ interface AnalyticsData {
   retentionRate: number
 }
 
+function DepartmentAxisTick({ x, y, payload }: { x?: number; y?: number; payload?: { value?: string } }) {
+  const words = String(payload?.value || '').split(' ')
+  const lines: string[] = []
+  let current = ''
+  words.forEach((word) => {
+    const next = current ? `${current} ${word}` : word
+    if (next.length > 24 && current) {
+      lines.push(current)
+      current = word
+    } else {
+      current = next
+    }
+  })
+  if (current) lines.push(current)
+  const startDy = lines.length > 1 ? -((lines.length - 1) * 6) : 4
+
+  return (
+    <text x={x} y={y} textAnchor="end" fill="#06B6D4" fontSize={11}>
+      {lines.map((line, index) => (
+        <tspan key={`${line}-${index}`} x={x} dy={index === 0 ? startDy : 12}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  )
+}
+
 export default function EmployeeReports() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -847,22 +874,22 @@ export default function EmployeeReports() {
           <div className="lg:col-span-2 bg-gray-800 border border-cyan-400 rounded-lg p-6">
             <h3 className="text-cyan-400 text-lg font-semibold mb-4">Department Analysis</h3>
             {analytics?.departmentDistribution && Object.keys(analytics.departmentDistribution).length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height={Math.max(380, Object.keys(analytics.departmentDistribution).length * 42)}>
                 <BarChart 
                   data={Object.entries(analytics.departmentDistribution)
                     .sort(([,a], [,b]) => b - a)
                     .map(([key, value]) => ({ 
-                      name: key.length > 25 ? key.substring(0, 22) + '...' : key, 
-                      fullName: key,
-                      count: value 
+                      name: key, 
+                      count: Number(value) || 0 
                     }))}
-                  layout="horizontal"
-                  margin={{ top: 20, right: 40, left: 20, bottom: 5 }}
+                  layout="vertical"
+                  margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" horizontal={false} />
                   <XAxis 
                     type="number" 
-                    domain={[0, 'dataMax + 2']}
+                    allowDecimals={false}
+                    domain={[0, 'dataMax + 1']}
                     tick={{ fill: '#06B6D4', fontSize: 12 }}
                     axisLine={{ stroke: '#374151' }}
                     tickLine={{ stroke: '#374151' }}
@@ -870,10 +897,11 @@ export default function EmployeeReports() {
                   <YAxis 
                     dataKey="name" 
                     type="category" 
-                    tick={{ fill: '#06B6D4', fontSize: 10 }}
-                    width={200}
+                    width={190}
+                    tick={DepartmentAxisTick}
                     axisLine={{ stroke: '#374151' }}
                     tickLine={{ stroke: '#374151' }}
+                    interval={0}
                   />
                   <Tooltip 
                     contentStyle={{ 
@@ -882,17 +910,14 @@ export default function EmployeeReports() {
                       borderRadius: '8px',
                       fontSize: '12px'
                     }}
-                    formatter={(value, name, props) => [
-                      `${value} employees`,
-                      props.payload.fullName
-                    ]}
-                    labelFormatter={() => ''}
+                    formatter={(value) => [`${value} employees`, 'Employees']}
                   />
                   <Bar 
                     dataKey="count" 
                     fill="#06B6D4" 
                     stroke="#22D3EE"
                     strokeWidth={1}
+                    barSize={16}
                     radius={[0, 4, 4, 0]} 
                   />
                 </BarChart>
