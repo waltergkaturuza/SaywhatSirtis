@@ -118,57 +118,62 @@ const RecentActivities: React.FC = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-xl font-semibold text-saywhat-dark mb-6">Recent Activities</h2>
-      
       {activitiesData && activitiesData.recentActivities.length > 0 ? (
         <>
-          <div className="space-y-4 mb-6">
-            {activitiesData.recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className="flex-shrink-0">
-                  {getStatusIcon(activity.status)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                  <p className="text-sm text-gray-600 truncate">{activity.description}</p>
-                  <div className="flex items-center mt-1 text-xs text-gray-500">
-                    <UserIcon className="h-4 w-4 mr-1" />
-                    <span>{activity.officer}</span>
-                    <span className="mx-2">•</span>
-                    <span>{activity.time}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {activitiesData.pendingTasks.length > 0 && (
-            <div className="border-t pt-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Pending Tasks</h3>
-              <div className="space-y-3">
-                {activitiesData.pendingTasks.slice(0, 3).map((task) => (
-                  <div key={task.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{task.title}</p>
-                      <p className="text-xs text-gray-600">Case: {task.caseNumber}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h2 className="text-xl font-semibold text-saywhat-dark mb-4">Recent Activities</h2>
+              <div className="space-y-4">
+                {activitiesData.recentActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-shrink-0">
+                      {getStatusIcon(activity.status)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                      <p className="text-sm text-gray-600 truncate">{activity.description}</p>
                       <div className="flex items-center mt-1 text-xs text-gray-500">
                         <UserIcon className="h-4 w-4 mr-1" />
-                        <span>{task.assignedTo}</span>
+                        <span>{activity.officer}</span>
                         <span className="mx-2">•</span>
-                        <span>Due: {task.dueDate}</span>
+                        <span>{activity.time}</span>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
-                        {task.priority}
-                      </span>
-                      <ArrowRightIcon className="h-4 w-4 text-gray-400" />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
+
+            <div>
+              <h3 className="text-xl font-semibold text-saywhat-dark mb-4">Pending Tasks</h3>
+              {activitiesData.pendingTasks.length > 0 ? (
+                <div className="space-y-3">
+                  {activitiesData.pendingTasks.slice(0, 3).map((task) => (
+                    <div key={task.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{task.title}</p>
+                        <p className="text-xs text-gray-600">Case: {task.caseNumber}</p>
+                        <div className="flex items-center mt-1 text-xs text-gray-500">
+                          <UserIcon className="h-4 w-4 mr-1" />
+                          <span>{task.assignedTo}</span>
+                          <span className="mx-2">•</span>
+                          <span>Due: {task.dueDate}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 ml-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                        <ArrowRightIcon className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No pending tasks.</p>
+              )}
+            </div>
+          </div>
 
           <div className="mt-6 pt-4 border-t border-gray-200">
             <button className="w-full bg-orange-600 text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-orange-700 transition-colors">
