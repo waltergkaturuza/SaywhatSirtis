@@ -828,7 +828,7 @@ function CreateAppraisalContent() {
         {/* Navigation Icons */}
         <div className="flex items-center space-x-3 mb-6">
           <button
-            onClick={() => router.push(isSelfAssessment ? '/employee' : '/hr/dashboard')}
+            onClick={() => router.push(isSelfAssessment ? '/employee/profile' : '/hr/dashboard')}
             className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl flex items-center justify-center shadow-md hover:shadow-lg transition-all duration-200"
             title="Home"
           >

@@ -18,7 +18,6 @@ import {
   StarIcon,
   AcademicCapIcon,
   TrophyIcon,
-  ArrowTrendingUpIcon,
   IdentificationIcon,
   BriefcaseIcon,
   ShieldCheckIcon,
@@ -508,7 +507,6 @@ export default function EmployeeProfilePage() {
         description: "",
         breadcrumbs: [
           { name: "Home", href: "/" },
-          { name: "Employee Portal", href: "/employee" },
           { name: "Profile", href: "/employee/profile" }
         ]
       }}
@@ -1565,16 +1563,6 @@ export default function EmployeeProfilePage() {
                     </div>
                   </Link>
                   
-                  <Link
-                    href="/employee"
-                    className="flex items-center gap-2 rounded px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <ArrowTrendingUpIcon className="h-5 w-5 text-gray-600 mr-2 group-hover:scale-110 transition-transform duration-200" />
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">Dashboard</p>
-                      <p className="text-xs text-gray-600">Employee portal home</p>
-                    </div>
-                  </Link>
                 </div>
                 </div>
               </div>

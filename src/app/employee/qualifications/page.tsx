@@ -315,7 +315,6 @@ export default function QualificationsPage() {
         description: "Manage your education, certifications, skills, and training records",
         breadcrumbs: [
           { name: "Home", href: "/" },
-          { name: "Employee Portal", href: "/employee" },
           { name: "Qualifications", href: "/employee/qualifications" }
         ]
       }}

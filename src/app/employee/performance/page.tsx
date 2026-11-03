@@ -284,7 +284,6 @@ export default function PerformancePage() {
         description: "Track your performance reviews, goals, and development plans",
         breadcrumbs: [
           { name: "Home", href: "/" },
-          { name: "Employee Portal", href: "/employee" },
           { name: "Performance", href: "/employee/performance" }
         ]
       }}
