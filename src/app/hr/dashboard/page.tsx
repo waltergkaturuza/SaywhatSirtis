@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import SirtisCopilot from "@/components/ui/sirtis-copilot"
+import EmployeeReports from "@/app/hr/employees/reports/page"
 import {
   UserGroupIcon,
   UserPlusIcon,
@@ -284,67 +285,35 @@ export default function HRDashboard() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="mx-4 lg:mx-8 xl:mx-16 py-6">
-        <div className="flex flex-col gap-6">
-          {/* Main Dashboard Content */}
-          <div className="w-full">
-            <div className="space-y-6">
-              {/* Welcome Header */}
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
-                <h1 className="text-2xl font-bold mb-2">HR Management Dashboard</h1>
-                <p className="text-orange-100 text-base">Comprehensive human resources management overview and navigation</p>
-              </div>
+      <div className="flex flex-col lg:flex-row lg:items-start">
+        <aside className="shrink-0 border-b border-gray-200 bg-white lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-56 lg:border-b-0 lg:border-r">
+          <div className="px-3 py-3">
+            <p className="px-2 text-xs font-medium text-gray-500">HR Management</p>
+            <nav className="mt-2 flex gap-1 overflow-x-auto lg:flex-col">
+              {hrModules.map((module) => {
+                const active = module.href === "/hr/analytics"
+                return (
+                  <Link
+                    key={module.href}
+                    href={module.href === "/hr/analytics" ? "/hr/dashboard" : module.href}
+                    className={`whitespace-nowrap rounded-md px-3 py-2 text-sm ${
+                      active ? "bg-orange-500 text-white" : "text-gray-700 hover:bg-orange-50"
+                    }`}
+                  >
+                    {module.title}
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+        </aside>
 
-              {/* Key Metrics Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
-                  <p className="text-lg font-semibold text-gray-900">{loading ? '—' : stats?.totalEmployees || '0'}</p>
-                  <p className="text-xs text-gray-500">Total Employees</p>
-                  <p className="text-xs text-gray-400">+{loading ? '0' : stats?.newEmployeesThisMonth || '0'} this month</p>
-                </div>
-                <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
-                  <p className="text-lg font-semibold text-gray-900">{loading ? '—' : stats?.activeTrainings || '0'}</p>
-                  <p className="text-xs text-gray-500">Training Sessions</p>
-                  <p className="text-xs text-gray-400">Active this month</p>
-                </div>
-                <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
-                  <p className="text-lg font-semibold text-gray-900">{loading ? '—' : stats?.averagePerformance || '0'}</p>
-                  <p className="text-xs text-gray-500">Avg Performance</p>
-                  <p className="text-xs text-gray-400">Out of 5.0</p>
-                </div>
-                <div className="bg-white border border-gray-200 rounded-md px-3 py-2">
-                  <p className="text-lg font-semibold text-gray-900">{loading ? '—' : stats?.activeEmployees || '0'}</p>
-                  <p className="text-xs text-gray-500">Active Employees</p>
-                  <p className="text-xs text-gray-400">+{loading ? '0' : stats?.newHires || '0'} new</p>
-                </div>
-              </div>
+        <div className="min-w-0 flex-1">
+          <EmployeeReports />
+        </div>
 
-              {/* Main Content Layout */}
-              <div className={`grid grid-cols-1 gap-6 transition-all duration-300 ${
-                sidebarOpen ? 'lg:grid-cols-4' : 'lg:grid-cols-1'
-              }`}>
-                {/* HR Modules */}
-                <div className={`transition-all duration-300 ${
-                  sidebarOpen ? 'lg:col-span-3' : 'lg:col-span-1'
-                }`}>
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">HR Management Modules</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-                  {hrModules.map((module, index) => (
-                    <Link key={index} href={module.href}>
-                      <div className="px-3 py-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50">
-                        <h3 className="text-sm font-semibold text-gray-900">{module.title}</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">{module.description}</p>
-                        <p className="text-xs text-gray-700 mt-1">{module.stats}</p>
-                      </div>
-                    </Link>
-                  ))}
-                  </div>
-                </div>
-                
-                {/* Sidebar */}
-                {sidebarOpen && (
-                  <div className="lg:col-span-1 transition-all duration-300 space-y-4">
+        {sidebarOpen && (
+          <aside className="w-full shrink-0 space-y-4 border-t border-gray-200 bg-gray-50 p-3 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-72 lg:overflow-y-auto lg:border-l lg:border-t-0">
                     {/* Quick Actions */}
                     <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                       <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
@@ -419,13 +388,9 @@ export default function HRDashboard() {
                         </div>
                       )}
                     </div>
-                  </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+                    </div>
+          </aside>
+        )}
       </div>
       
       {/* Floating Sidebar Toggle Button */}
