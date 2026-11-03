@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { ModulePage } from "@/components/layout/enhanced-layout"
 import {
   UserGroupIcon,
   DocumentArrowDownIcon,
@@ -624,27 +623,7 @@ export default function EmployeeReports() {
   }
 
   return (
-    <ModulePage
-      metadata={{
-        title: "HR Analytics Dashboard",
-        description: "Professional employee analytics and workforce insights",
-        breadcrumbs: [
-          { name: "HR", href: "/hr" },
-          { name: "Reports", href: "/hr/reports" },
-          { name: "Analytics Dashboard", href: "/hr/employees/reports" }
-        ]
-      }}
-    >
-      <div className="min-h-screen bg-gray-900 p-6 space-y-6">
-        {/* Department Filter Tabs */}
-        <div className="bg-gray-800 rounded-lg border border-cyan-400 p-6">
-          <div className="flex space-x-8">
-            <div className="bg-cyan-500 text-gray-900 px-4 py-2 rounded font-semibold">Human Resources</div>
-            <div className="bg-gray-700 text-cyan-400 px-4 py-2 rounded border border-cyan-400">Research & Development</div>
-            <div className="bg-gray-700 text-cyan-400 px-4 py-2 rounded border border-cyan-400">Sales</div>
-          </div>
-        </div>
-
+      <div className="min-h-screen bg-gray-900 p-3 space-y-3">
         {/* Top KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <div className="bg-gray-800 border border-cyan-400 rounded-lg p-4">
@@ -1055,6 +1034,5 @@ export default function EmployeeReports() {
           </div>
         </div>
       </div>
-    </ModulePage>
   )
 }
