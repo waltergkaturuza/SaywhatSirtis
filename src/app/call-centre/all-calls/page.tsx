@@ -78,6 +78,11 @@ export default function AllCallsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search).get('q')
+    if (query) setSearchTerm(query)
+  }, []);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [selectedCall, setSelectedCall] = useState<CallRecord | null>(null);
   const [showCallDetail, setShowCallDetail] = useState(false);

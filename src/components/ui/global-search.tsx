@@ -55,6 +55,8 @@ export function GlobalSearch({
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [access, setAccess] = useState<Record<string, boolean>>({})
+  const [accessLoaded, setAccessLoaded] = useState(false)
   
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -77,34 +79,42 @@ export function GlobalSearch({
     localStorage.setItem('recentSearches', JSON.stringify(recentSearches))
   }, [recentSearches])
 
-  // Focus input when modal opens
+  // Focus input when modal opens and load which areas this user may search
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus()
-    }
+    if (!isOpen) return
+    if (inputRef.current) inputRef.current.focus()
+    fetch('/api/search')
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.access) setAccess(data.access)
+        setAccessLoaded(true)
+      })
+      .catch(() => setAccessLoaded(true))
   }, [isOpen])
 
   // Default search implementation
-  const defaultSearch = useCallback(async (searchQuery: string): Promise<SearchResult[]> => {
+  const defaultSearch = useCallback(async (searchQuery: string, category: string | null): Promise<SearchResult[]> => {
     try {
-      // Call real search API
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+      const params = new URLSearchParams()
+      if (searchQuery.trim()) params.set('q', searchQuery.trim())
+      if (category) params.set('type', category)
+      const response = await fetch(`/api/search?${params.toString()}`)
       if (!response.ok) {
         throw new Error('Search API failed')
       }
       
       const data = await response.json()
+      if (data.access) setAccess(data.access)
       return data.results || []
     } catch (error) {
       console.error('Search error:', error)
-      // Return empty results on error instead of mock data
       return []
     }
   }, [])
 
   // Debounced search
   useEffect(() => {
-    if (!query.trim()) {
+    if (!query.trim() && !activeCategory) {
       setResults([])
       return
     }
@@ -112,12 +122,12 @@ export function GlobalSearch({
     const debounceTimer = setTimeout(async () => {
       setLoading(true)
       try {
-        const searchFunction = onSearch || defaultSearch
-        const searchResults = await searchFunction(query)
+        const searchResults = onSearch
+          ? await onSearch(query)
+          : await defaultSearch(query, activeCategory)
         
-        // Filter by category if selected
-        const filteredResults = activeCategory 
-          ? searchResults.filter(result => result.type === activeCategory)
+        const filteredResults = activeCategory
+          ? searchResults.filter(result => result.type === activeCategory || result.type === 'page')
           : searchResults
 
         setResults(filteredResults.slice(0, maxResults))
@@ -257,7 +267,7 @@ export function GlobalSearch({
             >
               All
             </button>
-            {searchCategories.map(category => (
+            {accessLoaded && searchCategories.filter(category => access[category.id]).map(category => (
               <button
                 key={category.id}
                 onClick={() => setActiveCategory(category.id)}
@@ -356,7 +366,10 @@ export function GlobalSearch({
                 </h3>
                 <div className="space-y-1">
                   <button
-                    onClick={() => router.push('/dashboard')}
+                    onClick={() => {
+                      router.push('/dashboard')
+                      onClose()
+                    }}
                     className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md flex items-center gap-2"
                   >
                     <Folder className="w-4 h-4 text-purple-600" />
@@ -364,8 +377,12 @@ export function GlobalSearch({
                       Go to Dashboard
                     </span>
                   </button>
+                  {access.setting && (
                   <button
-                    onClick={() => router.push('/settings')}
+                    onClick={() => {
+                      router.push('/settings')
+                      onClose()
+                    }}
                     className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md flex items-center gap-2"
                   >
                     <Settings className="w-4 h-4 text-gray-600" />
@@ -373,6 +390,7 @@ export function GlobalSearch({
                       Open Settings
                     </span>
                   </button>
+                  )}
                 </div>
               </div>
             </div>

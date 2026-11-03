@@ -36,6 +36,11 @@ import {
 export default function EmployeesPage() {
   const { data: session } = useSession()
   const [searchQuery, setSearchQuery] = useState("")
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search).get('q')
+    if (query) setSearchQuery(query)
+  }, [])
   const [selectedDepartment, setSelectedDepartment] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
