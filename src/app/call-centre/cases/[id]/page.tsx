@@ -82,26 +82,24 @@ export default function CaseViewPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-3 py-3">
         {/* Header */}
-        <div className="bg-white shadow rounded-lg mb-6">
-          <div className="py-6 px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center space-x-3">
+        <div className="bg-white shadow rounded-lg mb-3">
+          <div className="px-3 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center space-x-3 min-w-0">
                   <Link
                   href="/call-centre/case-management"
                   className="p-2 rounded-md hover:bg-gray-100"
                 >
                   <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
                 </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Case: {caseData.caseNumber}</h1>
-                  <p className="text-sm text-gray-600">View case details and information</p>
+                <div className="min-w-0">
+                  <h1 className="text-lg font-bold text-gray-900 truncate">Case: {caseData.caseNumber}</h1>
+                  <p className="text-xs text-gray-600">View case details and information</p>
                 </div>
-              </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 shrink-0">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                 ['RESOLVED', 'Resolved'].includes(caseData.status)
                   ? 'bg-emerald-100 text-emerald-800'
@@ -136,16 +134,13 @@ export default function CaseViewPage() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 items-start">
+          <div className="space-y-3">
             {/* Case Information */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Case Information</h2>
+            <div className="bg-white rounded-lg shadow p-3">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Case Information</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Case Number</label>
                   <p className="text-gray-900">{caseData.caseNumber}</p>
@@ -168,10 +163,10 @@ export default function CaseViewPage() {
             </div>
 
             {/* Client Information */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Client Information</h2>
+            <div className="bg-white rounded-lg shadow p-3">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">Client Information</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
                   <p className="text-gray-900">{caseData.clientName}</p>
@@ -192,54 +187,44 @@ export default function CaseViewPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
                   <p className="text-gray-900">{caseData.clientProvince}</p>
                 </div>
-                <div className="md:col-span-2">
+                <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                   <p className="text-gray-900">{caseData.clientAddress}</p>
                 </div>
               </div>
             </div>
 
-            {/* Case Details */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Case Details</h2>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.description}</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Actions Taken</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.actionsTaken}</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Next Action Required</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.nextAction}</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Referrals</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.referrals}</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{caseData.notes}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Case History */}
-            <CaseHistory caseId={params.id as string} />
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Case Summary */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Case Summary</h3>
+          <div className="bg-white rounded-lg shadow p-3 min-w-0">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">Case Details</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded-md whitespace-pre-wrap">{caseData.description}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Actions Taken</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded-md whitespace-pre-wrap">{caseData.actionsTaken}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Next Action Required</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded-md whitespace-pre-wrap">{caseData.nextAction}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Referrals</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded-md whitespace-pre-wrap">{caseData.referrals}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded-md whitespace-pre-wrap">{caseData.notes}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 min-w-0">
+            <div className="bg-white rounded-lg shadow p-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Case Summary</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Created:</span>
@@ -264,29 +249,8 @@ export default function CaseViewPage() {
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <Link
-                  href={`/call-centre/cases/${params.id}/edit`}
-                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700"
-                >
-                  <PencilIcon className="h-4 w-4 mr-2" />
-                  Edit Case
-                </Link>
-
-                <Link
-                  href="/call-centre/case-management"
-                  className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  <ArrowLeftIcon className="h-4 w-4 mr-2" />
-                  Back to Cases
-                </Link>
-              </div>
-            </div>
+            <CaseHistory caseId={params.id as string} />
           </div>
-        </div>
       </div>
       </div>
     </DashboardLayout>

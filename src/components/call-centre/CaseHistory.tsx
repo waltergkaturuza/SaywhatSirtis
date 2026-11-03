@@ -57,9 +57,9 @@ export default function CaseHistory({ caseId }: { caseId: string }) {
   }, [caseId])
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Update History</h2>
+    <div className="bg-white rounded-lg shadow p-3">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-900">Update History</h2>
         {!loading && !error && (
           <span className="text-sm text-gray-500">{history.length} update{history.length === 1 ? '' : 's'}</span>
         )}
