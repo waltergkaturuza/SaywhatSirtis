@@ -190,9 +190,17 @@ export async function POST(
     if (role === 'supervisor') {
       currentComments.supervisor = currentComments.supervisor || []
       currentComments.supervisor.push(newComment)
+      if (newComment.comment) {
+        currentComments.managerComments = newComment.comment
+        currentComments.supervisorComments = newComment.comment
+      }
     } else {
       currentComments.reviewer = currentComments.reviewer || []
       currentComments.reviewer.push(newComment)
+      if (newComment.comment) {
+        currentComments.hrComments = newComment.comment
+        currentComments.reviewerComments = newComment.comment
+      }
     }
 
     // Determine new workflow status and reset approvals if needed

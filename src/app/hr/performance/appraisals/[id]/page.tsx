@@ -982,6 +982,8 @@ export default function ViewAppraisalPage() {
             updateFormData={createUpdateFunction(5)}
             lockSupervisorComments
             lockReviewerComments
+            supervisorFeedback={workflowComments.supervisor}
+            reviewerFeedback={workflowComments.reviewer}
           />
         )
       case 6:

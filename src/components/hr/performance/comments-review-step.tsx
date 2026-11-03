@@ -6,18 +6,30 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { AppraisalFormData } from './appraisal-types'
 
+interface FeedbackComment {
+  id?: string
+  name?: string
+  comment?: string
+  action?: string
+  timestamp?: string
+}
+
 interface CommentsReviewStepProps {
   formData: AppraisalFormData
   updateFormData: (updates: Partial<AppraisalFormData>) => void
   lockSupervisorComments?: boolean
   lockReviewerComments?: boolean
+  supervisorFeedback?: FeedbackComment[]
+  reviewerFeedback?: FeedbackComment[]
 }
 
 export function CommentsReviewStep({
   formData,
   updateFormData,
   lockSupervisorComments = false,
-  lockReviewerComments = false
+  lockReviewerComments = false,
+  supervisorFeedback = [],
+  reviewerFeedback = []
 }: CommentsReviewStepProps) {
   const handleCommentChange = (field: keyof typeof formData.comments, value: string) => {
     updateFormData({
@@ -28,8 +40,37 @@ export function CommentsReviewStep({
     })
   }
 
-  const supervisorComment = formData.comments.managerComments || (formData.comments as { supervisorComments?: string }).supervisorComments || ''
-  const reviewerComment = formData.comments.hrComments || (formData.comments as { reviewerComments?: string }).reviewerComments || ''
+  const supervisorComment = supervisorFeedback.filter((item) => item.comment).map((item) => item.comment).join('\n\n')
+    || formData.comments.managerComments
+    || (formData.comments as { supervisorComments?: string }).supervisorComments
+    || ''
+  const reviewerComment = reviewerFeedback.filter((item) => item.comment).map((item) => item.comment).join('\n\n')
+    || formData.comments.hrComments
+    || (formData.comments as { reviewerComments?: string }).reviewerComments
+    || ''
+
+  const feedbackList = (items: FeedbackComment[], emptyText: string) => {
+    const written = items.filter((item) => item.comment)
+    if (written.length === 0) {
+      return <p className="text-sm italic text-gray-500">{emptyText}</p>
+    }
+    return (
+      <div className="space-y-3">
+        {written.map((item, index) => (
+          <div key={item.id || `${item.timestamp || 'comment'}-${index}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-gray-900">{item.name || 'Comment'}</p>
+              <p className="text-xs text-gray-500">
+                {item.timestamp ? new Date(item.timestamp).toLocaleString() : ''}
+                {item.action ? ` · ${item.action.replace(/_/g, ' ')}` : ''}
+              </p>
+            </div>
+            <p className="whitespace-pre-wrap text-sm text-gray-800">{item.comment}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -76,18 +117,20 @@ export function CommentsReviewStep({
             </svg>
             Supervisor's assessment and feedback
           </Label>
-          <Textarea
-            id="managerComments"
-            placeholder={lockSupervisorComments ? 'Your supervisor will add this comment.' : "Supervisor's comments about employee performance, observations, and recommendations..."}
-            value={supervisorComment}
-            onChange={(e) => handleCommentChange('managerComments', e.target.value)}
-            rows={6}
-            readOnly={lockSupervisorComments}
-            disabled={lockSupervisorComments}
-            className={`border-2 rounded-lg ${lockSupervisorComments ? 'border-gray-200 bg-gray-100 text-gray-700 cursor-not-allowed' : 'border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200'}`}
-          />
+          {lockSupervisorComments ? (
+            feedbackList(supervisorFeedback, 'No comments yet. Supervisor feedback will appear here.')
+          ) : (
+            <Textarea
+              id="managerComments"
+              placeholder="Supervisor's comments about employee performance, observations, and recommendations..."
+              value={supervisorComment}
+              onChange={(e) => handleCommentChange('managerComments', e.target.value)}
+              rows={6}
+              className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
+            />
+          )}
           {lockSupervisorComments && (
-            <p className="mt-2 text-sm text-gray-500">Only the assigned supervisor can write this comment.</p>
+            <p className="mt-2 text-sm text-gray-500">Taken from the Supervisor Review tab. Only the assigned supervisor can add it.</p>
           )}
         </CardContent>
       </Card>
@@ -108,18 +151,20 @@ export function CommentsReviewStep({
             </svg>
             Final reviewer's assessment and notes
           </Label>
-          <Textarea
-            id="hrComments"
-            placeholder={lockReviewerComments ? 'Your reviewer will add this comment.' : "Reviewer's comments, final assessment, and additional notes..."}
-            value={reviewerComment}
-            onChange={(e) => handleCommentChange('hrComments', e.target.value)}
-            rows={4}
-            readOnly={lockReviewerComments}
-            disabled={lockReviewerComments}
-            className={`border-2 rounded-lg ${lockReviewerComments ? 'border-gray-200 bg-gray-100 text-gray-700 cursor-not-allowed' : 'border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200'}`}
-          />
+          {lockReviewerComments ? (
+            feedbackList(reviewerFeedback, 'No comments yet. Final reviewer feedback will appear here.')
+          ) : (
+            <Textarea
+              id="hrComments"
+              placeholder="Reviewer's comments, final assessment, and additional notes..."
+              value={reviewerComment}
+              onChange={(e) => handleCommentChange('hrComments', e.target.value)}
+              rows={4}
+              className="border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg"
+            />
+          )}
           {lockReviewerComments && (
-            <p className="mt-2 text-sm text-gray-500">Only the assigned reviewer can write this comment.</p>
+            <p className="mt-2 text-sm text-gray-500">Taken from the Final Review tab. Only the assigned reviewer can add it.</p>
           )}
         </CardContent>
       </Card>

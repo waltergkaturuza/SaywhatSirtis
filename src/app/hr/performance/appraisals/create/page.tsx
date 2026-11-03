@@ -436,6 +436,8 @@ function CreateAppraisalContent() {
           })
           
           setWorkflowStatus(appraisalDataForForm.status || 'draft')
+          if (Array.isArray(parsedComments.supervisor)) setSupervisorCommentsHistory(parsedComments.supervisor)
+          if (Array.isArray(parsedComments.reviewer)) setReviewerCommentsHistory(parsedComments.reviewer)
           
           // Check if employee is locked (submitted and user is the employee owner)
           if (appraisalDataForForm.status && appraisalDataForForm.status !== 'draft' && session?.user?.id) {
@@ -929,6 +931,8 @@ function CreateAppraisalContent() {
             updateFormData={updateFormData}
             lockSupervisorComments
             lockReviewerComments
+            supervisorFeedback={supervisorCommentsHistory}
+            reviewerFeedback={reviewerCommentsHistory}
           />
         )
       case 6:

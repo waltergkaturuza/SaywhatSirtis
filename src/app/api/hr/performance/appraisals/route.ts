@@ -256,12 +256,16 @@ export async function POST(request: NextRequest) {
         existing = existingRaw
       }
       if (actor?.id !== supervisorUserId) {
-        next.managerComments = existing.managerComments || existing.supervisorComments || ''
-        next.supervisorComments = existing.supervisorComments || existing.managerComments || ''
+        next.supervisor = Array.isArray(existing.supervisor) ? existing.supervisor : (Array.isArray(next.supervisor) ? next.supervisor : [])
+        const latestSupervisor = [...next.supervisor].reverse().find((item) => item?.comment)?.comment || ''
+        next.managerComments = latestSupervisor || existing.managerComments || existing.supervisorComments || ''
+        next.supervisorComments = next.managerComments
       }
       if (actor?.id !== reviewerUserId) {
-        next.hrComments = existing.hrComments || existing.reviewerComments || ''
-        next.reviewerComments = existing.reviewerComments || existing.hrComments || ''
+        next.reviewer = Array.isArray(existing.reviewer) ? existing.reviewer : (Array.isArray(next.reviewer) ? next.reviewer : [])
+        const latestReviewer = [...next.reviewer].reverse().find((item) => item?.comment)?.comment || ''
+        next.hrComments = latestReviewer || existing.hrComments || existing.reviewerComments || ''
+        next.reviewerComments = next.hrComments
       }
       return next
     }
