@@ -126,7 +126,12 @@ export default function ViewPlanPage() {
     setExportingPDF(true)
     try {
       const coreValueNames = ['Teamwork', 'Responsiveness and Effectiveness', 'Accountability', 'Professionalism and Integrity', 'Innovation']
-      const acknowledgments = formData?.coreValuesAcknowledgment || plan.comments?.coreValuesAcknowledgment || {}
+      const acknowledgments: Record<string, boolean> = {
+        ...(plan.comments?.coreValuesAcknowledgment || {}),
+        ...Object.fromEntries(
+          Object.entries(formData?.coreValuesAcknowledgment || {}).map(([key, value]) => [String(key), Boolean(value)])
+        )
+      }
       const responsibilities = formData?.keyResponsibilities || plan.keyResponsibilities || []
       const development = formData?.developmentObjectives || []
       await exportService.exportSections([
@@ -157,7 +162,7 @@ export default function ViewPlanPage() {
         {
           heading: 'Core values',
           lines: [
-            ...coreValueNames.map((name, index) => `${acknowledgments[index] || acknowledgments[String(index)] ? 'Acknowledged' : 'Not acknowledged'}: ${name}`),
+            ...coreValueNames.map((name, index) => `${acknowledgments[String(index)] ? 'Acknowledged' : 'Not acknowledged'}: ${name}`),
             `${formData?.allCoreValuesAcknowledged || plan.comments?.allCoreValuesAcknowledged ? 'Acknowledged' : 'Not acknowledged'}: Overall commitment to all five core values`
           ]
         },
