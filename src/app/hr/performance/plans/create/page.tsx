@@ -695,6 +695,41 @@ function CreatePerformancePlanPageContent() {
             const c = planData.comments;
             const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
             return Boolean(parsed.allCoreValuesAcknowledged);
+          })(),
+          careerAspirationsShortTerm: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return typeof parsed.careerAspirationsShortTerm === 'string' ? parsed.careerAspirationsShortTerm : (prev.careerAspirationsShortTerm || '');
+          })(),
+          careerAspirationsLongTerm: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return typeof parsed.careerAspirationsLongTerm === 'string' ? parsed.careerAspirationsLongTerm : (prev.careerAspirationsLongTerm || '');
+          })(),
+          trainingNeeds: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return typeof parsed.trainingNeeds === 'string' ? parsed.trainingNeeds : (typeof prev.trainingNeeds === 'string' ? prev.trainingNeeds : '');
+          })(),
+          trainingPriority: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return typeof parsed.trainingPriority === 'string' ? parsed.trainingPriority : (prev.trainingPriority || 'medium');
+          })(),
+          developmentActionPlan: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return typeof parsed.developmentActionPlan === 'string' ? parsed.developmentActionPlan : (prev.developmentActionPlan || '');
+          })(),
+          developmentActionPlanTargetDate: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return typeof parsed.developmentActionPlanTargetDate === 'string' ? parsed.developmentActionPlanTargetDate : (prev.developmentActionPlanTargetDate || '');
+          })(),
+          developmentSupportNeeded: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return typeof parsed.developmentSupportNeeded === 'string' ? parsed.developmentSupportNeeded : (prev.developmentSupportNeeded || '');
           })()
         }))
         

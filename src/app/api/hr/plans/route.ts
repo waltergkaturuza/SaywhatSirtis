@@ -88,6 +88,9 @@ export async function POST(request: NextRequest) {
       }
       base.coreValuesAcknowledgment = formData.coreValuesAcknowledgment || base.coreValuesAcknowledgment || {}
       base.allCoreValuesAcknowledged = Boolean(formData.allCoreValuesAcknowledged ?? base.allCoreValuesAcknowledged)
+      for (const key of ['careerAspirationsShortTerm', 'careerAspirationsLongTerm', 'trainingNeeds', 'trainingPriority', 'developmentActionPlan', 'developmentActionPlanTargetDate', 'developmentSupportNeeded']) {
+        if (formData[key] !== undefined && formData[key] !== null) base[key] = formData[key]
+      }
       return JSON.stringify(base)
     }
 
@@ -244,7 +247,7 @@ export async function POST(request: NextRequest) {
           updateData.developmentNeeds = typeof devData === 'string' ? devData : JSON.stringify(arr ?? []);
         }
       }
-      if (formData.comments !== undefined || formData.coreValuesAcknowledgment || formData.allCoreValuesAcknowledged) {
+      if (formData.comments !== undefined || formData.coreValuesAcknowledgment || formData.allCoreValuesAcknowledged || formData.careerAspirationsShortTerm !== undefined || formData.careerAspirationsLongTerm !== undefined || formData.trainingNeeds !== undefined || formData.developmentActionPlan !== undefined) {
         updateData.comments = commentsWithAcknowledgments(formData.comments)
       }
 
@@ -512,7 +515,7 @@ export async function POST(request: NextRequest) {
         return typeof devData === 'string' ? devData : JSON.stringify(arr ?? []);
       })() : undefined;
       if (dn !== undefined) updateData.developmentNeeds = dn;
-      if (formData.comments !== undefined || formData.coreValuesAcknowledgment || formData.allCoreValuesAcknowledged) {
+      if (formData.comments !== undefined || formData.coreValuesAcknowledgment || formData.allCoreValuesAcknowledged || formData.careerAspirationsShortTerm !== undefined || formData.careerAspirationsLongTerm !== undefined || formData.trainingNeeds !== undefined || formData.developmentActionPlan !== undefined) {
         updateData.comments = commentsWithAcknowledgments(formData.comments)
       }
       

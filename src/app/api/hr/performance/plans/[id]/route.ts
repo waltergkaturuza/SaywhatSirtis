@@ -246,7 +246,14 @@ export async function GET(
           supervisor: Array.isArray(parsed.supervisor) ? parsed.supervisor : [],
           reviewer: Array.isArray(parsed.reviewer) ? parsed.reviewer : [],
           coreValuesAcknowledgment: parsed.coreValuesAcknowledgment || {},
-          allCoreValuesAcknowledged: Boolean(parsed.allCoreValuesAcknowledged)
+          allCoreValuesAcknowledged: Boolean(parsed.allCoreValuesAcknowledged),
+          careerAspirationsShortTerm: typeof parsed.careerAspirationsShortTerm === 'string' ? parsed.careerAspirationsShortTerm : '',
+          careerAspirationsLongTerm: typeof parsed.careerAspirationsLongTerm === 'string' ? parsed.careerAspirationsLongTerm : '',
+          trainingNeeds: typeof parsed.trainingNeeds === 'string' ? parsed.trainingNeeds : '',
+          trainingPriority: typeof parsed.trainingPriority === 'string' ? parsed.trainingPriority : 'medium',
+          developmentActionPlan: typeof parsed.developmentActionPlan === 'string' ? parsed.developmentActionPlan : '',
+          developmentActionPlanTargetDate: typeof parsed.developmentActionPlanTargetDate === 'string' ? parsed.developmentActionPlanTargetDate : '',
+          developmentSupportNeeded: typeof parsed.developmentSupportNeeded === 'string' ? parsed.developmentSupportNeeded : ''
         };
         
         // If we have workflow comments (arrays), extract the latest comment text for display

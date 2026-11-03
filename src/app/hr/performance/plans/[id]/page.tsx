@@ -68,6 +68,13 @@ interface PlanData {
     reviewer?: any[]
     coreValuesAcknowledgment?: Record<string, boolean>
     allCoreValuesAcknowledged?: boolean
+    careerAspirationsShortTerm?: string
+    careerAspirationsLongTerm?: string
+    trainingNeeds?: string
+    trainingPriority?: string
+    developmentActionPlan?: string
+    developmentActionPlanTargetDate?: string
+    developmentSupportNeeded?: string
   }
   supervisorApproval: string
   reviewerApproval: string
@@ -168,9 +175,16 @@ export default function ViewPlanPage() {
         },
         {
           heading: 'Development',
-          lines: development.length
-            ? development.map((item: any) => `${item.objective || item.description || 'Development item'}${item.timeline ? ` (${item.timeline})` : ''}`)
-            : ['No development objectives recorded']
+          lines: (() => {
+            const lines = [
+              ...development.map((item: any) => `${item.objective || item.description || 'Development item'}${item.timeline ? ` (${item.timeline})` : ''}`),
+              formData?.careerAspirationsShortTerm || plan.comments?.careerAspirationsShortTerm ? `Short-term career goals: ${formData?.careerAspirationsShortTerm || plan.comments?.careerAspirationsShortTerm}` : '',
+              formData?.careerAspirationsLongTerm || plan.comments?.careerAspirationsLongTerm ? `Long-term career goals: ${formData?.careerAspirationsLongTerm || plan.comments?.careerAspirationsLongTerm}` : '',
+              formData?.trainingNeeds || plan.comments?.trainingNeeds ? `Training needs: ${formData?.trainingNeeds || plan.comments?.trainingNeeds}` : '',
+              formData?.developmentActionPlan || plan.comments?.developmentActionPlan ? `Action plan: ${formData?.developmentActionPlan || plan.comments?.developmentActionPlan}` : ''
+            ].filter((line): line is string => Boolean(line))
+            return lines.length ? lines : ['No development objectives recorded']
+          })()
         },
         {
           heading: 'Comments',
@@ -482,13 +496,13 @@ export default function ViewPlanPage() {
         supportFromManager: '',
         coreValuesAcknowledgment: plan.comments?.coreValuesAcknowledgment || {},
         allCoreValuesAcknowledged: Boolean(plan.comments?.allCoreValuesAcknowledged),
-        careerAspirationsShortTerm: '',
-        careerAspirationsLongTerm: '',
-        trainingNeeds: '',
-        trainingPriority: 'medium',
-        developmentActionPlan: '',
-        developmentActionPlanTargetDate: '',
-        developmentSupportNeeded: '',
+        careerAspirationsShortTerm: plan.comments?.careerAspirationsShortTerm || '',
+        careerAspirationsLongTerm: plan.comments?.careerAspirationsLongTerm || '',
+        trainingNeeds: plan.comments?.trainingNeeds || '',
+        trainingPriority: plan.comments?.trainingPriority || 'medium',
+        developmentActionPlan: plan.comments?.developmentActionPlan || '',
+        developmentActionPlanTargetDate: plan.comments?.developmentActionPlanTargetDate || '',
+        developmentSupportNeeded: plan.comments?.developmentSupportNeeded || '',
         comments: {
           employeeComments: plan.comments?.employeeComments || '',
           supervisorComments: plan.comments?.supervisorComments || '',
@@ -974,16 +988,18 @@ export default function ViewPlanPage() {
               </div>
             )}
 
-            {formData.careerAspirationsShortTerm && (
+            {(formData.careerAspirationsShortTerm || formData.careerAspirationsLongTerm) && (
               <div className="border rounded-lg p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Career Aspirations</h3>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Short-term Career Goals (1-2 years)</label>
-                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 min-h-[80px]">
-                      <p className="text-gray-900">{formData.careerAspirationsShortTerm}</p>
+                  {formData.careerAspirationsShortTerm && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Short-term Career Goals (1-2 years)</label>
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 min-h-[80px]">
+                        <p className="text-gray-900">{formData.careerAspirationsShortTerm}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   {formData.careerAspirationsLongTerm && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Long-term Career Goals (3-5 years)</label>
@@ -993,6 +1009,23 @@ export default function ViewPlanPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {(formData.trainingNeeds || formData.developmentActionPlan) && (
+              <div className="border rounded-lg p-6 bg-gray-50 space-y-4">
+                {formData.trainingNeeds && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Training Needs</label>
+                    <p className="text-gray-900 whitespace-pre-wrap">{formData.trainingNeeds}</p>
+                  </div>
+                )}
+                {formData.developmentActionPlan && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Development Action Plan</label>
+                    <p className="text-gray-900 whitespace-pre-wrap">{formData.developmentActionPlan}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
