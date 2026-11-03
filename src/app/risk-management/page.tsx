@@ -257,9 +257,9 @@ export default function RiskManagementPage() {
 
   // Get risk color based on score
   const getRiskColor = (score: number) => {
-    if (score >= 6) return 'bg-red-100 text-red-800 border-red-200'
-    if (score >= 3) return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-    return 'bg-green-100 text-green-800 border-green-200'
+    if (score >= 6) return 'bg-red-100 text-red-800'
+    if (score >= 3) return 'bg-yellow-100 text-yellow-800'
+    return 'bg-green-100 text-green-800'
   }
 
   // Get status color
@@ -275,7 +275,7 @@ export default function RiskManagementPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100/30">
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <HomeBack backHref="/dashboard" backLabel="Back" />
           <div className="flex items-center gap-2">
@@ -317,8 +317,8 @@ export default function RiskManagementPage() {
             ['Mitigated', riskStats.mitigated],
           ].map(([label, value]) => (
             <div key={String(label)} className="bg-white border border-gray-200 rounded-md px-3 py-2">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-              <p className="text-lg font-semibold text-gray-900">{value}</p>
+              <p className="text-xs text-gray-500">{label}</p>
+              <p className="text-base font-medium text-gray-900">{value}</p>
             </div>
           ))}
         </div>
@@ -326,7 +326,7 @@ export default function RiskManagementPage() {
         {/* Filters and Search */}
         <div className="bg-white border border-gray-200 rounded-md px-3 py-2 mb-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Filters</span>
+            <span className="text-sm text-gray-500">Filters</span>
             
             <input
               type="text"
@@ -377,49 +377,25 @@ export default function RiskManagementPage() {
         </div>
 
         {/* Risk Register Table */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 overflow-hidden mb-8">
-          <div className="bg-gradient-to-r from-gray-800 to-black p-8">
-            <h2 className="text-2xl font-bold text-white">Risk Register</h2>
-            <p className="text-gray-300 mt-2">Comprehensive organizational risk tracking</p>
-          </div>
-          
+        <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-black uppercase tracking-wider">
-                    Risk ID
-                  </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-black uppercase tracking-wider">
-                    Title & Category
-                  </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-black uppercase tracking-wider">
-                    Department
-                  </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-black uppercase tracking-wider">
-                    Risk Score
-                  </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-black uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-black uppercase tracking-wider">
-                    Owner
-                  </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-black uppercase tracking-wider">
-                    Progress
-                  </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-black uppercase tracking-wider">
-                    Actions
-                  </th>
+                  {['Risk ID', 'Title & Category', 'Department', 'Risk Score', 'Status', 'Owner', 'Progress', 'Actions'].map((heading) => (
+                    <th key={heading} className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                      {heading}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="bg-white/80 divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
                     <td colSpan={8} className="px-8 py-16 text-center">
                       <div className="flex flex-col items-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-orange-600"></div>
-                        <span className="mt-4 text-lg font-semibold text-black">Loading risks...</span>
+                        <span className="mt-4 text-sm text-gray-500">Loading risks...</span>
                       </div>
                     </td>
                   </tr>
@@ -427,7 +403,7 @@ export default function RiskManagementPage() {
                   <tr>
                     <td colSpan={8} className="px-8 py-16 text-center">
                       <div className="flex flex-col items-center">
-                        <h3 className="text-sm font-semibold text-black mb-1">No risks found</h3>
+                        <h3 className="text-sm text-gray-900 mb-1">No risks found</h3>
                         <p className="text-gray-600 mb-6">
                           {searchTerm || selectedCategory || selectedStatus || selectedDepartment 
                             ? 'Try adjusting your filters to see more results' 
@@ -445,59 +421,59 @@ export default function RiskManagementPage() {
                   </tr>
                 ) : (
                   risks.map((risk) => (
-                    <tr key={risk.id} className="hover:bg-gray-50 transition-all duration-300">
+                    <tr key={risk.id} className="hover:bg-gray-50">
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="text-sm font-bold text-black">{risk.riskId}</div>
-                        <div className="text-sm text-gray-600">{new Date(risk.dateIdentified).toLocaleDateString()}</div>
+                        <div className="text-sm text-gray-900">{risk.riskId}</div>
+                        <div className="text-xs text-gray-500">{new Date(risk.dateIdentified).toLocaleDateString()}</div>
                       </td>
                       <td className="px-3 py-2">
-                        <div className="text-sm font-bold text-black">{risk.title}</div>
-                        <div className="text-sm text-gray-600 max-w-xs truncate mb-2">{risk.description}</div>
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 shadow-sm">
+                        <div className="text-sm text-gray-900">{risk.title}</div>
+                        <div className="text-xs text-gray-500 max-w-xs truncate">{risk.description}</div>
+                        <span className="mt-1 inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
                           {risk.category.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-black">{risk.department}</div>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
+                        {risk.department}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold border-2 shadow-md ${getRiskColor(risk.riskScore)}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getRiskColor(risk.riskScore)}`}>
                           {risk.riskScore}/9
                         </span>
-                        <div className="text-xs font-semibold text-gray-600 mt-1">
+                        <div className="mt-1 text-xs text-gray-500">
                           {risk.probability} × {risk.impact}
                         </div>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold shadow-md ${getStatusColor(risk.status)}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getStatusColor(risk.status)}`}>
                           {risk.status}
                         </span>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {risk.owner ? (
                           <>
-                            <div className="text-sm font-semibold text-black">
+                            <div className="text-sm text-gray-900">
                               {risk.owner.firstName} {risk.owner.lastName}
                             </div>
-                            <div className="text-sm text-gray-600">{risk.owner.email}</div>
+                            <div className="text-xs text-gray-500">{risk.owner.email}</div>
                           </>
                         ) : (
-                          <div className="text-sm text-gray-600">Unassigned</div>
+                          <div className="text-sm text-gray-500">Unassigned</div>
                         )}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-black">
+                        <div className="text-sm text-gray-900">
                           {risk.mitigations && risk.mitigations.length > 0 ? `${risk.mitigations[0].implementationProgress}%` : 'N/A'}
                         </div>
-                        <div className="text-xs font-semibold text-gray-600">
+                        <div className="text-xs text-gray-500">
                           {risk._count?.mitigations || 0} mitigation{(risk._count?.mitigations || 0) !== 1 ? 's' : ''}
                         </div>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-3">
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
                           <Link
                             href={`/risk-management/risks/${risk.id}`}
-                            className="p-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-300 shadow-md hover:shadow-lg"
+                            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                             title="View Risk"
                           >
                             <Eye className="h-4 w-4" />
@@ -505,23 +481,23 @@ export default function RiskManagementPage() {
                           {canEditRisks && (
                             <Link
                               href={`/risk-management/risks/${risk.id}/edit`}
-                              className="p-2 bg-gradient-to-r from-green-100 to-green-200 text-green-600 rounded-xl hover:from-green-200 hover:to-green-300 transition-all duration-300 shadow-md hover:shadow-lg"
+                              className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-green-600"
                               title="Edit Risk"
                             >
                               <Edit className="h-4 w-4" />
                             </Link>
                           )}
-                          <button 
+                          <button
                             onClick={() => handleViewDocuments(risk.id)}
-                            className="p-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-300 shadow-md hover:shadow-lg"
+                            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                             title="View Documents"
                           >
                             <FileText className="h-4 w-4" />
                           </button>
                           {canEditRisks && (
-                            <button 
+                            <button
                               onClick={() => handleDeleteRisk(risk.id, risk.title)}
-                              className="p-2 bg-gradient-to-r from-red-100 to-red-200 text-red-600 rounded-xl hover:from-red-200 hover:to-red-300 transition-all duration-300 shadow-md hover:shadow-lg"
+                              className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-red-600"
                               title="Delete Risk"
                             >
                               <Trash2 className="h-4 w-4" />

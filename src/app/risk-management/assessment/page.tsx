@@ -355,42 +355,37 @@ export default function RiskAssessmentPage() {
         )}
 
         {/* Assessments List */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-3">
-            <h2 className="text-2xl font-bold text-white">Risk Assessments</h2>
-            <p className="text-orange-100 mt-2">Comprehensive evaluation tracking</p>
-          </div>
-          
+        <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-orange-50 to-orange-100/50">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Risk
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Assessor
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Date
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Risk Score
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Status
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Next Assessment
                   </th>
                   {canDelete && (
-                    <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                       Actions
                     </th>
                   )}
                 </tr>
               </thead>
-              <tbody className="bg-white/60 divide-y divide-orange-100">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {assessments.length === 0 ? (
                   <tr>
                     <td colSpan={canDelete ? 7 : 6} className="px-3 py-6 text-center">
@@ -398,8 +393,8 @@ export default function RiskAssessmentPage() {
                         <div className="bg-orange-50 rounded-full p-2 mb-2">
                           <FileText className="h-6 w-6 text-orange-500" />
                         </div>
-                        <h3 className="text-xl font-semibold text-orange-800 mb-2">No risk assessments yet</h3>
-                        <p className="text-orange-600 mb-6">
+                        <h3 className="text-sm text-gray-900 mb-1">No risk assessments yet</h3>
+                        <p className="text-sm text-gray-500 mb-3">
                           Create your first assessment to get started with risk evaluation
                         </p>
                         <button
@@ -413,35 +408,35 @@ export default function RiskAssessmentPage() {
                   </tr>
                 ) : (
                   assessments.map((assessment) => (
-                    <tr key={assessment.id} className="hover:bg-orange-50/60 transition-all duration-300">
+                    <tr key={assessment.id} className="hover:bg-gray-50">
                       <td className="px-3 py-2 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-bold text-orange-900">
+                          <div className="text-sm text-gray-900">
                             {assessment.risk.riskId}
                           </div>
-                          <div className="text-sm text-orange-700">
+                          <div className="text-xs text-gray-500">
                             {assessment.risk.title}
                           </div>
                         </div>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-orange-900">
+                        <div className="text-sm text-gray-900">
                           {assessment.assessor.firstName} {assessment.assessor.lastName}
                         </div>
-                        <div className="text-sm text-orange-700">
+                        <div className="text-xs text-gray-500">
                           {assessment.assessor.email}
                         </div>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm font-semibold text-orange-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
                         {formatDate(assessment.assessmentDate)}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold shadow-md ${getRiskScoreColor(assessment.riskScore)}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getRiskScoreColor(assessment.riskScore)}`}>
                           {assessment.riskScore}
                         </span>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-green-100 to-green-200 text-green-800 shadow-md">
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
                           <CheckCircle className="h-4 w-4 mr-2" />
                           {assessment.status}
                         </span>

@@ -64,7 +64,8 @@ html.dark .border-saywhat-grey {
 
 html.dark input,
 html.dark select,
-html.dark textarea {
+html.dark textarea,
+html.dark option {
   background-color: #1c1f26;
   color: #f3f4f6;
   border-color: #2e333d;

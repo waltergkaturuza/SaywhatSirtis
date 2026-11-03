@@ -185,7 +185,7 @@ export default function AuditLogsPage() {
     }
     
     return (
-      <span className={`inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold ${colors[severity as keyof typeof colors]} shadow-sm`}>
+      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors[severity as keyof typeof colors]}`}>
         {severity}
       </span>
     )
@@ -343,37 +343,30 @@ export default function AuditLogsPage() {
         </div>
 
         {/* Audit Logs Table */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100 overflow-hidden">
-          <div className="p-3 border-b border-gray-100 bg-gradient-to-r from-orange-500 to-orange-600">
-            <h2 className="text-2xl font-bold text-white flex items-center">
-              <FileText className="h-6 w-6 mr-3" />
-              Activity Logs
-            </h2>
-          </div>
-          
+        <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-orange-50 to-orange-100">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Timestamp
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     User
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Action
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Entity
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Severity
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Details
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-gray-700 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Actions
                   </th>
                 </tr>

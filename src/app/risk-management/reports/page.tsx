@@ -220,8 +220,8 @@ export default function RiskReportsPage() {
               ['Overdue', metrics.overdueMitigations],
             ].map(([label, value]) => (
               <div key={String(label)} className="bg-white border border-gray-200 rounded-md px-3 py-2">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-                <p className="text-lg font-semibold text-gray-900">{value}</p>
+                <p className="text-xs text-gray-500">{label}</p>
+                <p className="text-base font-medium text-gray-900">{value}</p>
               </div>
             ))}
           </div>
@@ -229,11 +229,9 @@ export default function RiskReportsPage() {
 
         {/* Quick Report Generation */}
         <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 p-3 mb-3">
-          <div className="text-center mb-3">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-orange-700 bg-clip-text text-transparent mb-2">
-              Generate New Report
-            </h2>
-            <p className="text-orange-700/70">Create comprehensive risk intelligence reports</p>
+          <div className="mb-2">
+            <h2 className="text-sm font-medium text-gray-900">Generate a report</h2>
+            <p className="text-xs text-gray-500">Create a file from the current risk register.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -265,37 +263,32 @@ export default function RiskReportsPage() {
         </div>
 
         {/* Reports List */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-orange-100/50 overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-3">
-            <h2 className="text-2xl font-bold text-white">Available Reports</h2>
-            <p className="text-orange-100 mt-2">Your comprehensive risk intelligence library</p>
-          </div>
-          
+        <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gradient-to-r from-orange-50 to-orange-100/50">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Report
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Type
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Generated
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Size
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Status
                   </th>
-                  <th className="px-3 py-2 text-left text-sm font-bold text-orange-800 uppercase tracking-wider">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white/60 divide-y divide-orange-100">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {reports.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-3 py-4 text-center text-sm text-gray-500">
@@ -304,26 +297,26 @@ export default function RiskReportsPage() {
                   </tr>
                 ) : (
                   reports.map((report) => (
-                    <tr key={report.id} className="hover:bg-orange-50/60 transition-all duration-300">
+                    <tr key={report.id} className="hover:bg-gray-50">
                       <td className="px-3 py-2 text-sm text-gray-900">
                         {report.title}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 shadow-md">
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
                           {report.type}
                         </span>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm font-semibold text-orange-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
                         {formatDate(report.generatedDate)}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm font-semibold text-orange-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700">
                         {report.fileSize || 'N/A'}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold shadow-md ${
-                          report.status === 'ready' ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800' :
-                          report.status === 'generating' ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800' :
-                          'bg-gradient-to-r from-red-100 to-red-200 text-red-800'
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          report.status === 'ready' ? 'bg-green-100 text-green-800' :
+                          report.status === 'generating' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
                         }`}>
                           {report.status}
                         </span>
