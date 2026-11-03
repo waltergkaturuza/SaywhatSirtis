@@ -582,21 +582,28 @@ export default function PerformanceAppraisalsPage() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
+                <div>
+                  <table className="w-full table-fixed divide-y divide-gray-200">
+                    <colgroup>
+                      <col className="w-[14%]" />
+                      <col className="w-[11%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[7%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[11%]" />
+                      <col className="w-[6%]" />
+                      <col className="w-[5%]" />
+                    </colgroup>
                     <thead className="bg-gray-50 border-t-2 border-orange-500">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Employee</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Department</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Period</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Rating</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Plan Progress</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Supervisor</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Reviewer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Next Action</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Last Updated</th>
-                        <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+                        {['Employee', 'Department', 'Period', 'Status', 'Rating', 'Progress', 'Supervisor', 'Reviewer', 'Next Action', 'Updated', ''].map((heading) => (
+                          <th key={heading || 'actions'} className="max-w-0 px-2 py-2 text-left text-xs font-medium text-gray-500">
+                            {heading}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -610,79 +617,47 @@ export default function PerformanceAppraisalsPage() {
                         return true
                       }).map((appraisal) => (
                         <tr key={appraisal.id} className="hover:bg-orange-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
-                                <UserIcon className="h-4 w-4 text-orange-600" />
-                              </div>
-                              <div className="ml-3">
-                                <div className="text-sm font-medium text-black">{appraisal.employeeName}</div>
-                                <div className="text-sm text-gray-600">{appraisal.position}</div>
-                              </div>
-                            </div>
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-900" title={appraisal.employeeName}>{appraisal.employeeName}</div>
+                            <div className="truncate text-xs text-gray-500" title={appraisal.position}>{appraisal.position}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <BuildingOfficeIcon className="h-4 w-4 text-gray-500 mr-2" />
-                              <span className="text-sm text-black">{appraisal.department}</span>
-                            </div>
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-700" title={appraisal.department}>{appraisal.department}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {appraisal.period}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-700" title={appraisal.period}>{appraisal.period}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(appraisal.status)}`}>
-                              {appraisal.status.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <span className={`inline-flex max-w-full truncate px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(appraisal.status)}`} title={appraisal.status}>
+                              {appraisal.status.replace(/[-_]/g, ' ')}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {renderStars(appraisal.overallRating)}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden text-sm text-gray-700">
+                            {appraisal.overallRating ?? '—'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                                <div
-                                  className={`h-2 rounded-full ${getProgressColor(appraisal.planProgress)}`}
-                                  style={{ width: `${appraisal.planProgress}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-sm text-gray-900">{appraisal.planProgress}%</span>
-                            </div>
+                          <td className="max-w-0 px-2 py-2 overflow-hidden text-sm text-gray-700">
+                            {appraisal.planProgress}%
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {appraisal.supervisor}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-700" title={appraisal.supervisor}>{appraisal.supervisor}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {appraisal.reviewer || 'Not assigned'}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-700" title={appraisal.reviewer || 'Not assigned'}>{appraisal.reviewer || 'Not assigned'}</div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
                             {appraisal.nextAction && (
-                              <div className="flex items-center space-x-2">
-                                {appraisal.canUserAct ? (
-                                  <button
-                                    onClick={() => {
-                                      // Handle workflow action
-                                      console.log('Workflow action for appraisal:', appraisal.id, appraisal.nextAction)
-                                    }}
-                                    className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100"
-                                  >
-                                    <ClockIcon className="h-3 w-3 mr-1" />
-                                    {appraisal.nextAction}
-                                  </button>
-                                ) : (
-                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded-md">
-                                    <ClockIcon className="h-3 w-3 mr-1" />
-                                    {appraisal.nextAction}
-                                  </span>
-                                )}
-                              </div>
+                              <span className="block truncate text-xs text-gray-700" title={appraisal.nextAction}>
+                                {appraisal.nextAction}
+                              </span>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(appraisal.lastUpdated).toLocaleDateString()}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-xs text-gray-500" title={new Date(appraisal.lastUpdated).toLocaleDateString()}>
+                              {new Date(appraisal.lastUpdated).toLocaleDateString()}
+                            </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center space-x-2">
+                          <td className="max-w-0 px-1 py-2 overflow-hidden text-right text-sm">
+                            <div className="flex items-center justify-end gap-1">
                               {/* View button - always link to dedicated view page for submitted/approved appraisals */}
                               <Link href={`/hr/performance/appraisals/${appraisal.id}`}>
                                 <button className="text-orange-600 hover:text-orange-900 transition-colors" title="View Appraisal">

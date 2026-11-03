@@ -896,20 +896,27 @@ function PerformancePlansContent() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
+                <div>
+                  <table className="w-full table-fixed divide-y divide-gray-200">
+                    <colgroup>
+                      <col className="w-[14%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[11%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[9%]" />
+                      <col className="w-[7%]" />
+                      <col className="w-[6%]" />
+                    </colgroup>
                     <thead className="bg-gray-50 border-t-2 border-orange-500">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Employee</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Department</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Plan Type</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Plan Period</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Next Action</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Supervisor</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Reviewer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Last Updated</th>
-                        <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
+                        {['Employee', 'Department', 'Plan Type', 'Plan Period', 'Status', 'Next Action', 'Supervisor', 'Reviewer', 'Updated', ''].map((heading) => (
+                          <th key={heading || 'actions'} className="max-w-0 px-2 py-2 text-left text-xs font-medium text-gray-500">
+                            {heading}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -930,79 +937,64 @@ function PerformancePlansContent() {
                         return true
                       }).map((plan) => (
                         <tr key={plan.id} className="hover:bg-orange-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
-                                <UserIcon className="h-4 w-4 text-orange-600" />
-                              </div>
-                              <div className="ml-3">
-                                <div className="text-sm font-medium text-black">{plan.employeeName}</div>
-                                <div className="text-sm text-gray-600">{plan.position}</div>
-                              </div>
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-900" title={plan.employeeName}>{plan.employeeName}</div>
+                            <div className="truncate text-xs text-gray-500" title={plan.position}>{plan.position}</div>
+                          </td>
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-700" title={plan.department}>{plan.department}</div>
+                          </td>
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-700" title={plan.planTitle || 'Annual Plan'}>{plan.planTitle || 'Annual Plan'}</div>
+                          </td>
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-700" title={plan.startDate && plan.endDate ? `${new Date(plan.startDate).toLocaleDateString()} - ${new Date(plan.endDate).toLocaleDateString()}` : `Year ${plan.planYear}`}>
+                              {plan.startDate && plan.endDate ? (
+                                `${new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(plan.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                              ) : (
+                                `Year ${plan.planYear}`
+                              )}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <BuildingOfficeIcon className="h-4 w-4 text-gray-400 mr-2" />
-                              <span className="text-sm text-gray-900">{plan.department}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <DocumentTextIcon className="h-4 w-4 text-gray-400 mr-2" />
-                              <span className="text-sm text-gray-900">{plan.planTitle || 'Annual Plan'}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
-                              <div className="text-sm text-gray-900">
-                                {plan.startDate && plan.endDate ? (
-                                  <>
-                                    {new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(plan.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                  </>
-                                ) : (
-                                  `Year ${plan.planYear}`
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(plan.workflowStatus || plan.status)}`}>
-                              {(plan.workflowStatus || plan.status).replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <span className={`inline-flex max-w-full truncate px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(plan.workflowStatus || plan.status)}`} title={(plan.workflowStatus || plan.status)}>
+                              {(plan.workflowStatus || plan.status).replace(/[-_]/g, ' ')}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
                             {plan.nextAction && (
-                              <div className="flex items-center space-x-2">
-                                {plan.canUserAct ? (
-                                  <button
-                                    onClick={() => handleWorkflowAction(plan, getActionFromNextAction(plan.nextAction))}
-                                    className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100"
-                                  >
-                                    <ClockIcon className="h-3 w-3 mr-1" />
-                                    {plan.nextAction}
-                                  </button>
-                                ) : (
-                                  <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 rounded-md">
-                                    <ClockIcon className="h-3 w-3 mr-1" />
-                                    {plan.nextAction}
-                                  </span>
-                                )}
-                              </div>
+                              plan.canUserAct ? (
+                                <button
+                                  onClick={() => handleWorkflowAction(plan, getActionFromNextAction(plan.nextAction))}
+                                  className="block w-full truncate text-left text-xs text-blue-700"
+                                  title={plan.nextAction}
+                                >
+                                  {plan.nextAction}
+                                </button>
+                              ) : (
+                                <span className="block truncate text-xs text-gray-600" title={plan.nextAction}>
+                                  {plan.nextAction}
+                                </span>
+                              )
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {plan.supervisor?.name || plan.supervisor || 'Not assigned'}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-700" title={plan.supervisor?.name || plan.supervisor || 'Not assigned'}>
+                              {plan.supervisor?.name || plan.supervisor || 'Not assigned'}
+                            </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {plan.reviewer || 'Not assigned'}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-sm text-gray-700" title={plan.reviewer || 'Not assigned'}>
+                              {plan.reviewer || 'Not assigned'}
+                            </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(plan.lastUpdated).toLocaleDateString()}
+                          <td className="max-w-0 px-2 py-2 overflow-hidden">
+                            <div className="truncate text-xs text-gray-500" title={new Date(plan.lastUpdated).toLocaleDateString()}>
+                              {new Date(plan.lastUpdated).toLocaleDateString()}
+                            </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center space-x-2">
+                          <td className="max-w-0 px-1 py-2 overflow-hidden text-right text-sm">
+                            <div className="flex items-center justify-end gap-1">
                               {/* View button - always link to dedicated view page for submitted/approved plans */}
                               {/* For draft plans, supervisors/reviewers should also use view page to see submitted data */}
                               {plan.status === 'draft' && (plan.employeeId === session?.user?.id || userRole.canSeeAllPlans) ? (
