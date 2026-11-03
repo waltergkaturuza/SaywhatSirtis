@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import {
   PhoneIcon,
   ExclamationTriangleIcon,
@@ -24,10 +25,12 @@ interface RecentActivity {
 interface PendingTask {
   id: string
   title: string
-  assignedTo: string
+  assignedTo?: string
+  officer?: string
   dueDate: string
   priority: 'high' | 'medium' | 'low'
-  caseNumber: string
+  caseNumber?: string
+  caseId?: string
 }
 
 interface ActivitiesData {
@@ -148,14 +151,18 @@ const RecentActivities: React.FC = () => {
               <h3 className="text-xl font-semibold text-saywhat-dark mb-4">Pending Tasks</h3>
               {activitiesData.pendingTasks.length > 0 ? (
                 <div className="space-y-3">
-                  {activitiesData.pendingTasks.slice(0, 3).map((task) => (
+                  {activitiesData.pendingTasks.slice(0, 3).map((task) => {
+                    const href = task.caseId ? `/call-centre/cases/${task.caseId}` : null
+                    const assignee = task.assignedTo || task.officer || 'Unassigned'
+                    const caseLabel = task.caseNumber || 'N/A'
+                    return (
                     <div key={task.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{task.title}</p>
-                        <p className="text-xs text-gray-600">Case: {task.caseNumber}</p>
-                        <div className="flex items-center mt-1 text-xs text-gray-500">
+                        <p className="text-sm font-medium text-[#1f2937]">{task.title}</p>
+                        <p className="text-xs text-[#4b5563]">Case: {caseLabel}</p>
+                        <div className="flex items-center mt-1 text-xs text-[#6b7280]">
                           <UserIcon className="h-4 w-4 mr-1" />
-                          <span>{task.assignedTo}</span>
+                          <span>{assignee}</span>
                           <span className="mx-2">•</span>
                           <span>Due: {task.dueDate}</span>
                         </div>
@@ -164,10 +171,21 @@ const RecentActivities: React.FC = () => {
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
                           {task.priority}
                         </span>
-                        <ArrowRightIcon className="h-4 w-4 text-gray-400" />
+                        {href ? (
+                          <Link
+                            href={href}
+                            className="rounded-md p-1 text-[#4b5563] hover:bg-yellow-100 hover:text-[#1f2937]"
+                            title={`Open case ${caseLabel}`}
+                          >
+                            <ArrowRightIcon className="h-4 w-4" />
+                          </Link>
+                        ) : (
+                          <ArrowRightIcon className="h-4 w-4 text-[#9ca3af]" />
+                        )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-gray-500">No pending tasks.</p>

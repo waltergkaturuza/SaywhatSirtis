@@ -217,9 +217,12 @@ export async function GET(request: NextRequest) {
         
         return {
           id: `task_${caseRecord.id}`,
+          caseId: caseRecord.id,
+          caseNumber,
           title: `Follow up on Case ${caseNumber}`,
           description: `${purpose} - ${callerName}`,
           officer: officer,
+          assignedTo: officer,
           dueDate: caseRecord.followUpDate ? new Date(caseRecord.followUpDate).toLocaleDateString() : 'No due date',
           priority: isOverdue ? 'high' : 'medium',
           status: 'pending'
