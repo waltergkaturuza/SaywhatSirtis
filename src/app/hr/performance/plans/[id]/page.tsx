@@ -39,6 +39,7 @@ interface PlanData {
   department: string
   supervisorId: string
   reviewerId: string | null
+  reviewerName?: string
   status: string
   planType: string
   planTitle: string
@@ -65,6 +66,8 @@ interface PlanData {
     reviewerComments: string
     supervisor?: any[]
     reviewer?: any[]
+    coreValuesAcknowledgment?: Record<string, boolean>
+    allCoreValuesAcknowledged?: boolean
   }
   supervisorApproval: string
   reviewerApproval: string
@@ -118,23 +121,64 @@ export default function ViewPlanPage() {
 
   // Export plan to PDF
   const handleExportPDF = async () => {
-    if (!plan || !planContentRef.current) return
-    
+    if (!plan) return
+
     setExportingPDF(true)
     try {
-      // Ensure element has an ID for export
-      if (!planContentRef.current.id) {
-        planContentRef.current.id = 'plan-content-to-export'
-      }
-      
-      await exportService.exportFromElement(planContentRef.current.id, {
+      const coreValueNames = ['Teamwork', 'Responsiveness and Effectiveness', 'Accountability', 'Professionalism and Integrity', 'Innovation']
+      const acknowledgments = formData?.coreValuesAcknowledgment || plan.comments?.coreValuesAcknowledgment || {}
+      const responsibilities = formData?.keyResponsibilities || plan.keyResponsibilities || []
+      const development = formData?.developmentObjectives || []
+      await exportService.exportSections([
+        {
+          heading: 'Employee',
+          lines: [
+            `Name: ${plan.employeeName || formData?.employee?.name || ''}`,
+            `Position: ${plan.position || formData?.employee?.position || ''}`,
+            `Department: ${typeof plan.department === 'object' ? plan.department?.name || '' : plan.department || formData?.employee?.department || ''}`,
+            `Supervisor: ${formData?.employee?.manager || ''}`,
+            `Reviewer: ${plan.reviewerName || ''}`,
+            `Plan: ${plan.planTitle || formData?.planTitle || ''} (${plan.planYear || formData?.planYear || ''})`,
+            `Period: ${plan.startDate || formData?.startDate || ''} to ${plan.endDate || formData?.endDate || ''}`,
+            `Status: ${plan.status || ''}`
+          ]
+        },
+        {
+          heading: 'Key responsibilities',
+          lines: responsibilities.length
+            ? responsibilities.flatMap((item: any, index: number) => [
+                `${index + 1}. ${item.description || item.title || 'Responsibility'}`,
+                item.tasks ? `   Tasks: ${item.tasks}` : '',
+                item.weight ? `   Weight: ${item.weight}%` : '',
+                ...(Array.isArray(item.successIndicators) ? item.successIndicators.map((indicator: any) => `   Indicator: ${indicator.indicator || indicator.title || ''}`) : [])
+              ].filter(Boolean))
+            : ['No responsibilities recorded']
+        },
+        {
+          heading: 'Core values',
+          lines: [
+            ...coreValueNames.map((name, index) => `${acknowledgments[index] || acknowledgments[String(index)] ? 'Acknowledged' : 'Not acknowledged'}: ${name}`),
+            `${formData?.allCoreValuesAcknowledged || plan.comments?.allCoreValuesAcknowledged ? 'Acknowledged' : 'Not acknowledged'}: Overall commitment to all five core values`
+          ]
+        },
+        {
+          heading: 'Development',
+          lines: development.length
+            ? development.map((item: any) => `${item.objective || item.description || 'Development item'}${item.timeline ? ` (${item.timeline})` : ''}`)
+            : ['No development objectives recorded']
+        },
+        {
+          heading: 'Comments',
+          lines: [
+            `Employee: ${formData?.employeeComments || plan.comments?.employeeComments || 'None'}`,
+            `Supervisor: ${formData?.supervisorComments || plan.comments?.supervisorComments || 'None'}`
+          ]
+        }
+      ], {
         format: 'pdf',
-        filename: `Performance_Plan_${plan.employeeName.replace(/\s+/g, '_')}_${plan.planYear}_${Date.now()}.pdf`,
-        title: `Performance Plan - ${plan.employeeName}`,
-        includeLogo: true,
-        includeTimestamp: true,
-        orientation: 'portrait',
-        pageSize: 'a4'
+        filename: `Performance_Plan_${String(plan.employeeName || 'employee').replace(/\s+/g, '_')}_${plan.planYear || ''}.pdf`,
+        title: `Performance Plan - ${plan.employeeName || ''}`,
+        includeTimestamp: true
       })
     } catch (error) {
       console.error('Error exporting PDF:', error)
@@ -431,8 +475,8 @@ export default function ViewPlanPage() {
         trainingRequirements: '',
         mentorshipNeeds: '',
         supportFromManager: '',
-        coreValuesAcknowledgment: {},
-        allCoreValuesAcknowledged: false,
+        coreValuesAcknowledgment: plan.comments?.coreValuesAcknowledgment || {},
+        allCoreValuesAcknowledged: Boolean(plan.comments?.allCoreValuesAcknowledged),
         careerAspirationsShortTerm: '',
         careerAspirationsLongTerm: '',
         trainingNeeds: '',
@@ -828,12 +872,12 @@ export default function ViewPlanPage() {
                       <div className="flex items-center space-x-3">
                         <input
                           type="checkbox"
-                          checked={formData.coreValuesAcknowledgment?.[index] || false}
-                          readOnly
+                          checked={Boolean(formData.coreValuesAcknowledgment?.[index])}
+                          disabled
                           className="w-5 h-5 text-indigo-600 border-2 border-gray-300 rounded"
                         />
-                        <span className="text-sm font-medium text-gray-700">
-                          I understand and commit to upholding this core value
+                        <span className={`text-sm font-medium ${formData.coreValuesAcknowledgment?.[index] ? 'text-green-700' : 'text-gray-500'}`}>
+                          {formData.coreValuesAcknowledgment?.[index] ? 'Acknowledged' : 'Not acknowledged'}
                         </span>
                       </div>
                     </div>
@@ -853,8 +897,8 @@ export default function ViewPlanPage() {
                   <div className="flex items-start space-x-3">
                     <input
                       type="checkbox"
-                      checked={formData.allCoreValuesAcknowledged || false}
-                      readOnly
+                      checked={Boolean(formData.allCoreValuesAcknowledged)}
+                      disabled
                       className="mt-1 w-5 h-5 text-orange-600 border-2 border-gray-300 rounded"
                     />
                     <span className="text-sm font-semibold text-gray-800">

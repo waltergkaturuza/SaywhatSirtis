@@ -74,6 +74,23 @@ export async function POST(request: NextRequest) {
       return asEmployee?.userId || null
     }
 
+    const commentsWithAcknowledgments = (comments: any) => {
+      let base: Record<string, any> = {}
+      if (typeof comments === 'string') {
+        try {
+          const parsed = JSON.parse(comments)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) base = { ...parsed }
+        } catch {
+          base = {}
+        }
+      } else if (comments && typeof comments === 'object' && !Array.isArray(comments)) {
+        base = { ...comments }
+      }
+      base.coreValuesAcknowledgment = formData.coreValuesAcknowledgment || base.coreValuesAcknowledgment || {}
+      base.allCoreValuesAcknowledged = Boolean(formData.allCoreValuesAcknowledged ?? base.allCoreValuesAcknowledged)
+      return JSON.stringify(base)
+    }
+
     const filledResponsibilities = (rows: unknown) =>
       Array.isArray(rows)
         ? rows.filter((row) => {
@@ -227,8 +244,8 @@ export async function POST(request: NextRequest) {
           updateData.developmentNeeds = typeof devData === 'string' ? devData : JSON.stringify(arr ?? []);
         }
       }
-      if (formData.comments !== undefined) {
-        updateData.comments = typeof formData.comments === 'string' ? formData.comments : JSON.stringify(formData.comments ?? []);
+      if (formData.comments !== undefined || formData.coreValuesAcknowledgment || formData.allCoreValuesAcknowledged) {
+        updateData.comments = commentsWithAcknowledgments(formData.comments)
       }
 
       const reviewerUserId = await resolvePlanUserId(formData.reviewerId)
@@ -495,8 +512,8 @@ export async function POST(request: NextRequest) {
         return typeof devData === 'string' ? devData : JSON.stringify(arr ?? []);
       })() : undefined;
       if (dn !== undefined) updateData.developmentNeeds = dn;
-      if (formData.comments !== undefined) {
-        updateData.comments = typeof formData.comments === 'string' ? formData.comments : JSON.stringify(formData.comments || []);
+      if (formData.comments !== undefined || formData.coreValuesAcknowledgment || formData.allCoreValuesAcknowledged) {
+        updateData.comments = commentsWithAcknowledgments(formData.comments)
       }
       
       plan = await prisma.performance_plans.update({
@@ -577,7 +594,7 @@ export async function POST(request: NextRequest) {
         workflowStatus: isDraft ? 'draft' : 'submitted',
         updatedAt: new Date(),
         reviewerId: reviewerUserId, // This must be a user ID, not an employee ID
-        comments: formData.comments ? (typeof formData.comments === 'string' ? formData.comments : JSON.stringify(formData.comments)) : JSON.stringify([])
+        comments: commentsWithAcknowledgments(formData.comments)
       };
       
       // Add date fields if provided

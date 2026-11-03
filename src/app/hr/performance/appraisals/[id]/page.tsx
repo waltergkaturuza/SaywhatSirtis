@@ -132,23 +132,61 @@ export default function ViewAppraisalPage() {
 
   // Export appraisal to PDF
   const handleExportPDF = async () => {
-    if (!appraisal || !appraisalContentRef.current) return
-    
+    if (!appraisal || !formData) return
+
     setExportingPDF(true)
     try {
-      // Ensure element has an ID for export
-      if (!appraisalContentRef.current.id) {
-        appraisalContentRef.current.id = 'appraisal-content-to-export'
-      }
-      
-      await exportService.exportFromElement(appraisalContentRef.current.id, {
+      const responsibilities = formData.achievements?.keyResponsibilities || []
+      const categories = formData.performance?.categories || []
+      await exportService.exportSections([
+        {
+          heading: 'Employee',
+          lines: [
+            `Name: ${formData.employee?.name || appraisal.employeeName || ''}`,
+            `Position: ${formData.employee?.position || ''}`,
+            `Department: ${formData.employee?.department || ''}`,
+            `Supervisor: ${formData.employee?.manager || ''}`,
+            `Reviewer: ${formData.employee?.reviewer || ''}`,
+            `Review period: ${formData.employee?.reviewPeriod?.startDate || ''} to ${formData.employee?.reviewPeriod?.endDate || ''}`,
+            `Status: ${formData.status || appraisal.status || ''}`
+          ]
+        },
+        {
+          heading: 'Key responsibilities',
+          lines: responsibilities.length
+            ? responsibilities.flatMap((item, index) => [
+                `${index + 1}. ${item.description || 'Responsibility'}`,
+                `   Status: ${item.achievementStatus || 'not recorded'}`,
+                `   Comment: ${item.comment || 'None'}`
+              ])
+            : ['No responsibilities recorded']
+        },
+        {
+          heading: 'Core value ratings',
+          lines: categories.length
+            ? categories.map((category) => `${category.name}: ${category.rating || 0}/5${category.comment ? ` — ${category.comment}` : ''}`)
+            : ['No ratings recorded']
+        },
+        {
+          heading: 'Development',
+          lines: [
+            `Career aspirations: ${formData.development?.careerAspirations || 'None'}`,
+            `Training needs: ${(formData.development?.trainingNeeds || []).filter(Boolean).join(', ') || 'None'}`
+          ]
+        },
+        {
+          heading: 'Comments and result',
+          lines: [
+            `Employee: ${formData.comments?.employeeComments || 'None'}`,
+            `Supervisor: ${formData.comments?.managerComments || 'None'}`,
+            `Overall rating: ${formData.ratings?.finalRating || formData.performance?.overallRating || 0}`
+          ]
+        }
+      ], {
         format: 'pdf',
-        filename: `Performance_Appraisal_${appraisal.employeeName.replace(/\s+/g, '_')}_${appraisal.period?.replace(/\s+/g, '_') || Date.now()}_${Date.now()}.pdf`,
-        title: `Performance Appraisal - ${appraisal.employeeName}`,
-        includeLogo: true,
-        includeTimestamp: true,
-        orientation: 'portrait',
-        pageSize: 'a4'
+        filename: `Performance_Appraisal_${String(formData.employee?.name || 'employee').replace(/\s+/g, '_')}.pdf`,
+        title: `Performance Appraisal - ${formData.employee?.name || ''}`,
+        includeTimestamp: true
       })
     } catch (error) {
       console.error('Error exporting PDF:', error)

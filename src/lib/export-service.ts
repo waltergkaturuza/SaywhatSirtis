@@ -649,6 +649,81 @@ class ExportService {
     }
   }
 
+  async exportSections(
+    sections: { heading: string; lines: string[] }[],
+    options: ExportOptions = { format: 'pdf' }
+  ): Promise<void> {
+    const pdf = new jsPDF({
+      orientation: options.orientation || 'portrait',
+      unit: 'mm',
+      format: options.pageSize || 'a4'
+    })
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 16
+    let y = margin
+
+    const ensureSpace = (needed: number) => {
+      if (y + needed > pageHeight - 16) {
+        pdf.addPage()
+        y = margin
+      }
+    }
+
+    pdf.setFont('helvetica', 'bold')
+    pdf.setFontSize(16)
+    pdf.setTextColor(30, 64, 175)
+    pdf.text(this.saywhatBranding.organizationName, margin, y + 6)
+    pdf.setFont('helvetica', 'normal')
+    pdf.setFontSize(10)
+    pdf.setTextColor(100, 116, 139)
+    pdf.text(this.saywhatBranding.systemName, margin, y + 12)
+    y += 20
+
+    if (options.title) {
+      ensureSpace(12)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(14)
+      pdf.setTextColor(17, 24, 39)
+      const titleLines = pdf.splitTextToSize(options.title, pageWidth - margin * 2)
+      titleLines.forEach((line: string) => {
+        pdf.text(line, margin, y)
+        y += 6
+      })
+    }
+    if (options.includeTimestamp !== false) {
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(9)
+      pdf.setTextColor(100, 116, 139)
+      pdf.text(`Generated ${new Date().toLocaleString()}`, margin, y)
+      y += 8
+    }
+
+    sections.forEach((section) => {
+      ensureSpace(12)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(12)
+      pdf.setTextColor(30, 64, 175)
+      pdf.text(section.heading, margin, y)
+      y += 6
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(10)
+      pdf.setTextColor(31, 41, 55)
+      const lines = section.lines.length > 0 ? section.lines : ['None recorded']
+      lines.forEach((line) => {
+        const wrapped = pdf.splitTextToSize(line || ' ', pageWidth - margin * 2)
+        wrapped.forEach((part: string) => {
+          ensureSpace(5)
+          pdf.text(part, margin, y)
+          y += 5
+        })
+      })
+      y += 4
+    })
+
+    pdf.save(options.filename || `${options.title || 'export'}.pdf`)
+  }
+
   // Helper method to format data for export
   formatDataForExport(data: any[], columns: string[]): ExportData {
     const headers = columns

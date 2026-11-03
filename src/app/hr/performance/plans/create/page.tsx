@@ -685,6 +685,16 @@ function CreatePerformancePlanPageContent() {
             const c = planData.comments;
             const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
             return parsed.supervisorComments ?? prev.supervisorComments ?? '';
+          })(),
+          coreValuesAcknowledgment: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return parsed.coreValuesAcknowledgment || prev.coreValuesAcknowledgment || {};
+          })(),
+          allCoreValuesAcknowledged: (() => {
+            const c = planData.comments;
+            const parsed = c && typeof c === 'string' ? (() => { try { return JSON.parse(c); } catch { return {}; } })() : (c || {});
+            return Boolean(parsed.allCoreValuesAcknowledged);
           })()
         }))
         

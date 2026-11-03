@@ -244,7 +244,9 @@ export async function GET(
           supervisorComments: parsed.supervisorComments || '',
           reviewerComments: parsed.reviewerComments || '',
           supervisor: Array.isArray(parsed.supervisor) ? parsed.supervisor : [],
-          reviewer: Array.isArray(parsed.reviewer) ? parsed.reviewer : []
+          reviewer: Array.isArray(parsed.reviewer) ? parsed.reviewer : [],
+          coreValuesAcknowledgment: parsed.coreValuesAcknowledgment || {},
+          allCoreValuesAcknowledged: Boolean(parsed.allCoreValuesAcknowledged)
         };
         
         // If we have workflow comments (arrays), extract the latest comment text for display
