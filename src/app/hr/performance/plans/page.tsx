@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { canViewAllPerformance } from "@/lib/hr/performance-access"
+import { PerformanceMessages } from "@/components/hr/performance-messages"
 import { useSearchParams, useRouter } from "next/navigation"
 import {
   ClipboardDocumentListIcon,
@@ -715,9 +716,7 @@ function PerformancePlansContent() {
     { id: "draft", name: "Drafts", icon: DocumentTextIcon },
     { id: "pending", name: "Pending Review", icon: ClockIcon },
     { id: "approved", name: "Approved", icon: CheckCircleIcon },
-    ...(canViewAllPlans ? [
-      { id: "notifications", name: "Notifications", icon: BellIcon }
-    ] : [])
+    { id: "notifications", name: "Notifications", icon: BellIcon }
   ]
 
   return (
@@ -1058,53 +1057,15 @@ function PerformancePlansContent() {
               </div>
             )}
 
-            {activeTab === "notifications" && canViewAllPlans && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Performance Plan Notifications</h3>
-                
-                {(!notifications || !Array.isArray(notifications) || notifications.length === 0) ? (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <p className="text-sm text-gray-600">No notifications at this time.</p>
-                  </div>
-                ) : (
-                  notifications.map((notification, index) => (
-                    <div key={index} className={`border rounded-lg p-4 ${
-                      notification.type === 'warning' ? 'bg-yellow-50 border-yellow-200' :
-                      notification.type === 'info' ? 'bg-blue-50 border-blue-200' :
-                      notification.type === 'success' ? 'bg-green-50 border-green-200' :
-                      'bg-gray-50 border-gray-200'
-                    }`}>
-                      <div className="flex items-center">
-                        {notification.type === 'warning' && <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 mr-2" />}
-                        {notification.type === 'info' && <BellIcon className="h-5 w-5 text-blue-600 mr-2" />}
-                        {notification.type === 'success' && <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />}
-                        <h4 className={`font-medium ${
-                          notification.type === 'warning' ? 'text-yellow-800' :
-                          notification.type === 'info' ? 'text-blue-800' :
-                          notification.type === 'success' ? 'text-green-800' :
-                          'text-gray-800'
-                        }`}>{notification.title}</h4>
-                      </div>
-                      <p className={`text-sm mt-1 ${
-                        notification.type === 'warning' ? 'text-yellow-700' :
-                        notification.type === 'info' ? 'text-blue-700' :
-                        notification.type === 'success' ? 'text-green-700' :
-                        'text-gray-700'
-                      }`}>{notification.message}</p>
-                      <Link href={notification.link}>
-                        <button className={`mt-2 text-sm font-medium ${
-                          notification.type === 'warning' ? 'text-yellow-800 hover:text-yellow-900' :
-                          notification.type === 'info' ? 'text-blue-800 hover:text-blue-900' :
-                          notification.type === 'success' ? 'text-green-800 hover:text-green-900' :
-                          'text-gray-800 hover:text-gray-900'
-                        }`}>
-                          {notification.action}
-                        </button>
-                      </Link>
-                    </div>
-                  ))
-                )}
-              </div>
+            {activeTab === "notifications" && (
+              <PerformanceMessages
+                topic="plan"
+                summary={canViewAllPlans && statistics.pendingApproval > 0 ? {
+                  label: `${statistics.pendingApproval} plans are waiting for review.`,
+                  action: "Open pending review",
+                  onAction: () => setActiveTab("pending")
+                } : undefined}
+              />
             )}
           </div>
         </div>

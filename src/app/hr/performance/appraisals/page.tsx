@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { canViewAllPerformance } from "@/lib/hr/performance-access"
+import { PerformanceMessages } from "@/components/hr/performance-messages"
 import {
   DocumentCheckIcon,
   PlusIcon,
@@ -430,10 +431,10 @@ export default function PerformanceAppraisalsPage() {
   const tabs = [
     { id: "my-appraisals", name: "My Appraisals", icon: DocumentCheckIcon },
     ...(canViewAllAppraisals ? [
-      { id: "all-appraisals", name: "All Appraisals", icon: ChartBarIcon },
-      { id: "notifications", name: "Notifications", icon: BellIcon }
+      { id: "all-appraisals", name: "All Appraisals", icon: ChartBarIcon }
     ] : []),
-    { id: "plan-progress", name: "Plan Progress Updates", icon: ArrowPathIcon }
+    { id: "plan-progress", name: "Plan Progress Updates", icon: ArrowPathIcon },
+    { id: "notifications", name: "Notifications", icon: BellIcon }
   ]
 
   return (
@@ -808,70 +809,15 @@ export default function PerformanceAppraisalsPage() {
               </div>
             )}
 
-            {activeTab === "notifications" && canViewAllAppraisals && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Appraisal Notifications</h3>
-                
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mr-2" />
-                    <h4 className="font-medium text-red-800">Overdue Appraisals</h4>
-                  </div>
-                  <p className="text-sm text-red-700 mt-1">
-                    {loading ? "Loading..." : `${statistics.overdueAppraisals} appraisals are overdue and require immediate attention.`}
-                  </p>
-                  <Link href="/hr/performance/appraisals?status=overdue">
-                    <button className="mt-2 text-sm text-red-800 font-medium hover:text-red-900">
-                      Review Overdue Appraisals →
-                    </button>
-                  </Link>
-                </div>
-
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <ClockIcon className="h-5 w-5 text-yellow-600 mr-2" />
-                    <h4 className="font-medium text-yellow-800">Due This Week</h4>
-                  </div>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    {loading ? "Loading..." : `${notifications.dueThisWeek} appraisals are due for completion this week.`}
-                  </p>
-                  <Link href="/hr/performance/appraisals?due=this-week">
-                    <button className="mt-2 text-sm text-yellow-800 font-medium hover:text-yellow-900">
-                      View Due Appraisals →
-                    </button>
-                  </Link>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <BellIcon className="h-5 w-5 text-blue-600 mr-2" />
-                    <h4 className="font-medium text-blue-800">Progress Updates</h4>
-                  </div>
-                  <p className="text-sm text-blue-700 mt-1">
-                    {loading ? "Loading..." : `${notifications.progressUpdates} new progress updates have been submitted for review.`}
-                  </p>
-                  <Link href="/hr/performance/appraisals/progress-updates">
-                    <button className="mt-2 text-sm text-blue-800 font-medium hover:text-blue-900">
-                      Review Updates →
-                    </button>
-                  </Link>
-                </div>
-
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />
-                    <h4 className="font-medium text-green-800">Recent Completions</h4>
-                  </div>
-                  <p className="text-sm text-green-700 mt-1">
-                    {loading ? "Loading..." : `${notifications.completedThisWeek} appraisals were completed and submitted this week.`}
-                  </p>
-                  <Link href="/hr/performance/appraisals/completed">
-                    <button className="mt-2 text-sm text-green-800 font-medium hover:text-green-900">
-                      View Completed →
-                    </button>
-                  </Link>
-                </div>
-              </div>
+            {activeTab === "notifications" && (
+              <PerformanceMessages
+                topic="appraisal"
+                summary={canViewAllAppraisals && statistics.pendingAppraisals > 0 ? {
+                  label: `${statistics.pendingAppraisals} appraisals are still pending.`,
+                  action: "Open appraisals",
+                  onAction: () => setActiveTab(canViewAllAppraisals ? "all-appraisals" : "my-appraisals")
+                } : undefined}
+              />
             )}
           </div>
         </div>
