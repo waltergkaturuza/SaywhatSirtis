@@ -2866,21 +2866,34 @@ function CreatePerformancePlanPageContent() {
                       <div></div>
                     )}
                     
-                    {currentStep < performancePlanSteps.length ? (
+                    <div className="flex space-x-4">
                       <button
-                        onClick={handleNext}
-                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                        type="button"
+                        onClick={() => handleSaveDraft(true)}
+                        disabled={isSavingDraft}
+                        className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50"
                       >
-                        <span>Next →</span>
+                        <span>{isSavingDraft ? 'Saving...' : 'Save Draft'}</span>
                       </button>
-                    ) : (
-                      <button
-                        onClick={handleSubmit}
-                        className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                      >
-                        <span>Submit Plan</span>
-                      </button>
-                    )}
+                      {currentStep < performancePlanSteps.length ? (
+                        <button
+                          type="button"
+                          onClick={handleNext}
+                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                        >
+                          <span>Next →</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleSubmit}
+                          disabled={isSubmitting}
+                          className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50"
+                        >
+                          <span>{isSubmitting ? 'Submitting...' : 'Submit Plan'}</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
