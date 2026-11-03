@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { validatePerformancePlan, formatValidationErrors, ValidationResult } from "@/lib/validations/performance-validations";
+import { resolvedPlanWorkflow } from "@/lib/hr/performance-access";
 
 export async function GET(request: NextRequest) {
   try {
@@ -174,6 +175,11 @@ export async function POST(request: NextRequest) {
         status: nextStatus,
         updatedAt: new Date()
       };
+      const currentWorkflow = existingPlan.workflowStatus || 'draft'
+      const nextWorkflow = resolvedPlanWorkflow({ status: nextStatus, workflowStatus: currentWorkflow })
+      if (!isDraft && nextWorkflow !== currentWorkflow) {
+        updateData.workflowStatus = nextWorkflow
+      }
 
       // Update all basic fields
       if (formData.planTitle !== undefined) {

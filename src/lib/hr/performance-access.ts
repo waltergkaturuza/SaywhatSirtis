@@ -89,6 +89,24 @@ export function planListStatusFilter(statusParam: string | null) {
   return clauses.length === 1 ? clauses[0] : { OR: clauses }
 }
 
+const PLAN_STAGE_RANK: Record<string, number> = {
+  draft: 0,
+  active: 1,
+  revision_requested: 2,
+  submitted: 3,
+  supervisor_review: 4,
+  supervisor_approved: 5,
+  reviewer_assessment: 6,
+  approved: 7,
+  completed: 8
+}
+
+export function resolvedPlanWorkflow(plan: { status?: string | null; workflowStatus?: string | null }) {
+  const status = plan.status || 'draft'
+  const workflow = plan.workflowStatus || 'draft'
+  return (PLAN_STAGE_RANK[status] ?? 0) > (PLAN_STAGE_RANK[workflow] ?? 0) ? status : workflow
+}
+
 export function planMatchesListStatus(
   plan: { status?: string | null; workflowStatus?: string | null },
   statusParam: string | null
@@ -99,11 +117,12 @@ export function planMatchesListStatus(
     | null
   if (!filter) return true
   const clauses = 'OR' in filter && filter.OR ? filter.OR : [filter as { status?: { in: string[] }; workflowStatus?: { in: string[] } }]
-  return clauses.some((clause) => {
-    if (clause.status?.in) return clause.status.in.includes(plan.status || '')
-    if (clause.workflowStatus?.in) return clause.workflowStatus.in.includes(plan.workflowStatus || '')
-    return false
-  })
+  const accepted = new Set<string>()
+  for (const clause of clauses) {
+    clause.status?.in?.forEach((value) => accepted.add(value))
+    clause.workflowStatus?.in?.forEach((value) => accepted.add(value))
+  }
+  return accepted.has(resolvedPlanWorkflow(plan))
 }
 
 export function activityProgress(

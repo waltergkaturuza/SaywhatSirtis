@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { activityProgress, canViewAllPerformance, planMatchesListStatus } from '@/lib/hr/performance-access'
+import { activityProgress, canViewAllPerformance, planMatchesListStatus, resolvedPlanWorkflow } from '@/lib/hr/performance-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -161,20 +161,29 @@ export async function GET(request: NextRequest) {
       return true
     })
 
+    const stalePlans = plans.filter((plan) => resolvedPlanWorkflow(plan) !== (plan.workflowStatus || 'draft'))
+    if (stalePlans.length > 0) {
+      await Promise.all(stalePlans.map((plan) => prisma.performance_plans.update({
+        where: { id: plan.id },
+        data: { workflowStatus: resolvedPlanWorkflow(plan) }
+      })))
+    }
+
     const progressValues = plans.map((plan) => activityProgress(plan.performance_responsibilities))
-    const approvedCount = plans.filter((plan) => plan.workflowStatus === 'approved' || plan.status === 'completed').length
-    const pendingReview = plans.filter((plan) => ['submitted', 'supervisor_review', 'reviewer_assessment'].includes(plan.workflowStatus || '')).length
+    const workflowOf = (plan: { status?: string | null; workflowStatus?: string | null }) => resolvedPlanWorkflow(plan)
+    const approvedCount = plans.filter((plan) => workflowOf(plan) === 'approved' || plan.status === 'completed').length
+    const pendingReview = plans.filter((plan) => ['submitted', 'supervisor_review', 'reviewer_assessment'].includes(workflowOf(plan))).length
 
     // Summary cards stay on the full year the user can see. Tabs filter the table only.
     const statistics = {
       total: plans.length,
       totalPlans: plans.length,
-      draft: plans.filter(p => p.status === 'draft' || p.workflowStatus === 'draft').length,
-      supervisorReview: plans.filter(p => p.workflowStatus === 'supervisor_review' || p.workflowStatus === 'submitted').length,
-      supervisorApproved: plans.filter(p => p.workflowStatus === 'supervisor_approved').length,
-      reviewerReview: plans.filter(p => p.workflowStatus === 'reviewer_assessment').length,
-      reviewerApproved: plans.filter(p => p.workflowStatus === 'approved').length,
-      completed: plans.filter(p => p.status === 'completed' || p.workflowStatus === 'approved').length,
+      draft: plans.filter(p => workflowOf(p) === 'draft').length,
+      supervisorReview: plans.filter(p => workflowOf(p) === 'supervisor_review' || workflowOf(p) === 'submitted').length,
+      supervisorApproved: plans.filter(p => workflowOf(p) === 'supervisor_approved').length,
+      reviewerReview: plans.filter(p => workflowOf(p) === 'reviewer_assessment').length,
+      reviewerApproved: plans.filter(p => workflowOf(p) === 'approved').length,
+      completed: plans.filter(p => workflowOf(p) === 'completed' || workflowOf(p) === 'approved').length,
       pendingReview,
       pendingApproval: pendingReview,
       approved: approvedCount,
@@ -208,7 +217,7 @@ export async function GET(request: NextRequest) {
       const isOwner = Boolean(user.employees?.id) && plan.employeeId === user.employees?.id
       const isSupervisor = plan.supervisorId === user.id || plan.supervisorId === user.employees?.id
       const isReviewer = plan.reviewerId === user.id || plan.reviewerId === user.employees?.id
-      const workflow = plan.workflowStatus || plan.status || 'draft'
+      const workflow = resolvedPlanWorkflow(plan)
       const canUserAct = (
         ((workflow === 'draft' || workflow === 'revision_requested') && (isOwner || canViewAll)) ||
         ((workflow === 'submitted' || workflow === 'supervisor_review') && (isSupervisor || (canViewAll && !isOwner))) ||
@@ -230,8 +239,8 @@ export async function GET(request: NextRequest) {
       planTitle: plan.planTitle || 'Annual Plan',
       planPeriod: plan.planPeriod,
       status: plan.status,
-      workflowStatus: plan.workflowStatus || 'draft',
-      nextAction: getNextAction(plan.workflowStatus || plan.status || 'draft', plan.reviewerId),
+      workflowStatus: workflow,
+      nextAction: getNextAction(workflow, plan.reviewerId),
       canUserAct,
       startDate: plan.startDate?.toISOString(),
       endDate: plan.endDate?.toISOString(),
