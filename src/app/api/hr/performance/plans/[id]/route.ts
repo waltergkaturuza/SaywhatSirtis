@@ -99,7 +99,14 @@ export async function GET(
       supervisorId: plan.supervisorId,
       reviewerId: plan.reviewerId,
       status: plan.status,
-      planType: plan.planPeriod || 'annual',
+      planType: (() => {
+        const raw = String(plan.planPeriod || '').toLowerCase()
+        if (raw === 'annual' || raw === 'quarterly' || raw === 'project' || raw === 'probation') return raw
+        if (raw.includes('quarter')) return 'quarterly'
+        if (raw.includes('project')) return 'project'
+        if (raw.includes('probation')) return 'probation'
+        return 'annual'
+      })(),
       planTitle: plan.planTitle || `Performance Plan - ${plan.employees.firstName} ${plan.employees.lastName}`,
       planYear: plan.planYear?.toString() || new Date().getFullYear().toString(),
       startDate: plan.startDate?.toISOString().split('T')[0] || '',
@@ -267,7 +274,27 @@ export async function GET(
 
     console.log('Returning parsed plan with', parsedPlan.deliverables?.length || 0, 'deliverables')
 
-    return NextResponse.json(parsedPlan)
+    let reviewerName = ''
+    if (plan.reviewerId) {
+      const reviewerUser = await prisma.users.findUnique({
+        where: { id: plan.reviewerId },
+        select: { firstName: true, lastName: true, email: true }
+      }).catch(() => null)
+      reviewerName = reviewerUser
+        ? `${reviewerUser.firstName || ''} ${reviewerUser.lastName || ''}`.trim() || reviewerUser.email || ''
+        : ''
+      if (!reviewerName) {
+        const reviewerEmployee = await prisma.employees.findFirst({
+          where: { OR: [{ id: plan.reviewerId }, { userId: plan.reviewerId }] },
+          select: { firstName: true, lastName: true, email: true }
+        }).catch(() => null)
+        reviewerName = reviewerEmployee
+          ? `${reviewerEmployee.firstName || ''} ${reviewerEmployee.lastName || ''}`.trim() || reviewerEmployee.email || ''
+          : ''
+      }
+    }
+
+    return NextResponse.json({ ...parsedPlan, reviewerName })
 
   } catch (error) {
     console.error('Error fetching performance plan:', error)

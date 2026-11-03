@@ -63,6 +63,27 @@ export async function POST(request: NextRequest) {
       planYear: formData.planYear
     });
 
+    const resolvePlanUserId = async (value: string | null | undefined) => {
+      if (!value) return null
+      const asUser = await prisma.users.findUnique({ where: { id: value }, select: { id: true } })
+      if (asUser) return asUser.id
+      const asEmployee = await prisma.employees.findFirst({
+        where: { OR: [{ id: value }, { userId: value }] },
+        select: { userId: true }
+      })
+      return asEmployee?.userId || null
+    }
+
+    const filledResponsibilities = (rows: unknown) =>
+      Array.isArray(rows)
+        ? rows.filter((row) => {
+            if (!row) return false
+            if (typeof row === 'string') return row.trim().length > 0
+            const item = row as { description?: string; title?: string; responsibility?: string }
+            return String(item.description || item.title || item.responsibility || '').trim().length > 0
+          })
+        : []
+
     // If formData has an ID, this is an update - redirect to PUT endpoint logic
     if (formData.id) {
       // Find the existing plan
@@ -108,8 +129,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Validate plan data if submitting (not draft)
-      if (!isDraft && formData.status === 'submitted') {
-        const validation = validatePerformancePlan(formData);
+      if (!isDraft) {
+        const validation = validatePerformancePlan({
+          ...formData,
+          status: 'submitted',
+          startDate: formData.startDate || formData.planPeriod?.startDate || '',
+          endDate: formData.endDate || formData.planPeriod?.endDate || ''
+        });
         if (!validation.isValid) {
           return NextResponse.json({
             success: false,
@@ -121,8 +147,11 @@ export async function POST(request: NextRequest) {
       }
 
       // Prepare update data with ALL fields from formData
+      const nextStatus = isDraft
+        ? 'draft'
+        : (formData.status && formData.status !== 'draft' ? formData.status : 'submitted')
       const updateData: any = {
-        status: isDraft ? 'draft' : (formData.status || 'submitted'),
+        status: nextStatus,
         updatedAt: new Date()
       };
 
@@ -202,8 +231,13 @@ export async function POST(request: NextRequest) {
         updateData.comments = typeof formData.comments === 'string' ? formData.comments : JSON.stringify(formData.comments ?? []);
       }
 
+      const reviewerUserId = await resolvePlanUserId(formData.reviewerId)
+      if (reviewerUserId) updateData.reviewerId = reviewerUserId
+      const supervisorFromForm = await resolvePlanUserId(formData.supervisor)
+      if (supervisorFromForm) updateData.supervisorId = supervisorFromForm
+
       // Set submittedAt if status is submitted
-      if (!isDraft && formData.status === 'submitted' && !existingPlan.submittedAt) {
+      if (!isDraft && nextStatus === 'submitted' && !existingPlan.submittedAt) {
         updateData.submittedAt = new Date();
       }
 
@@ -219,9 +253,10 @@ export async function POST(request: NextRequest) {
       });
 
       // Update performance_responsibilities - ONLY if incoming has content; never delete when incoming is empty
-      if (formData.keyResponsibilities && Array.isArray(formData.keyResponsibilities) && formData.keyResponsibilities.length > 0) {
+      const responsibilitiesToSave = filledResponsibilities(formData.keyResponsibilities)
+      if (responsibilitiesToSave.length > 0) {
         // Sync keyResponsibilities to deliverables JSON for full structure (successIndicators, etc.)
-        const fullDeliverables = formData.keyResponsibilities.map((r: any) => ({
+        const fullDeliverables = responsibilitiesToSave.map((r: any) => ({
           id: r.id,
           description: r.description || r.title,
           tasks: r.tasks,
@@ -243,7 +278,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Create new responsibilities
-        for (const responsibility of formData.keyResponsibilities) {
+        for (const responsibility of responsibilitiesToSave) {
           const respData = {
             id: responsibility.id || crypto.randomUUID(),
             planId: updatedPlan.id,
@@ -273,8 +308,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate plan data if submitting (not draft)
-    if (!isDraft && formData.status === 'submitted') {
-      const validation = validatePerformancePlan(formData);
+    if (!isDraft) {
+      const validation = validatePerformancePlan({
+        ...formData,
+        status: 'submitted',
+        startDate: formData.startDate || formData.planPeriod?.startDate || '',
+        endDate: formData.endDate || formData.planPeriod?.endDate || ''
+      });
       if (!validation.isValid) {
         return NextResponse.json({
           success: false,
@@ -321,16 +361,7 @@ export async function POST(request: NextRequest) {
 
     // Get supervisor user ID (performance_plans.supervisorId is a foreign key to users table)
     // supervisor_id is an employee ID, so we need to get the employee first, then their userId
-    let supervisorUserId = null;
-    if (employee.supervisor_id) {
-      const supervisorEmployee = await prisma.employees.findUnique({
-        where: { id: employee.supervisor_id },
-        select: { userId: true }
-      });
-      if (supervisorEmployee?.userId) {
-        supervisorUserId = supervisorEmployee.userId;
-      }
-    }
+    let supervisorUserId = await resolvePlanUserId(formData.supervisor || employee.supervisor_id)
 
     if (!supervisorUserId) {
       return NextResponse.json(
@@ -382,7 +413,7 @@ export async function POST(request: NextRequest) {
     // CRITICAL: Prevent data loss - if user has existing draft but came from create page (no formData.id),
     // and incoming form would WIPE their saved content (empty/sparse), return existing draft and tell frontend to redirect
     const incomingHasContent = 
-      (formData.keyResponsibilities && Array.isArray(formData.keyResponsibilities) && formData.keyResponsibilities.length > 0) ||
+      filledResponsibilities(formData.keyResponsibilities).length > 0 ||
       (formData.valueGoals && Array.isArray(formData.valueGoals) && formData.valueGoals.some((v: any) => v && (v.description || v.objective))) ||
       (formData.deliverables && Array.isArray(formData.deliverables) && formData.deliverables.length > 0);
     
@@ -443,6 +474,10 @@ export async function POST(request: NextRequest) {
       
       if (startDate) updateData.startDate = new Date(startDate);
       if (endDate) updateData.endDate = new Date(endDate);
+      const draftReviewerId = await resolvePlanUserId(formData.reviewerId || employee.reviewer_id)
+      if (draftReviewerId) updateData.reviewerId = draftReviewerId
+      const draftSupervisorId = await resolvePlanUserId(formData.supervisor || employee.supervisor_id)
+      if (draftSupervisorId) updateData.supervisorId = draftSupervisorId
       if (startDate && endDate && !updateData.planPeriod) updateData.planPeriod = `${startDate} - ${endDate}`;
       
       // Preserve existing data when incoming would wipe it
@@ -473,9 +508,10 @@ export async function POST(request: NextRequest) {
       });
 
       // Only replace responsibilities if incoming has content; otherwise preserve
-      if (formData.keyResponsibilities && Array.isArray(formData.keyResponsibilities) && formData.keyResponsibilities.length > 0) {
+      const responsibilitiesToSave = filledResponsibilities(formData.keyResponsibilities)
+      if (responsibilitiesToSave.length > 0) {
         // Sync keyResponsibilities to deliverables JSON for full structure (successIndicators, etc.)
-        const fullDeliverables = formData.keyResponsibilities.map((r: any) => ({
+        const fullDeliverables = responsibilitiesToSave.map((r: any) => ({
           id: r.id,
           description: r.description || r.title,
           tasks: r.tasks,
@@ -492,7 +528,7 @@ export async function POST(request: NextRequest) {
         });
 
         await prisma.performance_responsibilities.deleteMany({ where: { planId: plan.id } });
-        for (const responsibility of formData.keyResponsibilities) {
+        for (const responsibility of responsibilitiesToSave) {
           await prisma.performance_responsibilities.create({
             data: {
               id: responsibility.id || crypto.randomUUID(),
@@ -527,17 +563,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Get reviewer user ID if employee has a reviewer
-      let reviewerUserId = null;
-      if (employee.reviewer_id) {
-        const reviewerEmployee = await prisma.employees.findUnique({
-          where: { id: employee.reviewer_id },
-          select: { userId: true }
-        });
-        if (reviewerEmployee?.userId) {
-          reviewerUserId = reviewerEmployee.userId;
-        }
-      }
+      const reviewerUserId = await resolvePlanUserId(formData.reviewerId || employee.reviewer_id)
 
       // Prepare plan data with ALL fields from formData
       const planData: any = {
@@ -555,11 +581,13 @@ export async function POST(request: NextRequest) {
       };
       
       // Add date fields if provided
-      if (formData.startDate) {
-        planData.startDate = new Date(formData.startDate);
+      const createStartDate = formData.startDate || formData.planPeriod?.startDate
+      const createEndDate = formData.endDate || formData.planPeriod?.endDate
+      if (createStartDate) {
+        planData.startDate = new Date(createStartDate);
       }
-      if (formData.endDate) {
-        planData.endDate = new Date(formData.endDate);
+      if (createEndDate) {
+        planData.endDate = new Date(createEndDate);
       }
       
       // Save JSON fields (deliverables, valueGoals, competencies, developmentNeeds)
@@ -603,11 +631,12 @@ export async function POST(request: NextRequest) {
     console.log('✅ Performance plan created:', plan.id);
 
     // Create performance responsibilities and sync to deliverables JSON
-    if (formData.keyResponsibilities && formData.keyResponsibilities.length > 0) {
-      console.log(`📋 Creating ${formData.keyResponsibilities.length} key responsibilities`);
+    const createdResponsibilities = filledResponsibilities(formData.keyResponsibilities)
+    if (createdResponsibilities.length > 0) {
+      console.log(`📋 Creating ${createdResponsibilities.length} key responsibilities`);
       
       // Save full structure to deliverables for preload (successIndicators, etc.)
-      const fullDeliverables = formData.keyResponsibilities.map((r: any) => ({
+      const fullDeliverables = createdResponsibilities.map((r: any) => ({
         id: r.id,
         description: r.description || r.title,
         tasks: r.tasks,
@@ -623,7 +652,7 @@ export async function POST(request: NextRequest) {
         data: { deliverables: JSON.stringify(fullDeliverables) }
       });
       
-      for (const responsibility of formData.keyResponsibilities) {
+      for (const responsibility of createdResponsibilities) {
         const respData = {
           id: responsibility.id || crypto.randomUUID(),
           planId: plan.id,

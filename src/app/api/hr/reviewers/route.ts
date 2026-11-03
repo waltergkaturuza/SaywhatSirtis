@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
         },
         select: {
           id: true,
+          userId: true,
           firstName: true,
           lastName: true,
           email: true,
@@ -40,7 +41,9 @@ export async function GET(request: NextRequest) {
     )
 
     const reviewerData = reviewers.map(reviewer => ({
-      id: reviewer.id,
+      id: reviewer.userId || reviewer.id,
+      employeeId: reviewer.id,
+      userId: reviewer.userId,
       name: `${reviewer.firstName} ${reviewer.lastName}`,
       email: reviewer.email,
       department: reviewer.departments?.name || reviewer.department || 'Unassigned',

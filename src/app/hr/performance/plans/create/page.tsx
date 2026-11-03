@@ -207,8 +207,8 @@ function CreatePerformancePlanPageContent() {
             if (Array.isArray(responsibilitiesData) && responsibilitiesData.length > 0) {
               keyResponsibilities = responsibilitiesData.map((resp: any, index: number) => ({
                 id: `${Date.now()}-${index}`,
-                description: resp.description || '',
-                tasks: resp.tasks || '',
+                description: typeof resp === 'string' ? resp : (resp.description || resp.title || resp.responsibility || ''),
+                tasks: typeof resp === 'string' ? resp : (resp.tasks || resp.description || resp.title || ''),
                 weight: resp.weight || 0,
                 targetDate: '',
                 status: 'not-started' as const,
@@ -230,11 +230,17 @@ function CreatePerformancePlanPageContent() {
           let supervisorUserId = null
           let reviewerUserId = null
           
+          const supervisorRecordId = fullEmployeeData.supervisor_id || fullEmployeeData.supervisorId || fullEmployeeData.supervisor?.id
+          const reviewerRecordId = fullEmployeeData.reviewer_id || fullEmployeeData.reviewerId || fullEmployeeData.reviewer?.id
+
           // Fetch supervisor user ID if supervisor_id exists
-          if (fullEmployeeData.supervisor_id) {
+          if (supervisorRecordId) {
             try {
-              const supervisorResponse = await fetch(`/api/hr/employees/${fullEmployeeData.supervisor_id}`)
-              if (supervisorResponse.ok) {
+              if (fullEmployeeData.supervisor?.userId || fullEmployeeData.supervisor?.user?.id) {
+                supervisorUserId = fullEmployeeData.supervisor.userId || fullEmployeeData.supervisor.user.id
+              }
+              const supervisorResponse = supervisorUserId ? null : await fetch(`/api/hr/employees/${supervisorRecordId}`)
+              if (supervisorResponse?.ok) {
                 const supervisorData = await supervisorResponse.json()
                 const supervisorEmployee = supervisorData.data || supervisorData
                 // Get the user ID from the supervisor employee
@@ -250,10 +256,19 @@ function CreatePerformancePlanPageContent() {
           }
           
           // Fetch reviewer user ID if reviewer_id exists
-          if (fullEmployeeData.reviewer_id) {
+          if (reviewerRecordId) {
             try {
-              const reviewerResponse = await fetch(`/api/hr/employees/${fullEmployeeData.reviewer_id}`)
-              if (reviewerResponse.ok) {
+              if (fullEmployeeData.reviewer) {
+                reviewerUserId = fullEmployeeData.reviewer.userId || fullEmployeeData.reviewer.user?.id || fullEmployeeData.reviewer.id
+                ensureReviewerOption({
+                  id: fullEmployeeData.reviewer.id,
+                  userId: reviewerUserId,
+                  name: `${fullEmployeeData.reviewer.firstName || ''} ${fullEmployeeData.reviewer.lastName || ''}`.trim() || fullEmployeeData.reviewer.email,
+                  position: fullEmployeeData.reviewer.position
+                })
+              }
+              const reviewerResponse = reviewerUserId ? null : await fetch(`/api/hr/employees/${reviewerRecordId}`)
+              if (reviewerResponse?.ok) {
                 const reviewerData = await reviewerResponse.json()
                 const reviewerEmployee = reviewerData.data || reviewerData
                 // Get the user ID from the reviewer employee
@@ -261,7 +276,15 @@ function CreatePerformancePlanPageContent() {
                   reviewerUserId = reviewerEmployee.userId
                 } else if (reviewerEmployee.user?.id) {
                   reviewerUserId = reviewerEmployee.user.id
+                } else if (reviewerEmployee.id) {
+                  reviewerUserId = reviewerEmployee.id
                 }
+                ensureReviewerOption({
+                  id: reviewerEmployee.id,
+                  userId: reviewerUserId,
+                  name: `${reviewerEmployee.firstName || ''} ${reviewerEmployee.lastName || ''}`.trim() || reviewerEmployee.email,
+                  position: reviewerEmployee.position
+                })
               }
             } catch (error) {
               console.error('Error fetching reviewer user ID:', error)
@@ -285,6 +308,12 @@ function CreatePerformancePlanPageContent() {
             },
             supervisor: supervisorUserId || '',
             reviewerId: reviewerUserId || '',
+            startDate: prev.startDate || `${new Date().getFullYear()}-01-01`,
+            endDate: prev.endDate || `${new Date().getFullYear()}-12-31`,
+            planPeriod: prev.planPeriod?.startDate ? prev.planPeriod : {
+              startDate: `${new Date().getFullYear()}-01-01`,
+              endDate: `${new Date().getFullYear()}-12-31`
+            },
             keyResponsibilities: keyResponsibilities.length > 0 ? keyResponsibilities : [{
               id: '1',
               description: '',
@@ -329,6 +358,19 @@ function CreatePerformancePlanPageContent() {
     }
   }
 
+  const ensureReviewerOption = (person: { id?: string; userId?: string | null; name?: string; position?: string }) => {
+    const value = person.userId || person.id
+    if (!value) return
+    setReviewers((current) => current.some((item) => item.id === value || item.userId === value)
+      ? current
+      : [...current, {
+          id: value,
+          userId: person.userId || value,
+          name: person.name || 'Assigned reviewer',
+          position: person.position || 'Reviewer'
+        }])
+  }
+
   // Fetch reviewers from API
   const fetchReviewers = async () => {
     try {
@@ -336,7 +378,17 @@ function CreatePerformancePlanPageContent() {
       const response = await fetch('/api/hr/reviewers')
       if (response.ok) {
         const data = await response.json()
-        setReviewers(data.data || data.reviewers || [])
+        const loaded = data.data || data.reviewers || []
+        setReviewers((current) => {
+          const merged = [...loaded]
+          current.forEach((person) => {
+            const value = person.userId || person.id
+            if (!merged.some((item: { id?: string; userId?: string }) => item.id === value || item.userId === value)) {
+              merged.push(person)
+            }
+          })
+          return merged
+        })
       } else {
         setError('Failed to load reviewers')
       }
@@ -442,7 +494,9 @@ function CreatePerformancePlanPageContent() {
               endDate: planData.reviewPeriod?.endDate || planData.endDate || ''
             }
           },
-          planType: planData.planType || 'annual',
+          planType: ['annual', 'quarterly', 'project', 'probation'].includes(String(planData.planType || '').toLowerCase())
+            ? String(planData.planType).toLowerCase()
+            : 'annual',
           planTitle: planData.planTitle || `Performance Plan - ${planData.employeeName}`,
           status: planData.status || 'draft',
           supervisor: planData.supervisorId || '',
@@ -456,12 +510,21 @@ function CreatePerformancePlanPageContent() {
           },
           // Map keyResponsibilities - API now returns full structure with successIndicators
           keyResponsibilities: (() => {
-            const src = planData.keyResponsibilities || planData.deliverables || planData.performance_responsibilities;
-            if (!src || !Array.isArray(src) || src.length === 0) return prev.keyResponsibilities;
+            const saved = planData.keyResponsibilities || planData.deliverables || planData.performance_responsibilities;
+            let src = Array.isArray(saved) ? saved.filter((item: any) => typeof item === 'string' ? item.trim().length > 0 : String(item?.description || item?.title || item?.responsibility || '').trim().length > 0) : [];
+            if (src.length === 0 && planData.jobDescription?.keyResponsibilities) {
+              let fromJob: any = planData.jobDescription.keyResponsibilities
+              if (typeof fromJob === 'string') {
+                try { fromJob = JSON.parse(fromJob) } catch { fromJob = fromJob.split('\n').map((line: string) => line.trim()).filter(Boolean) }
+              }
+              if (fromJob && typeof fromJob === 'object' && !Array.isArray(fromJob)) fromJob = Object.values(fromJob)
+              src = Array.isArray(fromJob) ? fromJob : []
+            }
+            if (!Array.isArray(src) || src.length === 0) return prev.keyResponsibilities;
             return src.map((item: any, index: number) => ({
               id: item.id || `resp-${index}`,
-              description: item.description || item.title || '',
-              tasks: item.tasks ?? item.description ?? '',
+              description: typeof item === 'string' ? item : (item.description || item.title || item.responsibility || ''),
+              tasks: typeof item === 'string' ? item : (item.tasks ?? item.description ?? item.title ?? ''),
               weight: item.weight ?? 0,
               targetDate: item.targetDate || item.dueDate || '',
               status: item.status || 'not-started',
@@ -546,6 +609,12 @@ function CreatePerformancePlanPageContent() {
         
         // Set workflow status
         setWorkflowStatus(planData.status || 'draft')
+        if (planData.reviewerId) {
+          ensureReviewerOption({
+            userId: planData.reviewerId,
+            name: planData.reviewerName || 'Assigned reviewer'
+          })
+        }
         
         // Load comments history
         if (planData.comments) {
@@ -629,8 +698,8 @@ function CreatePerformancePlanPageContent() {
               if (Array.isArray(responsibilitiesData) && responsibilitiesData.length > 0) {
                 keyResponsibilities = responsibilitiesData.map((resp: any, index: number) => ({
                   id: `${Date.now()}-${index}`,
-                  description: resp.description || '',
-                  tasks: resp.tasks || '',
+                  description: typeof resp === 'string' ? resp : (resp.description || resp.title || resp.responsibility || ''),
+                  tasks: typeof resp === 'string' ? resp : (resp.tasks || resp.description || resp.title || ''),
                   weight: resp.weight || 0,
                   targetDate: '',
                   status: 'not-started' as const,
@@ -652,11 +721,18 @@ function CreatePerformancePlanPageContent() {
             let supervisorUserId = null
             let reviewerUserId = null
             
+            const supervisorRecordId = employeeData.supervisor_id || employeeData.supervisorId || employeeData.supervisor?.id
+            const reviewerRecordId = employeeData.reviewer_id || employeeData.reviewerId || employeeData.reviewer?.id
+
             // Fetch supervisor user ID if supervisor_id exists
-            if (employeeData.supervisor_id) {
+            if (supervisorRecordId) {
               try {
-                const supervisorResponse = await fetch(`/api/hr/employees/${employeeData.supervisor_id}`)
-                if (supervisorResponse.ok) {
+                const supervisorFromRecord = employeeData.supervisor
+                if (supervisorFromRecord?.userId || supervisorFromRecord?.user?.id) {
+                  supervisorUserId = supervisorFromRecord.userId || supervisorFromRecord.user.id
+                }
+                const supervisorResponse = supervisorUserId ? null : await fetch(`/api/hr/employees/${supervisorRecordId}`)
+                if (supervisorResponse?.ok) {
                   const supervisorData = await supervisorResponse.json()
                   const supervisorEmployee = supervisorData.data || supervisorData
                   if (supervisorEmployee.userId) {
@@ -671,28 +747,46 @@ function CreatePerformancePlanPageContent() {
             }
             
             // Fetch reviewer user ID if reviewer_id exists
-            if (employeeData.reviewer_id) {
+            if (reviewerRecordId) {
               try {
-                const reviewerResponse = await fetch(`/api/hr/employees/${employeeData.reviewer_id}`)
-                if (reviewerResponse.ok) {
+                const reviewerFromRecord = employeeData.reviewer
+                if (reviewerFromRecord) {
+                  reviewerUserId = reviewerFromRecord.userId || reviewerFromRecord.user?.id || reviewerFromRecord.id
+                  ensureReviewerOption({
+                    id: reviewerFromRecord.id,
+                    userId: reviewerUserId,
+                    name: `${reviewerFromRecord.firstName || ''} ${reviewerFromRecord.lastName || ''}`.trim() || reviewerFromRecord.email,
+                    position: reviewerFromRecord.position
+                  })
+                }
+                const reviewerResponse = reviewerUserId ? null : await fetch(`/api/hr/employees/${reviewerRecordId}`)
+                if (reviewerResponse?.ok) {
                   const reviewerData = await reviewerResponse.json()
                   const reviewerEmployee = reviewerData.data || reviewerData
-                  if (reviewerEmployee.userId) {
-                    reviewerUserId = reviewerEmployee.userId
-                  } else if (reviewerEmployee.user?.id) {
-                    reviewerUserId = reviewerEmployee.user.id
-                  }
+                if (reviewerEmployee.userId) {
+                  reviewerUserId = reviewerEmployee.userId
+                } else if (reviewerEmployee.user?.id) {
+                  reviewerUserId = reviewerEmployee.user.id
+                } else if (reviewerEmployee.id) {
+                  reviewerUserId = reviewerEmployee.id
                 }
-              } catch (error) {
-                console.error('Error fetching reviewer user ID:', error)
+                ensureReviewerOption({
+                  id: reviewerEmployee.id,
+                  userId: reviewerUserId,
+                  name: `${reviewerEmployee.firstName || ''} ${reviewerEmployee.lastName || ''}`.trim() || reviewerEmployee.email,
+                  position: reviewerEmployee.position
+                })
               }
+            } catch (error) {
+              console.error('Error fetching reviewer user ID:', error)
             }
-            
-            // Auto-populate the form with current user's details
+          }
+          
+          // Auto-populate the form with current user's details
             setFormData(prev => ({
               ...prev,
               employee: {
-                id: employeeData.id || '',
+                id: employeeData.employeeId || employeeData.id || '',
                 name: `${employeeData.firstName || ''} ${employeeData.lastName || ''}`.trim() || employeeData.email || '',
                 email: employeeData.email || session.user.email || '',
                 department: employeeData.department?.name || employeeData.department || '',
@@ -705,6 +799,12 @@ function CreatePerformancePlanPageContent() {
               },
               supervisor: supervisorUserId || '',
               reviewerId: reviewerUserId || '',
+              startDate: prev.startDate || `${new Date().getFullYear()}-01-01`,
+              endDate: prev.endDate || `${new Date().getFullYear()}-12-31`,
+              planPeriod: prev.planPeriod?.startDate ? prev.planPeriod : {
+                startDate: `${new Date().getFullYear()}-01-01`,
+                endDate: `${new Date().getFullYear()}-12-31`
+              },
               keyResponsibilities: keyResponsibilities.length > 0 ? keyResponsibilities : [{
                 id: '1',
                 description: '',
@@ -801,7 +901,12 @@ function CreatePerformancePlanPageContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          formData,
+          formData: {
+            ...formData,
+            status: 'submitted',
+            startDate: formData.startDate || formData.planPeriod?.startDate || '',
+            endDate: formData.endDate || formData.planPeriod?.endDate || ''
+          },
           isDraft: false
         })
       })
@@ -857,7 +962,11 @@ function CreatePerformancePlanPageContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          formData,
+          formData: {
+            ...formData,
+            startDate: formData.startDate || formData.planPeriod?.startDate || '',
+            endDate: formData.endDate || formData.planPeriod?.endDate || ''
+          },
           isDraft: true
         })
       })
@@ -1242,7 +1351,7 @@ function CreatePerformancePlanPageContent() {
                       {loading.reviewers ? 'Loading reviewers...' : 'Select a performance reviewer'}
                     </option>
                     {reviewers.map((reviewer) => (
-                      <option key={reviewer.id} value={reviewer.id}>
+                      <option key={reviewer.userId || reviewer.id} value={reviewer.userId || reviewer.id}>
                         {reviewer.name} - {reviewer.position || 'Reviewer'}
                       </option>
                     ))}
@@ -1314,8 +1423,11 @@ function CreatePerformancePlanPageContent() {
                   </label>
                   <input
                     type="date"
-                    value={formData.startDate}
-                    onChange={(e) => handleInputChange("startDate", e.target.value)}
+                    value={formData.startDate || formData.planPeriod?.startDate || ''}
+                    onChange={(e) => {
+                      handleInputChange("startDate", e.target.value)
+                      setFormData((prev) => ({ ...prev, planPeriod: { ...(prev.planPeriod || {}), startDate: e.target.value, endDate: prev.planPeriod?.endDate || prev.endDate || '' } }))
+                    }}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
                   />
                 </div>
@@ -1327,8 +1439,11 @@ function CreatePerformancePlanPageContent() {
                   </label>
                   <input
                     type="date"
-                    value={formData.endDate}
-                    onChange={(e) => handleInputChange("endDate", e.target.value)}
+                    value={formData.endDate || formData.planPeriod?.endDate || ''}
+                    onChange={(e) => {
+                      handleInputChange("endDate", e.target.value)
+                      setFormData((prev) => ({ ...prev, planPeriod: { ...(prev.planPeriod || {}), startDate: prev.planPeriod?.startDate || prev.startDate || '', endDate: e.target.value } }))
+                    }}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
                   />
                 </div>

@@ -30,6 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         employees: {
           select: {
             id: true,
+            userId: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         reviewer: {
           select: {
             id: true,
+            userId: true,
             firstName: true,
             lastName: true,
             email: true,

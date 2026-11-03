@@ -69,12 +69,14 @@ export async function GET(
             firstName: true,
             lastName: true,
             email: true,
-            position: true
+            position: true,
+            userId: true
           }
         },
         reviewer: {
           select: {
             id: true,
+            userId: true,
             firstName: true,
             lastName: true,
             email: true,
