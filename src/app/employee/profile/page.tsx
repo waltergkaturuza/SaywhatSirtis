@@ -1541,16 +1541,17 @@ export default function EmployeeProfilePage() {
                     </div>
                   </Link>
                   
-                  <Link
-                    href="/employee/qualifications"
-                    className="flex items-center gap-2 rounded px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('documents')}
+                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <AcademicCapIcon className="h-5 w-5 text-purple-600 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    <AcademicCapIcon className="h-5 w-5 text-purple-600 mr-2" />
                     <div>
                       <p className="text-sm font-bold text-gray-900">Qualifications</p>
-                      <p className="text-xs text-gray-600">Manage certifications</p>
+                      <p className="text-xs text-gray-600">Open employee documents</p>
                     </div>
-                  </Link>
+                  </button>
                   
                   <Link
                     href="/hr/training/enroll"
