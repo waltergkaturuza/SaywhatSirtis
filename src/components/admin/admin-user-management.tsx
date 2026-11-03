@@ -556,61 +556,58 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
 
       {/* User Table */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-[26%]" />
+              <col className="w-[14%]" />
+              <col className="w-[22%]" />
+              <col className="w-[10%]" />
+              <col className="w-[12%]" />
+              <col className="w-[16%]" />
+            </colgroup>
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Department
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Login
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">User</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Role</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Department</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Last login</th>
+                <th className="px-2 py-2 text-right text-xs font-medium text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
+              {filteredUsers.map((user) => {
+                const fullName = `${user.firstName} ${user.lastName}`.trim()
+                const roleNames = user.roles.map(ur => ur.role.name).join(', ') || 'No roles assigned'
+                const lastLogin = user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'
+                return (
                 <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <span className="text-indigo-600 font-medium text-sm">
-                            {user.firstName[0]}{user.lastName[0]}
-                          </span>
-                        </div>
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="flex items-center min-w-0">
+                      <div className="h-8 w-8 shrink-0 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <span className="text-indigo-600 font-medium text-xs">
+                          {user.firstName[0]}{user.lastName[0]}
+                        </span>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {user.firstName} {user.lastName}
+                      <div className="ml-2 min-w-0">
+                        <div className="truncate text-sm font-medium text-gray-900" title={fullName}>
+                          {fullName}
                         </div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
+                        <div className="truncate text-xs text-gray-500" title={user.email}>{user.email}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {user.roles.map(ur => ur.role.name).join(', ') || 'No roles assigned'}
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="truncate text-sm text-gray-900" title={roleNames}>
+                      {roleNames}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{user.department}</div>
-                    <div className="text-sm text-gray-500">{user.position}</div>
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="truncate text-sm text-gray-900" title={user.department}>{user.department}</div>
+                    <div className="truncate text-xs text-gray-500" title={user.position}>{user.position}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                  <td className="px-2 py-2">
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
                       user.isActive 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
@@ -618,11 +615,11 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                       {user.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="truncate text-sm text-gray-900" title={lastLogin}>{lastLogin}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center space-x-2">
+                  <td className="px-1 py-2">
+                    <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => {
                           setSelectedUser(user)
@@ -632,14 +629,14 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                         className="text-indigo-600 hover:text-indigo-900"
                         title="View User"
                       >
-                        <EyeIcon className="h-5 w-5" />
+                        <EyeIcon className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleEditUser(user)}
                         className="text-blue-600 hover:text-blue-900"
                         title="Edit User"
                       >
-                        <PencilIcon className="h-5 w-5" />
+                        <PencilIcon className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleToggleStatus(user.id)}
@@ -650,9 +647,9 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                         title={user.isActive ? 'Deactivate User' : 'Activate User'}
                       >
                         {processingUserId === user.id ? (
-                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
                         ) : (
-                          <ShieldCheckIcon className="h-5 w-5" />
+                          <ShieldCheckIcon className="h-4 w-4" />
                         )}
                       </button>
                       <button
@@ -662,18 +659,18 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                         title="Delete User"
                       >
                         {processingUserId === user.id ? (
-                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
                         ) : (
-                          <TrashIcon className="h-5 w-5" />
+                          <TrashIcon className="h-4 w-4" />
                         )}
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
-        </div>
       </div>
 
       {/* Empty State */}

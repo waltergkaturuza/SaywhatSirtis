@@ -116,14 +116,14 @@ export function AdminAuditLog({ className = '' }: AuditLogProps) {
     switch (action.toLowerCase()) {
       case 'login':
       case 'logout':
-        return <UserIcon className="h-5 w-5" />
+        return <UserIcon className="h-4 w-4" />
       case 'view':
       case 'read':
-        return <EyeIcon className="h-5 w-5" />
+        return <EyeIcon className="h-4 w-4" />
       case 'delete':
-        return <TrashIcon className="h-5 w-5" />
+        return <TrashIcon className="h-4 w-4" />
       default:
-        return <DocumentTextIcon className="h-5 w-5" />
+        return <DocumentTextIcon className="h-4 w-4" />
     }
   }
 
@@ -274,87 +274,73 @@ export function AdminAuditLog({ className = '' }: AuditLogProps) {
 
       {/* Logs Table */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-[16%]" />
+              <col className="w-[22%]" />
+              <col className="w-[16%]" />
+              <col className="w-[12%]" />
+              <col className="w-[18%]" />
+              <col className="w-[8%]" />
+              <col className="w-[8%]" />
+            </colgroup>
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Timestamp
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Action
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Resource
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Details
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Outcome
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  IP Address
-                </th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Timestamp</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">User</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Action</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Resource</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Details</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">Outcome</th>
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500">IP</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredLogs.map((log) => (
+              {filteredLogs.map((log) => {
+                const when = new Date(log.timestamp).toLocaleString()
+                const detailTitle = log.userAgent ? `${log.details}\n${log.userAgent}` : log.details
+                return (
                 <tr key={log.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(log.timestamp).toLocaleString()}
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="truncate text-sm text-gray-900" title={when}>{when}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8">
-                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <span className="text-indigo-600 font-medium text-xs">
-                            {log.userEmail.split('@')[0][0].toUpperCase()}
-                          </span>
-                        </div>
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="flex items-center min-w-0">
+                      <div className="h-7 w-7 shrink-0 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <span className="text-indigo-600 font-medium text-xs">
+                          {log.userEmail.split('@')[0][0].toUpperCase()}
+                        </span>
                       </div>
-                      <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900">{log.userEmail}</div>
-                      </div>
+                      <div className="ml-2 min-w-0 truncate text-sm text-gray-900" title={log.userEmail}>{log.userEmail}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 mr-2 text-gray-400">
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="flex items-center min-w-0">
+                      <div className="shrink-0 mr-1 text-gray-400">
                         {getActionIcon(log.action)}
                       </div>
-                      <div className="text-sm text-gray-900">{log.action}</div>
+                      <div className="truncate text-sm text-gray-900" title={log.action}>{log.action}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{log.resource}</div>
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="truncate text-sm text-gray-900" title={log.resource}>{log.resource}</div>
                   </td>
-                  <td className="px-6 py-4 max-w-xs">
-                    <div className="text-sm text-gray-900 truncate" title={log.details}>
-                      {log.details.length > 100 ? `${log.details.substring(0, 100)}...` : log.details}
-                    </div>
-                    {log.userAgent && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        {log.userAgent.length > 50 ? `${log.userAgent.substring(0, 50)}...` : log.userAgent}
-                      </div>
-                    )}
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="truncate text-sm text-gray-900" title={detailTitle}>{log.details}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getOutcomeColor(log.outcome)}`}>
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <span className={`inline-flex max-w-full truncate px-2 py-0.5 text-xs font-medium rounded-full ${getOutcomeColor(log.outcome)}`} title={log.outcome}>
                       {log.outcome}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.ipAddress}
+                  <td className="max-w-0 px-2 py-2 overflow-hidden">
+                    <div className="truncate text-sm text-gray-900" title={log.ipAddress}>{log.ipAddress}</div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
-        </div>
       </div>
 
       {/* Empty State */}
