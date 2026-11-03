@@ -100,6 +100,12 @@ function PerformancePlansContent() {
   const [availableYears, setAvailableYears] = useState<number[]>([])
   const [listDepartment, setListDepartment] = useState("all")
   const [listStatus, setListStatus] = useState("all")
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; planId: string | null; planName: string }>({
+    show: false,
+    planId: null,
+    planName: ''
+  })
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Get status filter for tab
   const getStatusForTab = (tab: string) => {
@@ -338,29 +344,7 @@ function PerformancePlansContent() {
   const isHR = userRoles.some((r: string) => ['HR', 'HR_MANAGER', 'ADVANCE_USER_1', 'ADVANCE_USER_2'].includes(r))
   const hasHRPermission = userPermissions.some((p: string) => ['hr.full_access', 'hr.view_all_performance', 'hr.delete_performance'].includes(p))
   const canDelete = isAdmin || isHR || hasHRPermission
-  
-  // Debug: Log delete permission
-  useEffect(() => {
-    if (session?.user) {
-      console.log('🔍 Delete Permission Check:', {
-        userRoles,
-        userPermissions,
-        isAdmin,
-        isHR,
-        hasHRPermission,
-        canDelete
-      })
-    }
-  }, [session?.user, userRoles, userPermissions, isAdmin, isHR, hasHRPermission, canDelete])
-  
-  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; planId: string | null; planName: string }>({
-    show: false,
-    planId: null,
-    planName: ''
-  })
-  
-  const [isDeleting, setIsDeleting] = useState(false)
-  
+
   // Handle delete plan
   const handleDeletePlan = async (planId: string) => {
     setIsDeleting(true)
