@@ -958,25 +958,25 @@ export default function AllCallsPage() {
 
       {/* Call Detail Modal */}
       {showCallDetail && selectedCall && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={() => setShowCallDetail(false)}>
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-saywhat-dark">Call Details - {selectedCall.callNumber}</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/50 p-3" onClick={() => setShowCallDetail(false)}>
+          <div className="max-h-[calc(100vh-1.5rem)] w-11/12 max-w-4xl overflow-y-auto rounded-md border bg-white p-3 text-xs shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-saywhat-dark">Call Details - {selectedCall.callNumber}</h3>
               <button
                 onClick={() => setShowCallDetail(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {/* Call Information */}
-              <div className="bg-saywhat-light-grey rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-saywhat-dark mb-4">Call Information</h4>
-                <div className="space-y-3">
+              <div className="rounded-md bg-saywhat-light-grey p-2">
+                <h4 className="mb-1 text-xs font-semibold text-saywhat-dark">Call Information</h4>
+                <div className="space-y-1">
                   <div>
                     <span className="font-medium text-gray-600">Call Number:</span>
                     <span className="ml-2 text-saywhat-dark">{selectedCall.callNumber}</span>
@@ -1011,7 +1011,7 @@ export default function AllCallsPage() {
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Validity:</span>
-                    <span className={`ml-2 px-2 py-1 rounded text-sm ${
+                    <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${
                       selectedCall.validity === 'Valid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                     }`}>
                       {selectedCall.validity}
@@ -1019,7 +1019,7 @@ export default function AllCallsPage() {
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Status:</span>
-                    <span className={`ml-2 px-2 py-1 rounded text-sm ${statuses[selectedCall.status as keyof typeof statuses]?.color || 'bg-gray-100 text-gray-800'}`}>
+                    <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${statuses[selectedCall.status as keyof typeof statuses]?.color || 'bg-gray-100 text-gray-800'}`}>
                       {selectedCall.status}
                     </span>
                   </div>
@@ -1027,9 +1027,9 @@ export default function AllCallsPage() {
               </div>
 
               {/* Caller Details */}
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-saywhat-dark mb-4">Caller's Details</h4>
-                <div className="space-y-3">
+              <div className="rounded-md bg-blue-50 p-2">
+                <h4 className="mb-1 text-xs font-semibold text-saywhat-dark">Caller's Details</h4>
+                <div className="space-y-1">
                   <div>
                     <span className="font-medium text-gray-600">Name:</span>
                     <span className="ml-2 text-saywhat-dark">{selectedCall.callerName}</span>
@@ -1054,9 +1054,9 @@ export default function AllCallsPage() {
               </div>
 
               {/* Client Details */}
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-saywhat-dark mb-4">Client's Details</h4>
-                <div className="space-y-3">
+              <div className="rounded-md bg-green-50 p-2">
+                <h4 className="mb-1 text-xs font-semibold text-saywhat-dark">Client's Details</h4>
+                <div className="space-y-1">
                   <div>
                     <span className="font-medium text-gray-600">Name:</span>
                     <span className="ml-2 text-saywhat-dark">{selectedCall.clientName}</span>
@@ -1073,12 +1073,12 @@ export default function AllCallsPage() {
               </div>
 
               {/* Voucher Information */}
-              <div className="bg-yellow-50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-saywhat-dark mb-4">Voucher Information</h4>
-                <div className="space-y-3">
+              <div className="rounded-md bg-yellow-50 p-2">
+                <h4 className="mb-1 text-xs font-semibold text-saywhat-dark">Voucher Information</h4>
+                <div className="space-y-1">
                   <div>
                     <span className="font-medium text-gray-600">Voucher Issued:</span>
-                    <span className={`ml-2 px-2 py-1 rounded text-sm ${
+                    <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${
                       selectedCall.voucherIssued === 'YES' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`}>
                       {selectedCall.voucherIssued}
@@ -1095,22 +1095,22 @@ export default function AllCallsPage() {
             </div>
 
             {/* Referral and Notes */}
-            <div className="mt-6 space-y-4">
-              <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-saywhat-dark mb-2">Referral</h4>
+            <div className="mt-2 space-y-2">
+              <div className="rounded-md bg-purple-50 p-2">
+                <h4 className="mb-0.5 text-xs font-semibold text-saywhat-dark">Referral</h4>
                 <p className="text-saywhat-dark">{selectedCall.referredTo || 'No referral made'}</p>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-saywhat-dark mb-2">Notes</h4>
+              <div className="rounded-md bg-gray-50 p-2">
+                <h4 className="mb-0.5 text-xs font-semibold text-saywhat-dark">Notes</h4>
                 <p className="text-saywhat-dark">{selectedCall.notes}</p>
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-2 flex justify-end">
               <button
                 onClick={() => setShowCallDetail(false)}
-                className="px-4 py-2 bg-saywhat-orange text-white rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-saywhat-orange"
+                className="rounded-md bg-saywhat-orange px-3 py-1 text-xs text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-saywhat-orange focus:ring-offset-2"
               >
                 Close
               </button>
