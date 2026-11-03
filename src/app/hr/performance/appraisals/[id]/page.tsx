@@ -1113,7 +1113,7 @@ export default function ViewAppraisalPage() {
       </button>
       {/* Only show edit button for drafts, not for submitted appraisals when reviewing */}
       {appraisal && appraisal.status === "draft" && !isReviewContext && (
-        <Link href={`/hr/performance/appraisals/${appraisal.id}/edit`}>
+        <Link href={`/hr/performance/appraisals/create?appraisalId=${appraisal.id}&edit=true`}>
           <button className="inline-flex items-center px-3 py-2 bg-blue-600 border border-transparent rounded-md text-sm text-white hover:bg-blue-700">
             <PencilIcon className="h-4 w-4 mr-2" />
             Edit Appraisal

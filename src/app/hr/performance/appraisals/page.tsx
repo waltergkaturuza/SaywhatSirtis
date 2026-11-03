@@ -673,17 +673,25 @@ function PerformanceAppraisalsPage() {
                           </td>
                           <td className="max-w-0 px-1 py-2 overflow-hidden text-right text-sm">
                             <div className="flex items-center justify-end gap-1">
-                              {/* View button - always link to dedicated view page for submitted/approved appraisals */}
-                              <Link href={`/hr/performance/appraisals/${appraisal.id}`}>
-                                <button className="text-orange-600 hover:text-orange-900 transition-colors" title="View Appraisal">
-                                  <EyeIcon className="h-4 w-4" />
-                                </button>
-                              </Link>
+                              {/* Drafts open the same form used from the employee profile */}
+                              {appraisal.status === 'draft' && (canViewAllAppraisals || appraisal.employeeId === session?.user?.id) ? (
+                                <Link href={`/hr/performance/appraisals/create?appraisalId=${appraisal.id}&edit=true`}>
+                                  <button className="text-orange-600 hover:text-orange-900 transition-colors" title="Continue draft">
+                                    <EyeIcon className="h-4 w-4" />
+                                  </button>
+                                </Link>
+                              ) : (
+                                <Link href={`/hr/performance/appraisals/${appraisal.id}`}>
+                                  <button className="text-orange-600 hover:text-orange-900 transition-colors" title="View Appraisal">
+                                    <EyeIcon className="h-4 w-4" />
+                                  </button>
+                                </Link>
+                              )}
                               {/* Edit button - only show for drafts owned by current user or HR */}
                               {/* Supervisors/reviewers should use view page to see submitted data and add comments */}
                               {appraisal.status === 'draft' && (canViewAllAppraisals || appraisal.employeeId === session?.user?.id) && (
-                                <Link href={`/hr/performance/appraisals/${appraisal.id}/edit`}>
-                                  <button className="text-gray-600 hover:text-black transition-colors" title="Edit Appraisal">
+                                <Link href={`/hr/performance/appraisals/create?appraisalId=${appraisal.id}&edit=true`}>
+                                  <button className="text-gray-600 hover:text-black transition-colors" title="Continue draft">
                                     <PencilIcon className="h-4 w-4" />
                                   </button>
                                 </Link>

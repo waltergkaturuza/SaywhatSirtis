@@ -412,7 +412,7 @@ export default function BulkReviewPage() {
                           <EyeIcon className="h-4 w-4" />
                         </Link>
                         <Link 
-                          href={`/hr/performance/appraisals/${appraisal.id}/edit`}
+                          href={`/hr/performance/appraisals/create?appraisalId=${appraisal.id}&edit=true`}
                           className="text-gray-600 hover:text-black transition-colors"
                         >
                           <PencilIcon className="h-4 w-4" />
