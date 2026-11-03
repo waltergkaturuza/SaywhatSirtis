@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       ? (requestedType as (typeof CATEGORIES)[number])
       : null
 
-    const pages: SearchHit[] = [
+    const catalog: SearchHit[] = [
       { id: 'page-dashboard', title: 'Dashboard', description: 'Main dashboard', type: 'page', url: '/dashboard' },
       { id: 'page-users', title: 'User Management', description: 'Manage system users', type: 'user', url: '/admin/users' },
       { id: 'page-employees', title: 'Employee Directory', description: 'Employee records', type: 'hr', url: '/hr/employees' },
@@ -73,7 +73,8 @@ export async function GET(request: NextRequest) {
       { id: 'page-inventory', title: 'Inventory', description: 'Assets and inventory', type: 'inventory', url: '/inventory' },
       { id: 'page-calls', title: 'Call Centre', description: 'Calls and cases', type: 'call', url: '/call-centre' },
       { id: 'page-documents', title: 'Documents', description: 'Document repository', type: 'document', url: '/documents' },
-    ].filter((page) => access[page.type] && (!type || type === 'page' || page.type === type))
+    ]
+    const pages = catalog.filter((page) => access[page.type] && (!type || type === 'page' || page.type === type))
 
     const needle = query.toLowerCase()
     const visiblePages = type === 'page'
