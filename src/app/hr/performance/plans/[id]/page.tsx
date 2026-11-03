@@ -135,7 +135,7 @@ export default function ViewPlanPage() {
           lines: [
             `Name: ${plan.employeeName || formData?.employee?.name || ''}`,
             `Position: ${plan.position || formData?.employee?.position || ''}`,
-            `Department: ${typeof plan.department === 'object' ? plan.department?.name || '' : plan.department || formData?.employee?.department || ''}`,
+            `Department: ${plan.department || formData?.employee?.department || ''}`,
             `Supervisor: ${formData?.employee?.manager || ''}`,
             `Reviewer: ${plan.reviewerName || ''}`,
             `Plan: ${plan.planTitle || formData?.planTitle || ''} (${plan.planYear || formData?.planYear || ''})`,
