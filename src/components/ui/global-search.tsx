@@ -380,7 +380,7 @@ export function GlobalSearch({
                   {access.setting && (
                   <button
                     onClick={() => {
-                      router.push('/settings')
+                      router.push('/admin')
                       onClose()
                     }}
                     className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md flex items-center gap-2"

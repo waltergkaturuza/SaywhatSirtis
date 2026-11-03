@@ -36,7 +36,7 @@ export default function Header({ onMenuClick, currentModule }: HeaderProps) {
   // Filter user navigation based on role
   const userNavigation = [
     { name: "Your Profile", href: "/profile" },
-    ...(isSystemAdmin() ? [{ name: "Settings", href: "/settings" }] : []),
+    ...(isSystemAdmin() ? [{ name: "Settings", href: "/admin" }] : []),
     { name: "Sign out", onClick: () => signOut({ callbackUrl: "/auth/signin" }) }
   ]
 

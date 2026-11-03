@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       { id: 'page-employees', title: 'Employee Directory', description: 'Employee records', type: 'hr', url: '/hr/employees' },
       { id: 'page-performance', title: 'Performance Plans', description: 'Plans and appraisals', type: 'hr', url: '/hr/performance' },
       { id: 'page-training', title: 'Training', description: 'Employee training', type: 'hr', url: '/hr/training' },
-      { id: 'page-settings', title: 'System Settings', description: 'Organization settings', type: 'setting', url: '/settings' },
+      { id: 'page-settings', title: 'System Administration', description: 'System management and monitoring', type: 'setting', url: '/admin' },
       { id: 'page-audit', title: 'Audit Logs', description: 'System audit logs', type: 'setting', url: '/admin/audit' },
       { id: 'page-programs', title: 'Programs', description: 'Projects and programs', type: 'project', url: '/programs' },
       { id: 'page-inventory', title: 'Inventory', description: 'Assets and inventory', type: 'inventory', url: '/inventory' },

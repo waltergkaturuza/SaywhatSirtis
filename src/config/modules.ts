@@ -673,13 +673,13 @@ export const modulesConfig: ModuleConfig[] = [
     description: "System configuration and administration",
     icon: Cog6ToothIcon,
     color: "gray",
-    defaultPath: "/settings",
+    defaultPath: "/admin",
     requiredPermissions: ["admin.settings"],
     navigation: [
       {
         id: "general",
         name: "General Settings",
-        href: "/settings",
+        href: "/admin",
         icon: CogIcon,
         description: "System-wide configuration"
       },
@@ -750,7 +750,7 @@ export const modulesConfig: ModuleConfig[] = [
       {
         id: "system-settings",
         name: "System Settings",
-        href: "/settings",
+        href: "/admin",
         icon: CogIcon,
         description: "Configure system-wide settings"
       },
