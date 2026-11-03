@@ -611,7 +611,7 @@ function CreateAppraisalContent() {
       )
 
       setTimeout(() => {
-        router.push('/hr/performance/appraisals')
+        router.push(isSelfAssessment ? '/hr/performance/appraisals?tab=my-appraisals' : '/hr/performance/appraisals')
       }, 2000)
     } catch (error) {
       console.error('Error submitting appraisal:', error)
@@ -846,7 +846,7 @@ function CreateAppraisalContent() {
             </svg>
           </button>
           <button
-            onClick={() => router.push('/hr/performance/appraisals')}
+            onClick={() => router.push(isSelfAssessment ? '/hr/performance/appraisals?tab=my-appraisals' : '/hr/performance/appraisals')}
             className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl flex items-center justify-center shadow-md hover:shadow-lg transition-all duration-200"
             title="Return to Appraisals"
           >

@@ -30,7 +30,7 @@ function PerformancePlansContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState("my-plans")
-  const [selectedYear, setSelectedYear] = useState(() => String(new Date().getFullYear()))
+  const [selectedYear, setSelectedYear] = useState("2024")
   const [showProgressModal, setShowProgressModal] = useState(false)
   const [selectedDeliverable, setSelectedDeliverable] = useState<any>(null)
   const [progressValue, setProgressValue] = useState(0)
@@ -176,11 +176,16 @@ function PerformancePlansContent() {
         year: selectedYear
       })
 
+      const focusEmployeeId = searchParams.get('employeeId')
       if (activeTab !== 'all-plans') {
         params.append('status', getStatusForTab(activeTab))
       }
-      if (activeTab === 'my-plans' && canViewAllPlans) {
+      if (focusEmployeeId) {
+        params.append('employeeId', focusEmployeeId)
+      } else if (activeTab === 'my-plans') {
         params.append('scope', 'mine')
+      } else if (activeTab !== 'all-plans') {
+        params.append('scope', 'team')
       }
 
       const response = await fetch(`/api/hr/performance/plans?${params}`)
@@ -281,7 +286,7 @@ function PerformancePlansContent() {
       fetchActivities()
       fetchDepartments()
     }
-  }, [selectedYear, activeTab, session])
+  }, [selectedYear, activeTab, session, searchParams])
 
   // Generate available years on component mount
   useEffect(() => {

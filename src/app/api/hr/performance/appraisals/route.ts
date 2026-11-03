@@ -35,13 +35,16 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const employeeId = searchParams.get('employeeId')
+    const scope = searchParams.get('scope')
 
     // supervisorId and reviewerId are user IDs. Older rows may store an employee ID.
     const filters: any[] = []
     if (employeeId) filters.push({ employeeId })
 
-    if (!canViewAll) {
-      const userEmployee = user.employees
+    const userEmployee = user.employees
+    if (scope === 'mine') {
+      filters.push({ employeeId: userEmployee?.id || '00000000-0000-0000-0000-000000000000' })
+    } else if (!canViewAll || scope === 'team') {
       const permissionFilter: any[] = [
         { supervisorId: user.id },
         { reviewerId: user.id }

@@ -1,7 +1,8 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { canViewAllPerformance } from "@/lib/hr/performance-access"
@@ -26,8 +27,9 @@ import {
   ChatBubbleLeftRightIcon
 } from "@heroicons/react/24/outline"
 
-export default function PerformanceAppraisalsPage() {
+function PerformanceAppraisalsPage() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState("my-appraisals")
   const [selectedPeriod, setSelectedPeriod] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("All Departments")
@@ -138,6 +140,11 @@ export default function PerformanceAppraisalsPage() {
     }
   }
 
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab) setActiveTab(tab)
+  }, [searchParams])
+
   // Fetch performance appraisals data
   useEffect(() => {
     const fetchData = async () => {
@@ -146,8 +153,15 @@ export default function PerformanceAppraisalsPage() {
       setLoading(true)
       try {
         const analyticsQuery = selectedPeriod ? `?period=${encodeURIComponent(selectedPeriod)}` : ''
+        const appraisalParams = new URLSearchParams()
+        const focusEmployeeId = searchParams.get('employeeId')
+        if (focusEmployeeId) {
+          appraisalParams.set('employeeId', focusEmployeeId)
+        } else if (activeTab === 'my-appraisals') {
+          appraisalParams.set('scope', 'mine')
+        }
         const [appraisalsRes, deliverablesRes, statisticsRes, departmentsRes, periodsRes, notificationsRes] = await Promise.all([
-          fetch('/api/hr/performance/appraisals'),
+          fetch(`/api/hr/performance/appraisals?${appraisalParams}`),
           fetch('/api/hr/performance/deliverables'),
           fetch(`/api/hr/performance/appraisals/analytics${analyticsQuery}`),
           fetch('/api/hr/departments'),
@@ -234,7 +248,7 @@ export default function PerformanceAppraisalsPage() {
     }
     
     fetchData()
-  }, [session?.user?.id, canViewAllAppraisals, selectedPeriod])
+  }, [session?.user?.id, canViewAllAppraisals, selectedPeriod, activeTab, searchParams])
 
   const sidebar = (
     <div className="space-y-6">
@@ -609,7 +623,7 @@ export default function PerformanceAppraisalsPage() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {performanceAppraisals.filter((appraisal) => {
-                        if (activeTab === 'my-appraisals' && canViewAllAppraisals && viewerEmployeeId && appraisal.employeeId !== viewerEmployeeId) {
+                        if (!searchParams.get('employeeId') && activeTab === 'my-appraisals' && canViewAllAppraisals && viewerEmployeeId && appraisal.employeeId !== viewerEmployeeId) {
                           return false
                         }
                         if (selectedDepartment !== 'All Departments' && appraisal.department !== selectedDepartment) {
@@ -851,5 +865,13 @@ export default function PerformanceAppraisalsPage() {
         </div>
       )}
     </ModulePage>
+  )
+}
+
+export default function PerformanceAppraisalsRoute() {
+  return (
+    <Suspense fallback={null}>
+      <PerformanceAppraisalsPage />
+    </Suspense>
   )
 }

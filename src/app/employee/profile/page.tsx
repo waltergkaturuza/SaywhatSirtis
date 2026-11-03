@@ -1499,17 +1499,8 @@ export default function EmployeeProfilePage() {
                   <h3 className="text-xs font-medium text-gray-500">Quick Actions</h3>
                 </div>
                 <div className="px-2 py-1">
-                  <a
-                    href="#performance-history"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setPerformanceHistoryTab('plans')
-                      // Scroll to performance history section
-                      const element = document.getElementById('performance-history')
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                      }
-                    }}
+                  <Link
+                    href="/hr/performance/plans?tab=my-plans"
                     className="flex items-center gap-2 rounded px-2 py-1 text-sm text-gray-700 hover:bg-gray-50"
                   >
                     <ChartBarIcon className="h-5 w-5 text-saywhat-orange mr-2 group-hover:scale-110 transition-transform duration-200" />
@@ -1517,7 +1508,7 @@ export default function EmployeeProfilePage() {
                       <p className="text-sm font-bold text-gray-900">Performance</p>
                       <p className="text-xs text-gray-600">View plans & appraisals</p>
                     </div>
-                  </a>
+                  </Link>
                   
                   <Link
                     href="/hr/performance/plans/create?self=true"

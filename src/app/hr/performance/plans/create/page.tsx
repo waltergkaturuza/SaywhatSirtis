@@ -823,7 +823,7 @@ function CreatePerformancePlanPageContent() {
         localStorage.removeItem('plan-draft-temp')
         
         // Success - redirect to plans page
-        router.push("/hr/performance/plans")
+        router.push("/hr/performance/plans?tab=my-plans")
       } else {
         // Handle different error types
         if (response.status === 401) {
