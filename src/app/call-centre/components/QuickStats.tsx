@@ -36,7 +36,6 @@ interface StatItem {
   changeType: 'increase' | 'decrease' | 'neutral'
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
   color: string
-  bgColor: string
 }
 
 const QuickStats = () => {
@@ -71,7 +70,7 @@ const QuickStats = () => {
           <div key={i} className="bg-white rounded-lg shadow p-6">
             <div className="animate-pulse">
               <div className="flex items-center">
-                <div className="bg-gray-200 rounded-lg h-12 w-12"></div>
+                <div className="bg-gray-200 rounded h-6 w-6"></div>
                 <div className="ml-4 flex-1">
                   <div className="h-4 bg-gray-200 rounded mb-2"></div>
                   <div className="h-6 bg-gray-200 rounded"></div>
@@ -107,8 +106,7 @@ const QuickStats = () => {
       change: statsData.trends.callsChange,
       changeType: getChangeType(statsData.trends.callsChange),
       icon: PhoneIcon,
-      color: 'text-saywhat-orange',
-      bgColor: 'bg-orange-100'
+      color: 'text-saywhat-orange'
     },
     {
       name: 'Active Cases',
@@ -116,8 +114,7 @@ const QuickStats = () => {
       change: statsData.trends.casesChange,
       changeType: getChangeType(statsData.trends.casesChange),
       icon: DocumentTextIcon,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100'
+      color: 'text-green-600'
     },
     {
       name: 'Pending Follow-ups',
@@ -125,8 +122,7 @@ const QuickStats = () => {
       change: statsData.trends.followupsChange,
       changeType: getChangeType(statsData.trends.followupsChange),
       icon: ClockIcon,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100'
+      color: 'text-yellow-600'
     },
     {
       name: 'Overdue Cases',
@@ -134,8 +130,7 @@ const QuickStats = () => {
       change: statsData.trends.overdueChange,
       changeType: getChangeType(statsData.trends.overdueChange),
       icon: ExclamationTriangleIcon,
-      color: 'text-saywhat-red',
-      bgColor: 'bg-red-100'
+      color: 'text-saywhat-red'
     },
     {
       name: 'Valid Calls Rate',
@@ -143,8 +138,7 @@ const QuickStats = () => {
       change: statsData.trends.validRateChange,
       changeType: getChangeType(statsData.trends.validRateChange),
       icon: CheckCircleIcon,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-100'
+      color: 'text-emerald-600'
     },
     {
       name: 'Officers Online',
@@ -152,8 +146,7 @@ const QuickStats = () => {
       change: statsData.trends.officersStatus,
       changeType: 'neutral',
       icon: UserGroupIcon,
-      color: 'text-saywhat-grey',
-      bgColor: 'bg-gray-100'
+      color: 'text-saywhat-grey'
     }
   ]
 
@@ -162,7 +155,7 @@ const QuickStats = () => {
       {stats.map((stat) => (
         <div key={stat.name} className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className={`flex-shrink-0 p-3 rounded-lg ${stat.bgColor}`}>
+            <div className="flex-shrink-0">
               <stat.icon className={`h-6 w-6 ${stat.color}`} />
             </div>
             <div className="ml-4 w-0 flex-1">
