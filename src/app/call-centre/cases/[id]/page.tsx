@@ -5,7 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import DashboardLayout from "@/components/layout/dashboard-layout"
 import CaseHistory from "@/components/call-centre/CaseHistory"
-import { ArrowLeftIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { HomeBack } from '@/components/layout/home-back'
 
 export default function CaseViewPage() {
   const router = useRouter()
@@ -88,12 +89,7 @@ export default function CaseViewPage() {
           <div className="px-3 py-2">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center space-x-3 min-w-0">
-                  <Link
-                  href="/call-centre/case-management"
-                  className="p-2 rounded-md hover:bg-gray-100"
-                >
-                  <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
-                </Link>
+                  <HomeBack backHref="/call-centre/case-management" backLabel="Cases" />
                 <div className="min-w-0">
                   <h1 className="text-lg font-bold text-gray-900 truncate">Case: {caseData.caseNumber}</h1>
                   <p className="text-xs text-gray-600">View case details and information</p>

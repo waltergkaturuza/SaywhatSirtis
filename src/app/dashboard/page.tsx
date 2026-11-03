@@ -401,12 +401,7 @@ export default function DashboardPage() {
                       {activePeriod.label}
                     </p>
                   </div>
-                  <div 
-                    className="h-12 w-12 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${SAYWHAT_COLORS.orange}20` }}
-                  >
-                    <FileText className="h-6 w-6" style={{ color: SAYWHAT_COLORS.orange }} />
-                  </div>
+                  <FileText className="h-6 w-6 shrink-0" style={{ color: SAYWHAT_COLORS.orange }} />
                 </div>
               </CardContent>
             </Card>
@@ -424,12 +419,7 @@ export default function DashboardPage() {
                       {metrics?.periodLabel || activePeriod.label}
                     </p>
                   </div>
-                  <div 
-                    className="h-12 w-12 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${SAYWHAT_COLORS.red}20` }}
-                  >
-                    <Phone className="h-6 w-6" style={{ color: SAYWHAT_COLORS.red }} />
-                  </div>
+                  <Phone className="h-6 w-6 shrink-0" style={{ color: SAYWHAT_COLORS.red }} />
                 </div>
               </CardContent>
             </Card>
@@ -447,12 +437,7 @@ export default function DashboardPage() {
                       {metrics ? metrics.activePrograms : 0} active — avg MEAL indicator vs target
                     </p>
                   </div>
-                  <div 
-                    className="h-12 w-12 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${SAYWHAT_COLORS.grey}20` }}
-                  >
-                    <Target className="h-6 w-6" style={{ color: SAYWHAT_COLORS.grey }} />
-                  </div>
+                  <Target className="h-6 w-6 shrink-0" style={{ color: SAYWHAT_COLORS.grey }} />
                 </div>
               </CardContent>
             </Card>
@@ -470,12 +455,7 @@ export default function DashboardPage() {
                       {metrics && metrics.avgCallDuration !== null ? `${metrics.avgCallDuration.toFixed(1)}min avg` : '--- avg'}
                     </p>
                   </div>
-                  <div 
-                    className="h-12 w-12 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${SAYWHAT_COLORS.dark}20` }}
-                  >
-                    <Award className="h-6 w-6" style={{ color: SAYWHAT_COLORS.dark }} />
-                  </div>
+                  <Award className="h-6 w-6 shrink-0" style={{ color: SAYWHAT_COLORS.dark }} />
                 </div>
               </CardContent>
             </Card>

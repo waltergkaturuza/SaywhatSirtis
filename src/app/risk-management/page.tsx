@@ -13,6 +13,7 @@ import {
   BarChart3
 } from 'lucide-react'
 import Link from 'next/link'
+import { HomeBack } from '@/components/layout/home-back'
 
 // Import Prisma types for consistency
 import type { RiskCategory, RiskProbability, RiskImpact, RiskStatus, MitigationStatus } from '@prisma/client'
@@ -277,20 +278,7 @@ export default function RiskManagementPage() {
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <Link
-              href="/"
-              className="inline-flex items-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
-            >
-              🏠
-            </Link>
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center px-4 py-2 bg-white/90 backdrop-blur-sm text-gray-700 rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
-            >
-              ← Back
-            </Link>
-          </div>
+          <HomeBack backHref="/dashboard" backLabel="Back" />
         </div>
 
         {/* Header */}

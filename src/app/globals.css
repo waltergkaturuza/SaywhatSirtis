@@ -69,3 +69,97 @@ html.dark textarea {
   color: #f3f4f6;
   border-color: #2e333d;
 }
+
+html.dark .bg-gray-200,
+html.dark .bg-slate-50,
+html.dark .bg-slate-100,
+html.dark .bg-slate-200,
+html.dark .bg-zinc-50,
+html.dark .bg-zinc-100,
+html.dark .bg-neutral-50,
+html.dark .bg-neutral-100,
+html.dark .bg-orange-50,
+html.dark .bg-green-50,
+html.dark .bg-blue-50,
+html.dark .bg-yellow-50,
+html.dark .bg-red-50,
+html.dark .bg-purple-50,
+html.dark .bg-emerald-50,
+html.dark .bg-pink-50,
+html.dark .bg-indigo-50,
+html.dark .bg-teal-50,
+html.dark .bg-white\/70,
+html.dark .bg-white\/80,
+html.dark .bg-white\/90 {
+  background-color: #1c1f26;
+}
+
+html.dark .text-gray-800,
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-slate-700,
+html.dark .text-zinc-900,
+html.dark .text-neutral-900 {
+  color: #f3f4f6;
+}
+
+html.dark .text-slate-600,
+html.dark .text-slate-500,
+html.dark .text-zinc-600,
+html.dark .text-zinc-500,
+html.dark .text-neutral-600,
+html.dark .text-neutral-500 {
+  color: #c4c9d4;
+}
+
+html.dark .border-gray-300,
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark .border-zinc-200 {
+  border-color: #2e333d;
+}
+
+html.dark [class*="from-slate-50"],
+html.dark [class*="from-gray-50"],
+html.dark [class*="from-white"],
+html.dark [class*="from-orange-50"],
+html.dark [class*="via-white"],
+html.dark [class*="to-white"],
+html.dark [class*="to-slate-50"],
+html.dark [class*="to-gray-50"],
+html.dark [class*="to-orange-50"],
+html.dark [class*="to-gray-100"] {
+  --tw-gradient-from: #12141a var(--tw-gradient-from-position);
+  --tw-gradient-to: #1c1f26 var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+/* Tinted squares behind icons. Status badges that contain text are left as they are. */
+html :is(
+  .bg-orange-50,
+  .bg-orange-100,
+  .bg-blue-50,
+  .bg-blue-100,
+  .bg-green-50,
+  .bg-green-100,
+  .bg-red-50,
+  .bg-red-100,
+  .bg-yellow-50,
+  .bg-yellow-100,
+  .bg-emerald-50,
+  .bg-emerald-100,
+  .bg-purple-50,
+  .bg-purple-100,
+  .bg-indigo-50,
+  .bg-indigo-100,
+  .bg-pink-50,
+  .bg-pink-100,
+  .bg-teal-50,
+  .bg-teal-100,
+  .bg-gray-100,
+  .bg-gray-200
+):has(> svg:only-child),
+html :is(.bg-blue-500, .bg-green-500, .bg-orange-500, .bg-red-500).rounded-xl:has(> svg:only-child) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}

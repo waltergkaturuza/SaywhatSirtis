@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { ArrowLeft, Search, Filter, FileText, AlertCircle, CheckCircle, XCircle, Eye, Trash2 } from 'lucide-react'
+import { Search, Filter, FileText, AlertCircle, CheckCircle, XCircle, Eye, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { HomeBack } from '@/components/layout/home-back'
 import { canManageRisks } from '@/lib/risk-management/session-risk-access'
 
 interface AuditLogEntry {
@@ -229,21 +230,7 @@ export default function AuditLogsPage() {
       <div className="w-full max-w-none mx-auto">
         {/* Navigation */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <Link
-              href="/"
-              className="inline-flex items-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-sm transform hover:scale-105 font-semibold"
-            >
-              🏠
-            </Link>
-            <Link
-              href="/risk-management"
-              className="inline-flex items-center text-gray-600 hover:text-orange-600 transition-colors duration-200 font-medium"
-            >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Back to Risk Management
-            </Link>
-          </div>
+          <HomeBack backHref="/risk-management" backLabel="Back" />
         </div>
 
         {/* Header */}

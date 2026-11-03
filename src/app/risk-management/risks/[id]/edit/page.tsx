@@ -7,6 +7,7 @@ import { canManageRisks } from '@/lib/risk-management/session-risk-access'
 import { ArrowLeft, Save, X } from 'lucide-react'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { HomeBack } from '@/components/layout/home-back'
 
 // Import Prisma types for consistency
 import type { RiskCategory, RiskProbability, RiskImpact, RiskStatus } from '@prisma/client'
@@ -316,13 +317,7 @@ export default function EditRiskPage() {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <Link
-              href={`/risk-management/risks/${riskId}`}
-              className="inline-flex items-center text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Risk Details
-            </Link>
+            <HomeBack backHref={`/risk-management/risks/${riskId}`} backLabel="Back" />
           </div>
           
           <h1 className="text-2xl font-bold text-gray-900">Edit Risk</h1>

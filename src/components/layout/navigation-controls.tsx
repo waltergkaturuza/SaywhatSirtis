@@ -83,11 +83,11 @@ export function NavigationControls({
       <button
         key="home"
         onClick={() => handleButtonClick('home', goHome)}
-        className={getButtonClass('home')}
-        title="Go to Dashboard"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-orange-500 text-white hover:bg-orange-600"
+        title="Home"
+        aria-label="Home"
       >
-        <HomeIcon className={cn(iconSizes[size], showLabels ? "mr-2" : "")} />
-        {showLabels && !compact && "Home"}
+        <HomeIcon className="h-5 w-5" />
       </button>
     )
   }
@@ -98,11 +98,12 @@ export function NavigationControls({
       <button
         key="back"
         onClick={() => handleButtonClick('back', goBack)}
-        className={getButtonClass('back')}
-        title="Go back to previous page"
+        className="inline-flex h-9 items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        title="Back"
+        aria-label="Back"
       >
-        <ArrowLeftIcon className={cn(iconSizes[size], showLabels ? "mr-2" : "")} />
-        {showLabels && !compact && "Back"}
+        <ArrowLeftIcon className="h-5 w-5" />
+        <span>Back</span>
       </button>
     )
   }

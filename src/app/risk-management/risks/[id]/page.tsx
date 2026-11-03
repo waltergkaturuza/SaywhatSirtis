@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Edit, FileText, Trash2, Calendar, User, BarChart3, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
+import { HomeBack } from '@/components/layout/home-back'
 
 interface Risk {
   id: string
@@ -213,13 +214,7 @@ export default function RiskDetailPage() {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <Link
-              href="/risk-management"
-              className="inline-flex items-center text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Risk Management
-            </Link>
+            <HomeBack backHref="/risk-management" backLabel="Back" />
             
             <div className="flex items-center space-x-3">
               <Link

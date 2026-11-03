@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { ArrowLeft, Download, RotateCcw, Filter, Info, Home } from 'lucide-react'
+import { Download, RotateCcw, Filter, Info } from 'lucide-react'
 import Link from 'next/link'
+import { HomeBack } from '@/components/layout/home-back'
 
 interface RiskMatrixData {
   id: string
@@ -370,20 +371,7 @@ export default function RiskMatrixPage() {
       <div className="max-w-full px-4 py-6">
         {/* Navigation */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <Link
-              href="/"
-              className="inline-flex items-center px-4 py-2 bg-white/90 backdrop-blur-sm text-gray-700 rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
-            >
-              🏠
-            </Link>
-            <Link
-              href="/risk-management"
-              className="inline-flex items-center px-4 py-2 bg-white/90 backdrop-blur-sm text-gray-700 rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold"
-            >
-              ← Back
-            </Link>
-          </div>
+          <HomeBack backHref="/risk-management" backLabel="Back" />
         </div>
 
         {/* Filters */}

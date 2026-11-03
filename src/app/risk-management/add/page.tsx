@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { ArrowLeft, Save, X, Plus, Upload, FileText, Calendar, User, AlertTriangle, CheckCircle, Activity } from 'lucide-react'
+import { Save, X, Plus, Upload, FileText, Calendar, User, AlertTriangle, CheckCircle, Activity } from 'lucide-react'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { HomeBack } from '@/components/layout/home-back'
 import { useRouter } from 'next/navigation'
 import { canManageRisks } from '@/lib/risk-management/session-risk-access'
 
@@ -263,21 +264,7 @@ export default function AddRiskPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <Link
-              href="/risk-management"
-              className="inline-flex items-center px-4 py-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all duration-300 font-semibold"
-            >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Back to Risk Management
-            </Link>
-            
-            <Link
-              href="/"
-              className="inline-flex items-center px-4 py-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all duration-300 font-semibold"
-            >
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Home
-            </Link>
+            <HomeBack backHref="/risk-management" backLabel="Back" />
           </div>
           
           <div className="text-center">

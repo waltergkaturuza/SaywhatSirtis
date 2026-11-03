@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Upload, File, Download, Trash2, Eye } from 'lucide-react'
+import { Upload, File, Download, Trash2, Eye } from 'lucide-react'
 import Link from 'next/link'
+import { HomeBack } from '@/components/layout/home-back'
 
 interface Document {
   id: string
@@ -205,13 +206,7 @@ export default function RiskDocumentsPage() {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
-            <Link
-              href="/risk-management"
-              className="inline-flex items-center text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Risk Management
-            </Link>
+            <HomeBack backHref="/risk-management" backLabel="Back" />
           </div>
           
           <div className="bg-white rounded-lg shadow p-6">

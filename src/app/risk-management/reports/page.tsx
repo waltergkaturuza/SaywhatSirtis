@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { ArrowLeft, Download, Trash2 } from 'lucide-react'
+import { Download, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { HomeBack } from '@/components/layout/home-back'
 import { canManageRisks } from '@/lib/risk-management/session-risk-access'
 
 interface RiskReport {
@@ -169,21 +170,7 @@ export default function RiskReportsPage() {
       <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
         {/* Navigation */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <Link
-              href="/"
-              className="inline-flex items-center px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-sm  font-semibold"
-            >
-              🏠
-            </Link>
-            <Link
-              href="/risk-management"
-              className="inline-flex items-center px-4 py-2 text-orange-700 hover:text-orange-900 bg-white/70 backdrop-blur-sm rounded-xl border border-orange-200/50 hover:bg-orange-50/80 transition-all duration-300 shadow-lg hover:shadow-sm"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Risk Management
-            </Link>
-          </div>
+          <HomeBack backHref="/risk-management" backLabel="Back" />
           <div className="flex items-center space-x-4">
             <button
               onClick={exportToCSV}
