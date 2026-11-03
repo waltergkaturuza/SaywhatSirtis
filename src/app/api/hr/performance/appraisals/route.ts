@@ -237,6 +237,34 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { id, employee, achievements, development, performance, ratings, comments, recommendations, status, workflowStatus } = body;
+
+    const actor = await prisma.users.findUnique({
+      where: { id: session.user.id },
+      select: { id: true }
+    })
+    const keepOfficialComments = (incoming: any, existingRaw: any, supervisorUserId?: string | null, reviewerUserId?: string | null) => {
+      const next = incoming && typeof incoming === 'object' && !Array.isArray(incoming) ? { ...incoming } : {}
+      let existing: any = {}
+      if (typeof existingRaw === 'string') {
+        try {
+          const parsed = JSON.parse(existingRaw)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) existing = parsed
+        } catch {
+          existing = {}
+        }
+      } else if (existingRaw && typeof existingRaw === 'object' && !Array.isArray(existingRaw)) {
+        existing = existingRaw
+      }
+      if (actor?.id !== supervisorUserId) {
+        next.managerComments = existing.managerComments || existing.supervisorComments || ''
+        next.supervisorComments = existing.supervisorComments || existing.managerComments || ''
+      }
+      if (actor?.id !== reviewerUserId) {
+        next.hrComments = existing.hrComments || existing.reviewerComments || ''
+        next.reviewerComments = existing.reviewerComments || existing.hrComments || ''
+      }
+      return next
+    }
     
     // Helper function to calculate overall rating from categories
     const calculateOverallRatingFromCategories = (categories: any[]): number => {
@@ -307,7 +335,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Combine comments, ratings, and recommendations first (needed for validation)
-        const combinedComments = comments || {};
+        const combinedComments = keepOfficialComments(comments || {}, existingAppraisal.comments, existingAppraisal.supervisorId, existingAppraisal.reviewerId);
         // Store ratings with categories and overall rating
         if (finalRatings) {
           combinedComments.ratings = finalRatings;
@@ -673,7 +701,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Combine comments, ratings, and recommendations
-      const combinedComments = comments || {};
+      const combinedComments = keepOfficialComments(comments || {}, existingDraft.comments, existingDraft.supervisorId, existingDraft.reviewerId);
       // Store ratings with categories and overall rating
       if (finalRatings) {
         combinedComments.ratings = finalRatings;
@@ -797,7 +825,7 @@ export async function POST(request: NextRequest) {
         ? (typeof development === 'string' ? development : JSON.stringify(development))
         : '{}';
       // Build comments data with ratings and performance
-      const commentsObj: any = typeof comments === 'object' ? comments : {};
+      const commentsObj: any = keepOfficialComments(comments, null, supervisorUser.id, reviewerUser?.id);
       if (finalRatings) {
         commentsObj.ratings = finalRatings;
       }

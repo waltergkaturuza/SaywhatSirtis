@@ -9,9 +9,16 @@ import { AppraisalFormData } from './appraisal-types'
 interface CommentsReviewStepProps {
   formData: AppraisalFormData
   updateFormData: (updates: Partial<AppraisalFormData>) => void
+  lockSupervisorComments?: boolean
+  lockReviewerComments?: boolean
 }
 
-export function CommentsReviewStep({ formData, updateFormData }: CommentsReviewStepProps) {
+export function CommentsReviewStep({
+  formData,
+  updateFormData,
+  lockSupervisorComments = false,
+  lockReviewerComments = false
+}: CommentsReviewStepProps) {
   const handleCommentChange = (field: keyof typeof formData.comments, value: string) => {
     updateFormData({
       comments: {
@@ -20,6 +27,9 @@ export function CommentsReviewStep({ formData, updateFormData }: CommentsReviewS
       }
     })
   }
+
+  const supervisorComment = formData.comments.managerComments || (formData.comments as { supervisorComments?: string }).supervisorComments || ''
+  const reviewerComment = formData.comments.hrComments || (formData.comments as { reviewerComments?: string }).reviewerComments || ''
 
   return (
     <div className="space-y-6">
@@ -68,12 +78,17 @@ export function CommentsReviewStep({ formData, updateFormData }: CommentsReviewS
           </Label>
           <Textarea
             id="managerComments"
-            placeholder="Supervisor's comments about employee performance, observations, and recommendations..."
-            value={formData.comments.managerComments}
+            placeholder={lockSupervisorComments ? 'Your supervisor will add this comment.' : "Supervisor's comments about employee performance, observations, and recommendations..."}
+            value={supervisorComment}
             onChange={(e) => handleCommentChange('managerComments', e.target.value)}
             rows={6}
-            className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg"
+            readOnly={lockSupervisorComments}
+            disabled={lockSupervisorComments}
+            className={`border-2 rounded-lg ${lockSupervisorComments ? 'border-gray-200 bg-gray-100 text-gray-700 cursor-not-allowed' : 'border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200'}`}
           />
+          {lockSupervisorComments && (
+            <p className="mt-2 text-sm text-gray-500">Only the assigned supervisor can write this comment.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -95,12 +110,17 @@ export function CommentsReviewStep({ formData, updateFormData }: CommentsReviewS
           </Label>
           <Textarea
             id="hrComments"
-            placeholder="Reviewer's comments, final assessment, and additional notes..."
-            value={formData.comments.hrComments}
+            placeholder={lockReviewerComments ? 'Your reviewer will add this comment.' : "Reviewer's comments, final assessment, and additional notes..."}
+            value={reviewerComment}
             onChange={(e) => handleCommentChange('hrComments', e.target.value)}
             rows={4}
-            className="border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg"
+            readOnly={lockReviewerComments}
+            disabled={lockReviewerComments}
+            className={`border-2 rounded-lg ${lockReviewerComments ? 'border-gray-200 bg-gray-100 text-gray-700 cursor-not-allowed' : 'border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200'}`}
           />
+          {lockReviewerComments && (
+            <p className="mt-2 text-sm text-gray-500">Only the assigned reviewer can write this comment.</p>
+          )}
         </CardContent>
       </Card>
     </div>

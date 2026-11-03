@@ -927,6 +927,8 @@ function CreateAppraisalContent() {
           <CommentsReviewStep
             formData={formData}
             updateFormData={updateFormData}
+            lockSupervisorComments
+            lockReviewerComments
           />
         )
       case 6:

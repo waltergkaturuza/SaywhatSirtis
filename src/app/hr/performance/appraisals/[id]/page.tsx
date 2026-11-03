@@ -976,7 +976,14 @@ export default function ViewAppraisalPage() {
           </div>
         )
       case 5:
-        return <CommentsReviewStep formData={formData} updateFormData={createUpdateFunction(5)} />
+        return (
+          <CommentsReviewStep
+            formData={formData}
+            updateFormData={createUpdateFunction(5)}
+            lockSupervisorComments
+            lockReviewerComments
+          />
+        )
       case 6:
         return <FinalReviewStep formData={formData} updateFormData={createUpdateFunction(6)} />
       default:
