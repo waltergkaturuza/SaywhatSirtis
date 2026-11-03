@@ -20,7 +20,6 @@ import {
   UserIcon,
   ChartBarIcon,
   BuildingOfficeIcon,
-  FlagIcon,
   BellIcon,
   ArrowPathIcon
 } from "@heroicons/react/24/outline"
@@ -718,8 +717,7 @@ function PerformancePlansContent() {
     { id: "approved", name: "Approved", icon: CheckCircleIcon },
     ...(canViewAllPlans ? [
       { id: "notifications", name: "Notifications", icon: BellIcon }
-    ] : []),
-    { id: "deliverables", name: "Key Deliverables", icon: FlagIcon }
+    ] : [])
   ]
 
   return (
@@ -1064,105 +1062,6 @@ function PerformancePlansContent() {
                       )}
                     </tbody>
                   </table>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "deliverables" && (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Key Deliverables - Current Plan</h3>
-                  <Link href="/hr/performance/plans/deliverables/add">
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
-                      Add Deliverable
-                    </button>
-                  </Link>
-                </div>
-
-                <div className="space-y-4">
-                  {(!activities || !Array.isArray(activities) || activities.length === 0) ? (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-                      <FlagIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                      <h4 className="text-sm font-medium text-gray-600 mb-1">No Key Deliverables Found</h4>
-                      <p className="text-sm text-gray-500">Start by creating performance plans with key deliverables and activities.</p>
-                    </div>
-                  ) : (
-                    activities.map((activity) => (
-                      <div key={activity.id} className="bg-white border rounded-lg p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 mb-2">{activity.keyDeliverable}</h4>
-                            <p className="text-sm text-gray-600 mb-3">{activity.activity}</p>
-                            {activity.performancePlan && (
-                              <div className="text-xs text-gray-500 mb-2">
-                                <span className="font-medium">Employee:</span> {activity.performancePlan.employee} 
-                                <span className="ml-3 font-medium">Department:</span> {activity.performancePlan.department}
-                              </div>
-                            )}
-                          </div>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getDeliverableStatusColor(activity.status)}`}>
-                            {activity.status.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Timeline</label>
-                            <div className="flex items-center text-sm text-gray-900">
-                              <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" />
-                              {activity.timeline}
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Support Department</label>
-                            <div className="flex items-center text-sm text-gray-900">
-                              <BuildingOfficeIcon className="h-4 w-4 mr-2 text-gray-400" />
-                              {activity.supportDepartment}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Success Indicator</label>
-                          <p className="text-sm text-gray-900">{activity.successIndicator}</p>
-                        </div>
-
-                        <div className="mb-4">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-gray-600">Progress</span>
-                            <span className="font-medium">{activity.progress}%</span>
-                          </div>
-                          <div className="bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full ${getProgressColor(activity.progress)}`}
-                              style={{ width: `${activity.progress}%` }}
-                            ></div>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                          <span className="text-xs text-gray-500">
-                            Last updated: {new Date(activity.lastUpdate).toLocaleDateString()}
-                          </span>
-                          <div className="flex space-x-2">
-                            <button 
-                              onClick={() => handleUpdateProgress(activity)}
-                              className="text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                              <ArrowPathIcon className="h-4 w-4 inline mr-1" />
-                              Update Progress
-                            </button>
-                            <Link href={`/hr/performance/plans/deliverables/${activity.id}/edit`}>
-                              <button className="text-gray-600 hover:text-gray-800 text-sm">
-                                <PencilIcon className="h-4 w-4 inline mr-1" />
-                                Edit
-                              </button>
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
                 </div>
               </div>
             )}
