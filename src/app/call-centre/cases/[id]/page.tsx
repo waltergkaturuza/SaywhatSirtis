@@ -134,7 +134,7 @@ export default function CaseViewPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_3fr_1fr] gap-3 items-start">
           <div className="space-y-3">
             {/* Case Information */}
             <div className="bg-white rounded-lg shadow p-3">
