@@ -31,6 +31,7 @@ export async function GET(
             lastName: true,
             email: true,
             position: true,
+            hireDate: true,
             departments: {
               select: {
                 name: true
@@ -137,6 +138,7 @@ export async function GET(
         reviewer: appraisal.employees?.reviewer
           ? `${appraisal.employees.reviewer.firstName} ${appraisal.employees.reviewer.lastName}`.trim()
           : '',
+        hireDate: appraisal.employees?.hireDate?.toISOString().split('T')[0] || '',
         reviewPeriod: {
           startDate: (appraisal.performance_plans?.reviewStartDate || appraisal.performance_plans?.startDate || undefined)?.toISOString().split('T')[0] || '',
           endDate: (appraisal.performance_plans?.reviewEndDate || appraisal.performance_plans?.endDate || undefined)?.toISOString().split('T')[0] || ''

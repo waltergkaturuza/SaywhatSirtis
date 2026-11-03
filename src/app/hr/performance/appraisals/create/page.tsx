@@ -113,6 +113,8 @@ function CreateAppraisalContent() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
+  const [fieldIssues, setFieldIssues] = useState<{ field: string; message: string; step: number; elementId: string }[]>([])
+  const [focusFieldId, setFocusFieldId] = useState<string | null>(null)
 
   // Tab navigation
   const tabs = [
@@ -171,20 +173,20 @@ function CreateAppraisalContent() {
             console.log(`📋 Found ${responsibilitiesData.length} key responsibilities`)
             keyResponsibilities = responsibilitiesData.map((resp: any, index: number) => ({
               id: `${Date.now()}-${index}`,
-              description: resp.description || '',
-              tasks: resp.tasks || '',
-              weight: resp.weight || 0,
+              description: typeof resp === 'string' ? resp : (resp.description || resp.title || resp.responsibility || ''),
+              tasks: typeof resp === 'string' ? resp : (resp.tasks || resp.description || resp.title || ''),
+              weight: typeof resp === 'object' && resp ? (resp.weight || 0) : 0,
               targetDate: '',
               status: 'Not Started',
               achievementStatus: 'not-achieved' as const,
               comment: '',
-              successIndicators: (resp.successIndicators || []).map((indicator: any, indIndex: number) => ({
+              successIndicators: (typeof resp === 'object' && Array.isArray(resp?.successIndicators) ? resp.successIndicators : []).map((indicator: any, indIndex: number) => ({
                 id: `ind-${index + 1}-${indIndex + 1}`,
-                indicator: indicator.indicator || '',
-                target: Number(indicator.target) || 0,
+                indicator: typeof indicator === 'string' ? indicator : (indicator.indicator || indicator.title || ''),
+                target: Number(indicator?.target) || 0,
                 actualValue: 0,
-                weight: Number(indicator.weight) || 0,
-                measurement: indicator.measurement || '',
+                weight: Number(indicator?.weight) || 0,
+                measurement: indicator?.measurement || '',
                 achievementPercentage: 0
               }))
             }))
@@ -201,6 +203,41 @@ function CreateAppraisalContent() {
             const planData = await planResponse.json()
             const currentPlan = planData.plans?.[0] // Get the most recent plan
             if (currentPlan) {
+              if (!profileData.reviewer && currentPlan.reviewer && currentPlan.reviewer !== 'Not assigned') {
+                profileData.reviewer = { firstName: currentPlan.reviewer, lastName: '' }
+              }
+              if (currentPlan.id) {
+                try {
+                  const detailResponse = await fetch(`/api/hr/performance/plans/${currentPlan.id}`)
+                  if (detailResponse.ok) {
+                    const detail = await detailResponse.json()
+                    const saved = (detail.keyResponsibilities || detail.deliverables || []).filter((item: any) => String(item?.description || item?.title || '').trim())
+                    if (Array.isArray(saved) && saved.length > 0) {
+                      keyResponsibilities = saved.map((resp: any, index: number) => ({
+                        id: resp.id || `${Date.now()}-${index}`,
+                        description: resp.description || resp.title || '',
+                        tasks: resp.tasks || resp.description || '',
+                        weight: resp.weight || 0,
+                        targetDate: resp.targetDate || '',
+                        status: 'Not Started',
+                        achievementStatus: 'not-achieved' as const,
+                        comment: '',
+                        successIndicators: (Array.isArray(resp.successIndicators) ? resp.successIndicators : []).map((indicator: any, indIndex: number) => ({
+                          id: indicator.id || `ind-${index + 1}-${indIndex + 1}`,
+                          indicator: indicator.indicator || indicator.title || '',
+                          target: Number(indicator.target) || 0,
+                          actualValue: Number(indicator.actualValue) || 0,
+                          weight: Number(indicator.weight) || 0,
+                          measurement: indicator.measurement || '',
+                          achievementPercentage: 0
+                        }))
+                      }))
+                    }
+                  }
+                } catch (detailError) {
+                  console.warn('Could not load saved plan responsibilities:', detailError)
+                }
+              }
               // Use reviewStartDate/reviewEndDate if available, otherwise use startDate/endDate
               if (currentPlan.reviewStartDate || currentPlan.startDate) {
                 reviewPeriodStart = currentPlan.reviewStartDate 
@@ -226,8 +263,8 @@ function CreateAppraisalContent() {
             department: profileData.departments?.name || profileData.department || '',
             position: profileData.position || '',
             manager: profileData.supervisor ? `${profileData.supervisor.firstName} ${profileData.supervisor.lastName}` : '',
-            reviewer: profileData.reviewer ? `${profileData.reviewer.firstName} ${profileData.reviewer.lastName}` : '',
-            hireDate: profileData.hireDate || '', // Use hireDate from employee details, no fallback
+            reviewer: profileData.reviewer ? `${profileData.reviewer.firstName || ''} ${profileData.reviewer.lastName || ''}`.trim() : '',
+            hireDate: profileData.hireDate || profileData.startDate || '',
             reviewPeriod: {
               startDate: reviewPeriodStart,
               endDate: reviewPeriodEnd
@@ -309,17 +346,16 @@ function CreateAppraisalContent() {
           console.log('✅ Appraisal loaded for form:', appraisalDataForForm)
           
           // Parse JSON fields from API response
-          const parseJsonField = (field: any, defaultValue: any = []) => {
+          const parseJsonField = (field: any, defaultValue: any = {}) => {
             if (!field) return defaultValue;
             if (typeof field === 'string') {
               try {
-                const parsed = JSON.parse(field);
-                return Array.isArray(parsed) ? parsed : (typeof parsed === 'object' ? Object.values(parsed) : defaultValue);
+                return JSON.parse(field);
               } catch {
                 return defaultValue;
               }
             }
-            return Array.isArray(field) ? field : (typeof field === 'object' && field !== null ? field : defaultValue);
+            return field;
           };
           
           // Parse achievements (selfAssessments)
@@ -364,12 +400,14 @@ function CreateAppraisalContent() {
             id: appraisalDataForForm.id,
             employee: {
               ...(appraisalDataForForm.employee || formData.employee),
-              // Ensure review period is loaded from API response
+              id: appraisalDataForForm.employeeId || appraisalDataForForm.employee?.id || formData.employee.id,
+              reviewer: appraisalDataForForm.employee?.reviewer || formData.employee.reviewer || '',
               reviewPeriod: appraisalDataForForm.employee?.reviewPeriod || formData.employee.reviewPeriod,
-              // Ensure hire date is from employee details
               hireDate: appraisalDataForForm.employee?.hireDate || formData.employee.hireDate || ''
             },
-            achievements: parsedAchievements,
+            achievements: Array.isArray(parsedAchievements)
+              ? { keyResponsibilities: parsedAchievements }
+              : { keyResponsibilities: parsedAchievements?.keyResponsibilities || [] },
             development: parsedDevelopment,
             performance: parsedPerformance,
             comments: parsedComments,
@@ -449,7 +487,84 @@ function CreateAppraisalContent() {
     }
   }, [session?.user?.email, appraisalId])
 
+  const appraisalFieldTarget = (field: string) => {
+    const responsibilityComment = field.match(/^achievements\.keyResponsibilities\[(\d+)\]\.comment$/)
+    if (responsibilityComment) return { step: 2, elementId: `appraisal-responsibility-comment-${responsibilityComment[1]}` }
+    const responsibilityStatus = field.match(/^achievements\.keyResponsibilities\[(\d+)\]/)
+    if (responsibilityStatus) return { step: 2, elementId: `appraisal-responsibility-comment-${responsibilityStatus[1]}` }
+    const categoryRating = field.match(/^performance\.categories\[(\d+)\]\.rating$/)
+    if (categoryRating) return { step: 4, elementId: `appraisal-category-rating-${categoryRating[1]}` }
+    const categoryComment = field.match(/^performance\.categories\[(\d+)\]\.comment$/)
+    if (categoryComment) return { step: 4, elementId: `appraisal-category-comment-${categoryComment[1]}` }
+    const targets: Record<string, { step: number; elementId: string }> = {
+      employee: { step: 1, elementId: 'appraisal-start-date' },
+      reviewer: { step: 1, elementId: 'appraisal-reviewer' },
+      'employee.reviewPeriod': { step: 1, elementId: 'appraisal-start-date' },
+      'employee.reviewPeriod.startDate': { step: 1, elementId: 'appraisal-start-date' },
+      'employee.reviewPeriod.endDate': { step: 1, elementId: 'appraisal-end-date' },
+      'achievements.keyResponsibilities': { step: 2, elementId: 'appraisal-responsibility-0' },
+      'performance.categories': { step: 4, elementId: 'appraisal-category-0' }
+    }
+    return targets[field] || { step: 1, elementId: 'appraisal-start-date' }
+  }
+
+  const collectAppraisalIssues = (data: AppraisalFormData) => {
+    const issues: { field: string; message: string; step: number; elementId: string }[] = []
+    const add = (field: string, message: string) => {
+      const target = appraisalFieldTarget(field)
+      issues.push({ field, message, step: target.step, elementId: target.elementId })
+    }
+    if (!data.employee?.id) add('employee', 'Employee details are still loading')
+    const start = data.employee?.reviewPeriod?.startDate || ''
+    const end = data.employee?.reviewPeriod?.endDate || ''
+    if (!start) add('employee.reviewPeriod.startDate', 'Review period start date is required')
+    if (!end) add('employee.reviewPeriod.endDate', 'Review period end date is required')
+    if (start && end && new Date(start) >= new Date(end)) add('employee.reviewPeriod.endDate', 'Review period end date must be after the start date')
+    const responsibilities = data.achievements?.keyResponsibilities || []
+    if (responsibilities.length === 0) {
+      add('achievements.keyResponsibilities', 'Add at least one key responsibility')
+    } else {
+      responsibilities.forEach((item, index) => {
+        if (!item.comment?.trim()) add(`achievements.keyResponsibilities[${index}].comment`, `Responsibility ${index + 1} needs an achievement comment`)
+      })
+    }
+    const categories = data.performance?.categories || []
+    if (categories.length === 0) {
+      add('performance.categories', 'Performance categories must be rated')
+    } else {
+      categories.forEach((category, index) => {
+        if (!category.rating) add(`performance.categories[${index}].rating`, `${category.name || `Category ${index + 1}`} needs a rating`)
+        if (!category.comment?.trim()) add(`performance.categories[${index}].comment`, `${category.name || `Category ${index + 1}`} needs a comment`)
+      })
+    }
+    return issues
+  }
+
+  const goToAppraisalIssue = (issue: { step: number; elementId: string }) => {
+    setActiveTab('my-appraisal')
+    setCurrentStep(issue.step)
+    setFocusFieldId(issue.elementId)
+  }
+
+  useEffect(() => {
+    if (!focusFieldId) return
+    const fieldId = focusFieldId
+    const timer = window.setTimeout(() => {
+      const element = document.getElementById(fieldId)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        element.focus()
+      }
+      setFocusFieldId((current) => current === fieldId ? null : current)
+    }, 80)
+    return () => window.clearTimeout(timer)
+  }, [focusFieldId, currentStep])
+
   const nextStep = () => {
+    const skipped = collectAppraisalIssues(formData).filter((issue) => issue.step === currentStep)
+    if (skipped.length > 0) {
+      setFieldIssues((current) => [...skipped, ...current.filter((issue) => issue.step !== currentStep)])
+    }
     if (currentStep < appraisalSteps.length) {
       setCurrentStep(currentStep + 1)
     }
@@ -540,6 +655,12 @@ function CreateAppraisalContent() {
   }
 
   const handleSubmit = async () => {
+    const issues = collectAppraisalIssues(formData)
+    if (issues.length > 0) {
+      setFieldIssues(issues)
+      goToAppraisalIssue(issues[0])
+      return
+    }
     setIsSubmitting(true)
     
     try {
@@ -591,13 +712,12 @@ function CreateAppraisalContent() {
 
       if (!response.ok) {
         if (response.status === 400 && result.errors) {
-          // Validation errors - display them in a user-friendly way
-          const errorMessages = result.errors.map((err: any) => `• ${err.message} (${err.field})`).join('\n')
-          const fullMessage = `Please fix the following errors before submitting:\n\n${errorMessages}\n\n${result.message || ''}`
-          showError(
-            'Validation Failed',
-            fullMessage
-          )
+          const issuesFromServer = (result.errors as { field: string; message: string }[]).map((item) => {
+            const target = appraisalFieldTarget(item.field)
+            return { field: item.field, message: item.message, step: target.step, elementId: target.elementId }
+          })
+          setFieldIssues(issuesFromServer)
+          if (issuesFromServer[0]) goToAppraisalIssue(issuesFromServer[0])
           throw new Error(result.message || 'Validation failed. Please check all required fields are completed.')
         }
         throw new Error(result.error || result.details || result.message || 'Failed to submit appraisal')
@@ -775,6 +895,7 @@ function CreateAppraisalContent() {
           <EmployeeDetailsStep
             formData={formData}
             updateFormData={updateFormData}
+            missingIds={fieldIssues.map((issue) => issue.elementId)}
           />
         )
       case 2:
@@ -782,6 +903,7 @@ function CreateAppraisalContent() {
           <AchievementsGoalsStep
             formData={formData}
             updateFormData={updateFormData}
+            missingIds={fieldIssues.map((issue) => issue.elementId)}
           />
         )
       case 3:
@@ -797,6 +919,7 @@ function CreateAppraisalContent() {
             formData={formData}
             updateFormData={updateFormData}
             isReadOnly={isEmployeeLocked}
+            missingIds={fieldIssues.map((issue) => issue.elementId)}
           />
         )
       case 5:
@@ -905,26 +1028,55 @@ function CreateAppraisalContent() {
             <Progress value={(currentStep / appraisalSteps.length) * 100} className="mb-4 [&>div]:bg-orange-500" />
             
             <div className="grid grid-cols-6 gap-4">
-                  {appraisalSteps.map((step) => (
-                <div
+                  {appraisalSteps.map((step) => {
+                    const stepHasSkippedField = fieldIssues.some((issue) => issue.step === step.id)
+                    return (
+                <button
+                  type="button"
                   key={step.id}
+                  onClick={() => {
+                    setCurrentStep(step.id)
+                    const skipped = fieldIssues.find((issue) => issue.step === step.id)
+                    if (skipped) setFocusFieldId(skipped.elementId)
+                  }}
                   className={`text-center p-3 rounded-lg transition-colors ${
-                    currentStep === step.id
+                    stepHasSkippedField
+                          ? 'bg-red-100 text-red-700 ring-2 ring-red-300'
+                      : currentStep === step.id
                           ? 'bg-orange-500 text-white shadow-lg'
                       : currentStep > step.id
                           ? 'bg-green-100 text-green-700'
                           : 'bg-white text-gray-600'
                       }`}
                     >
-                      <div className="text-xs font-medium">{step.title}</div>
-                  </div>
-                  ))}
+                      <div className="text-xs font-medium">{stepHasSkippedField ? 'Required field skipped' : step.title}</div>
+                  </button>
+                    )
+                  })}
                 </div>
             </div>
 
         {/* Step Content */}
               <div className="px-8 py-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">{appraisalSteps[currentStep - 1]?.title}</h2>
+                {fieldIssues.length > 0 && (
+                  <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+                    <p className="text-sm font-semibold text-red-800">These required fields were skipped. Open one to fill it in.</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {fieldIssues.map((issue) => (
+                        <button
+                          key={issue.field}
+                          type="button"
+                          onClick={() => goToAppraisalIssue(issue)}
+                          className="rounded-lg border border-red-300 bg-white px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-100"
+                        >
+                          {issue.message}
+                          <span className="ml-2 text-xs font-normal text-red-500">Step {issue.step}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
             {renderStepContent()}
               </div>
 

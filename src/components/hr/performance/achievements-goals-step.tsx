@@ -12,9 +12,11 @@ import { AppraisalFormData, goalStatuses } from './appraisal-types'
 interface AchievementsGoalsStepProps {
   formData: AppraisalFormData
   updateFormData: (updates: Partial<AppraisalFormData>) => void
+  missingIds?: string[]
 }
 
-export function AchievementsGoalsStep({ formData, updateFormData }: AchievementsGoalsStepProps) {
+export function AchievementsGoalsStep({ formData, updateFormData, missingIds = [] }: AchievementsGoalsStepProps) {
+  const missing = (id: string) => missingIds.includes(id)
   // Key Responsibilities handlers
   const updateResponsibility = (respId: string, field: string, value: any) => {
     const updatedResponsibilities = formData.achievements.keyResponsibilities.map(resp =>
@@ -244,6 +246,7 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
           {formData.achievements.keyResponsibilities.length === 0 && (
+            <div id="appraisal-responsibility-0" className={missing('appraisal-responsibility-0') ? 'rounded-lg border-2 border-red-500 bg-red-50 p-4' : ''}>
             <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-dashed border-gray-300 shadow-inner">
               <div className="text-gray-600 mb-6">
                 <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,6 +265,7 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
                 </svg>
                 Add Responsibility Manually
               </button>
+            </div>
             </div>
           )}
           {formData.achievements.keyResponsibilities.map((responsibility, respIndex) => (
@@ -514,14 +518,15 @@ export function AchievementsGoalsStep({ formData, updateFormData }: Achievements
                   <svg className="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                   </svg>
-                  Additional Comments
+                  Achievement comment <span className="text-red-600 ml-1">*</span>
                 </label>
                 <Textarea
-                  placeholder="Any additional comments or notes..."
+                  id={`appraisal-responsibility-comment-${respIndex}`}
+                  placeholder="Describe what was achieved for this responsibility..."
                   value={responsibility.comment}
                   onChange={(e) => updateResponsibility(responsibility.id, 'comment', e.target.value)}
                   rows={3}
-                  className="w-full border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-lg"
+                  className={`w-full border-2 rounded-lg ${missing(`appraisal-responsibility-comment-${respIndex}`) ? 'border-red-500 ring-2 ring-red-200 bg-red-50' : 'border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200'}`}
                 />
               </div>
             </div>

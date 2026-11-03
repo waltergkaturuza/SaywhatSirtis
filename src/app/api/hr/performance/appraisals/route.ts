@@ -367,8 +367,8 @@ export async function POST(request: NextRequest) {
               id: employeeRecord.employeeId || employeeRecord.id,
               email: employeeRecord.email || employee?.email || '',
               reviewPeriod: {
-                startDate: plan?.reviewStartDate?.toISOString().split('T')[0] || plan?.startDate?.toISOString().split('T')[0] || '',
-                endDate: plan?.reviewEndDate?.toISOString().split('T')[0] || plan?.endDate?.toISOString().split('T')[0] || ''
+                startDate: employee?.reviewPeriod?.startDate || plan?.reviewStartDate?.toISOString().split('T')[0] || plan?.startDate?.toISOString().split('T')[0] || '',
+                endDate: employee?.reviewPeriod?.endDate || plan?.reviewEndDate?.toISOString().split('T')[0] || plan?.endDate?.toISOString().split('T')[0] || ''
               }
             },
             achievements: achievements || existingAchievements,
@@ -397,6 +397,14 @@ export async function POST(request: NextRequest) {
           status: status || existingAppraisal.status,
           updatedAt: new Date()
         };
+
+        if (employeeRecord.reviewer_id) {
+          const reviewerEmployee = await prisma.employees.findUnique({
+            where: { id: employeeRecord.reviewer_id },
+            select: { userId: true }
+          })
+          if (reviewerEmployee?.userId) updateData.reviewerId = reviewerEmployee.userId
+        }
 
         // Update overall rating - use calculated value
         if (finalOverallRating !== undefined && finalOverallRating !== null) {
@@ -594,12 +602,42 @@ export async function POST(request: NextRequest) {
     if (existingDraft) {
       console.log('Found existing draft appraisal, updating:', existingDraft.id);
       console.log('Update data:', { status, hasAchievements: !!achievements, hasDevelopment: !!development, hasComments: !!comments, hasRatings: !!ratings });
+
+      if (status === 'submitted') {
+        const validation = validatePerformanceAppraisal({
+          employee: {
+            id: employeeRecord.employeeId || employeeRecord.id,
+            email: employeeRecord.email || employee?.email || '',
+            reviewPeriod: employee?.reviewPeriod || {
+              startDate: performancePlan.reviewStartDate?.toISOString().split('T')[0] || performancePlan.startDate?.toISOString().split('T')[0] || '',
+              endDate: performancePlan.reviewEndDate?.toISOString().split('T')[0] || performancePlan.endDate?.toISOString().split('T')[0] || ''
+            }
+          },
+          achievements: achievements || {},
+          performance: {
+            categories: performance?.categories || finalRatings?.categories || [],
+            overallRating: finalOverallRating || 0
+          },
+          development: development || {},
+          comments: comments || {},
+          ratings: finalRatings || ratings || {}
+        });
+        if (!validation.isValid) {
+          return NextResponse.json({
+            success: false,
+            error: 'Validation failed',
+            errors: validation.errors,
+            message: formatValidationErrors(validation.errors)
+          }, { status: 400 });
+        }
+      }
       
       // Prepare update data - ensure all fields are properly saved
       const updateData: any = {
         status: status || 'draft',
         updatedAt: new Date()
       };
+      if (reviewerUser?.id) updateData.reviewerId = reviewerUser.id
       
       // Always update overall rating - use calculated value
       if (finalOverallRating !== undefined && finalOverallRating !== null) {
@@ -701,8 +739,8 @@ export async function POST(request: NextRequest) {
             id: employeeRecord.employeeId || employeeRecord.id,
             email: employeeRecord.email || employee?.email || '',
             reviewPeriod: employee?.reviewPeriod || {
-              startDate: performancePlan.startDate?.toISOString().split('T')[0] || '',
-              endDate: performancePlan.endDate?.toISOString().split('T')[0] || ''
+              startDate: performancePlan.reviewStartDate?.toISOString().split('T')[0] || performancePlan.startDate?.toISOString().split('T')[0] || '',
+              endDate: performancePlan.reviewEndDate?.toISOString().split('T')[0] || performancePlan.endDate?.toISOString().split('T')[0] || ''
             }
           },
           achievements: achievements || {},

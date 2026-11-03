@@ -13,9 +13,11 @@ interface PerformanceAssessmentStepProps {
   formData: AppraisalFormData
   updateFormData: (updates: Partial<AppraisalFormData>) => void
   isReadOnly?: boolean
+  missingIds?: string[]
 }
 
-export function PerformanceAssessmentStep({ formData, updateFormData, isReadOnly = false }: PerformanceAssessmentStepProps) {
+export function PerformanceAssessmentStep({ formData, updateFormData, isReadOnly = false, missingIds = [] }: PerformanceAssessmentStepProps) {
+  const missing = (id: string) => missingIds.includes(id)
   const handleCategoryRating = (categoryId: string, rating: number) => {
     const updatedCategories = formData.performance.categories.map(cat =>
       cat.id === categoryId ? { ...cat, rating } : cat
@@ -75,12 +77,12 @@ export function PerformanceAssessmentStep({ formData, updateFormData, isReadOnly
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
-          {formData.performance.categories.map((category) => {
+          {formData.performance.categories.map((category, categoryIndex) => {
             // Calculate the score for this category: (rating / 5) * weight
             const categoryScore = (category.rating / 5) * category.weight
             
             return (
-              <div key={category.id} className="border-2 border-gray-200 rounded-xl p-5 bg-gradient-to-br from-gray-50 to-white shadow-sm hover:shadow-md transition-shadow duration-200 last:mb-0">
+              <div id={`appraisal-category-${categoryIndex}`} key={category.id} className={`border-2 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200 last:mb-0 ${missing(`appraisal-category-rating-${categoryIndex}`) ? 'border-red-500 bg-red-50 ring-2 ring-red-200' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white'}`}>
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-2">
@@ -103,10 +105,12 @@ export function PerformanceAssessmentStep({ formData, updateFormData, isReadOnly
                       </div>
                     ) : (
                       <>
+                        <div id={`appraisal-category-rating-${categoryIndex}`}>
                         <StarRating 
                           rating={category.rating}
                           onRatingChange={(rating) => handleCategoryRating(category.id, rating)}
                         />
+                        </div>
                         <div className="text-xs font-semibold text-gray-500 mt-1">
                           {category.rating} / 5 stars
                         </div>
@@ -126,10 +130,11 @@ export function PerformanceAssessmentStep({ formData, updateFormData, isReadOnly
                 </div>
                 
                 <Textarea
+                  id={`appraisal-category-comment-${categoryIndex}`}
                   placeholder={`Add comments about ${category.name.toLowerCase()}...`}
                   value={category.comment}
                   onChange={(e) => handleCategoryComment(category.id, e.target.value)}
-                  className="border-2 border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 rounded-lg"
+                  className={`border-2 rounded-lg ${missing(`appraisal-category-comment-${categoryIndex}`) ? 'border-red-500 ring-2 ring-red-200 bg-red-50' : 'border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200'}`}
                   rows={3}
                   disabled={isReadOnly}
                   readOnly={isReadOnly}

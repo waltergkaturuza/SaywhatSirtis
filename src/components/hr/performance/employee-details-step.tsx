@@ -11,6 +11,7 @@ import { AppraisalFormData } from './appraisal-types'
 interface EmployeeDetailsStepProps {
   formData: AppraisalFormData
   updateFormData: (updates: Partial<AppraisalFormData>) => void
+  missingIds?: string[]
 }
 
 interface Department {
@@ -18,7 +19,9 @@ interface Department {
   name: string
 }
 
-export function EmployeeDetailsStep({ formData, updateFormData }: EmployeeDetailsStepProps) {
+export function EmployeeDetailsStep({ formData, updateFormData, missingIds = [] }: EmployeeDetailsStepProps) {
+  const missing = (id: string) => missingIds.includes(id)
+  const missingClass = (id: string) => missing(id) ? 'border-red-500 ring-2 ring-red-200 bg-red-50' : ''
   const [departments, setDepartments] = useState<Department[]>([])
   const [loadingDepartments, setLoadingDepartments] = useState(true)
 
@@ -138,15 +141,15 @@ export function EmployeeDetailsStep({ formData, updateFormData }: EmployeeDetail
             </div>
 
             <div>
-              <Label htmlFor="reviewer" className="text-sm font-bold text-gray-700">Final Reviewer *</Label>
+              <Label htmlFor="appraisal-reviewer" className={`text-sm font-bold ${missing('appraisal-reviewer') ? 'text-red-700' : 'text-gray-700'}`}>Final Reviewer <span className="text-red-600">*</span></Label>
               <Input
-                id="reviewer"
+                id="appraisal-reviewer"
                 value={formData.employee.reviewer || ''}
                 onChange={(e) => handleEmployeeChange('reviewer', e.target.value)}
-                placeholder="Enter reviewer name"
+                placeholder="Reviewer is loaded from the employee record"
                 required
                 readOnly
-                className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-300 rounded-lg mt-1"
+                className={`border-2 rounded-lg mt-1 ${missing('appraisal-reviewer') ? missingClass('appraisal-reviewer') : 'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-300'}`}
               />
             </div>
 
@@ -175,26 +178,26 @@ export function EmployeeDetailsStep({ formData, updateFormData }: EmployeeDetail
         <CardContent className="space-y-4 pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label htmlFor="startDate" className="text-sm font-bold text-gray-700">Review Period Start *</Label>
+              <Label htmlFor="appraisal-start-date" className={`text-sm font-bold ${missing('appraisal-start-date') ? 'text-red-700' : 'text-gray-700'}`}>Review Period Start <span className="text-red-600">*</span></Label>
               <Input
-                id="startDate"
+                id="appraisal-start-date"
                 type="date"
                 value={formData.employee.reviewPeriod.startDate}
                 onChange={(e) => handleReviewPeriodChange('startDate', e.target.value)}
                 required
-                className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg mt-1"
+                className={`border-2 rounded-lg mt-1 ${missing('appraisal-start-date') ? missingClass('appraisal-start-date') : 'border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200'}`}
               />
             </div>
 
             <div>
-              <Label htmlFor="endDate" className="text-sm font-bold text-gray-700">Review Period End *</Label>
+              <Label htmlFor="appraisal-end-date" className={`text-sm font-bold ${missing('appraisal-end-date') ? 'text-red-700' : 'text-gray-700'}`}>Review Period End <span className="text-red-600">*</span></Label>
               <Input
-                id="endDate"
+                id="appraisal-end-date"
                 type="date"
                 value={formData.employee.reviewPeriod.endDate}
                 onChange={(e) => handleReviewPeriodChange('endDate', e.target.value)}
                 required
-                className="border-2 border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 rounded-lg mt-1"
+                className={`border-2 rounded-lg mt-1 ${missing('appraisal-end-date') ? missingClass('appraisal-end-date') : 'border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200'}`}
               />
             </div>
           </div>
