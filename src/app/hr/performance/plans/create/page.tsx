@@ -43,6 +43,8 @@ function CreatePerformancePlanPageContent() {
     plan: false
   })
   const [error, setError] = useState<string | null>(null)
+  const [fieldIssues, setFieldIssues] = useState<{ field: string; message: string; step: number; elementId: string }[]>([])
+  const [focusFieldId, setFocusFieldId] = useState<string | null>(null)
   const [loadedPlanData, setLoadedPlanData] = useState<any>(null) // Store loaded plan data for title checks
 
   // Workflow state
@@ -95,7 +97,83 @@ function CreatePerformancePlanPageContent() {
     ]
   }
 
+  const fieldTarget = (field: string) => {
+    const responsibility = field.match(/^keyResponsibilities\[(\d+)\]/)
+    if (responsibility) return { step: 2, elementId: `plan-responsibility-${responsibility[1]}` }
+    const targets: Record<string, { step: number; elementId: string }> = {
+      employee: { step: 1, elementId: 'plan-employee' },
+      reviewerId: { step: 1, elementId: 'plan-reviewer' },
+      planYear: { step: 1, elementId: 'plan-year' },
+      planTitle: { step: 1, elementId: 'plan-title' },
+      startDate: { step: 1, elementId: 'plan-start-date' },
+      endDate: { step: 1, elementId: 'plan-end-date' },
+      'planPeriod.startDate': { step: 1, elementId: 'plan-start-date' },
+      'planPeriod.endDate': { step: 1, elementId: 'plan-end-date' },
+      keyResponsibilities: { step: 2, elementId: 'plan-responsibility-0' }
+    }
+    return targets[field] || { step: 1, elementId: 'plan-title' }
+  }
+
+  const collectPlanIssues = (data: PerformancePlanFormData) => {
+    const issues: { field: string; message: string; step: number; elementId: string }[] = []
+    const add = (field: string, message: string) => {
+      const target = fieldTarget(field)
+      issues.push({ field, message, step: target.step, elementId: target.elementId })
+    }
+    if (!data.employee?.id) add('employee', 'Select an employee')
+    if (!data.reviewerId) add('reviewerId', 'Select a performance reviewer')
+    if (!data.planYear) add('planYear', 'Plan year is required')
+    if (!data.planTitle?.trim()) add('planTitle', 'Plan title is required')
+    const start = data.startDate || data.planPeriod?.startDate || ''
+    const end = data.endDate || data.planPeriod?.endDate || ''
+    if (!start) add('startDate', 'Start date is required')
+    if (!end) add('endDate', 'End date is required')
+    if (start && end && new Date(start) >= new Date(end)) add('endDate', 'End date must be after the start date')
+    const responsibilities = data.keyResponsibilities || []
+    const described = responsibilities.filter((item) => item.description?.trim())
+    if (described.length === 0) {
+      add('keyResponsibilities[0].description', 'Add at least one key responsibility')
+    } else {
+      responsibilities.forEach((item, index) => {
+        if (!item.description?.trim()) add(`keyResponsibilities[${index}].description`, `Responsibility ${index + 1} needs a description`)
+      })
+    }
+    return issues
+  }
+
+  const fieldIsMissing = (elementId: string) => fieldIssues.some((issue) => issue.elementId === elementId)
+
+  const requiredInputClass = (elementId: string) =>
+    fieldIsMissing(elementId)
+      ? 'w-full px-4 py-3 border-2 border-red-500 rounded-xl bg-red-50 ring-2 ring-red-200 focus:outline-none focus:ring-2 focus:ring-red-400 shadow-sm'
+      : 'w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm'
+
+  const goToIssue = (issue: { step: number; elementId: string }) => {
+    setActiveTab('my-plan')
+    setCurrentStep(issue.step)
+    setFocusFieldId(issue.elementId)
+  }
+
+  const clearIssue = (field: string) => {
+    setFieldIssues((current) => current.filter((issue) => issue.field !== field && !issue.field.startsWith(`${field}.`) && !issue.field.startsWith(`${field}[`)))
+  }
+
+  useEffect(() => {
+    if (!focusFieldId) return
+    const fieldId = focusFieldId
+    const timer = window.setTimeout(() => {
+      const element = document.getElementById(fieldId)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        element.focus()
+      }
+      setFocusFieldId((current) => current === fieldId ? null : current)
+    }, 80)
+    return () => window.clearTimeout(timer)
+  }, [focusFieldId, currentStep])
+
   const handleInputChange = (field: string, value: any) => {
+    clearIssue(field)
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -308,6 +386,9 @@ function CreatePerformancePlanPageContent() {
             },
             supervisor: supervisorUserId || '',
             reviewerId: reviewerUserId || '',
+            planTitle: prev.planTitle?.trim()
+              ? prev.planTitle
+              : `Annual Plan ${prev.planYear || new Date().getFullYear()} - ${(fullEmployeeData.name || `${fullEmployeeData.firstName || ''} ${fullEmployeeData.lastName || ''}`).trim() || 'Employee'}`,
             startDate: prev.startDate || `${new Date().getFullYear()}-01-01`,
             endDate: prev.endDate || `${new Date().getFullYear()}-12-31`,
             planPeriod: prev.planPeriod?.startDate ? prev.planPeriod : {
@@ -799,6 +880,9 @@ function CreatePerformancePlanPageContent() {
               },
               supervisor: supervisorUserId || '',
               reviewerId: reviewerUserId || '',
+              planTitle: prev.planTitle?.trim()
+                ? prev.planTitle
+                : `Annual Plan ${prev.planYear || new Date().getFullYear()} - ${(`${employeeData.firstName || ''} ${employeeData.lastName || ''}`).trim() || employeeData.email || 'Employee'}`,
               startDate: prev.startDate || `${new Date().getFullYear()}-01-01`,
               endDate: prev.endDate || `${new Date().getFullYear()}-12-31`,
               planPeriod: prev.planPeriod?.startDate ? prev.planPeriod : {
@@ -855,6 +939,10 @@ function CreatePerformancePlanPageContent() {
   }
 
   const handleArrayChange = (arrayName: keyof PerformancePlanFormData, index: number, field: string, value: any) => {
+    if (arrayName === 'keyResponsibilities' && field === 'description') {
+      clearIssue(`keyResponsibilities[${index}].description`)
+      clearIssue('keyResponsibilities')
+    }
     setFormData(prev => ({
       ...prev,
       [arrayName]: (prev[arrayName] as any[]).map((item, i) => 
@@ -878,6 +966,13 @@ function CreatePerformancePlanPageContent() {
   }
 
   const handleNext = () => {
+    const skipped = collectPlanIssues(formData).filter((issue) => issue.step === currentStep)
+    if (skipped.length > 0) {
+      setFieldIssues((current) => {
+        const remaining = current.filter((issue) => issue.step !== currentStep)
+        return [...skipped, ...remaining]
+      })
+    }
     if (currentStep < performancePlanSteps.length) {
       setCurrentStep(currentStep + 1)
     }
@@ -893,6 +988,13 @@ function CreatePerformancePlanPageContent() {
   const [isSavingDraft, setIsSavingDraft] = useState(false)
 
   const handleSubmit = async () => {
+    const issues = collectPlanIssues(formData)
+    if (issues.length > 0) {
+      setFieldIssues(issues)
+      setError(null)
+      goToIssue(issues[0])
+      return
+    }
     setIsSubmitting(true)
     try {
       const response = await fetch('/api/hr/plans', {
@@ -934,10 +1036,13 @@ function CreatePerformancePlanPageContent() {
         if (response.status === 401) {
           alert('Authentication required. Please log in to create performance plans. Visit /auth/signin to authenticate.')
         } else if (response.status === 400 && result.errors) {
-          // Validation errors - display them in a user-friendly way
-          const errorMessages = result.errors.map((err: any) => `• ${err.message} (${err.field})`).join('\n')
-          alert(`Please fix the following errors before submitting:\n\n${errorMessages}\n\n${result.message || ''}`)
-          setError(`Validation failed: ${result.message || 'Please check all required fields are completed.'}`)
+          const issuesFromServer = (result.errors as { field: string; message: string }[]).map((item) => {
+            const target = fieldTarget(item.field)
+            return { field: item.field, message: item.message, step: target.step, elementId: target.elementId }
+          })
+          setFieldIssues(issuesFromServer)
+          setError(null)
+          if (issuesFromServer[0]) goToIssue(issuesFromServer[0])
         } else {
           const errorMsg = result.message || result.error || 'Failed to submit performance plan'
           alert(errorMsg)
@@ -1218,36 +1323,31 @@ function CreatePerformancePlanPageContent() {
       case 1:
         return (
           <div className="space-y-8">
-            {error && (
-              <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center">
-                  <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center mr-3">
-                    <span className="text-white text-sm font-bold">!</span>
-                  </div>
-                  <div className="text-sm text-red-700 font-medium">{error}</div>
-                </div>
-              </div>
-            )}
 
             <div className="bg-gradient-to-br from-white via-orange-25 to-white p-8 rounded-2xl shadow-lg border border-orange-100">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                     <div className="w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500 rounded-full mr-2"></div>
-                    Select Employee *
+                    Select Employee <span className="text-red-600">*</span>
                   </label>
                   {isForCurrentUser ? (
                     <input
+                      id="plan-employee"
                       type="text"
                       value={formData.employee.name || 'Loading your information...'}
                       readOnly
-                      className="w-full px-4 py-3 border-2 border-green-200 rounded-xl bg-green-50 text-gray-700 shadow-sm cursor-not-allowed"
+                      className={fieldIsMissing('plan-employee') ? requiredInputClass('plan-employee') : 'w-full px-4 py-3 border-2 border-green-200 rounded-xl bg-green-50 text-gray-700 shadow-sm cursor-not-allowed'}
                     />
                   ) : (
                     <select
+                      id="plan-employee"
                       value={selectedEmployee?.id || ''}
-                      onChange={(e) => handleEmployeeSelect(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                      onChange={(e) => {
+                        clearIssue('employee')
+                        handleEmployeeSelect(e.target.value)
+                      }}
+                      className={requiredInputClass('plan-employee')}
                       disabled={loading.employees}
                     >
                       <option value="">
@@ -1339,12 +1439,13 @@ function CreatePerformancePlanPageContent() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                     <div className="w-2 h-2 bg-gradient-to-r from-pink-400 to-rose-500 rounded-full mr-2"></div>
-                    Performance Reviewer *
+                    Performance Reviewer <span className="text-red-600">*</span>
                   </label>
                   <select
+                    id="plan-reviewer"
                     value={formData.reviewerId}
                     onChange={(e) => handleInputChange("reviewerId", e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                    className={requiredInputClass('plan-reviewer')}
                     disabled={loading.reviewers}
                   >
                     <option value="">
@@ -1366,12 +1467,13 @@ function CreatePerformancePlanPageContent() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                     <div className="w-2 h-2 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full mr-2"></div>
-                    Plan Year
+                    Plan Year <span className="text-red-600">*</span>
                   </label>
                   <select
+                    id="plan-year"
                     value={formData.planYear}
                     onChange={(e) => handleInputChange("planYear", e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                    className={requiredInputClass('plan-year')}
                 >
                   {(() => {
                     const currentYear = new Date().getFullYear();
@@ -1399,6 +1501,23 @@ function CreatePerformancePlanPageContent() {
                 <h3 className="text-xl font-bold text-gray-900">Plan Period</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="md:col-span-3">
+                  <label htmlFor="plan-title" className={`block text-sm font-semibold mb-3 flex items-center ${fieldIsMissing('plan-title') ? 'text-red-700' : 'text-gray-800'}`}>
+                    <div className="w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500 rounded-full mr-2"></div>
+                    Plan Title <span className="text-red-600 ml-1">*</span>
+                  </label>
+                  <input
+                    id="plan-title"
+                    type="text"
+                    value={formData.planTitle}
+                    onChange={(e) => handleInputChange('planTitle', e.target.value)}
+                    className={requiredInputClass('plan-title')}
+                    placeholder="Annual Plan 2026 - Employee name"
+                  />
+                  {fieldIsMissing('plan-title') && (
+                    <p className="mt-2 text-sm text-red-600">Plan title is required before this plan can be submitted.</p>
+                  )}
+                </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                     <div className="w-2 h-2 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full mr-2"></div>
@@ -1419,32 +1538,34 @@ function CreatePerformancePlanPageContent() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                     <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-2"></div>
-                    Start Date
+                    Start Date <span className="text-red-600">*</span>
                   </label>
                   <input
+                    id="plan-start-date"
                     type="date"
                     value={formData.startDate || formData.planPeriod?.startDate || ''}
                     onChange={(e) => {
                       handleInputChange("startDate", e.target.value)
                       setFormData((prev) => ({ ...prev, planPeriod: { ...(prev.planPeriod || {}), startDate: e.target.value, endDate: prev.planPeriod?.endDate || prev.endDate || '' } }))
                     }}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                    className={requiredInputClass('plan-start-date')}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                     <div className="w-2 h-2 bg-gradient-to-r from-red-400 to-pink-500 rounded-full mr-2"></div>
-                    End Date
+                    End Date <span className="text-red-600">*</span>
                   </label>
                   <input
+                    id="plan-end-date"
                     type="date"
                     value={formData.endDate || formData.planPeriod?.endDate || ''}
                     onChange={(e) => {
                       handleInputChange("endDate", e.target.value)
                       setFormData((prev) => ({ ...prev, planPeriod: { ...(prev.planPeriod || {}), startDate: prev.planPeriod?.startDate || prev.startDate || '', endDate: e.target.value } }))
                     }}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+                    className={requiredInputClass('plan-end-date')}
                   />
                 </div>
               </div>
@@ -1522,13 +1643,14 @@ function CreatePerformancePlanPageContent() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
                       <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full mr-2"></div>
-                      Responsibility Description
+                      Responsibility Description <span className="text-red-600">*</span>
                     </label>
                     <textarea
+                      id={`plan-responsibility-${index}`}
                       value={responsibility.description}
                       onChange={(e) => handleArrayChange("keyResponsibilities", index, "description", e.target.value)}
                       rows={2}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent hover:border-orange-300 transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm resize-none"
+                      className={`${requiredInputClass(`plan-responsibility-${index}`)} resize-none`}
                       placeholder="Enter responsibility description..."
                     />
                   </div>
@@ -2624,11 +2746,23 @@ function CreatePerformancePlanPageContent() {
           {/* Clean Progress Steps */}
           <div className="mb-10">
             <div className="flex items-center justify-between max-w-4xl mx-auto">
-              {performancePlanSteps.map((step, index) => (
+              {performancePlanSteps.map((step, index) => {
+                const stepHasSkippedField = fieldIssues.some((issue) => issue.step === step.id)
+                return (
                 <div key={step.id} className="flex items-center flex-1">
-                  <div className="flex flex-col items-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentStep(step.id)
+                      const skipped = fieldIssues.find((issue) => issue.step === step.id)
+                      if (skipped) setFocusFieldId(skipped.elementId)
+                    }}
+                    className="flex flex-col items-center"
+                  >
                     <div className={`flex items-center justify-center w-12 h-12 rounded-full border-3 transition-all duration-300 shadow-lg ${
-                      step.id < currentStep
+                      stepHasSkippedField
+                        ? 'bg-white border-red-500 text-red-600 ring-2 ring-red-200'
+                      : step.id < currentStep
                         ? 'bg-gradient-to-br from-green-500 to-green-600 border-green-500 text-white'
                       : step.id === currentStep 
                         ? 'bg-gradient-to-br from-orange-500 to-orange-600 border-orange-500 text-white' 
@@ -2642,20 +2776,21 @@ function CreatePerformancePlanPageContent() {
                     </div>
                     <div className="mt-3 text-center">
                       <p className={`text-sm font-semibold ${
-                        step.id < currentStep ? 'text-green-600' : step.id === currentStep ? 'text-orange-600' : 'text-gray-400'
+                        stepHasSkippedField ? 'text-red-600' : step.id < currentStep ? 'text-green-600' : step.id === currentStep ? 'text-orange-600' : 'text-gray-400'
                       }`}>
                         {step.title}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1 max-w-24">{step.description}</p>
+                      <p className="text-xs text-gray-500 mt-1 max-w-24">{stepHasSkippedField ? 'Required field skipped' : step.description}</p>
                     </div>
-                  </div>
+                  </button>
                   {index < performancePlanSteps.length - 1 && (
                     <div className={`flex-1 h-1 mx-6 rounded-full transition-all duration-300 ${
                       step.id < currentStep ? 'bg-gradient-to-r from-green-400 to-green-500' : 'bg-gray-200'
                     }`} />
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -2680,6 +2815,30 @@ function CreatePerformancePlanPageContent() {
 
                 {/* Form Content */}
                 <div className="px-8 py-8">
+                  {(fieldIssues.length > 0 || error) && (
+                    <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
+                      <p className="text-sm font-semibold text-red-800">
+                        {fieldIssues.length > 0
+                          ? 'These required fields were skipped. Open one to fill it in.'
+                          : error}
+                      </p>
+                      {fieldIssues.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {fieldIssues.map((issue) => (
+                            <button
+                              key={issue.field}
+                              type="button"
+                              onClick={() => goToIssue(issue)}
+                              className="rounded-lg border border-red-300 bg-white px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-100"
+                            >
+                              {issue.message}
+                              <span className="ml-2 text-xs font-normal text-red-500">Step {issue.step}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {renderStepContent()}
                 </div>
 
