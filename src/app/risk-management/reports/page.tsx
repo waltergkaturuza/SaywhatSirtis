@@ -168,31 +168,15 @@ export default function RiskReportsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100/30">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-3">
-        {/* Navigation */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <HomeBack backHref="/risk-management" backLabel="Back" />
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={exportToCSV}
-              className="inline-flex items-center px-3 py-1.5 text-sm bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-lg hover:shadow-sm "
-            >
-              <Download className="h-5 w-5 mr-2" />
-              Export Metrics
-            </button>
-          </div>
-        </div>
-
-        {/* Header */}
-        <div className="mb-3">
-          
-          <div className="text-center mb-3">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-orange-600 via-orange-500 to-orange-700 bg-clip-text text-transparent mb-4">
-              Risk Reports
-            </h1>
-            <p className="text-sm text-gray-600">
-              Counts and files come from the risk register.
-            </p>
-          </div>
+          <button
+            onClick={exportToCSV}
+            className="inline-flex items-center px-3 py-1.5 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+          >
+            <Download className="h-4 w-4 mr-1.5" />
+            Export Metrics
+          </button>
         </div>
 
         {/* Filters */}

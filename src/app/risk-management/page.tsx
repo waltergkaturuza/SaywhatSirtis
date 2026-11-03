@@ -276,49 +276,33 @@ export default function RiskManagementPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100/30">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
-        {/* Navigation */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <HomeBack backHref="/dashboard" backLabel="Back" />
-        </div>
-
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between gap-8 mb-4">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-orange-500 to-orange-700 bg-clip-text text-transparent mb-3">
-                Risk Management
-              </h1>
-              <p className="text-base text-gray-600">
-                Monitor and manage organizational risks with SAYWHAT intelligence and precision
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3 flex-shrink-0">
-              {canEditRisks && (
-                <Link
-                  href="/risk-management/add"
-                  className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-lg font-semibold text-sm"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Risk
-                </Link>
-              )}
+          <div className="flex items-center gap-2">
+            {canEditRisks && (
               <Link
-                href="/risk-management/matrix"
-                className="inline-flex items-center px-4 py-2 bg-white/90 backdrop-blur-sm text-black rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-md hover:shadow-lg font-semibold text-sm"
+                href="/risk-management/add"
+                className="inline-flex items-center px-3 py-1.5 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600"
               >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Risk Matrix
+                <Plus className="h-4 w-4 mr-1.5" />
+                Add Risk
               </Link>
-              <button 
-                onClick={handleExportRisks}
-                disabled={isExporting || loading}
-                className="inline-flex items-center px-4 py-2 bg-white/90 backdrop-blur-sm text-black rounded-lg border border-gray-300 hover:bg-gray-50 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isExporting ? 'Exporting...' : 'Export'}
-              </button>
-            </div>
+            )}
+            <Link
+              href="/risk-management/matrix"
+              className="inline-flex items-center px-3 py-1.5 text-sm bg-white text-gray-800 rounded-lg border border-gray-300 hover:bg-gray-50"
+            >
+              <BarChart3 className="h-4 w-4 mr-1.5" />
+              Risk Matrix
+            </Link>
+            <button
+              onClick={handleExportRisks}
+              disabled={isExporting || loading}
+              className="inline-flex items-center px-3 py-1.5 text-sm bg-white text-gray-800 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              {isExporting ? 'Exporting...' : 'Export'}
+            </button>
           </div>
         </div>
 

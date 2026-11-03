@@ -228,29 +228,15 @@ export default function AuditLogsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 px-4 py-6">
       <div className="w-full max-w-none mx-auto">
-        {/* Navigation */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <HomeBack backHref="/risk-management" backLabel="Back" />
-        </div>
-
-        {/* Header */}
-        <div className="mb-3">
-          <div className="flex items-center justify-center mb-6">
-            <button
-              onClick={exportAuditLogs}
-              className="inline-flex items-center px-3 py-1.5 text-sm bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-sm font-medium"
-            >
-              <FileText className="h-5 w-5 mr-2" />
-              Export Logs
-            </button>
-          </div>
-          
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-orange-100">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-orange-600 bg-clip-text text-transparent mb-3">
-              Audit Trail
-            </h1>
-            <p className="text-sm text-gray-600">Changes recorded when risks are created, updated, or assessed.</p>
-          </div>
+          <button
+            onClick={exportAuditLogs}
+            className="inline-flex items-center px-3 py-1.5 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+          >
+            <FileText className="h-4 w-4 mr-1.5" />
+            Export Logs
+          </button>
         </div>
 
         {/* Filters */}
