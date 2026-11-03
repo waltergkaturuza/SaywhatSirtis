@@ -1,10 +1,12 @@
 export interface ArchivedEmployee {
   id: string
+  employeeId?: string
   email: string
   username?: string
   department?: string
   position?: string
   phone?: string
+  dateJoined?: Date | string
   archiveDate?: Date
   archiveReason?: string
   clearanceStatus?: string

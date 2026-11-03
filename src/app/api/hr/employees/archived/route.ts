@@ -51,6 +51,7 @@ export async function GET() {
       department: emp.departments?.name || emp.department || 'N/A',
       position: emp.position || 'N/A',
       phone: emp.phoneNumber || 'N/A',
+      dateJoined: emp.hireDate || emp.startDate,
       archiveDate: emp.archived_at ? new Date(emp.archived_at) : new Date(emp.updatedAt),
       archiveReason: emp.archive_reason || 'Not specified',
       clearanceStatus: emp.access_revoked ? 'Revoked' : 'Pending',

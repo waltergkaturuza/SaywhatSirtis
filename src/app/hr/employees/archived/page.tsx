@@ -7,11 +7,8 @@ import { toast } from "@/hooks/use-toast"
 import {
   ArchiveBoxIcon,
   MagnifyingGlassIcon,
-  EyeIcon,
-  ArrowPathIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  UserIcon,
   LockClosedIcon,
   CalendarIcon,
   DocumentTextIcon
@@ -122,23 +119,6 @@ export default function EmployeeArchivePage() {
         return 'text-yellow-600'
       case 'revoked':
         return 'text-red-600'
-      default:
-        return 'text-gray-600'
-    }
-  }
-
-  const getReasonColor = (reason: string | undefined) => {
-    if (!reason) return 'text-gray-500'
-    
-    switch (reason.toLowerCase()) {
-      case 'resignation':
-        return 'text-blue-600'
-      case 'termination':
-        return 'text-red-600'
-      case 'retirement':
-        return 'text-purple-600'
-      case 'transfer':
-        return 'text-orange-600'
       default:
         return 'text-gray-600'
     }
@@ -366,75 +346,73 @@ export default function EmployeeArchivePage() {
         </div>
       </div>
 
-      {/* Archived Employees List */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {filteredEmployees.length === 0 ? (
-            <li className="px-4 py-12 text-center">
-              <ArchiveBoxIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No archived employees found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {searchQuery || selectedDepartment !== 'all' || selectedReason !== 'all' || selectedClearance !== 'all'
-                  ? 'Try adjusting your search or filter criteria.'
-                  : 'No employees have been archived yet.'}
-              </p>
-            </li>
-          ) : (
-            filteredEmployees.map((employee) => (
-              <li key={employee.id}>
-                <div className="px-4 py-4 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                        <UserIcon className="h-6 w-6 text-gray-600" />
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {['Name', 'Department', 'Position', 'Date joined', 'Archived', 'Purpose', 'Access', 'Actions'].map((heading) => (
+                  <th key={heading} className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {filteredEmployees.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-500">
+                    {searchQuery || selectedDepartment !== 'all' || selectedReason !== 'all' || selectedClearance !== 'all'
+                      ? 'No archived employees match these filters.'
+                      : 'No employees have been archived yet.'}
+                  </td>
+                </tr>
+              ) : (
+                filteredEmployees.map((employee) => (
+                  <tr key={employee.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2">
+                      <div className="text-sm text-gray-900">{employee.username || employee.email}</div>
+                      <div className="text-xs text-gray-500">{employee.email}</div>
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-700">{employee.department || 'N/A'}</td>
+                    <td className="px-3 py-2 text-sm text-gray-700">{employee.position || 'N/A'}</td>
+                    <td className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap">
+                      {employee.dateJoined ? new Date(employee.dateJoined).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap">
+                      {employee.archiveDate ? new Date(employee.archiveDate).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-700">
+                      {(employee.archiveReason || 'Not specified').replace(/_/g, ' ')}
+                    </td>
+                    <td className={`px-3 py-2 text-sm whitespace-nowrap ${getStatusColor(employee.clearanceStatus)}`}>
+                      {employee.clearanceStatus || 'N/A'}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setSelectedEmployee(employee)}
+                          className="rounded-md px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedEmployee(employee)
+                            setRestoreDialogOpen(true)
+                          }}
+                          className="rounded-md bg-orange-500 px-2 py-1 text-xs text-white hover:bg-orange-600"
+                        >
+                          Restore
+                        </button>
                       </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="flex items-center">
-                        <div className="text-sm font-medium text-gray-900">
-                          {employee.username || employee.email}
-                        </div>
-                        <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getReasonColor(employee.archiveReason)} bg-gray-100`}>
-                          {employee.archiveReason || 'Other'}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {employee.email} • {employee.department} • {employee.position}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        Archived: {employee.archiveDate ? new Date(employee.archiveDate).toLocaleDateString() : 'Unknown'}
-                        {employee.clearanceStatus && (
-                          <span className={`ml-2 ${getStatusColor(employee.clearanceStatus)}`}>
-                            • Clearance: {employee.clearanceStatus}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setSelectedEmployee(employee)}
-                      className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <EyeIcon className="h-4 w-4 mr-1" />
-                      View
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedEmployee(employee)
-                        setRestoreDialogOpen(true)
-                      }}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <ArrowPathIcon className="h-4 w-4 mr-1" />
-                      Restore
-                    </button>
-                  </div>
-                </div>
-              </li>
-            ))
-          )}
-        </ul>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Employee Details Modal */}
