@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { securityService } from '@/lib/security-service';
 import AuditLogger from '@/lib/audit-logger';
 import emailService from '@/lib/email-service';
+import { recordPasswordChange } from '@/lib/password-expiry';
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,6 +89,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      if (await bcrypt.compare(newPassword, user.passwordHash)) {
+        return NextResponse.json(
+          { error: 'Choose a new password that is different from your current one' },
+          { status: 400 }
+        );
+      }
+
       // Hash new password
       const saltRounds = 12;
       const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
@@ -105,6 +113,12 @@ export async function POST(request: NextRequest) {
           setTimeout(() => reject(new Error('Database update timeout')), 15000)
         )
       ]);
+
+      await recordPasswordChange(
+        user.id,
+        request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
+        request.headers.get('user-agent')
+      ).catch(err => console.error('Failed to record password change date:', err));
 
       // Log password change in audit trail
       await AuditLogger.logSecurityEvent(
