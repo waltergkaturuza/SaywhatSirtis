@@ -2,6 +2,7 @@
 
 import { SessionProvider as NextAuthSessionProvider } from "next-auth/react"
 import { ReactNode } from "react"
+import { IdleSessionGuard } from "@/components/auth/idle-session-guard"
 
 interface SessionProviderProps {
   children: ReactNode
@@ -9,8 +10,9 @@ interface SessionProviderProps {
 
 export function SessionProvider({ children }: SessionProviderProps) {
   return (
-    <NextAuthSessionProvider>
+    <NextAuthSessionProvider refetchInterval={60} refetchOnWindowFocus>
       {children}
+      <IdleSessionGuard />
     </NextAuthSessionProvider>
   )
 }

@@ -612,25 +612,32 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async jwt({ token, user, trigger }) {
-      // Handle new login
+      const now = Date.now()
+      const idleLimit = 30 * 60 * 1000
+
       if (user) {
         token.id = user.id
         token.department = (user as any).department
         token.position = (user as any).position
         token.roles = (user as any).roles
         token.permissions = (user as any).permissions
-        token.lastActivity = Date.now()
+        token.lastActivity = now
+        return token
       }
-      
-      // Update last activity on token refresh
+
+      const lastActivity = typeof token.lastActivity === 'number' ? token.lastActivity : now
+      if (typeof token.lastActivity !== 'number') token.lastActivity = now
+      if (now - lastActivity > idleLimit) {
+        throw new Error('SESSION_IDLE_TIMEOUT')
+      }
+
       if (trigger === 'update') {
-        token.lastActivity = Date.now()
+        token.lastActivity = now
       }
-      
+
       return token
     },
     async session({ session, token }) {
-      // Handle potential token decryption issues gracefully
       try {
         if (token) {
           (session.user as any).id = token.id as string
@@ -638,24 +645,9 @@ export const authOptions: NextAuthOptions = {
           (session.user as any).position = token.position as string
           (session.user as any).roles = token.roles as string[]
           (session.user as any).permissions = token.permissions as string[]
-          
-          // Check session idle timeout (30 minutes)
-          const lastActivity = (token.lastActivity as number) || Date.now();
-          const idleTimeout = 30 * 60 * 1000; // 30 minutes
-          const now = Date.now();
-          
-          if (now - lastActivity > idleTimeout) {
-            console.log('⏱️ Session idle timeout exceeded');
-            // Session will be invalidated - return null to force re-auth
-            throw new Error('SESSION_IDLE_TIMEOUT');
-          }
-          
-          // Update last activity
-          token.lastActivity = now;
         }
       } catch (error) {
         console.error('Session callback error:', error)
-        // Return session without additional data if token is corrupted
         return session
       }
       return session

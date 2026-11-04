@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { EyeIcon, EyeSlashIcon, CheckCircleIcon, SparklesIcon, UserIcon, LockClosedIcon } from "@heroicons/react/24/outline"
@@ -14,10 +14,19 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState("")
+  const [signedOutNotice, setSignedOutNotice] = useState("")
   const [requires2FA, setRequires2FA] = useState(false)
   const [twoFactorToken, setTwoFactorToken] = useState("")
   const [backupCode, setBackupCode] = useState("")
   const router = useRouter()
+
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get("reason")
+    if (reason === "idle") {
+      window.localStorage.removeItem("sirtis-last-activity")
+      setSignedOutNotice("You were signed out after 30 minutes without activity. Sign in again to continue.")
+    }
+  }, [])
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,6 +53,7 @@ export default function SignIn() {
         // Check if sign in was successful
         const session = await getSession()
         if (session) {
+          window.localStorage.setItem("sirtis-last-activity", String(Date.now()))
           setIsSuccess(true)
           // Small delay to show success state before redirect
           setTimeout(() => {
@@ -76,6 +86,7 @@ export default function SignIn() {
       } else {
         const session = await getSession()
         if (session) {
+          window.localStorage.setItem("sirtis-last-activity", String(Date.now()))
           setIsSuccess(true)
           setTimeout(() => {
             router.push("/")
@@ -187,6 +198,13 @@ export default function SignIn() {
               />
             ) : (
               <form className="space-y-4" onSubmit={handlePasswordSubmit}>
+                {signedOutNotice && (
+                  <div className="rounded-2xl bg-orange-50 border border-orange-200 p-4 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-orange-500"></div>
+                    <div className="text-sm text-gray-800 font-medium text-center">{signedOutNotice}</div>
+                  </div>
+                )}
+
                 {error && (
                   <div className="rounded-2xl bg-red-50 border border-red-200 p-4 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 bg-red-500"></div>
