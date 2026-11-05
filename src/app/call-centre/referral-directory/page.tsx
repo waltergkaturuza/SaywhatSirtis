@@ -242,8 +242,25 @@ export default function ReferralDirectoryPage() {
       }
     >
       <div className="space-y-6">
-        <div className="flex justify-end">
-          <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-end justify-between gap-4 border-b border-gray-200">
+          <div className="flex gap-2">
+            {[
+              { id: "organizations" as const, label: "Organisations" },
+              { id: "referrals" as const, label: "Referrals made" }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setView(tab.id)}
+                className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+                  view === tab.id ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <div className="mb-2 flex shrink-0 items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-2 shadow-sm">
             {view === "organizations" ? (
               <BuildingOfficeIcon className="h-6 w-6 text-orange-600" />
             ) : (
@@ -273,24 +290,6 @@ export default function ReferralDirectoryPage() {
             <button type="button" onClick={() => setNotice("")} className="text-green-700 hover:text-green-900">Dismiss</button>
           </div>
         )}
-
-        <div className="flex gap-2 border-b border-gray-200">
-          {[
-            { id: "organizations" as const, label: "Organisations" },
-            { id: "referrals" as const, label: "Referrals made" }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setView(tab.id)}
-              className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
-                view === tab.id ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
 
         {loadError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{loadError}</div>
