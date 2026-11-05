@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto'
 import { rateLimit, getClientIP, withErrorHandling } from '@/lib/production-helpers'
 import { recordCaseHistory, trackChange, type CaseChange } from '@/lib/case-audit'
 import { syncCallReferral } from '@/lib/call-centre/referral-sync'
+import { isPlaceholderOfficer } from '@/lib/call-centre/officer-names'
 
 export async function GET(request: NextRequest) {
   try {
@@ -489,7 +490,7 @@ export async function POST(request: NextRequest) {
         id: randomUUID(),
         caseNumber: finalCaseNumber,
         callNumber: finalCallNumber,
-        officerName: officerName || session.user.name,
+        officerName: session.user.name || session.user.email || (isPlaceholderOfficer(officerName) ? null : officerName),
         // Caller Information
         callerName: callerFullName || callerName || 'Unknown',
         callerPhone: callerPhoneNumber || callerPhone,
@@ -529,7 +530,7 @@ export async function POST(request: NextRequest) {
         description: description || callDescription || comment,
         summary: callDescription || comment || 'Call inquiry',
         notes: comment || description,
-        assignedOfficer: createCase ? (assignedTo || session.user.name) : null,
+        assignedOfficer: createCase ? ((!isPlaceholderOfficer(assignedTo) && assignedTo) || session.user.name) : null,
         status: 'OPEN',
         callStartTime: finalCallStartTime,
         callEndTime: finalCallEndTime,

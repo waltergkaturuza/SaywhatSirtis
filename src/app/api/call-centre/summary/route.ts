@@ -10,6 +10,7 @@ import {
   displayAgeGroupSortIndex,
   mapStoredCallerAgeToBucket,
 } from '@/lib/call-centre/caller-demographics'
+import { officerLabel, repairPlaceholderOfficersOnce } from '@/lib/call-centre/officer-names'
 
 const CASE_FLAG_VALUES = ['YES', 'yes', 'Yes']
 const FINISHED_CASE_STATUSES = ['CLOSED', 'Closed', 'closed', 'RESOLVED', 'Resolved', 'resolved', 'DONE', 'Done', 'done']
@@ -57,6 +58,8 @@ export async function GET(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    await repairPlaceholderOfficersOnce()
 
     // Check permissions
     const hasPermission = session.user?.permissions?.includes('callcentre.access') ||
@@ -379,7 +382,7 @@ export async function GET(request: NextRequest) {
         const avgCallDuration = avgDurationMinutes > 0 ? `${avgDurationMinutes} min` : 'N/A';
 
         return {
-          name: officer.officerName || 'Unknown',
+          name: officerLabel(officer.officerName),
           totalCalls: officer._count.id,
           validCalls: validCallsCount,
           cases: casesCount,

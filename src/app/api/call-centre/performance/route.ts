@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
+import { isPlaceholderOfficer, repairPlaceholderOfficersOnce, UNKNOWN_OFFICER_LABEL } from '@/lib/call-centre/officer-names'
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,6 +33,8 @@ export async function GET(request: NextRequest) {
     if (!hasPermission) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
+
+    await repairPlaceholderOfficersOnce()
 
     // Calculate date ranges
     const now = new Date()
@@ -141,8 +144,11 @@ export async function GET(request: NextRequest) {
       const totalsByOfficer = new Map<string, OfficerTotals>()
 
       for (const call of officerStats) {
-        const name = (call.officerName || call.assignedOfficer || '').trim()
-        if (!name) continue
+        const name = !isPlaceholderOfficer(call.officerName)
+          ? String(call.officerName).trim()
+          : !isPlaceholderOfficer(call.assignedOfficer)
+            ? String(call.assignedOfficer).trim()
+            : UNKNOWN_OFFICER_LABEL
         const totals = totalsByOfficer.get(name) || { calls: 0, valid: 0, cases: 0, timedCalls: 0, totalMs: 0, ratingSum: 0, ratingCount: 0 }
         totals.calls += 1
         if ((call.callValidity || '').toLowerCase() === 'valid') totals.valid += 1

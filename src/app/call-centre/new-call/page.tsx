@@ -36,7 +36,7 @@ export default function NewCallEntryPage() {
 
   // Auto-generated fields
   const currentDateTime = new Date()
-  const officerName = session?.user?.name || "Current Officer"
+  const officerName = session?.user?.name || session?.user?.email || ""
   
   const [formData, setFormData] = useState({
     // Auto-generated fields
@@ -134,6 +134,12 @@ export default function NewCallEntryPage() {
       fetchReferralOrganizations()
     }
   }, [session, fetchNextNumbers, fetchReferralOrganizations])
+
+  useEffect(() => {
+    if (officerName) {
+      setFormData(prev => (prev.officerName === officerName ? prev : { ...prev, officerName }))
+    }
+  }, [officerName])
   
   // Check user permissions
   const userPermissions = session?.user?.permissions || []
