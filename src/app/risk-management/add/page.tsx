@@ -262,35 +262,30 @@ export default function AddRiskPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <HomeBack backHref="/risk-management" backLabel="Back" />
-          </div>
-          
-          <div className="text-center">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-3">
-              Add New Risk
-            </h1>
-            <p className="text-lg text-gray-600 font-medium">Create a comprehensive risk entry and assessment for your organization</p>
+        <div className="mb-4 flex items-center gap-3">
+          <HomeBack backHref="/risk-management" backLabel="Back" />
+          <div className="min-w-0 border-l border-gray-200 pl-3">
+            <h1 className="truncate text-lg font-semibold leading-tight text-gray-900">Add New Risk</h1>
+            <p className="truncate text-xs text-gray-600">Create a comprehensive risk entry and assessment for your organization</p>
           </div>
         </div>
 
         {/* Risk Assessment Form */}
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Basic Information */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 p-8">
-            <div className="flex items-center mb-6">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mr-4">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mr-3">
                 <FileText className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+              <h2 className="text-lg font-semibold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                 Basic Information
               </h2>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="lg:col-span-2">
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Risk Title *
                 </label>
                 <input
@@ -298,13 +293,13 @@ export default function AddRiskPage() {
                   required
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-medium text-black"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-medium text-black"
                   placeholder="Enter a clear and descriptive risk title"
                 />
               </div>
               
               <div className="lg:col-span-2">
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Risk Description *
                 </label>
                 <textarea
@@ -312,20 +307,20 @@ export default function AddRiskPage() {
                   rows={4}
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-medium text-black resize-none"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-medium text-black resize-none"
                   placeholder="Provide a detailed description of the risk, its potential causes, and consequences"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Risk Category *
                 </label>
                 <select
                   required
                   value={formData.category}
                   onChange={(e) => handleInputChange('category', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
                 >
                   <option value="OPERATIONAL">Operational</option>
                   <option value="STRATEGIC">Strategic</option>
@@ -339,14 +334,14 @@ export default function AddRiskPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Department
                 </label>
                 <select
                   value={formData.department}
                   onChange={(e) => handleInputChange('department', e.target.value)}
                   disabled={loadingDepartments}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black disabled:opacity-60"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black disabled:opacity-60"
                 >
                   {loadingDepartments ? (
                     <option value="">Loading departments...</option>
@@ -366,7 +361,7 @@ export default function AddRiskPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Date Identified *
                 </label>
                 <input
@@ -374,19 +369,19 @@ export default function AddRiskPage() {
                   required
                   value={formData.dateIdentified}
                   onChange={(e) => handleInputChange('dateIdentified', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Risk Owner
                 </label>
                 <select
                   value={formData.ownerId || ''}
                   onChange={(e) => handleInputChange('ownerId', e.target.value || undefined)}
                   disabled={loadingEmployees}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black disabled:opacity-60"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black disabled:opacity-60"
                 >
                   <option value="">Select Risk Owner</option>
                   {loadingEmployees ? (
@@ -410,26 +405,26 @@ export default function AddRiskPage() {
           </div>
 
           {/* Risk Assessment */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 p-8">
-            <div className="flex items-center mb-6">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mr-4">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mr-3">
                 <Activity className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+              <h2 className="text-lg font-semibold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                 Risk Assessment
               </h2>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Probability *
                 </label>
                 <select
                   required
                   value={formData.probability}
                   onChange={(e) => handleInputChange('probability', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
                 >
                   <option value="VERY_LOW">Very Low (&lt; 10%)</option>
                   <option value="LOW">Low (10-30%)</option>
@@ -440,14 +435,14 @@ export default function AddRiskPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Impact *
                 </label>
                 <select
                   required
                   value={formData.impact}
                   onChange={(e) => handleInputChange('impact', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
                 >
                   <option value="VERY_LOW">Very Low (Minimal)</option>
                   <option value="LOW">Low (Minor)</option>
@@ -458,11 +453,11 @@ export default function AddRiskPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Risk Score
                 </label>
                 <div className="flex items-center space-x-4">
-                  <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                  <div className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                     {riskScore}
                   </div>
                   <div className={`px-4 py-2 rounded-xl text-sm font-bold shadow-lg ${riskLevel.color}`}>
@@ -473,13 +468,13 @@ export default function AddRiskPage() {
             </div>
               
             <div className="mt-8">
-              <label className="block text-sm font-bold text-orange-800 mb-3">
+              <label className="block text-xs font-semibold text-orange-800 mb-1">
                 Status
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => handleInputChange('status', e.target.value)}
-                className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
+                className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
               >
                 <option value="OPEN">Open</option>
                 <option value="ESCALATED">Escalated</option>
@@ -490,44 +485,44 @@ export default function AddRiskPage() {
           </div>
 
           {/* Mitigation Planning */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 p-8">
-            <div className="flex items-center mb-6">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mr-4">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mr-3">
                 <CheckCircle className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+              <h2 className="text-lg font-semibold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                 Mitigation Planning (Optional)
               </h2>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="lg:col-span-2">
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Mitigation Strategy
                 </label>
                 <textarea
                   rows={3}
                   value={formData.mitigationStrategy}
                   onChange={(e) => handleInputChange('mitigationStrategy', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-medium text-black resize-none"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-medium text-black resize-none"
                   placeholder="Describe the planned mitigation approach and actions"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Target Completion Date
                 </label>
                 <input
                   type="date"
                   value={formData.targetDate}
                   onChange={(e) => handleInputChange('targetDate', e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Estimated Cost
                 </label>
                 <input
@@ -535,7 +530,7 @@ export default function AddRiskPage() {
                   step="0.01"
                   value={formData.actualCost || ''}
                   onChange={(e) => handleInputChange('actualCost', e.target.value ? parseFloat(e.target.value) : undefined)}
-                  className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
+                  className="w-full px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-semibold text-black"
                   placeholder="0.00"
                 />
               </div>
@@ -543,20 +538,20 @@ export default function AddRiskPage() {
           </div>
 
           {/* Tags and Attachments */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 p-8">
-            <div className="flex items-center mb-6">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mr-4">
+          <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mr-3">
                 <Plus className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+              <h2 className="text-lg font-semibold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                 Additional Information
               </h2>
             </div>
             
-            <div className="space-y-8">
+            <div className="space-y-4">
               {/* Tags */}
               <div>
-                <label className="block text-sm font-bold text-orange-800 mb-3">
+                <label className="block text-xs font-semibold text-orange-800 mb-1">
                   Tags
                 </label>
                 <div className="flex items-center space-x-3 mb-4">
@@ -565,13 +560,13 @@ export default function AddRiskPage() {
                     value={currentTag}
                     onChange={(e) => setCurrentTag(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                    className="flex-1 px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-medium text-black"
+                    className="flex-1 px-3 py-2 text-sm border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-300 bg-white/90 backdrop-blur-sm font-medium text-black"
                     placeholder="Enter a tag and press Enter"
                   />
                   <button
                     type="button"
                     onClick={addTag}
-                    className="px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:from-orange-600 hover:to-red-600 transition-all duration-300 shadow-lg font-semibold"
+                    className="px-3 py-2 text-sm bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all duration-300 shadow-lg font-semibold"
                   >
                     <Plus className="h-5 w-5" />
                   </button>
@@ -600,8 +595,8 @@ export default function AddRiskPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Supporting Documents
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                  <Upload className="mx-auto h-8 w-8 text-gray-400" />
                   <div className="mt-4">
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <span className="mt-2 block text-sm font-medium text-gray-900">
@@ -654,14 +649,14 @@ export default function AddRiskPage() {
           <div className="flex items-center justify-end space-x-4">
             <Link
               href="/risk-management"
-              className="px-6 py-3 border-2 border-orange-300 text-orange-700 rounded-xl font-semibold hover:bg-orange-50 hover:text-orange-900 transition-all duration-300 shadow-lg"
+              className="px-4 py-2 text-sm border-2 border-orange-300 text-orange-700 rounded-lg font-semibold hover:bg-orange-50 hover:text-orange-900 transition-all duration-300 shadow-lg"
             >
               Cancel
             </Link>
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-bold shadow-lg hover:from-orange-700 hover:to-red-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-5 py-2 text-sm bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg font-bold shadow-lg hover:from-orange-700 hover:to-red-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -670,7 +665,7 @@ export default function AddRiskPage() {
                 </>
               ) : (
                 <>
-                  <Save className="h-5 w-5 mr-3" />
+                  <Save className="h-4 w-4 mr-2" />
                   Create Risk
                 </>
               )}
