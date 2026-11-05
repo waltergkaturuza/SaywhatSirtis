@@ -326,7 +326,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
   if (!permissions.canCreate) {
     return (
       <div className="p-6 text-center">
-        <ClipboardDocumentListIcon className="mx-auto h-12 w-12 text-gray-400" />
+        <ClipboardDocumentListIcon className="mx-auto h-8 w-8 text-gray-400" />
         <h3 className="mt-2 text-sm font-medium text-gray-900">Access Denied</h3>
         <p className="mt-1 text-sm text-gray-500">
           You don't have permission to register new assets.
@@ -337,7 +337,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {/* Success Modal - Premium Design */}
         {showSuccessModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300">
@@ -352,7 +352,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 </p>
                 <button
                   onClick={() => setShowSuccessModal(false)}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                   Continue
                 </button>
@@ -362,28 +362,25 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
         )}
 
         {/* Premium Header Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl mb-6 shadow-lg">
-            <ClipboardDocumentListIcon className="h-8 w-8 text-white" />
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500 shadow-sm">
+            <ClipboardDocumentListIcon className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-black to-gray-800 bg-clip-text text-transparent mb-4">
-            Asset Registration
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            Create comprehensive asset records with our streamlined registration system
-          </p>
-          <div className="mt-4 h-1 w-24 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full mx-auto"></div>
+          <div>
+            <h1 className="text-lg font-semibold text-gray-900">Asset Registration</h1>
+            <p className="text-sm text-gray-600">Create comprehensive asset records with our streamlined registration system</p>
+          </div>
         </div>
 
         {/* World-Class Progress Steps */}
-        <div className="mb-12">
-          <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100/50 backdrop-blur-sm">
+        <div className="mb-4">
+          <div className="bg-white rounded-xl px-3 py-2 shadow-sm border border-gray-100/50">
             <div className="flex items-center justify-between relative">
               {/* Enhanced connecting line background */}
-              <div className="absolute top-7 left-8 right-8 h-1 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full z-0"></div>
+              <div className="absolute top-[18px] left-8 right-8 h-0.5 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full z-0"></div>
               {/* Enhanced active progress line with gradient */}
               <div 
-                className="absolute top-7 left-8 h-1 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 rounded-full z-10 transition-all duration-500 ease-out shadow-sm"
+                className="absolute top-[18px] left-8 h-0.5 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 rounded-full z-10 transition-all duration-500 ease-out"
                 style={{ width: `calc(${((activeStep - 1) / 3) * 100}% - 0px)` }}
               ></div>
               
@@ -394,22 +391,22 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 { step: 4, title: 'Additional Info', description: 'Images, documents, tags', icon: '📎' }
               ].map((item, index) => (
                 <div key={item.step} className="flex flex-col items-center flex-1 relative z-20">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold transition-all duration-300 shadow-lg ${
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-sm ${
                     activeStep >= item.step
                       ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-orange-200 transform scale-105'
                       : activeStep === item.step - 1
                       ? 'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-600 border-2 border-orange-300 hover:scale-102'
                       : 'bg-white text-gray-500 border-2 border-gray-200 hover:border-orange-200'
                   }`}>
-                    <span className="text-sm">{activeStep >= item.step ? '✓' : item.step}</span>
+                    <span className="text-xs">{activeStep >= item.step ? '✓' : item.step}</span>
                   </div>
-                  <div className="mt-4 text-center max-w-32">
-                    <div className={`text-sm font-semibold transition-colors duration-300 ${
+                  <div className="mt-1.5 text-center max-w-32">
+                    <div className={`text-xs font-semibold transition-colors duration-300 ${
                       activeStep >= item.step ? 'text-orange-600' : 'text-gray-600'
                     }`}>
                       {item.title}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1 leading-tight">{item.description}</div>
+                    <div className="text-[11px] text-gray-500 leading-tight">{item.description}</div>
                   </div>
                 </div>
               ))}
@@ -419,7 +416,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
 
         {/* Premium Validation Errors */}
         {validationErrors.length > 0 && (
-          <div className="mb-8 p-6 border border-red-200 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl shadow-lg">
+          <div className="mb-4 p-4 border border-red-200 bg-gradient-to-r from-red-50 to-pink-50 rounded-xl shadow-sm">
             <div className="flex items-start space-x-3">
               <div className="flex-shrink-0">
                 <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
@@ -427,7 +424,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                 </div>
               </div>
               <div className="flex-1">
-                <h4 className="text-lg font-semibold text-red-800 mb-3">Please review and fix the following:</h4>
+                <h4 className="text-sm font-semibold text-red-800 mb-2">Please review and fix the following:</h4>
                 <ul className="space-y-2">
                   {validationErrors.map((error, index) => (
                     <li key={index} className="flex items-start space-x-2 text-red-700">
@@ -442,31 +439,31 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
         )}
 
         {/* Premium Step Content Container */}
-        <div className="bg-white/80 backdrop-blur-sm border border-gray-200/50 rounded-3xl p-8 mb-8 shadow-2xl shadow-gray-200/20 ring-1 ring-gray-900/5">
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4 shadow-sm">
         {activeStep === 1 && (
-          <div className="space-y-6">
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">Basic Information</h3>
+          <div className="space-y-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
               <p className="text-gray-600 text-sm">Provide essential details about your asset</p>
-              <div className="mt-4 h-0.5 w-16 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"></div>
+              <div className="mt-2 h-0.5 w-12 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"></div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="group">
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Asset Name *
                 </label>
                 <input
                   type="text"
                   value={createFormData.name || ''}
                   onChange={(e) => setCreateFormData({...createFormData, name: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
                   placeholder="Enter asset name"
                 />
               </div>
 
               <div className="group">
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Asset Number
                 </label>
                 <div className="flex rounded-xl overflow-hidden shadow-sm">
@@ -474,12 +471,12 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                     type="text"
                     value={createFormData.assetNumber || ''}
                     onChange={(e) => setCreateFormData({...createFormData, assetNumber: e.target.value})}
-                    className="flex-1 px-4 py-3 border border-gray-300 bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 rounded-l-xl border-r-0"
+                    className="flex-1 px-3 py-2 border border-gray-300 bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 rounded-l-xl border-r-0"
                     placeholder="Auto-generated"
                   />
                   <button
                     onClick={() => setCreateFormData({...createFormData, assetNumber: generateAssetNumber()})}
-                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold transition-all duration-200 rounded-r-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold transition-all duration-200 rounded-r-xl shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
                   >
                     Generate
                   </button>
@@ -487,7 +484,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div className="group">
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Category *
                 </label>
                 <select
@@ -507,7 +504,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                       })
                     }
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm appearance-none cursor-pointer"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm appearance-none cursor-pointer"
                 >
                   <option value="" className="text-gray-500">Select category</option>
                   {Object.keys(ASSET_CATEGORIES).map(category => (
@@ -517,7 +514,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Asset Type *
                 </label>
                 <select
@@ -539,7 +536,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                       })
                     }
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   disabled={!createFormData.category}
                 >
                   <option value="">Select type</option>
@@ -556,14 +553,14 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Description
                 </label>
                 <textarea
                   value={createFormData.description || ''}
                   onChange={(e) => setCreateFormData({...createFormData, description: e.target.value})}
                   rows={3}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200 resize-none"
                   placeholder="Enter asset description"
                 />
               </div>
@@ -572,55 +569,55 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
         )}
 
         {activeStep === 2 && (
-          <div className="space-y-6">
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">Technical Details</h3>
+          <div className="space-y-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Technical Details</h3>
               <p className="text-gray-600 text-sm">Complete the details below</p>
-              <div className="mt-4 h-0.5 w-16 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"></div>
+              <div className="mt-2 h-0.5 w-12 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"></div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Brand *
                 </label>
                 <input
                   type="text"
                   value={createFormData.brand || ''}
                   onChange={(e) => setCreateFormData({...createFormData, brand: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="Enter brand name"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Model *
                 </label>
                 <input
                   type="text"
                   value={createFormData.model || ''}
                   onChange={(e) => setCreateFormData({...createFormData, model: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="Enter model"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Serial Number *
                 </label>
                 <input
                   type="text"
                   value={createFormData.serialNumber || ''}
                   onChange={(e) => setCreateFormData({...createFormData, serialNumber: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="Enter serial number"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Barcode
                 </label>
                 <div className="flex">
@@ -647,20 +644,20 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   RFID Tag
                 </label>
                 <input
                   type="text"
                   value={createFormData.rfidTag || ''}
                   onChange={(e) => setCreateFormData({...createFormData, rfidTag: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="RFID tag number"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Physical asset tag
                 </label>
                 <input
@@ -669,13 +666,13 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   onChange={(e) =>
                     setCreateFormData({ ...createFormData, assetTag: e.target.value })
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
                   placeholder="Sticker or external tag (optional)"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Last audit
                 </label>
                 <input
@@ -684,12 +681,12 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   onChange={(e) =>
                     setCreateFormData({ ...createFormData, lastAuditDate: e.target.value })
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Next maintenance
                 </label>
                 <input
@@ -698,12 +695,12 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                   onChange={(e) =>
                     setCreateFormData({ ...createFormData, nextMaintenanceDate: e.target.value })
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 shadow-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   QR Code
                 </label>
                 <div className="flex">
@@ -727,16 +724,16 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
         )}
 
         {activeStep === 3 && (
-          <div className="space-y-6">
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">Assignment & Value</h3>
+          <div className="space-y-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Assignment & Value</h3>
               <p className="text-gray-600 text-sm">Complete the details below</p>
-              <div className="mt-4 h-0.5 w-16 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"></div>
+              <div className="mt-2 h-0.5 w-12 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"></div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Location *
                 </label>
                 <select
@@ -756,7 +753,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                       })
                     }
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="">Select location</option>
                   {LOCATIONS.map(location => (
@@ -766,13 +763,13 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Department *
                 </label>
                 <select
                   value={createFormData.department || ''}
                   onChange={(e) => setCreateFormData({...createFormData, department: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   disabled={loadingData}
                 >
                   <option value="">
@@ -787,7 +784,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Assigned To
                 </label>
                 <select
@@ -800,7 +797,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
                       assignedEmail: selectedEmployee?.email || ''
                     })
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   disabled={loadingData}
                 >
                   <option value="">
@@ -815,13 +812,13 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Custodian
                 </label>
                 <select
                   value={createFormData.custodian || ''}
                   onChange={(e) => setCreateFormData({...createFormData, custodian: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   disabled={loadingData}
                 >
                   <option value="">
@@ -836,14 +833,14 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Procurement Value *
                 </label>
                 <input
                   type="number"
                   value={createFormData.procurementValue || ''}
                   onChange={(e) => setCreateFormData({...createFormData, procurementValue: parseFloat(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="0.00"
                   min="0"
                   step="0.01"
@@ -851,14 +848,14 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Depreciation Rate (%)
                 </label>
                 <input
                   type="number"
                   value={createFormData.depreciationRate || ''}
                   onChange={(e) => setCreateFormData({...createFormData, depreciationRate: parseFloat(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="15"
                   min="0"
                   max="100"
@@ -867,13 +864,13 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Depreciation Method
                 </label>
                 <select
                   value={createFormData.depreciationMethod || 'straight-line'}
                   onChange={(e) => setCreateFormData({...createFormData, depreciationMethod: e.target.value as any})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="straight-line">Straight Line</option>
                   <option value="declining-balance">Declining Balance</option>
@@ -883,13 +880,13 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Condition
                 </label>
                 <select
                   value={createFormData.condition || 'excellent'}
                   onChange={(e) => setCreateFormData({...createFormData, condition: e.target.value as any})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   {CONDITIONS.map(condition => (
                     <option key={condition} value={condition.toLowerCase()}>{condition}</option>
@@ -898,13 +895,13 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Procurement Type
                 </label>
                 <select
                   value={createFormData.procurementType || ''}
                   onChange={(e) => setCreateFormData({...createFormData, procurementType: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="">Select type</option>
                   {PROCUREMENT_TYPES.map(type => (
@@ -914,13 +911,13 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Funding Source
                 </label>
                 <select
                   value={createFormData.fundingSource || ''}
                   onChange={(e) => setCreateFormData({...createFormData, fundingSource: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="">Select source</option>
                   {FUNDING_SOURCES.map(source => (
@@ -930,51 +927,51 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Procurement Date
                 </label>
                 <input
                   type="date"
                   value={createFormData.procurementDate || ''}
                   onChange={(e) => setCreateFormData({...createFormData, procurementDate: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Warranty Expiry
                 </label>
                 <input
                   type="date"
                   value={createFormData.warrantyExpiry || ''}
                   onChange={(e) => setCreateFormData({...createFormData, warrantyExpiry: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Expected Lifespan (years)
                 </label>
                 <input
                   type="number"
                   value={createFormData.expectedLifespan || ''}
                   onChange={(e) => setCreateFormData({...createFormData, expectedLifespan: parseInt(e.target.value)})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                   placeholder="5"
                   min="1"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                   Usage Type
                 </label>
                 <select
                   value={createFormData.usageType || ''}
                   onChange={(e) => setCreateFormData({...createFormData, usageType: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm focus:ring-orange-500 focus:border-orange-500 hover:border-orange-300 transition-colors duration-200"
                 >
                   <option value="">Select usage type</option>
                   {USAGE_TYPES.map(type => (
@@ -984,23 +981,23 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
               </div>
             </div>
 
-            <div className="border-t border-gray-200 pt-6 mt-2 space-y-6">
+            <div className="border-t border-gray-200 pt-6 mt-2 space-y-4">
               <div>
                 <h4 className="text-lg font-semibold text-gray-900 mb-1">Program & projects</h4>
                 <p className="text-sm text-gray-500 mb-4">
                   Link this asset to a program and one or more system projects (same list as Programs).
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+                  <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                     Assigned Program
                   </label>
                   <input
                     type="text"
                     value={createFormData.assignedProgram || ''}
                     onChange={(e) => setCreateFormData({ ...createFormData, assignedProgram: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-300 transition-all duration-200 text-gray-900 placeholder-gray-500 shadow-sm"
                     placeholder="Program name"
                   />
                 </div>
@@ -1052,21 +1049,21 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
         )}
 
         {activeStep === 4 && (
-          <div className="space-y-6">
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">Additional Information</h3>
+          <div className="space-y-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Additional Information</h3>
               <p className="text-gray-600 text-sm">Complete the details below</p>
-              <div className="mt-4 h-0.5 w-16 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"></div>
+              <div className="mt-2 h-0.5 w-12 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"></div>
             </div>
             
             {/* Image Upload */}
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+              <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                 Asset Images
               </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
                 <div className="text-center">
-                  <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <PhotoIcon className="mx-auto h-8 w-8 text-gray-400" />
                   <div className="mt-4">
                     <label htmlFor="image-upload" className="cursor-pointer">
                       <span className="mt-2 block text-sm font-medium text-gray-900">
@@ -1112,12 +1109,12 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
 
             {/* Document Upload */}
             <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-3 group-focus-within:text-orange-600 transition-colors">
+              <label className="block text-sm font-semibold text-gray-800 mb-1.5 group-focus-within:text-orange-600 transition-colors">
                 Supporting Documents
               </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
                 <div className="text-center">
-                  <DocumentDuplicateIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <DocumentDuplicateIcon className="mx-auto h-8 w-8 text-gray-400" />
                   <div className="mt-4">
                     <label htmlFor="document-upload" className="cursor-pointer">
                       <span className="mt-2 block text-sm font-medium text-gray-900">
@@ -1172,7 +1169,7 @@ export const AssetRegistration: React.FC<AssetRegistrationProps> = ({
             {activeStep > 1 && (
               <button
                 onClick={prevStep}
-                className="inline-flex items-center px-6 py-3 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                className="inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
