@@ -1618,6 +1618,56 @@ model users {
   ProjectDraft                                                      ProjectDraft[]
 }
 
+model referral_organizations {
+  id          String                  @id
+  name        String
+  description String?
+  focusAreas  String[]                @default([])
+  categories  String[]                @default([])
+  address     String?
+  city        String?
+  province    String?
+  phones      String[]                @default([])
+  email       String?
+  website     String?
+  isActive    Boolean                 @default(true)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  referrals   call_centre_referrals[]
+
+  @@index([province])
+  @@index([isActive])
+}
+
+model call_centre_referrals {
+  id                String                 @id
+  referralNumber    String                 @unique
+  organizationId    String
+  caseNumber        String?
+  clientName        String
+  clientPhone       String?
+  clientAge         String?
+  clientGender      String?
+  clientProvince    String?
+  reason            String
+  servicesRequested String?
+  urgency           String                 @default("MEDIUM")
+  consentGiven      Boolean                @default(false)
+  followUpDate      DateTime?
+  notes             String?
+  status            String                 @default("PENDING")
+  createdById       String?
+  createdByName     String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  organization      referral_organizations @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([caseNumber])
+  @@index([status])
+  @@index([createdAt])
+}
+
 model verificationtokens {
   identifier String
   token      String   @unique

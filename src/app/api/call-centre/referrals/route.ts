@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { referralDirectory, type ReferralOrganization } from '@/data/referral-directory';
+import { canUseCallCentre, listReferralOrganizations } from '@/lib/call-centre/referral-store';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,48 +11,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check permissions - allow call centre access
-    const hasPermission = session.user.permissions?.includes('calls.view') ||
-      session.user.permissions?.includes('calls.full_access') ||
-      session.user.permissions?.includes('callcentre.access') ||
-      session.user.permissions?.includes('call_center_full') ||
-      session.user.permissions?.includes('callcentre.officer') ||
-      session.user.roles?.some(role => ['admin', 'manager', 'advance_user_1'].includes(role.toLowerCase()));
-
-    if (!hasPermission) {
+    if (!canUseCallCentre(session)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get query parameters for filtering
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const province = searchParams.get('province');
-    const search = searchParams.get('search');
-
-    let organizations = referralDirectory;
-
-    // Apply filters if provided
-    if (category && category !== 'all') {
-      organizations = organizations.filter(org => 
-        org.categories.some(cat => cat.toLowerCase().includes(category.toLowerCase()))
-      );
-    }
-
-    if (province && province !== 'all') {
-      organizations = organizations.filter(org => 
-        org.province?.toLowerCase() === province.toLowerCase()
-      );
-    }
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      organizations = organizations.filter(org => 
-        org.name.toLowerCase().includes(searchLower) ||
-        org.focusAreas.some(area => area.toLowerCase().includes(searchLower)) ||
-        org.categories.some(cat => cat.toLowerCase().includes(searchLower)) ||
-        org.description.toLowerCase().includes(searchLower)
-      );
-    }
+    const organizations = await listReferralOrganizations({
+      category: searchParams.get('category'),
+      province: searchParams.get('province'),
+      search: searchParams.get('search')
+    });
 
     // Transform for dropdown usage - simplified format
     const dropdownData = organizations.map(org => ({
