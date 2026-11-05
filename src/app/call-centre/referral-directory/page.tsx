@@ -213,11 +213,25 @@ export default function ReferralDirectoryPage() {
       }
     >
       <div className="space-y-6">
-        <div className="flex items-center justify-end">
-          <div className="text-sm text-gray-500">
-            {view === "organizations"
-              ? `${filteredOrganizations.length} of ${organizations.length} organizations`
-              : `${referrals.length} referrals`}
+        <div className="flex justify-end">
+          <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+            {view === "organizations" ? (
+              <BuildingOfficeIcon className="h-6 w-6 text-orange-600" />
+            ) : (
+              <ShareIcon className="h-6 w-6 text-orange-600" />
+            )}
+            <div>
+              <p className="text-xl font-semibold leading-tight text-gray-900">
+                {view === "organizations" ? filteredOrganizations.length : referrals.length}
+              </p>
+              <p className="text-xs text-gray-500">
+                {view === "organizations"
+                  ? filteredOrganizations.length === organizations.length
+                    ? "Organisations"
+                    : `of ${organizations.length} organisations`
+                  : referrals.length === 1 ? "Referral made" : "Referrals made"}
+              </p>
+            </div>
           </div>
         </div>
 
