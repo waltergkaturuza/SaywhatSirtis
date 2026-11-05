@@ -196,3 +196,39 @@ ORDER BY confidence, "createdAt" DESC;
 -- SET "officerName" = m.officer, "updatedAt" = NOW()
 -- FROM matches m
 -- WHERE c.id = m.id AND c."officerName" ILIKE 'current officer';
+
+-- 11. Reviewed fix from the step 9 results (5 November 2026). Remove the leading "--" to run it.
+--     Includes the 8 High matches plus 14 calls that were the first call of an officer's shift:
+--     the previous named call was hours or days earlier and the same officer saved the next call minutes later.
+--     Left out on purpose:
+--       - 4 cases (0004134/2026, 0002063/2026, 0001161/2026, 0000860/2025) - the app fills these from case history
+--       - 7 unclear calls to confirm with the officers: 0004094/2026, 0002561/2026, 0002047/2026,
+--         0003740/2026, 0003264/2026, 0001588/2026, 0000118/2026
+-- UPDATE call_records c
+-- SET "officerName" = v.officer, "updatedAt" = NOW()
+-- FROM (VALUES
+--   ('0002263/2026', 'Millicent Ngwena1'),
+--   ('0001678/2026', 'Tamara Makoni'),
+--   ('0001252/2026', 'Millicent Ngwena1'),
+--   ('0000615/2026', 'Ryan Jimu'),
+--   ('0001761/2025', 'Tracy Madhadha'),
+--   ('0000119/2025', 'Ryan Jimu'),
+--   ('0000049/2025', 'Tracy Madhadha'),
+--   ('0000030/2025', 'Ryan Jimu'),
+--   ('0004215/2026', 'Tamara Makoni'),
+--   ('0004186/2026', 'Tamara Makoni'),
+--   ('0003969/2026', 'Tamara Makoni'),
+--   ('0003968/2026', 'Tamara Makoni'),
+--   ('0003581/2026', 'Tamara Makoni'),
+--   ('0003466/2026', 'Tamara Makoni'),
+--   ('0002367/2026', 'Tamara Makoni'),
+--   ('0002311/2026', 'Tamara Makoni'),
+--   ('0001281/2026', 'Tamara Makoni'),
+--   ('0002879/2026', 'Ryan Jimu'),
+--   ('0002486/2026', 'Tapiwanashe Chifamba'),
+--   ('0001227/2025', 'Susan Rutendo Mharapara'),
+--   ('0001144/2025', 'Sacha Mupunga'),
+--   ('0000568/2025', 'Ryan Jimu')
+-- ) AS v("callNumber", officer)
+-- WHERE c."callNumber" = v."callNumber"
+--   AND c."officerName" ILIKE 'current officer';
