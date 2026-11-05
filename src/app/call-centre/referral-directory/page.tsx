@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
-  ArrowLeftIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
   PhoneIcon,
@@ -198,11 +197,7 @@ export default function ReferralDirectoryPage() {
       }
     >
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Link href="/call-centre" className="flex items-center text-gray-600 hover:text-orange-600">
-            <ArrowLeftIcon className="h-5 w-5 mr-2" />
-            Back to Call Centre
-          </Link>
+        <div className="flex items-center justify-end">
           <div className="text-sm text-gray-500">
             {view === "organizations"
               ? `${filteredOrganizations.length} of ${organizations.length} organizations`
