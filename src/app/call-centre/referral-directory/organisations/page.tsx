@@ -28,17 +28,38 @@ type Organisation = {
   phones: string[]
   email: string | null
   website: string | null
+  emails?: string[]
+  websites?: string[]
+  contactPersons?: ContactPersonForm[]
   isActive: boolean
   referralCount: number
   updatedAt: string
 }
+
+type ContactPersonForm = { name: string; role?: string; phone?: string; email?: string }
+type ListField = "phones" | "emails" | "websites"
 
 const PROVINCES = [
   "National", "Multiple", "Bulawayo", "Harare", "Manicaland", "Mashonaland Central", "Mashonaland East",
   "Mashonaland West", "Masvingo", "Matabeleland North", "Matabeleland South", "Midlands"
 ]
 
-const emptyForm = {
+type FormState = {
+  name: string
+  description: string
+  focusAreas: string
+  categories: string
+  address: string
+  city: string
+  province: string
+  phones: string[]
+  emails: string[]
+  websites: string[]
+  contactPersons: ContactPersonForm[]
+  isActive: boolean
+}
+
+const emptyForm: FormState = {
   name: "",
   description: "",
   focusAreas: "",
@@ -46,13 +67,18 @@ const emptyForm = {
   address: "",
   city: "",
   province: "",
-  phones: "",
-  email: "",
-  website: "",
+  phones: [""],
+  emails: [""],
+  websites: [""],
+  contactPersons: [],
   isActive: true
 }
 
-type FormState = typeof emptyForm
+const LIST_LABELS: Record<ListField, { title: string; add: string; placeholder: string; type: string }> = {
+  phones: { title: "Phone numbers", add: "Add phone", placeholder: "+263 242 571 184", type: "tel" },
+  emails: { title: "Emails", add: "Add email", placeholder: "info@organisation.org", type: "email" },
+  websites: { title: "Websites", add: "Add website", placeholder: "www.organisation.org", type: "text" }
+}
 
 const inputClass = (invalid?: boolean) =>
   `w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
@@ -107,7 +133,8 @@ export default function ReferralOrganisationsPage() {
         (org.province || "").toLowerCase().includes(query) ||
         (org.city || "").toLowerCase().includes(query) ||
         org.categories.some((item) => item.toLowerCase().includes(query)) ||
-        org.focusAreas.some((item) => item.toLowerCase().includes(query))
+        org.focusAreas.some((item) => item.toLowerCase().includes(query)) ||
+        (org.contactPersons || []).some((person) => person.name.toLowerCase().includes(query))
       )
     })
   }, [organisations, search, statusFilter])
@@ -130,9 +157,15 @@ export default function ReferralOrganisationsPage() {
       address: org.address || "",
       city: org.city || "",
       province: org.province || "",
-      phones: org.phones.join("\n"),
-      email: org.email || "",
-      website: org.website || "",
+      phones: org.phones.length ? [...org.phones] : [""],
+      emails: org.emails?.length ? [...org.emails] : org.email ? [org.email] : [""],
+      websites: org.websites?.length ? [...org.websites] : org.website ? [org.website] : [""],
+      contactPersons: (org.contactPersons || []).map((person) => ({
+        name: person.name || "",
+        role: person.role || "",
+        phone: person.phone || "",
+        email: person.email || ""
+      })),
       isActive: org.isActive
     })
     setErrors({})
@@ -140,14 +173,52 @@ export default function ReferralOrganisationsPage() {
     setFormOpen(true)
   }
 
-  const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((current) => ({ ...current, [key]: value }))
+  const clearError = (key: string) => {
     setErrors((current) => {
-      if (!current[key as string]) return current
+      if (!current[key]) return current
       const next = { ...current }
-      delete next[key as string]
+      delete next[key]
       return next
     })
+  }
+
+  const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setForm((current) => ({ ...current, [key]: value }))
+    clearError(key as string)
+  }
+
+  const setListItem = (field: ListField, index: number, value: string) => {
+    setForm((current) => ({ ...current, [field]: current[field].map((item, i) => (i === index ? value : item)) }))
+    clearError(`${field}.${index}`)
+  }
+
+  const addListItem = (field: ListField) => {
+    setForm((current) => ({ ...current, [field]: [...current[field], ""] }))
+  }
+
+  const removeListItem = (field: ListField, index: number) => {
+    setForm((current) => {
+      const next = current[field].filter((_, i) => i !== index)
+      return { ...current, [field]: next.length ? next : [""] }
+    })
+    setErrors({})
+  }
+
+  const setPerson = (index: number, key: keyof ContactPersonForm, value: string) => {
+    setForm((current) => ({
+      ...current,
+      contactPersons: current.contactPersons.map((person, i) => (i === index ? { ...person, [key]: value } : person))
+    }))
+    clearError(`contactPersons.${index}.${key}`)
+  }
+
+  const addPerson = () => {
+    setForm((current) => ({ ...current, contactPersons: [...current.contactPersons, { name: "", role: "", phone: "", email: "" }] }))
+  }
+
+  const removePerson = (index: number) => {
+    setForm((current) => ({ ...current, contactPersons: current.contactPersons.filter((_, i) => i !== index) }))
+    setErrors({})
   }
 
   const save = async (event: React.FormEvent) => {
@@ -308,7 +379,9 @@ export default function ReferralOrganisationsPage() {
               ) : (
                 visible.map((org) => {
                   const location = [org.city, org.province].filter(Boolean).join(", ")
-                  const contact = org.phones[0] || org.email || ""
+                  const emails = org.emails?.length ? org.emails : org.email ? [org.email] : []
+                  const contact = org.phones[0] || emails[0] || ""
+                  const extraContacts = org.phones.length + emails.length - (contact ? 1 : 0)
                   return (
                     <tr key={org.id} className={`hover:bg-orange-50 ${org.isActive ? "" : "opacity-60"}`}>
                       <td className="max-w-0 overflow-hidden px-3 py-2">
@@ -320,7 +393,7 @@ export default function ReferralOrganisationsPage() {
                       </td>
                       <td className="max-w-0 overflow-hidden px-3 py-2">
                         <div className="truncate text-sm text-gray-700" title={contact}>{contact || "—"}</div>
-                        {org.phones.length > 1 && <div className="truncate text-xs text-gray-500">+{org.phones.length - 1} more</div>}
+                        {extraContacts > 0 && <div className="truncate text-xs text-gray-500">+{extraContacts} more</div>}
                       </td>
                       <td className="max-w-0 overflow-hidden px-3 py-2">
                         <div className="truncate text-xs text-gray-600" title={org.categories.join(", ")}>{org.categories.join(", ") || "—"}</div>
@@ -405,25 +478,102 @@ export default function ReferralOrganisationsPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Phone numbers</label>
-                  <textarea rows={3} value={form.phones} onChange={(e) => setField("phones", e.target.value)} className={inputClass(Boolean(errors.phones))} placeholder={"+263 242 571 184\n+263 772 146 247"} />
-                  <p className="mt-1 text-xs text-gray-500">One per line</p>
-                  {errors.phones && <p className="mt-1 text-xs text-red-600">{errors.phones}</p>}
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-700">Email</label>
-                    <input value={form.email} onChange={(e) => setField("email", e.target.value)} className={inputClass(Boolean(errors.email))} />
-                    {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
+              {(Object.keys(LIST_LABELS) as ListField[]).map((field) => (
+                <div key={field} className="rounded-lg border border-gray-200 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-700">{LIST_LABELS[field].title}</span>
+                    <button
+                      type="button"
+                      onClick={() => addListItem(field)}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-orange-700 hover:bg-orange-50"
+                    >
+                      <PlusIcon className="h-3.5 w-3.5" />
+                      {LIST_LABELS[field].add}
+                    </button>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-700">Website</label>
-                    <input value={form.website} onChange={(e) => setField("website", e.target.value)} className={inputClass(Boolean(errors.website))} placeholder="www.example.org" />
-                    {errors.website && <p className="mt-1 text-xs text-red-600">{errors.website}</p>}
+                  <div className="space-y-2">
+                    {form[field].map((value, index) => (
+                      <div key={`${field}-${index}`}>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type={LIST_LABELS[field].type}
+                            value={value}
+                            onChange={(e) => setListItem(field, index, e.target.value)}
+                            placeholder={LIST_LABELS[field].placeholder}
+                            className={inputClass(Boolean(errors[`${field}.${index}`]))}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeListItem(field, index)}
+                            className="shrink-0 rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-red-600"
+                            title="Remove"
+                            aria-label={`Remove ${LIST_LABELS[field].title.toLowerCase()} ${index + 1}`}
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                        {errors[`${field}.${index}`] && <p className="mt-1 text-xs text-red-600">{errors[`${field}.${index}`]}</p>}
+                      </div>
+                    ))}
                   </div>
                 </div>
+              ))}
+
+              <div className="rounded-lg border border-gray-200 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-700">Contact people (optional)</span>
+                  <button
+                    type="button"
+                    onClick={addPerson}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-orange-700 hover:bg-orange-50"
+                  >
+                    <PlusIcon className="h-3.5 w-3.5" />
+                    Add contact person
+                  </button>
+                </div>
+                {form.contactPersons.length === 0 ? (
+                  <p className="text-xs text-gray-500">No contact people added.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {form.contactPersons.map((person, index) => (
+                      <div key={`person-${index}`} className="rounded-lg bg-gray-50 p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-xs font-medium text-gray-600">Contact person {index + 1}</span>
+                          <button
+                            type="button"
+                            onClick={() => removePerson(index)}
+                            className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-red-600"
+                            title="Remove contact person"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {([
+                            { key: "name", placeholder: "Full name *", type: "text" },
+                            { key: "role", placeholder: "Role, e.g. Programme Officer", type: "text" },
+                            { key: "phone", placeholder: "Phone", type: "tel" },
+                            { key: "email", placeholder: "Email", type: "email" }
+                          ] as const).map((item) => {
+                            const errorKey = `contactPersons.${index}.${item.key}`
+                            return (
+                              <div key={item.key}>
+                                <input
+                                  type={item.type}
+                                  value={person[item.key] || ""}
+                                  onChange={(e) => setPerson(index, item.key, e.target.value)}
+                                  placeholder={item.placeholder}
+                                  className={inputClass(Boolean(errors[errorKey]))}
+                                />
+                                {errors[errorKey] && <p className="mt-1 text-xs text-red-600">{errors[errorKey]}</p>}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setField("isActive", e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500" />

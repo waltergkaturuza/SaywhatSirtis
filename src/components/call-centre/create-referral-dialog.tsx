@@ -9,7 +9,7 @@ export type ReferralOrganizationOption = {
   province?: string
   city?: string
   categories: string[]
-  contact: { phone: string[]; email?: string; address?: string }
+  contact: { phone: string[]; email?: string; address?: string; people?: { name: string; role?: string; phone?: string }[] }
 }
 
 type CreateReferralDialogProps = {
@@ -209,6 +209,11 @@ export function CreateReferralDialog({ open, organizations, onClose, onCreated }
                 <span className="font-medium text-gray-900">{selectedOrganization.name}</span>
                 {selectedOrganization.contact.phone[0] && <> · {selectedOrganization.contact.phone[0]}</>}
                 {selectedOrganization.contact.email && <> · {selectedOrganization.contact.email}</>}
+                {selectedOrganization.contact.people?.[0] && (
+                  <> · Contact: {selectedOrganization.contact.people[0].name}
+                    {selectedOrganization.contact.people[0].role ? ` (${selectedOrganization.contact.people[0].role})` : ""}
+                  </>
+                )}
               </div>
             )}
           </section>

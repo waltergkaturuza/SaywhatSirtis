@@ -15,7 +15,8 @@ import {
   DocumentDuplicateIcon,
   ShareIcon,
   PlusIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  UserIcon
 } from "@heroicons/react/24/outline"
 import { CreateReferralDialog } from "@/components/call-centre/create-referral-dialog"
 import { hasAdminAccess } from "@/lib/admin-auth"
@@ -26,7 +27,15 @@ type ReferralOrganization = {
   description: string
   focusAreas: string[]
   categories: string[]
-  contact: { address?: string; phone: string[]; email?: string; website?: string }
+  contact: {
+    address?: string
+    phone: string[]
+    email?: string
+    website?: string
+    emails?: string[]
+    websites?: string[]
+    people?: { name: string; role?: string; phone?: string; email?: string }[]
+  }
   province?: string
   city?: string
 }
@@ -43,6 +52,12 @@ type ReferralRecord = {
   createdByName: string | null
   createdAt: string
 }
+
+const emailsOf = (org: ReferralOrganization) =>
+  org.contact.emails?.length ? org.contact.emails : org.contact.email ? [org.contact.email] : []
+
+const websitesOf = (org: ReferralOrganization) =>
+  org.contact.websites?.length ? org.contact.websites : org.contact.website ? [org.contact.website] : []
 
 const urgencyStyle: Record<string, string> = {
   LOW: "bg-gray-100 text-gray-800",
@@ -362,33 +377,64 @@ export default function ReferralDirectoryPage() {
                           </div>
                         )}
 
-                        {org.contact.email && (
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <EnvelopeIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                              <span className="text-sm text-gray-600">{org.contact.email}</span>
+                        {emailsOf(org).length > 0 && (
+                          <div className="flex items-start space-x-3">
+                            <EnvelopeIcon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              {emailsOf(org).map((email) => (
+                                <div key={email} className="flex items-center justify-between mb-1">
+                                  <a href={`mailto:${email}`} className="truncate text-sm text-gray-600 hover:text-orange-700" title={email}>{email}</a>
+                                  <button
+                                    onClick={() => copyToClipboard(email)}
+                                    className="text-orange-600 hover:text-orange-800 ml-2"
+                                    title="Copy email"
+                                  >
+                                    <DocumentDuplicateIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
-                            <button
-                              onClick={() => copyToClipboard(org.contact.email!)}
-                              className="text-orange-600 hover:text-orange-800"
-                              title="Copy email"
-                            >
-                              <DocumentDuplicateIcon className="h-4 w-4" />
-                            </button>
                           </div>
                         )}
 
-                        {org.contact.website && (
-                          <div className="flex items-center space-x-3">
-                            <ShareIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                            <a
-                              href={`https://${org.contact.website.replace("www.", "").replace("https://", "").replace("http://", "")}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-orange-600 hover:text-orange-800 underline"
-                            >
-                              {org.contact.website}
-                            </a>
+                        {websitesOf(org).length > 0 && (
+                          <div className="flex items-start space-x-3">
+                            <ShareIcon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0 flex-1 space-y-1">
+                              {websitesOf(org).map((website) => (
+                                <a
+                                  key={website}
+                                  href={/^https?:\/\//i.test(website) ? website : `https://${website}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block truncate text-sm text-orange-600 hover:text-orange-800 underline"
+                                  title={website}
+                                >
+                                  {website}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {(org.contact.people || []).length > 0 && (
+                          <div className="flex items-start space-x-3">
+                            <UserIcon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div className="min-w-0 flex-1 space-y-2">
+                              {(org.contact.people || []).map((person, index) => (
+                                <div key={`${person.name}-${index}`} className="text-sm">
+                                  <p className="font-medium text-gray-800">
+                                    {person.name}
+                                    {person.role && <span className="font-normal text-gray-500"> · {person.role}</span>}
+                                  </p>
+                                  {(person.phone || person.email) && (
+                                    <p className="truncate text-xs text-gray-600">
+                                      {[person.phone, person.email].filter(Boolean).join(" · ")}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>

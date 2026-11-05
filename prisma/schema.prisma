@@ -1627,10 +1627,13 @@ model referral_organizations {
   address     String?
   city        String?
   province    String?
-  phones      String[]                @default([])
-  email       String?
-  website     String?
-  isActive    Boolean                 @default(true)
+  phones         String[]                @default([])
+  email          String?
+  website        String?
+  emails         String[]                @default([])
+  websites       String[]                @default([])
+  contactPersons Json                    @default("[]")
+  isActive       Boolean                 @default(true)
   createdAt   DateTime                @default(now())
   updatedAt   DateTime                @updatedAt
   referrals   call_centre_referrals[]
