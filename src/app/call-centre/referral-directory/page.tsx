@@ -16,7 +16,9 @@ import {
   ShareIcon,
   PlusIcon,
   CheckCircleIcon,
-  UserIcon
+  UserIcon,
+  EyeIcon,
+  XMarkIcon
 } from "@heroicons/react/24/outline"
 import { CreateReferralDialog } from "@/components/call-centre/create-referral-dialog"
 import { hasAdminAccess } from "@/lib/admin-auth"
@@ -44,15 +46,41 @@ type ReferralRecord = {
   id: string
   referralNumber: string
   organizationName: string
+  organizationPhone?: string | null
+  organizationEmail?: string | null
   source?: string
   caseNumber: string | null
+  caseId?: string | null
+  isCase?: boolean
+  assignedOfficer?: string | null
+  caseUpdatedAt?: string | null
   clientName: string
+  clientPhone?: string | null
+  clientAge?: string | null
+  clientGender?: string | null
+  clientProvince?: string | null
+  reason?: string
+  servicesRequested?: string | null
+  notes?: string | null
+  consentGiven?: boolean
   urgency: string
   status: string
   followUpDate: string | null
   createdByName: string | null
   createdAt: string
 }
+
+const statusStyle: Record<string, string> = {
+  OPEN: "bg-blue-100 text-blue-800",
+  PENDING: "bg-yellow-100 text-yellow-800",
+  IN_PROGRESS: "bg-indigo-100 text-indigo-800",
+  ESCALATED: "bg-red-100 text-red-800",
+  RESOLVED: "bg-green-100 text-green-800",
+  CLOSED: "bg-gray-100 text-gray-800",
+  CANCELLED: "bg-gray-100 text-gray-500"
+}
+
+const statusLabel = (value: string) => value.replace(/_/g, " ").toLowerCase()
 
 const emailsOf = (org: ReferralOrganization) =>
   org.contact.emails?.length ? org.contact.emails : org.contact.email ? [org.contact.email] : []
@@ -81,6 +109,7 @@ export default function ReferralDirectoryPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [notice, setNotice] = useState("")
+  const [viewing, setViewing] = useState<ReferralRecord | null>(null)
 
   const canAccess = Boolean(session?.user?.permissions?.includes("callcentre.access"))
   const canManage = hasAdminAccess(session) || Boolean(session?.user?.permissions?.includes("callcentre.admin"))
@@ -497,17 +526,18 @@ export default function ReferralDirectoryPage() {
               <table className="w-full table-fixed">
                 <colgroup>
                   <col className="w-[16%]" />
-                  <col className="w-[24%]" />
-                  <col className="w-[18%]" />
-                  <col className="w-[12%]" />
+                  <col className="w-[20%]" />
+                  <col className="w-[13%]" />
+                  <col className="w-[17%]" />
+                  <col className="w-[8%]" />
                   <col className="w-[10%]" />
-                  <col className="w-[10%]" />
-                  <col className="w-[10%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[7%]" />
                 </colgroup>
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Referral", "Organisation", "Client", "Case", "Urgency", "Status", "Created"].map((heading) => (
-                      <th key={heading} className="max-w-0 px-3 py-2 text-left text-xs font-medium text-gray-500">{heading}</th>
+                    {["Referral", "Organisation", "Client", "Case", "Urgency", "Status", "Created", ""].map((heading) => (
+                      <th key={heading || "actions"} className="max-w-0 px-3 py-2 text-left text-xs font-medium text-gray-500">{heading}</th>
                     ))}
                   </tr>
                 </thead>
@@ -528,6 +558,9 @@ export default function ReferralDirectoryPage() {
                       </td>
                       <td className="max-w-0 overflow-hidden px-3 py-2">
                         <div className="truncate text-sm text-gray-700" title={referral.caseNumber || ""}>{referral.caseNumber || "—"}</div>
+                        {referral.caseNumber && (
+                          <div className="truncate text-xs text-gray-500">{referral.isCase ? "Case" : "Call"}</div>
+                        )}
                       </td>
                       <td className="max-w-0 overflow-hidden px-3 py-2">
                         <span className={`inline-flex max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium ${urgencyStyle[referral.urgency] || urgencyStyle.MEDIUM}`}>
@@ -535,12 +568,25 @@ export default function ReferralDirectoryPage() {
                         </span>
                       </td>
                       <td className="max-w-0 overflow-hidden px-3 py-2">
-                        <span className="inline-flex max-w-full truncate rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
-                          {referral.status.toLowerCase()}
+                        <span
+                          className={`inline-flex max-w-full truncate rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle[referral.status] || "bg-gray-100 text-gray-800"}`}
+                          title={statusLabel(referral.status)}
+                        >
+                          {statusLabel(referral.status)}
                         </span>
                       </td>
                       <td className="max-w-0 overflow-hidden px-3 py-2">
                         <div className="truncate text-xs text-gray-500">{new Date(referral.createdAt).toLocaleDateString()}</div>
+                      </td>
+                      <td className="max-w-0 overflow-hidden px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setViewing(referral)}
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        >
+                          <EyeIcon className="h-3.5 w-3.5" />
+                          View
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -550,6 +596,104 @@ export default function ReferralDirectoryPage() {
           </div>
         )}
       </div>
+
+      {viewing && (
+        <div className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:items-center">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl" role="dialog" aria-modal="true" aria-labelledby="referral-view-title">
+            <div className="flex items-start justify-between border-b border-gray-200 px-6 py-4">
+              <div className="min-w-0">
+                <h2 id="referral-view-title" className="truncate text-lg font-semibold text-gray-900">{viewing.referralNumber}</h2>
+                <p className="text-sm text-gray-500">
+                  {viewing.source === "CALL" ? "Recorded from the call record" : "Created with the referral form"}
+                  {viewing.createdByName ? ` by ${viewing.createdByName}` : ""} on {new Date(viewing.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <button type="button" onClick={() => setViewing(null)} className="rounded-lg p-1 text-gray-500 hover:bg-gray-100" aria-label="Close">
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-5">
+              <div className="flex flex-wrap gap-2">
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle[viewing.status] || "bg-gray-100 text-gray-800"}`}>
+                  {statusLabel(viewing.status)}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${urgencyStyle[viewing.urgency] || urgencyStyle.MEDIUM}`}>
+                  {viewing.urgency.toLowerCase()} urgency
+                </span>
+              </div>
+
+              <section>
+                <h3 className="text-sm font-semibold text-gray-900">Referred to</h3>
+                <p className="mt-1 text-sm text-gray-800">{viewing.organizationName || "—"}</p>
+                {(viewing.organizationPhone || viewing.organizationEmail) && (
+                  <p className="text-xs text-gray-600">{[viewing.organizationPhone, viewing.organizationEmail].filter(Boolean).join(" · ")}</p>
+                )}
+              </section>
+
+              <section>
+                <h3 className="text-sm font-semibold text-gray-900">Client</h3>
+                <dl className="mt-1 grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+                  {[
+                    ["Name", viewing.clientName],
+                    ["Phone", viewing.clientPhone],
+                    ["Age", viewing.clientAge],
+                    ["Gender", viewing.clientGender],
+                    ["Province", viewing.clientProvince]
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex gap-2">
+                      <dt className="text-gray-500">{label}:</dt>
+                      <dd className="text-gray-800">{value || "—"}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+
+              <section>
+                <h3 className="text-sm font-semibold text-gray-900">Referral</h3>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-800">{viewing.reason || "—"}</p>
+                {viewing.servicesRequested && (
+                  <p className="mt-2 text-sm text-gray-700"><span className="text-gray-500">Services:</span> {viewing.servicesRequested}</p>
+                )}
+                {viewing.followUpDate && (
+                  <p className="mt-1 text-sm text-gray-700"><span className="text-gray-500">Follow-up:</span> {new Date(viewing.followUpDate).toLocaleDateString()}</p>
+                )}
+                {viewing.notes && (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700"><span className="text-gray-500">Notes:</span> {viewing.notes}</p>
+                )}
+                {viewing.source !== "CALL" && (
+                  <p className="mt-1 text-sm text-gray-700">
+                    <span className="text-gray-500">Client consent:</span> {viewing.consentGiven ? "Given" : "Not recorded"}
+                  </p>
+                )}
+              </section>
+
+              {viewing.caseNumber && (
+                <section>
+                  <h3 className="text-sm font-semibold text-gray-900">{viewing.isCase ? "Case" : "Call"}</h3>
+                  <p className="mt-1 text-sm text-gray-800">{viewing.caseNumber}</p>
+                  {viewing.assignedOfficer && <p className="text-xs text-gray-600">Assigned to {viewing.assignedOfficer}</p>}
+                  {viewing.caseUpdatedAt && <p className="text-xs text-gray-600">Last updated {new Date(viewing.caseUpdatedAt).toLocaleString()}</p>}
+                </section>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-gray-200 px-6 py-4">
+              <button type="button" onClick={() => setViewing(null)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Close
+              </button>
+              {viewing.caseId && (
+                <Link
+                  href={`/call-centre/cases/${viewing.caseId}`}
+                  className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700"
+                >
+                  Open {viewing.isCase ? "case" : "call"}
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <CreateReferralDialog
         open={dialogOpen}

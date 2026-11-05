@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { ensureReferralTables } from '@/lib/call-centre/referral-store'
+import { canonicalCaseStatus } from '@/lib/case-audit'
 
 const EMPTY_REFERRALS = new Set(['', 'none', 'no', 'n/a', 'na', 'nil', 'null', 'undefined', '-', 'not applicable', 'no referral'])
 
@@ -20,6 +21,7 @@ type CallReferralSource = {
   callDescription: string | null
   subject: string
   priority: string | null
+  status: string | null
   officerName: string | null
   assignedOfficer: string | null
   createdAt: Date
@@ -41,6 +43,7 @@ const CALL_FIELDS = {
   callDescription: true,
   subject: true,
   priority: true,
+  status: true,
   officerName: true,
   assignedOfficer: true,
   createdAt: true
@@ -112,14 +115,12 @@ async function upsertCallReferral(call: CallReferralSource) {
     createdByName: call.officerName || call.assignedOfficer
   }
 
+  const status = canonicalCaseStatus(call.status) || 'PENDING'
+
   if (existing) {
     await prisma.call_centre_referrals.update({
       where: { id: existing.id },
-      data: {
-        ...details,
-        status: existing.status === 'CANCELLED' ? 'PENDING' : existing.status,
-        updatedAt: new Date()
-      }
+      data: { ...details, status, updatedAt: new Date() }
     })
     return
   }
@@ -132,7 +133,7 @@ async function upsertCallReferral(call: CallReferralSource) {
         caseNumber: call.caseNumber,
         source: 'CALL',
         consentGiven: false,
-        status: 'PENDING',
+        status,
         notes: 'Recorded automatically from the call record',
         ...details,
         createdAt: call.createdAt,

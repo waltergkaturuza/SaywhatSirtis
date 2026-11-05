@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canUseCallCentre, ensureReferralTables } from '@/lib/call-centre/referral-store'
 import { backfillCallReferralsOnce } from '@/lib/call-centre/referral-sync'
+import { canonicalCaseStatus } from '@/lib/case-audit'
 
 const URGENCY = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
 
@@ -33,27 +34,55 @@ export async function GET(request: NextRequest) {
       where: caseNumber ? { caseNumber } : { status: { not: 'CANCELLED' } },
       orderBy: { createdAt: 'desc' },
       take: 500,
-      include: { organization: { select: { id: true, name: true } } }
+      include: {
+        organization: { select: { id: true, name: true, phones: true, emails: true, email: true } }
+      }
     })
+
+    const caseNumbers = [...new Set(referrals.map((referral) => referral.caseNumber).filter((value): value is string => Boolean(value)))]
+    const linkedCases = caseNumbers.length
+      ? await prisma.call_records.findMany({
+          where: { caseNumber: { in: caseNumbers } },
+          select: { id: true, caseNumber: true, status: true, priority: true, isCase: true, assignedOfficer: true, updatedAt: true }
+        })
+      : []
+    const caseByNumber = new Map(linkedCases.map((item) => [item.caseNumber, item]))
 
     return NextResponse.json({
       success: true,
-      referrals: referrals.map((referral) => ({
-        id: referral.id,
-        referralNumber: referral.referralNumber,
-        organizationId: referral.organizationId,
-        organizationName: referral.organization?.name || referral.organizationName || '',
-        source: referral.source,
-        caseNumber: referral.caseNumber,
-        clientName: referral.clientName,
-        clientPhone: referral.clientPhone,
-        reason: referral.reason,
-        urgency: referral.urgency,
-        status: referral.status,
-        followUpDate: referral.followUpDate?.toISOString() || null,
-        createdByName: referral.createdByName,
-        createdAt: referral.createdAt.toISOString()
-      }))
+      referrals: referrals.map((referral) => {
+        const linked = referral.caseNumber ? caseByNumber.get(referral.caseNumber) : undefined
+        const caseStatus = linked ? canonicalCaseStatus(linked.status) : ''
+        const casePriority = linked?.priority ? String(linked.priority).toUpperCase() : ''
+        return {
+          id: referral.id,
+          referralNumber: referral.referralNumber,
+          organizationId: referral.organizationId,
+          organizationName: referral.organization?.name || referral.organizationName || '',
+          organizationPhone: referral.organization?.phones?.[0] || null,
+          organizationEmail: referral.organization?.emails?.[0] || referral.organization?.email || null,
+          source: referral.source,
+          caseNumber: referral.caseNumber,
+          caseId: linked?.id || null,
+          isCase: linked ? String(linked.isCase || '').toUpperCase() === 'YES' : false,
+          assignedOfficer: linked?.assignedOfficer || null,
+          caseUpdatedAt: linked?.updatedAt?.toISOString() || null,
+          clientName: referral.clientName,
+          clientPhone: referral.clientPhone,
+          clientAge: referral.clientAge,
+          clientGender: referral.clientGender,
+          clientProvince: referral.clientProvince,
+          reason: referral.reason,
+          servicesRequested: referral.servicesRequested,
+          notes: referral.notes,
+          consentGiven: referral.consentGiven,
+          urgency: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(casePriority) ? casePriority : casePriority === 'CRITICAL' ? 'URGENT' : referral.urgency,
+          status: caseStatus || referral.status,
+          followUpDate: referral.followUpDate?.toISOString() || null,
+          createdByName: referral.createdByName,
+          createdAt: referral.createdAt.toISOString()
+        }
+      })
     })
   } catch (error) {
     console.error('Error fetching referrals:', error)
