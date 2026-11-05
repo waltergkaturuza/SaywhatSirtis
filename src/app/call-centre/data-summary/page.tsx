@@ -378,21 +378,47 @@ export default function CallCentreDataSummaryPage() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Summary Stats</h3>
         <div className="space-y-3">
-          <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500 shadow-sm">
-            <div className="text-2xl font-bold text-orange-600">{summaryStats.totalCalls.toLocaleString()}</div>
+          <div className="bg-orange-50 px-3 py-2 rounded-lg border-l-4 border-orange-500 shadow-sm">
+            <div className="text-xl font-bold text-orange-600">{summaryStats.totalCalls.toLocaleString()}</div>
             <div className="text-sm text-gray-700 font-medium">Total Calls</div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500 shadow-sm">
-            <div className="text-2xl font-bold text-green-600">{summaryStats.validCalls.toLocaleString()}</div>
+          <div className="bg-green-50 px-3 py-2 rounded-lg border-l-4 border-green-500 shadow-sm">
+            <div className="text-xl font-bold text-green-600">{summaryStats.validCalls.toLocaleString()}</div>
             <div className="text-sm text-gray-700 font-medium">Valid Calls</div>
           </div>
-          <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-gray-500 shadow-sm">
-            <div className="text-2xl font-bold text-gray-700">{summaryStats.totalCases}</div>
+          <div className="bg-gray-50 px-3 py-2 rounded-lg border-l-4 border-gray-500 shadow-sm">
+            <div className="text-xl font-bold text-gray-700">{summaryStats.totalCases}</div>
             <div className="text-sm text-gray-600 font-medium">Total Cases</div>
           </div>
-          <div className="bg-white p-4 rounded-lg border-l-4 border-black shadow-sm">
-            <div className="text-2xl font-bold text-black">{summaryStats.averageCallDuration}</div>
+          <div className="bg-white px-3 py-2 rounded-lg border-l-4 border-black shadow-sm">
+            <div className="text-xl font-bold text-black">{summaryStats.averageCallDuration}</div>
             <div className="text-sm text-gray-600 font-medium">Avg Call Duration</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">Calls by Timeframe</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+            <div className="text-xs font-medium text-blue-700">Today</div>
+            <div className="text-xl font-bold leading-tight text-blue-900">{callsByTimeframe.today}</div>
+            <div className="text-[11px] text-blue-600">Last 24 hours</div>
+          </div>
+          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+            <div className="text-xs font-medium text-green-700">This Week</div>
+            <div className="text-xl font-bold leading-tight text-green-900">{callsByTimeframe.week}</div>
+            <div className="text-[11px] text-green-600">Last 7 days</div>
+          </div>
+          <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2">
+            <div className="text-xs font-medium text-orange-700">This Month</div>
+            <div className="text-xl font-bold leading-tight text-orange-900">{callsByTimeframe.month}</div>
+            <div className="text-[11px] text-orange-600">Last 30 days</div>
+          </div>
+          <div className="rounded-lg border border-purple-200 bg-purple-50 px-3 py-2">
+            <div className="text-xs font-medium text-purple-700">This Year</div>
+            <div className="text-xl font-bold leading-tight text-purple-900">{callsByTimeframe.year}</div>
+            <div className="text-[11px] text-purple-600">Year to date</div>
           </div>
         </div>
       </div>
@@ -747,33 +773,6 @@ export default function CallCentreDataSummaryPage() {
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Time Distribution */}
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls by Timeframe</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border-2 border-blue-200">
-              <div className="text-sm text-blue-700 font-medium mb-1">Today</div>
-              <div className="text-3xl font-bold text-blue-900">{callsByTimeframe.today}</div>
-              <div className="text-xs text-blue-600 mt-1">Last 24 hours</div>
-            </div>
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border-2 border-green-200">
-              <div className="text-sm text-green-700 font-medium mb-1">This Week</div>
-              <div className="text-3xl font-bold text-green-900">{callsByTimeframe.week}</div>
-              <div className="text-xs text-green-600 mt-1">Last 7 days</div>
-            </div>
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border-2 border-orange-200">
-              <div className="text-sm text-orange-700 font-medium mb-1">This Month</div>
-              <div className="text-3xl font-bold text-orange-900">{callsByTimeframe.month}</div>
-              <div className="text-xs text-orange-600 mt-1">Last 30 days</div>
-            </div>
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-200">
-              <div className="text-sm text-purple-700 font-medium mb-1">This Year</div>
-              <div className="text-3xl font-bold text-purple-900">{callsByTimeframe.year}</div>
-              <div className="text-xs text-purple-600 mt-1">Year to date</div>
-            </div>
           </div>
         </div>
 
