@@ -90,7 +90,12 @@ const TABLE_STATEMENTS = [
   `ALTER TABLE "public"."referral_organizations" ADD COLUMN IF NOT EXISTS "websites" TEXT[] DEFAULT ARRAY[]::TEXT[]`,
   `ALTER TABLE "public"."referral_organizations" ADD COLUMN IF NOT EXISTS "contactPersons" JSONB NOT NULL DEFAULT '[]'`,
   `UPDATE "public"."referral_organizations" SET "emails" = ARRAY["email"] WHERE "email" IS NOT NULL AND COALESCE(cardinality("emails"), 0) = 0`,
-  `UPDATE "public"."referral_organizations" SET "websites" = ARRAY["website"] WHERE "website" IS NOT NULL AND COALESCE(cardinality("websites"), 0) = 0`
+  `UPDATE "public"."referral_organizations" SET "websites" = ARRAY["website"] WHERE "website" IS NOT NULL AND COALESCE(cardinality("websites"), 0) = 0`,
+  `ALTER TABLE "public"."call_centre_referrals" ALTER COLUMN "organizationId" DROP NOT NULL`,
+  `ALTER TABLE "public"."call_centre_referrals" ADD COLUMN IF NOT EXISTS "organizationName" TEXT`,
+  `ALTER TABLE "public"."call_centre_referrals" ADD COLUMN IF NOT EXISTS "source" TEXT NOT NULL DEFAULT 'MANUAL'`,
+  `CREATE INDEX IF NOT EXISTS "call_centre_referrals_source_idx" ON "public"."call_centre_referrals"("source")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "call_centre_referrals_call_case_key" ON "public"."call_centre_referrals"("caseNumber") WHERE "source" = 'CALL'`
 ]
 
 let readyPromise: Promise<void> | null = null
@@ -103,6 +108,10 @@ async function prepareReferralTables() {
   const existing = await prisma.referral_organizations.count()
   if (existing > 0) return
 
+  await seedReferralOrganizations()
+}
+
+async function seedReferralOrganizations() {
   const now = new Date()
   await prisma.referral_organizations.createMany({
     data: referralDirectory.map((org) => ({

@@ -1645,7 +1645,9 @@ model referral_organizations {
 model call_centre_referrals {
   id                String                 @id
   referralNumber    String                 @unique
-  organizationId    String
+  organizationId    String?
+  organizationName  String?
+  source            String                 @default("MANUAL")
   caseNumber        String?
   clientName        String
   clientPhone       String?
@@ -1663,9 +1665,10 @@ model call_centre_referrals {
   createdByName     String?
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
-  organization      referral_organizations @relation(fields: [organizationId], references: [id])
+  organization      referral_organizations? @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
+  @@index([source])
   @@index([caseNumber])
   @@index([status])
   @@index([createdAt])

@@ -5,6 +5,7 @@ import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 import { randomUUID } from 'crypto'
 import { rateLimit, getClientIP, withErrorHandling } from '@/lib/production-helpers'
 import { recordCaseHistory, trackChange, type CaseChange } from '@/lib/case-audit'
+import { syncCallReferral } from '@/lib/call-centre/referral-sync'
 
 export async function GET(request: NextRequest) {
   try {
@@ -535,6 +536,8 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date()
       }
     })
+
+    await syncCallReferral(call.caseNumber)
 
     if (createCase) {
       const openedChanges: Record<string, CaseChange> = {}

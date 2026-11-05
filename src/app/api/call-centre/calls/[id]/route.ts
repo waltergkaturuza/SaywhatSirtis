@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 import { canonicalCaseStatus, recordCaseHistory, trackChange, type CaseChange } from '@/lib/case-audit'
+import { syncCallReferral } from '@/lib/call-centre/referral-sync'
 
 export async function PUT(
   request: NextRequest,
@@ -119,6 +120,8 @@ export async function PUT(
       where: { id: callId },
       data: updateData
     });
+
+    await syncCallReferral(updatedCall.caseNumber)
 
     const wasCase = String(existingCall.isCase || '').toUpperCase() === 'YES'
     const isCaseNow = String(updatedCall.isCase || '').toUpperCase() === 'YES'

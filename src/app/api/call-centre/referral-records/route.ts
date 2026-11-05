@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { canUseCallCentre, ensureReferralTables } from '@/lib/call-centre/referral-store'
+import { backfillCallReferralsOnce } from '@/lib/call-centre/referral-sync'
 
 const URGENCY = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
 
@@ -25,12 +26,13 @@ export async function GET(request: NextRequest) {
     if (!canUseCallCentre(session)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     await ensureReferralTables()
+    await backfillCallReferralsOnce()
     const caseNumber = new URL(request.url).searchParams.get('caseNumber')
 
     const referrals = await prisma.call_centre_referrals.findMany({
-      where: caseNumber ? { caseNumber } : undefined,
+      where: caseNumber ? { caseNumber } : { status: { not: 'CANCELLED' } },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: 500,
       include: { organization: { select: { id: true, name: true } } }
     })
 
@@ -40,7 +42,8 @@ export async function GET(request: NextRequest) {
         id: referral.id,
         referralNumber: referral.referralNumber,
         organizationId: referral.organizationId,
-        organizationName: referral.organization?.name || '',
+        organizationName: referral.organization?.name || referral.organizationName || '',
+        source: referral.source,
         caseNumber: referral.caseNumber,
         clientName: referral.clientName,
         clientPhone: referral.clientPhone,
@@ -106,6 +109,8 @@ export async function POST(request: NextRequest) {
         id: crypto.randomUUID(),
         referralNumber: referralNumber(),
         organizationId: organization!.id,
+        organizationName: organization!.name,
+        source: 'MANUAL',
         caseNumber,
         clientName: clientName!,
         clientPhone: text(body.clientPhone, 50),

@@ -44,6 +44,7 @@ type ReferralRecord = {
   id: string
   referralNumber: string
   organizationName: string
+  source?: string
   caseNumber: string | null
   clientName: string
   urgency: string
@@ -501,7 +502,9 @@ export default function ReferralDirectoryPage() {
                     <tr key={referral.id} className="hover:bg-orange-50">
                       <td className="max-w-0 overflow-hidden px-3 py-2">
                         <div className="truncate text-sm font-medium text-gray-900" title={referral.referralNumber}>{referral.referralNumber}</div>
-                        <div className="truncate text-xs text-gray-500" title={referral.createdByName || ""}>{referral.createdByName || ""}</div>
+                        <div className="truncate text-xs text-gray-500" title={referral.createdByName || ""}>
+                          {[referral.createdByName, referral.source === "CALL" ? "From call record" : "Referral form"].filter(Boolean).join(" · ")}
+                        </div>
                       </td>
                       <td className="max-w-0 overflow-hidden px-3 py-2">
                         <div className="truncate text-sm text-gray-700" title={referral.organizationName}>{referral.organizationName}</div>

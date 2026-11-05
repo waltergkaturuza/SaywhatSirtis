@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection';
 import { canonicalCaseStatus, caseDateKey, recordCaseHistory, trackChange } from '@/lib/case-audit';
+import { syncCallReferral } from '@/lib/call-centre/referral-sync';
 
 const CATEGORY_CODES = new Set(['INQUIRY', 'CASE', 'GENERAL'])
 
@@ -338,6 +339,8 @@ export async function PUT(
         updatedAt: new Date()
       }
     });
+
+    await syncCallReferral(updatedCall.caseNumber);
 
     const historyAction = statusChanged && nextStatus === 'CLOSED'
       ? 'CLOSE'
