@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { ModulePage } from "@/components/layout/enhanced-layout"
+import { ModuleSidebar } from "@/components/layout/module-sidebar"
 import {
   Squares2X2Icon,
   ChartBarIcon,
@@ -388,6 +389,18 @@ function EnhancedProgramsContent() {
   }
 
   return (
+    <div className="min-h-screen bg-gray-50 lg:flex">
+      <ModuleSidebar
+        title="Programs"
+        items={tabs.map((tab) => ({
+          href: `#${tab.id}`,
+          name: tab.name,
+          icon: tab.icon,
+          isActive: activeTab === tab.id,
+          onSelect: () => setActiveTab(tab.id)
+        }))}
+      />
+      <div className="min-w-0 flex-1">
     <ModulePage metadata={metadata} actions={actions}>
       <div className="space-y-6">
         {/* Success Message */}
@@ -410,27 +423,6 @@ function EnhancedProgramsContent() {
             </div>
           </div>
         )}
-
-        {/* Enhanced Tab Navigation with Descriptions */}
-        <div className="bg-white rounded-xl shadow-md border-b-4 border-gray-200 p-2">
-          <nav className="flex space-x-2 overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-4 rounded-lg font-semibold text-sm whitespace-nowrap flex flex-col items-center min-w-0 transition-all transform ${
-                  activeTab === tab.id
-                    ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg scale-105"
-                    : "bg-white text-gray-600 hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100 hover:text-green-700 hover:shadow-md"
-                }`}
-                title={tab.description}
-              >
-                <tab.icon className="h-6 w-6 mb-1.5" />
-                <span className="truncate text-xs">{tab.name}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
 
         {/* Project Context Bar */}
         {selectedProject && (
@@ -463,6 +455,8 @@ function EnhancedProgramsContent() {
         </div>
       </div>
     </ModulePage>
+      </div>
+    </div>
   )
 }
 
