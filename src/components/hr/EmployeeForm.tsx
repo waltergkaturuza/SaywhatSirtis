@@ -834,21 +834,21 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
   }
 
   const renderStep1 = () => (
-    <div className="space-y-8">
-      <div className="flex items-center space-x-4 mb-8 p-4 bg-gradient-to-r from-saywhat-orange/10 to-saywhat-red/5 rounded-xl border-l-4 border-saywhat-orange">
-        <div className="w-12 h-12 bg-gradient-to-br from-saywhat-orange to-saywhat-red rounded-xl flex items-center justify-center shadow-lg">
-          <svg className="w-6 h-6 text-saywhat-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="space-y-4">
+      <div className="flex items-center space-x-3 mb-4 px-3 py-2 bg-gradient-to-r from-saywhat-orange/10 to-saywhat-red/5 rounded-xl border-l-4 border-saywhat-orange">
+        <div className="w-9 h-9 bg-gradient-to-br from-saywhat-orange to-saywhat-red rounded-xl flex items-center justify-center shadow-lg">
+          <svg className="w-5 h-5 text-saywhat-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-saywhat-black">Personal Information</h3>
+          <h3 className="text-lg font-semibold text-saywhat-black">Personal Information</h3>
           <p className="text-saywhat-grey text-sm">Basic employee details and personal information</p>
         </div>
       </div>
       
-      <div className="bg-gradient-to-br from-saywhat-white to-saywhat-light-grey/50 p-8 rounded-xl border border-saywhat-grey/20 shadow-lg">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+      <div className="bg-gradient-to-br from-saywhat-white to-saywhat-light-grey/50 p-5 rounded-xl border border-saywhat-grey/20 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label htmlFor="firstName" className="text-saywhat-black font-semibold flex items-center">
               First Name *
@@ -859,7 +859,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               value={formData.firstName}
               onChange={(e) => handleInputChange('firstName', e.target.value)}
               required
-              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
+              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
             />
           </div>
           <div className="space-y-2">
@@ -872,7 +872,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               value={formData.lastName}
               onChange={(e) => handleInputChange('lastName', e.target.value)}
               required
-              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
+              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
             />
           </div>
           <div className="space-y-2">
@@ -881,7 +881,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               id="middleName"
               value={formData.middleName}
               onChange={(e) => handleInputChange('middleName', e.target.value)}
-              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
+              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
             />
           </div>
           <div className="space-y-2">
@@ -895,7 +895,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               required
-              className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200"
+              className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200"
             />
           </div>
           <div className="space-y-2">
@@ -905,7 +905,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               type="email"
               value={formData.personalEmail}
               onChange={(e) => handleInputChange('personalEmail', e.target.value)}
-              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
+              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
             />
           </div>
           <div>
@@ -932,7 +932,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               id="address"
               value={formData.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
-              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
+              className="border-2 border-saywhat-grey/30 focus:border-saywhat-orange focus:ring-2 focus:ring-saywhat-orange/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-orange/50 transition-all duration-200"
               placeholder="Enter full residential address"
             />
           </div>
@@ -1025,28 +1025,28 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
   const renderStep2 = () => {
     return (
-      <div className="space-y-8">
-      <div className="flex items-center space-x-4 mb-8 p-4 bg-gradient-to-r from-saywhat-red/10 to-saywhat-orange/5 rounded-xl border-l-4 border-saywhat-red">
-        <div className="w-12 h-12 bg-gradient-to-br from-saywhat-red to-saywhat-orange rounded-xl flex items-center justify-center shadow-lg">
-          <svg className="w-6 h-6 text-saywhat-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="space-y-4">
+      <div className="flex items-center space-x-3 mb-4 px-3 py-2 bg-gradient-to-r from-saywhat-red/10 to-saywhat-orange/5 rounded-xl border-l-4 border-saywhat-red">
+        <div className="w-9 h-9 bg-gradient-to-br from-saywhat-red to-saywhat-orange rounded-xl flex items-center justify-center shadow-lg">
+          <svg className="w-5 h-5 text-saywhat-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
           </svg>
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-saywhat-black">Emergency Contact Information</h3>
+          <h3 className="text-lg font-semibold text-saywhat-black">Emergency Contact Information</h3>
           <p className="text-saywhat-grey text-sm">Contact person in case of emergency</p>
         </div>
       </div>
       
-      <div className="bg-gradient-to-br from-saywhat-white to-saywhat-light-grey/50 p-8 rounded-xl border border-saywhat-grey/20 shadow-lg">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+      <div className="bg-gradient-to-br from-saywhat-white to-saywhat-light-grey/50 p-5 rounded-xl border border-saywhat-grey/20 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label htmlFor="emergencyContactName" className="text-saywhat-black font-semibold">Emergency Contact Name</Label>
             <Input
               id="emergencyContactName"
               value={formData.emergencyContactName}
               onChange={(e) => handleInputChange('emergencyContactName', e.target.value)}
-              className="border-2 border-saywhat-grey/30 focus:border-saywhat-red focus:ring-2 focus:ring-saywhat-red/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-red/50 transition-all duration-200"
+              className="border-2 border-saywhat-grey/30 focus:border-saywhat-red focus:ring-2 focus:ring-saywhat-red/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-red/50 transition-all duration-200"
             />
           </div>
           <div className="space-y-2">
@@ -1055,13 +1055,13 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               id="emergencyContactPhone"
               value={formData.emergencyContactPhone}
               onChange={(e) => handleInputChange('emergencyContactPhone', e.target.value)}
-              className="border-2 border-saywhat-grey/30 focus:border-saywhat-red focus:ring-2 focus:ring-saywhat-red/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-red/50 transition-all duration-200"
+              className="border-2 border-saywhat-grey/30 focus:border-saywhat-red focus:ring-2 focus:ring-saywhat-red/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-red/50 transition-all duration-200"
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="emergencyContactRelationship" className="text-saywhat-black font-semibold">Relationship</Label>
             <Select value={formData.emergencyContactRelationship || undefined} onValueChange={(value) => handleInputChange('emergencyContactRelationship', value)}>
-              <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-red focus:ring-2 focus:ring-saywhat-red/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-red/50 transition-all duration-200">
+              <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-red focus:ring-2 focus:ring-saywhat-red/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-red/50 transition-all duration-200">
                 <SelectValue placeholder="Select relationship" />
               </SelectTrigger>
               <SelectContent>
@@ -1085,15 +1085,15 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
   const renderStep3 = () => {
     return (
-      <div className="space-y-8">
-      <div className="flex items-center space-x-4 mb-8 p-4 bg-gradient-to-r from-saywhat-green/10 to-saywhat-orange/5 rounded-xl border-l-4 border-saywhat-green">
+      <div className="space-y-4">
+      <div className="flex items-center space-x-3 mb-4 px-3 py-2 bg-gradient-to-r from-saywhat-green/10 to-saywhat-orange/5 rounded-xl border-l-4 border-saywhat-green">
         <BriefcaseIcon className="w-8 h-8 text-saywhat-green" />
         <div>
-          <h3 className="text-xl font-bold text-saywhat-black">Employment Information</h3>
+          <h3 className="text-lg font-semibold text-saywhat-black">Employment Information</h3>
           <p className="text-saywhat-grey text-sm">Work details and organizational structure</p>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {mode === 'edit' && (
           <div>
             <Label htmlFor="employeeId" className="text-saywhat-black font-semibold">Employee ID</Label>
@@ -1101,7 +1101,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               id="employeeId"
               value={formData.employeeId}
               readOnly
-              className="border-2 border-saywhat-grey/20 bg-saywhat-grey/10 text-saywhat-black font-medium rounded-lg px-4 py-3"
+              className="border-2 border-saywhat-grey/20 bg-saywhat-grey/10 text-saywhat-black font-medium rounded-lg px-3 py-2 text-sm"
             />
           </div>
         )}
@@ -1112,7 +1112,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             value={formData.position}
             onChange={(e) => handleInputChange('position', e.target.value)}
             required
-            className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200"
+            className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200"
             placeholder="Enter job position"
           />
         </div>
@@ -1126,7 +1126,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               department: selectedDept?.name || prev.department
             }))
           }}>
-            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select department" />
             </SelectTrigger>
             <SelectContent>
@@ -1144,7 +1144,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         <div>
           <Label htmlFor="employmentType">Employment Type</Label>
           <Select value={formData.employmentType} onValueChange={(value) => handleInputChange('employmentType', value)}>
-            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select employment type" />
             </SelectTrigger>
             <SelectContent className="bg-white border border-gray-300 shadow-lg">
@@ -1191,7 +1191,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         <div>
           <Label htmlFor="currency">Currency</Label>
           <Select value={formData.currency} onValueChange={(value) => handleInputChange('currency', value)}>
-            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select currency" />
             </SelectTrigger>
             <SelectContent className="bg-white border border-gray-300 shadow-lg">
@@ -1229,7 +1229,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             value={formData.supervisorId || 'no-supervisor'} 
             onValueChange={(value) => handleInputChange('supervisorId', value === 'no-supervisor' ? '' : value)}
           >
-            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select supervisor" />
             </SelectTrigger>
             <SelectContent className="bg-white border border-gray-300 shadow-lg">
@@ -1256,7 +1256,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             value={formData.reviewerId || 'no-reviewer'} 
             onValueChange={(value) => handleInputChange('reviewerId', value === 'no-reviewer' ? '' : value)}
           >
-            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select performance reviewer" />
             </SelectTrigger>
             <SelectContent className="bg-white border border-gray-300 shadow-lg">
@@ -1283,7 +1283,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
             value={formData.workLocation || undefined} 
             onValueChange={(value) => handleInputChange('workLocation', value)}
           >
-            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select work location" />
             </SelectTrigger>
             <SelectContent className="bg-white border border-gray-300 shadow-lg">
@@ -1397,7 +1397,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         <div>
           <Label htmlFor="payFrequency">Pay Frequency</Label>
           <Select value={formData.payFrequency} onValueChange={(value) => handleInputChange('payFrequency', value)}>
-            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-4 py-3 bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
+            <SelectTrigger className="border-2 border-saywhat-grey/30 focus:border-saywhat-green focus:ring-2 focus:ring-saywhat-green/20 rounded-lg px-3 py-2 text-sm bg-saywhat-white hover:border-saywhat-green/50 transition-all duration-200">
               <SelectValue placeholder="Select pay frequency" />
             </SelectTrigger>
             <SelectContent className="bg-white border border-gray-300 shadow-lg">
@@ -1801,7 +1801,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
   const renderStep6 = () => {
     return (
       <div className="space-y-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Job Description</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Job Description</h2>
 
         <div className="space-y-6">
           {/* Job Title */}
@@ -2223,7 +2223,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
             {/* CV/Resume */}
             <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-purple-300 transition-all">
-              <div className="w-12 h-12 mx-auto mb-2 bg-purple-100 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 mx-auto mb-1.5 bg-purple-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-purple-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">CV/Resume</div>
@@ -2247,7 +2247,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
             {/* ID Copy */}
             <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-indigo-300 transition-all">
-              <div className="w-12 h-12 mx-auto mb-2 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 mx-auto mb-1.5 bg-indigo-100 rounded-lg flex items-center justify-center">
                 <IdentificationIcon className="w-6 h-6 text-indigo-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">ID Copy</div>
@@ -2271,7 +2271,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
             {/* Qualifications */}
             <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-green-300 transition-all">
-              <div className="w-12 h-12 mx-auto mb-2 bg-green-100 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 mx-auto mb-1.5 bg-green-100 rounded-lg flex items-center justify-center">
                 <AcademicCapIcon className="w-6 h-6 text-green-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Qualifications</div>
@@ -2295,7 +2295,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
             {/* Contracts */}
             <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-orange-300 transition-all">
-              <div className="w-12 h-12 mx-auto mb-2 bg-orange-100 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 mx-auto mb-1.5 bg-orange-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-orange-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Contracts</div>
@@ -2319,7 +2319,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
             {/* Medical */}
             <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-pink-300 transition-all">
-              <div className="w-12 h-12 mx-auto mb-2 bg-pink-100 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 mx-auto mb-1.5 bg-pink-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-pink-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Medical</div>
@@ -2343,7 +2343,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
             {/* References */}
             <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-all">
-              <div className="w-12 h-12 mx-auto mb-2 bg-blue-100 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 mx-auto mb-1.5 bg-blue-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-blue-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">References</div>
@@ -2367,7 +2367,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
             {/* Bank Details */}
             <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-gray-400 transition-all">
-              <div className="w-12 h-12 mx-auto mb-2 bg-gray-100 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 mx-auto mb-1.5 bg-gray-100 rounded-lg flex items-center justify-center">
                 <BuildingOfficeIcon className="w-6 h-6 text-gray-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Bank Details</div>
@@ -2391,7 +2391,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
 
             {/* Other */}
             <div className="text-center p-4 border border-gray-200 rounded-lg hover:border-yellow-300 transition-all">
-              <div className="w-12 h-12 mx-auto mb-2 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <div className="w-9 h-9 mx-auto mb-1.5 bg-yellow-100 rounded-lg flex items-center justify-center">
                 <DocumentTextIcon className="w-6 h-6 text-yellow-600" />
               </div>
               <div className="text-sm font-medium text-gray-900">Other</div>
@@ -2495,50 +2495,50 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
   return (
     <div className="w-full bg-saywhat-white shadow-2xl rounded-xl border border-saywhat-grey/20">
       {/* Header with SAYWHAT Branding */}
-      <div className="bg-gradient-to-r from-saywhat-black via-saywhat-dark to-saywhat-grey text-saywhat-white p-6 rounded-t-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-saywhat-black via-saywhat-dark to-saywhat-grey text-saywhat-white px-5 py-3 rounded-t-xl relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-saywhat-orange/10 to-saywhat-red/5"></div>
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-saywhat-orange to-saywhat-red rounded-xl flex items-center justify-center shadow-lg">
-              <svg className="w-7 h-7 text-saywhat-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-9 h-9 bg-gradient-to-br from-saywhat-orange to-saywhat-red rounded-lg flex items-center justify-center shadow">
+              <svg className="w-5 h-5 text-saywhat-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-saywhat-white">
+              <h2 className="text-lg font-semibold text-saywhat-white">
                 {mode === 'create' ? 'Add New Employee' : 'Edit Employee'}
               </h2>
-              <p className="text-saywhat-grey/80 text-sm font-medium">SAYWHAT Human Resource Management System</p>
+              <p className="text-saywhat-grey/80 text-xs font-medium">SAYWHAT Human Resource Management System</p>
             </div>
           </div>
           <div className="text-right">
-            <div className="bg-gradient-to-br from-saywhat-orange to-saywhat-red/80 px-6 py-3 rounded-xl shadow-lg border border-saywhat-white/20">
-              <div className="text-saywhat-white font-bold text-xl">Step {currentStep}</div>
-              <div className="text-saywhat-white/80 text-sm">of {totalSteps}</div>
+            <div className="bg-gradient-to-br from-saywhat-orange to-saywhat-red/80 px-3 py-1.5 rounded-lg shadow border border-saywhat-white/20">
+              <div className="text-saywhat-white font-bold text-sm">Step {currentStep}</div>
+              <div className="text-saywhat-white/80 text-xs">of {totalSteps}</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Step Navigation */}
-      <div className="p-8 border-b border-saywhat-grey/20 bg-gradient-to-r from-saywhat-light-grey to-saywhat-white">
-        <div className="flex items-center justify-between mb-8">
-          <h3 className="text-2xl font-bold text-saywhat-black">Form Progress</h3>
-          <div className="bg-saywhat-green/10 px-6 py-3 rounded-xl border border-saywhat-green/20">
-            <div className="text-lg font-bold text-saywhat-green">
+      <div className="px-5 py-3 border-b border-saywhat-grey/20 bg-gradient-to-r from-saywhat-light-grey to-saywhat-white">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-saywhat-black">Form Progress</h3>
+          <div className="bg-saywhat-green/10 px-3 py-1 rounded-lg border border-saywhat-green/20">
+            <div className="text-xs font-bold text-saywhat-green">
               {Math.round((currentStep / totalSteps) * 100)}% Complete
             </div>
           </div>
         </div>
         
-        <div className="flex justify-between mb-8">
+        <div className="flex justify-between mb-3">
           {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
             <button
               key={step}
               onClick={() => setCurrentStep(step)}
-              className={`relative px-8 py-4 rounded-xl text-base font-bold transition-all duration-300 transform hover:scale-105 ${
+              className={`relative px-4 py-1.5 rounded-lg text-sm font-bold transition-all duration-300 ${
                 currentStep === step
-                  ? 'bg-gradient-to-r from-saywhat-orange to-saywhat-red text-saywhat-white shadow-xl scale-110'
+                  ? 'bg-gradient-to-r from-saywhat-orange to-saywhat-red text-saywhat-white shadow'
                   : currentStep > step
                   ? 'bg-gradient-to-r from-saywhat-green to-emerald-500 text-saywhat-white shadow-lg hover:shadow-xl'
                   : 'bg-saywhat-white text-saywhat-grey border-2 border-saywhat-grey/30 hover:bg-saywhat-light-grey hover:text-saywhat-black hover:border-saywhat-orange/50'
@@ -2561,9 +2561,9 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-saywhat-grey/20 rounded-full h-3 shadow-inner">
+        <div className="w-full bg-saywhat-grey/20 rounded-full h-1.5">
           <div 
-            className="bg-gradient-to-r from-saywhat-green via-saywhat-orange to-saywhat-red h-3 rounded-full transition-all duration-700 shadow-lg relative overflow-hidden"
+            className="bg-gradient-to-r from-saywhat-green via-saywhat-orange to-saywhat-red h-1.5 rounded-full transition-all duration-700 relative overflow-hidden"
             style={{ width: `${(currentStep / totalSteps) * 100}%` }}
           >
             <div className="absolute inset-0 bg-saywhat-white/30 animate-pulse"></div>
@@ -2571,7 +2571,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
         </div>
 
         {/* Step Labels */}
-        <div className="flex justify-between mt-4 text-sm font-medium">
+        <div className="flex justify-between mt-2 text-xs font-medium">
           {[
             { label: 'Personal', color: 'text-saywhat-grey' },
             { label: 'Emergency', color: 'text-saywhat-grey' },
@@ -2598,14 +2598,14 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
       </div>
 
       {/* Form Content */}
-      <div className="p-10">
-        <div className="min-h-[600px] bg-gradient-to-br from-saywhat-white to-saywhat-light-grey border-2 border-saywhat-grey/10 rounded-xl p-10 shadow-inner">
+      <div className="p-4">
+        <div className="bg-gradient-to-br from-saywhat-white to-saywhat-light-grey border border-saywhat-grey/10 rounded-xl p-5">
           {getCurrentStepContent()}
         </div>
       </div>
 
       {/* Navigation Buttons */}
-      <div className="bg-gradient-to-r from-saywhat-light-grey via-saywhat-white to-saywhat-light-grey p-6 rounded-b-xl border-t-2 border-saywhat-grey/20">
+      <div className="bg-gradient-to-r from-saywhat-light-grey via-saywhat-white to-saywhat-light-grey px-5 py-3 rounded-b-xl border-t border-saywhat-grey/20">
         <div className="flex justify-between items-center">
           <div>
             {currentStep > 1 && (
@@ -2613,7 +2613,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
                 type="button"
                 variant="outline"
                 onClick={() => setCurrentStep(currentStep - 1)}
-                className="border-2 border-saywhat-grey text-saywhat-black hover:bg-saywhat-grey hover:text-saywhat-white transition-all duration-300 px-6 py-3 rounded-lg font-semibold shadow-md hover:shadow-lg"
+                className="border-2 border-saywhat-grey text-saywhat-black hover:bg-saywhat-grey hover:text-saywhat-white transition-all duration-300 px-4 py-2 text-sm rounded-lg font-semibold shadow-md hover:shadow-lg"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -2628,7 +2628,7 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
               type="button" 
               variant="outline" 
               onClick={onCancel}
-              className="border-2 border-saywhat-red text-saywhat-red hover:bg-saywhat-red hover:text-saywhat-white transition-all duration-300 px-6 py-3 rounded-lg font-semibold shadow-md hover:shadow-lg"
+              className="border-2 border-saywhat-red text-saywhat-red hover:bg-saywhat-red hover:text-saywhat-white transition-all duration-300 px-4 py-2 text-sm rounded-lg font-semibold shadow-md hover:shadow-lg"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
