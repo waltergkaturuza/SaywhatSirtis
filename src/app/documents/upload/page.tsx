@@ -743,48 +743,32 @@ export default function DocumentUploadPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4">
         {/* Premium Header Section */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-saywhat-orange via-orange-600 to-saywhat-red rounded-3xl shadow-2xl p-8 mb-8 backdrop-blur-sm">
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-red-500/20 backdrop-blur-sm"></div>
-          <div className="relative flex items-center justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
-                  <CloudArrowUpIcon className="h-8 w-8 text-white" />
-                </div>
-                <h1 className="text-4xl font-bold text-white tracking-tight">Upload Documents</h1>
+        <div className="mb-4 rounded-xl bg-gradient-to-r from-saywhat-orange to-orange-600 px-5 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-white/20 p-2">
+                <CloudArrowUpIcon className="h-5 w-5 text-white" />
               </div>
-              <p className="text-orange-100 text-lg max-w-2xl leading-relaxed">
-                Intelligent document management with world-class AI-powered analysis and classification
-              </p>
-              <div className="flex items-center space-x-6 text-white/90 text-sm">
-                <div className="flex items-center space-x-2">
-                  <SparklesIcon className="h-4 w-4" />
-                  <span>AI-Powered Analysis</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <ShieldCheckIcon className="h-4 w-4" />
-                  <span>Secure Classification</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CpuChipIcon className="h-4 w-4" />
-                  <span>Smart Processing</span>
-                </div>
+              <div>
+                <h1 className="text-lg font-semibold text-white">Upload Documents</h1>
+                <p className="text-sm text-orange-100">
+                  Intelligent document management with AI-powered analysis and classification
+                </p>
               </div>
             </div>
-            <div className="hidden lg:block">
-              <div className="relative">
-                <div className="absolute inset-0 bg-white/10 rounded-2xl blur-xl"></div>
-                <CloudArrowUpIcon className="relative h-24 w-24 text-white/80" />
-              </div>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-white/90">
+              <span className="flex items-center gap-1.5"><SparklesIcon className="h-4 w-4" />AI-Powered Analysis</span>
+              <span className="flex items-center gap-1.5"><ShieldCheckIcon className="h-4 w-4" />Secure Classification</span>
+              <span className="flex items-center gap-1.5"><CpuChipIcon className="h-4 w-4" />Smart Processing</span>
             </div>
           </div>
         </div>
 
         {uploadState === "success" ? (
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-xl rounded-3xl p-12 text-center backdrop-blur-sm">
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 shadow-xl rounded-xl p-8 text-center backdrop-blur-sm">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 rounded-full blur-3xl"></div>
-              <CheckCircleIcon className="relative mx-auto h-20 w-20 text-green-500" />
+              <CheckCircleIcon className="relative mx-auto h-12 w-12 text-green-500" />
             </div>
             <h3 className="mt-6 text-2xl font-bold text-gray-900">Upload Successful! 🎉</h3>
             <p className="mt-4 text-lg text-gray-600 max-w-md mx-auto leading-relaxed">
@@ -793,7 +777,7 @@ export default function DocumentUploadPage() {
             <div className="mt-8 flex items-center justify-center space-x-4">
               <button
                 onClick={() => window.location.href = '/documents'}
-                className="inline-flex items-center px-8 py-4 border-2 border-transparent text-base font-semibold rounded-2xl shadow-lg text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
+                className="inline-flex items-center px-5 py-2 border-2 border-transparent text-sm font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
               >
                 <FolderIcon className="h-5 w-5 mr-2" />
                 Go to Document Library
@@ -821,7 +805,7 @@ export default function DocumentUploadPage() {
                   setAiAnalysis(null);
                   setUploadProgress(0);
                 }}
-                className="inline-flex items-center px-8 py-4 border-2 border-gray-300 text-base font-semibold rounded-2xl text-gray-700 bg-white hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-lg backdrop-blur-sm"
+                className="inline-flex items-center px-5 py-2 border-2 border-gray-300 text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-lg backdrop-blur-sm"
               >
                 <CloudArrowUpIcon className="h-5 w-5 mr-2" />
                 Upload Another
@@ -829,41 +813,41 @@ export default function DocumentUploadPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Premium File Upload Area */}
-            <div className="bg-gradient-to-br from-white to-gray-50 shadow-xl rounded-3xl p-8 border-2 border-gray-100 backdrop-blur-sm">
-              <div className="flex items-center space-x-3 mb-6">
+            <div className="bg-gradient-to-br from-white to-gray-50 shadow-sm rounded-xl p-5 border-2 border-gray-100 backdrop-blur-sm">
+              <div className="flex items-center space-x-3 mb-4">
                 <div className="p-2 bg-gradient-to-r from-saywhat-orange to-orange-600 rounded-xl shadow-lg">
                   <DocumentIcon className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                <h3 className="text-lg font-semibold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                   Select Files
                 </h3>
               </div>
               
               <div
-                className="relative border-2 border-dashed border-orange-300 rounded-2xl p-12 text-center hover:border-orange-400 hover:bg-orange-50/50 transition-all duration-300 group cursor-pointer backdrop-blur-sm"
+                className="relative border-2 border-dashed border-orange-300 rounded-xl p-6 text-center hover:border-orange-400 hover:bg-orange-50/50 transition-all duration-300 group cursor-pointer backdrop-blur-sm"
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-red-400/20 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <CloudArrowUpIcon className="relative mx-auto h-20 w-20 text-orange-400 group-hover:text-orange-500 transition-colors duration-300" />
+                  <CloudArrowUpIcon className="relative mx-auto h-10 w-10 text-orange-400 group-hover:text-orange-500 transition-colors duration-300" />
                 </div>
-                <div className="mt-6 space-y-4">
+                <div className="mt-3 space-y-2">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center px-8 py-4 border-2 border-transparent text-base font-semibold rounded-2xl text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-xl transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
+                    className="inline-flex items-center px-5 py-2 border-2 border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-xl transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
                   >
                     <CloudArrowUpIcon className="h-5 w-5 mr-2" />
                     Select Files
                   </button>
-                  <p className="text-lg text-gray-600 font-medium">
+                  <p className="text-sm text-gray-600 font-medium">
                     or drag and drop files here
                   </p>
-                  <div className="bg-gradient-to-r from-orange-100 to-red-100 rounded-xl p-4 max-w-md mx-auto">
+                  <div className="bg-gradient-to-r from-orange-100 to-red-100 rounded-lg p-2 max-w-md mx-auto">
                     <p className="text-sm text-gray-700 font-medium">
                       Supports: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX
                     </p>
@@ -884,7 +868,7 @@ export default function DocumentUploadPage() {
 
               {/* Selected Files with Premium Styling */}
               {selectedFiles.length > 0 && (
-                <div className="mt-8">
+                <div className="mt-4">
                   <div className="flex items-center space-x-2 mb-4">
                     <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg">
                       <DocumentIcon className="h-4 w-4 text-white" />
@@ -920,7 +904,7 @@ export default function DocumentUploadPage() {
 
               {/* Upload Progress with Premium Animation */}
               {uploadState === "uploading" && (
-                <div className="mt-8 p-6 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl border-2 border-orange-200 backdrop-blur-sm">
+                <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl border-2 border-orange-200 backdrop-blur-sm">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-3">
                       <div className="animate-spin rounded-full h-6 w-6 border-2 border-saywhat-orange border-t-transparent"></div>
@@ -941,7 +925,7 @@ export default function DocumentUploadPage() {
 
               {/* AI Processing with Premium Animation */}
               {uploadState === "processing" && (
-                <div className="mt-8 p-6 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl border-2 border-purple-200 backdrop-blur-sm">
+                <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl border-2 border-purple-200 backdrop-blur-sm">
                   <div className="flex items-center justify-center space-x-4">
                     <div className="relative">
                       <CpuChipIcon className="h-8 w-8 text-purple-600 animate-pulse" />
@@ -959,26 +943,26 @@ export default function DocumentUploadPage() {
             </div>
 
             {/* Document Metadata with Premium Styling */}
-            <div className="bg-gradient-to-br from-white to-blue-50 shadow-2xl rounded-3xl p-8 border-2 border-blue-100 backdrop-blur-sm">
-              <div className="flex items-center space-x-4 mb-8">
+            <div className="bg-gradient-to-br from-white to-blue-50 shadow-sm rounded-xl p-5 border-2 border-blue-100 backdrop-blur-sm">
+              <div className="flex items-center space-x-3 mb-4">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-xl blur-xl opacity-50"></div>
-                  <div className="relative p-3 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl shadow-lg">
-                    <DocumentIcon className="h-7 w-7 text-white" />
+                  <div className="relative p-2 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl shadow-lg">
+                    <DocumentIcon className="h-5 w-5 text-white" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-cyan-900 bg-clip-text text-transparent">
+                  <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-900 to-cyan-900 bg-clip-text text-transparent">
                     Document Information
                   </h3>
                   <p className="text-blue-600 font-medium">Essential document metadata and classification</p>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-base font-bold text-gray-900 mb-3">
+                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">
                       Document Title *
                     </label>
                     <input
@@ -986,13 +970,13 @@ export default function DocumentUploadPage() {
                       required
                       value={formData.title}
                       onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                      className="block w-full border-2 border-blue-200 rounded-2xl shadow-lg px-6 py-4 text-base focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white/80 backdrop-blur-sm placeholder-gray-400 transition-all duration-200"
+                      className="block w-full border-2 border-blue-200 rounded-xl shadow-sm px-3 py-2 text-sm focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white/80 backdrop-blur-sm placeholder-gray-400 transition-all duration-200"
                       placeholder="Enter descriptive document title..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-base font-bold text-gray-900 mb-3">
+                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">
                       Category *
                     </label>
                     <select
@@ -1002,7 +986,7 @@ export default function DocumentUploadPage() {
                         setCategorySelection(e.target.value);
                         setFolderManuallyEdited(false);
                       }}
-                      className="block w-full border-2 border-blue-200 rounded-2xl shadow-lg px-6 py-4 text-base focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                      className="block w-full border-2 border-blue-200 rounded-xl shadow-sm px-3 py-2 text-sm focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200"
                     >
                       <option value="">Select a category...</option>
                       {documentCategories.map(category => (
@@ -1012,8 +996,8 @@ export default function DocumentUploadPage() {
                   </div>
 
                   {showProgramsProjectField && (
-                    <div className="rounded-2xl p-6 border-2 border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50">
-                      <h4 className="flex items-center text-lg font-bold text-gray-900 mb-2">
+                    <div className="rounded-xl p-4 border-2 border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50">
+                      <h4 className="flex items-center text-sm font-bold text-gray-900 mb-2">
                         <BuildingOfficeIcon className="h-5 w-5 text-indigo-600 mr-2" />
                         Program / project
                       </h4>
@@ -1030,7 +1014,7 @@ export default function DocumentUploadPage() {
                         </p>
                       ) : (
                         <div>
-                          <label className="block text-base font-bold text-gray-900 mb-3">
+                          <label className="block text-sm font-semibold text-gray-900 mb-1.5">
                             Project *
                           </label>
                           <select
@@ -1039,7 +1023,7 @@ export default function DocumentUploadPage() {
                             onChange={(e) =>
                               setSelectedProgramProjectId(e.target.value)
                             }
-                            className="block w-full border-2 border-indigo-200 rounded-2xl shadow-lg px-6 py-4 text-base focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500 bg-white/90"
+                            className="block w-full border-2 border-indigo-200 rounded-xl shadow-sm px-3 py-2 text-sm focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500 bg-white/90"
                           >
                             <option value="">Select a project…</option>
                             {programLinkProjects.map((p) => (
@@ -1054,7 +1038,7 @@ export default function DocumentUploadPage() {
                   )}
 
                   {/* User Information - Auto-captured */}
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-green-200">
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-200">
                     <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
                       <UserIcon className="h-5 w-5 text-green-600 mr-2" />
                       Document Owner
@@ -1086,7 +1070,7 @@ export default function DocumentUploadPage() {
                   </div>
 
                   {/* Repository Choice */}
-                  <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 border-2 border-orange-200">
+                  <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-4 border-2 border-orange-200">
                     <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
                       <FolderIcon className="h-5 w-5 text-orange-600 mr-2" />
                       Document Repository
@@ -1132,9 +1116,9 @@ export default function DocumentUploadPage() {
                   </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-base font-bold text-gray-900 mb-3">
+                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">
                       Folder Path
                     </label>
                     <div className="flex shadow-lg rounded-2xl overflow-hidden">
@@ -1168,14 +1152,14 @@ export default function DocumentUploadPage() {
                   </div>
 
                   <div>
-                    <label className="block text-base font-bold text-gray-900 mb-3">
+                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">
                       Keywords & Tags
                     </label>
                     <input
                       type="text"
                       value={formData.keywords}
                       onChange={(e) => setFormData(prev => ({ ...prev, keywords: e.target.value }))}
-                      className="block w-full border-2 border-blue-200 rounded-2xl shadow-lg px-6 py-4 text-base focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white/80 backdrop-blur-sm placeholder-gray-400 transition-all duration-200"
+                      className="block w-full border-2 border-blue-200 rounded-xl shadow-sm px-3 py-2 text-sm focus:ring-4 focus:ring-blue-200 focus:border-blue-500 bg-white/80 backdrop-blur-sm placeholder-gray-400 transition-all duration-200"
                       placeholder="project management, quarterly report, progress..."
                     />
                   </div>
@@ -1184,40 +1168,40 @@ export default function DocumentUploadPage() {
             </div>
 
             {/* Security & Access Control with Premium Styling */}
-            <div className="bg-gradient-to-br from-white to-red-50 shadow-2xl rounded-3xl p-8 border-2 border-red-100 backdrop-blur-sm">
-              <div className="flex items-center space-x-4 mb-8">
+            <div className="bg-gradient-to-br from-white to-red-50 shadow-sm rounded-xl p-5 border-2 border-red-100 backdrop-blur-sm">
+              <div className="flex items-center space-x-3 mb-4">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-pink-400 rounded-xl blur-xl opacity-50"></div>
-                  <div className="relative p-3 bg-gradient-to-r from-red-600 to-pink-600 rounded-xl shadow-lg">
-                    <ShieldCheckIcon className="h-7 w-7 text-white" />
+                  <div className="relative p-2 bg-gradient-to-r from-red-600 to-pink-600 rounded-xl shadow-lg">
+                    <ShieldCheckIcon className="h-5 w-5 text-white" />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-red-900 to-pink-900 bg-clip-text text-transparent">
+                  <h3 className="text-lg font-semibold bg-gradient-to-r from-red-900 to-pink-900 bg-clip-text text-transparent">
                     Security & Access Control
                   </h3>
                   <p className="text-red-600 font-medium">Document classification and access permissions</p>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-base font-bold text-gray-900 mb-3">
+                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">
                       Security Classification *
                     </label>
                     <select
                       required
                       value={formData.classification}
                       onChange={(e) => setFormData(prev => ({ ...prev, classification: e.target.value }))}
-                      className="block w-full border-2 border-red-200 rounded-2xl shadow-lg px-6 py-4 text-base focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                      className="block w-full border-2 border-red-200 rounded-xl shadow-sm px-3 py-2 text-sm focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white/80 backdrop-blur-sm transition-all duration-200"
                     >
                       {Object.entries(securityClassifications).map(([key, config]) => (
                         <option key={key} value={key}>{key} - {config.description}</option>
                       ))}
                     </select>
                     
-                    <div className="mt-6 p-6 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl border-2 border-red-200 backdrop-blur-sm">
+                    <div className="mt-4 p-4 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl border-2 border-red-200 backdrop-blur-sm">
                       <div className="flex items-center space-x-3 mb-4">
                         <ClassificationIcon className="h-6 w-6 text-red-600" />
                         <span className={`px-4 py-2 rounded-xl text-sm font-bold shadow-lg ${selectedClassification?.color || 'text-gray-600 bg-gray-100'}`}>
@@ -1240,16 +1224,16 @@ export default function DocumentUploadPage() {
                   </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-base font-bold text-gray-900 mb-3">
+                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">
                       Access Level *
                     </label>
                     <select
                       required
                       value={formData.accessLevel}
                       onChange={(e) => setFormData(prev => ({ ...prev, accessLevel: e.target.value }))}
-                      className="block w-full border-2 border-red-200 rounded-2xl shadow-lg px-6 py-4 text-base focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white/80 backdrop-blur-sm transition-all duration-200"
+                      className="block w-full border-2 border-red-200 rounded-xl shadow-sm px-3 py-2 text-sm focus:ring-4 focus:ring-red-200 focus:border-red-500 bg-white/80 backdrop-blur-sm transition-all duration-200"
                     >
                       {accessLevels.map(level => (
                         <option key={level.value} value={level.value}>
@@ -1261,7 +1245,7 @@ export default function DocumentUploadPage() {
 
                   {/* Conditional Selection Fields based on Access Level */}
                   {formData.accessLevel === 'individual' && (
-                    <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200">
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200">
                       <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
                         <UserIcon className="h-5 w-5 text-blue-600 mr-2" />
                         Select Individuals
@@ -1311,7 +1295,7 @@ export default function DocumentUploadPage() {
                   )}
 
                   {formData.accessLevel === 'department' && (
-                    <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200">
+                    <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200">
                       <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
                         <UserGroupIcon className="h-5 w-5 text-green-600 mr-2" />
                         Select Departments
@@ -1361,7 +1345,7 @@ export default function DocumentUploadPage() {
                   )}
 
                   {formData.accessLevel === 'team' && (
-                    <div className="p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200">
+                    <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200">
                       <h4 className="flex items-center text-lg font-bold text-gray-900 mb-4">
                         <UserGroupIcon className="h-5 w-5 text-purple-600 mr-2" />
                         Select Teams/Projects
@@ -1409,7 +1393,7 @@ export default function DocumentUploadPage() {
                     </div>
                   )}
 
-                  <div className="p-6 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl border-2 border-orange-200 backdrop-blur-sm">
+                  <div className="p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl border-2 border-orange-200 backdrop-blur-sm">
                     <div className="flex items-center space-x-3 mb-3">
                       <UserGroupIcon className="h-6 w-6 text-orange-600" />
                       <h4 className="text-lg font-bold text-gray-900">Access Guidelines</h4>
@@ -1434,11 +1418,11 @@ export default function DocumentUploadPage() {
             </div>
 
             {/* Premium Action Buttons */}
-            <div className="flex items-center justify-between p-8 bg-gradient-to-r from-gray-50 to-white rounded-3xl shadow-xl border-2 border-gray-100 backdrop-blur-sm">
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl shadow-sm border-2 border-gray-100 backdrop-blur-sm">
               <button
                 type="button"
                 onClick={() => window.location.href = '/documents'}
-                className="inline-flex items-center px-8 py-4 border-2 border-gray-300 text-base font-semibold rounded-2xl text-gray-700 bg-white hover:bg-gray-50 shadow-lg transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
+                className="inline-flex items-center px-5 py-2 border-2 border-gray-300 text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 shadow-lg transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
               >
                 <XMarkIcon className="h-5 w-5 mr-2" />
                 Cancel
@@ -1447,7 +1431,7 @@ export default function DocumentUploadPage() {
               <div className="flex items-center space-x-6">
                 <button
                   type="button"
-                  className="inline-flex items-center px-8 py-4 border-2 border-blue-300 text-base font-semibold rounded-2xl text-blue-700 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 shadow-lg transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
+                  className="inline-flex items-center px-5 py-2 border-2 border-blue-300 text-sm font-semibold rounded-xl text-blue-700 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 shadow-lg transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
                 >
                   <EyeIcon className="h-5 w-5 mr-2" />
                   Save as Draft
@@ -1456,7 +1440,7 @@ export default function DocumentUploadPage() {
                 <button
                   type="submit"
                   disabled={uploadState === "uploading" || selectedFiles.length === 0}
-                  className="inline-flex items-center px-10 py-4 border-2 border-transparent text-base font-bold rounded-2xl text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
+                  className="inline-flex items-center px-6 py-2 border-2 border-transparent text-sm font-bold rounded-xl text-white bg-gradient-to-r from-saywhat-orange to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl transform hover:scale-105 transition-all duration-200 backdrop-blur-sm"
                 >
                   {uploadState === "uploading" ? (
                     <>
@@ -1465,7 +1449,7 @@ export default function DocumentUploadPage() {
                     </>
                   ) : (
                     <>
-                      <CloudArrowUpIcon className="h-6 w-6 mr-3" />
+                      <CloudArrowUpIcon className="h-5 w-5 mr-2" />
                       <span>Upload Document{selectedFiles.length > 1 ? 's' : ''}</span>
                       {selectedFiles.length > 0 && (
                         <span className="ml-2 px-3 py-1 bg-white/20 rounded-full text-sm font-bold">
