@@ -1071,8 +1071,6 @@ export default function CallCentreDataSummaryPage() {
             </table>
           </div>
         ) : null}
-            </div>
-        </div>
 
         {/* Case Management Overview */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
@@ -1080,7 +1078,7 @@ export default function CallCentreDataSummaryPage() {
             Case Management Overview
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-gray-50 p-4 rounded-lg text-center border border-gray-200">
               <div className="text-2xl font-bold text-black">
                 {summaryStats.totalCases}
@@ -1099,7 +1097,7 @@ export default function CallCentreDataSummaryPage() {
               <div className="text-2xl font-bold text-green-600">
                 {summaryStats.closedCases}
               </div>
-              <div className="text-sm text-green-700 font-medium">Closed Cases</div>
+              <div className="text-sm text-green-700 font-medium">Closed or Resolved</div>
             </div>
             <div className="bg-red-50 p-4 rounded-lg text-center border border-red-200">
               <div className="text-2xl font-bold text-red-600">
@@ -1111,10 +1109,11 @@ export default function CallCentreDataSummaryPage() {
 
           <div className="text-sm text-gray-600">
             <p>
-              Cases are automatically tracked from call entry to closure. Officers
-              can monitor progress and ensure timely resolution of client issues.
+              Pending cases are every case not yet closed or resolved. A case is overdue when it is still pending seven days after the call, the same rule used in Case Management.
             </p>
           </div>
+        </div>
+            </div>
         </div>
       </div>
     </ModulePage>

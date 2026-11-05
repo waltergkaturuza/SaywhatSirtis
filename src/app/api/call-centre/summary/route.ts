@@ -11,6 +11,26 @@ import {
   mapStoredCallerAgeToBucket,
 } from '@/lib/call-centre/caller-demographics'
 
+const CASE_FLAG_VALUES = ['YES', 'yes', 'Yes']
+const FINISHED_CASE_STATUSES = ['CLOSED', 'Closed', 'closed', 'RESOLVED', 'Resolved', 'resolved', 'DONE', 'Done', 'done']
+const OVERDUE_AFTER_DAYS = 7
+
+const isCaseFlag = (value?: string | null) => (value || '').toUpperCase() === 'YES'
+
+function isFinishedCase(status?: string | null) {
+  const key = (status || 'OPEN').toUpperCase().replace(/[\s-]+/g, '_')
+  return key === 'CLOSED' || key === 'RESOLVED' || key === 'DONE'
+}
+
+function overdueCutoff() {
+  return new Date(Date.now() - OVERDUE_AFTER_DAYS * 24 * 60 * 60 * 1000)
+}
+
+function isOverdueCase(call: { isCase: string | null; status: string | null; callStartTime: Date | null; createdAt: Date }) {
+  if (!isCaseFlag(call.isCase) || isFinishedCase(call.status)) return false
+  return new Date(call.callStartTime ?? call.createdAt) < overdueCutoff()
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Rate limiting
@@ -253,35 +273,32 @@ export async function GET(request: NextRequest) {
 
     const totalCases = await prisma.call_records.count({
       where: {
-        ...recordWhere,
-        isCase: 'YES'
-      }
-    })
-
-    const pendingCases = await prisma.call_records.count({
-      where: {
-        ...recordWhere,
-        isCase: 'YES',
-        status: 'OPEN'
+        AND: [recordWhere, { isCase: { in: CASE_FLAG_VALUES } }]
       }
     })
 
     const closedCases = await prisma.call_records.count({
       where: {
-        ...recordWhere,
-        isCase: 'YES',
-        status: 'CLOSED'
+        AND: [recordWhere, { isCase: { in: CASE_FLAG_VALUES } }, { status: { in: FINISHED_CASE_STATUSES } }]
       }
     })
 
+    const pendingCases = Math.max(0, totalCases - closedCases)
+
+    const cutoff = overdueCutoff()
     const overdueCases = await prisma.call_records.count({
       where: {
-        ...recordWhere,
-        isCase: 'YES',
-        status: 'OPEN',
-        followUpDate: {
-          lt: new Date()
-        }
+        AND: [
+          recordWhere,
+          { isCase: { in: CASE_FLAG_VALUES } },
+          { OR: [{ status: null }, { status: { notIn: FINISHED_CASE_STATUSES } }] },
+          {
+            OR: [
+              { callStartTime: { lt: cutoff } },
+              { callStartTime: null, createdAt: { lt: cutoff } }
+            ]
+          }
+        ]
       }
     })
 
@@ -334,20 +351,16 @@ export async function GET(request: NextRequest) {
             status: true,
             followUpDate: true,
             callStartTime: true,
-            callEndTime: true
+            callEndTime: true,
+            createdAt: true
           }
         })
 
         const validCallsCount = officerCalls.filter(c => (c.callValidity || '').toLowerCase() === 'valid').length
-        const casesCount = officerCalls.filter(c => c.isCase === 'YES').length
-        const pendingCasesCount = officerCalls.filter(c => c.isCase === 'YES' && c.status === 'OPEN').length
-        const closedCasesCount = officerCalls.filter(c => c.isCase === 'YES' && c.status === 'CLOSED').length
-        const overdueCasesCount = officerCalls.filter(c => 
-          c.isCase === 'YES' && 
-          c.status === 'OPEN' && 
-          c.followUpDate && 
-          new Date(c.followUpDate) < new Date()
-        ).length
+        const casesCount = officerCalls.filter(c => isCaseFlag(c.isCase)).length
+        const closedCasesCount = officerCalls.filter(c => isCaseFlag(c.isCase) && isFinishedCase(c.status)).length
+        const pendingCasesCount = casesCount - closedCasesCount
+        const overdueCasesCount = officerCalls.filter(isOverdueCase).length
 
         // Calculate actual average call duration for this officer
         const callsWithDuration = officerCalls.filter(c => c.callStartTime && c.callEndTime);
@@ -393,6 +406,7 @@ export async function GET(request: NextRequest) {
         followUpDate: true,
         callStartTime: true,
         callEndTime: true,
+        createdAt: true,
       },
     })
 
@@ -406,15 +420,10 @@ export async function GET(request: NextRequest) {
 
     for (const [name, calls] of groupedUnnamed) {
       const validCallsCount = calls.filter(c => (c.callValidity || '').toLowerCase() === 'valid').length
-      const casesCount = calls.filter(c => c.isCase === 'YES').length
-      const pendingCasesCount = calls.filter(c => c.isCase === 'YES' && c.status === 'OPEN').length
-      const closedCasesCount = calls.filter(c => c.isCase === 'YES' && c.status === 'CLOSED').length
-      const overdueCasesCount = calls.filter(c =>
-        c.isCase === 'YES' &&
-        c.status === 'OPEN' &&
-        c.followUpDate &&
-        new Date(c.followUpDate) < new Date()
-      ).length
+      const casesCount = calls.filter(c => isCaseFlag(c.isCase)).length
+      const closedCasesCount = calls.filter(c => isCaseFlag(c.isCase) && isFinishedCase(c.status)).length
+      const pendingCasesCount = casesCount - closedCasesCount
+      const overdueCasesCount = calls.filter(isOverdueCase).length
       const callsWithDuration = calls.filter(c => c.callStartTime && c.callEndTime)
       const avgDurationMinutes = callsWithDuration.length > 0
         ? Math.round(
