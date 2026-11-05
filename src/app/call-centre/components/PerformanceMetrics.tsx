@@ -137,7 +137,7 @@ const PerformanceMetrics = () => {
           <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-medium text-saywhat-dark mb-4 flex items-center">
               <ChartBarIcon className="h-5 w-5 mr-2 text-saywhat-orange" />
-              Officer Performance Today
+              Officer Performance This Week
             </h3>
             <div className="overflow-x-auto">
               <table className="min-w-full">
@@ -181,10 +181,10 @@ const PerformanceMetrics = () => {
                           <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
                             <div
                               className="bg-green-600 h-2 rounded-full"
-                              style={{ width: `${officer.validCallsRate}%` }}
+                              style={{ width: `${Math.min(100, Math.max(0, officer.validCallsRate))}%` }}
                             ></div>
                           </div>
-                          <span className="text-sm text-saywhat-dark">{officer.validCallsRate}%</span>
+                          <span className="text-sm text-saywhat-dark">{Math.min(100, Math.max(0, officer.validCallsRate))}%</span>
                         </div>
                       </td>
                       <td className="py-4 px-2 text-sm text-saywhat-dark">{officer.casesCreated}</td>

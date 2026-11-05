@@ -93,26 +93,18 @@ export async function GET(request: NextRequest) {
           _count: { satisfactionRating: true }
         }),
         
-        // Officer performance data - try both assignedOfficer and officerName fields
-        prisma.call_records.groupBy({
-          by: ['assignedOfficer'],
-          where: {
-            createdAt: { gte: startOfWeek, lte: endOfWeek },
-            assignedOfficer: { not: null }
-          },
-          _count: { id: true },
-          _avg: { satisfactionRating: true }
-        }).catch(async () => {
-          // Fallback: try officerName field if assignedOfficer doesn't work
-          return prisma.call_records.groupBy({
-            by: ['officerName'],
-            where: {
-              createdAt: { gte: startOfWeek, lte: endOfWeek },
-              officerName: { not: null }
-            },
-            _count: { id: true },
-            _avg: { satisfactionRating: true }
-          }).then(results => results.map(r => ({ ...r, assignedOfficer: r.officerName })))
+        prisma.call_records.findMany({
+          where: { createdAt: { gte: startOfWeek, lte: endOfWeek } },
+          select: {
+            officerName: true,
+            assignedOfficer: true,
+            callValidity: true,
+            isCase: true,
+            category: true,
+            callStartTime: true,
+            callEndTime: true,
+            satisfactionRating: true
+          }
         })
       ])
 
@@ -137,112 +129,51 @@ export async function GET(request: NextRequest) {
 
       const customerSatisfaction = satisfactionData._avg.satisfactionRating || 0
 
-      // Process officer performance data
-      let officerPerformance = []
-      
-      if (officerStats.length > 0) {
-        officerPerformance = await Promise.all(
-          officerStats.map(async (officer) => {
-          // Get additional stats for each officer
-          const officerField = officer.assignedOfficer
-          const [validCalls, cases, avgTime] = await Promise.all([
-            prisma.call_records.count({
-              where: {
-                OR: [
-                  { assignedOfficer: officerField },
-                  { officerName: officerField }
-                ],
-                createdAt: { gte: startOfWeek, lte: endOfWeek },
-                callValidity: 'valid'
-              }
-            }),
-            prisma.call_records.count({
-              where: {
-                AND: [
-                  {
-                    OR: [
-                      { assignedOfficer: officerField },
-                      { officerName: officerField }
-                    ]
-                  },
-                  { createdAt: { gte: startOfWeek, lte: endOfWeek } },
-                  {
-                    OR: [
-                      { isCase: 'YES' },
-                      { isCase: 'yes' },
-                      { isCase: 'Yes' },
-                      { category: 'CASE' },
-                      { category: 'case' }
-                    ]
-                  }
-                ]
-              }
-            }),
-            prisma.call_records.findMany({
-              where: {
-                OR: [
-                  { assignedOfficer: officerField },
-                  { officerName: officerField }
-                ],
-                createdAt: { gte: startOfWeek, lte: endOfWeek },
-                AND: [
-                  { callStartTime: { not: null } },
-                  { callEndTime: { not: null } }
-                ]
-              },
-              select: { callStartTime: true, callEndTime: true }
-            })
-          ])
+      type OfficerTotals = {
+        calls: number
+        valid: number
+        cases: number
+        timedCalls: number
+        totalMs: number
+        ratingSum: number
+        ratingCount: number
+      }
+      const totalsByOfficer = new Map<string, OfficerTotals>()
 
-          // Calculate average call time for this officer
-          let avgTimeStr = '0 min'
-          if (avgTime.length > 0) {
-            const totalMs = avgTime.reduce((sum, call) => {
-              if (call.callEndTime && call.callStartTime) {
-                return sum + (call.callEndTime.getTime() - call.callStartTime.getTime())
-              }
-              return sum
-            }, 0)
-            const avgMinutes = Math.round(totalMs / (avgTime.length * 1000 * 60))
-            avgTimeStr = avgMinutes > 0 ? `${avgMinutes} min` : '< 1 min'
-          }
+      for (const call of officerStats) {
+        const name = (call.officerName || call.assignedOfficer || '').trim()
+        if (!name) continue
+        const totals = totalsByOfficer.get(name) || { calls: 0, valid: 0, cases: 0, timedCalls: 0, totalMs: 0, ratingSum: 0, ratingCount: 0 }
+        totals.calls += 1
+        if ((call.callValidity || '').toLowerCase() === 'valid') totals.valid += 1
+        if ((call.isCase || '').toUpperCase() === 'YES' || (call.category || '').toUpperCase() === 'CASE') totals.cases += 1
+        if (call.callStartTime && call.callEndTime && call.callEndTime > call.callStartTime) {
+          totals.timedCalls += 1
+          totals.totalMs += call.callEndTime.getTime() - call.callStartTime.getTime()
+        }
+        if (call.satisfactionRating && call.satisfactionRating > 0) {
+          totals.ratingSum += call.satisfactionRating
+          totals.ratingCount += 1
+        }
+        totalsByOfficer.set(name, totals)
+      }
 
-          const validRate = officer._count.id > 0 ? 
-            Math.round((validCalls / officer._count.id) * 100) : 0
-
+      const officerPerformance = [...totalsByOfficer.entries()]
+        .map(([name, totals]) => {
+          const avgMinutes = totals.timedCalls > 0 ? Math.round(totals.totalMs / (totals.timedCalls * 60000)) : 0
           return {
-            id: officer.assignedOfficer || 'unknown',
-            name: officer.assignedOfficer || 'Unknown Officer',
-            avatar: '👤', // Default avatar emoji
-            callsToday: officer._count.id,
-            validCallsRate: validRate,
-            casesCreated: cases,
-            averageCallTime: avgTimeStr,
-            rating: Math.round((officer._avg.satisfactionRating || 0) * 10) / 10,
-            status: 'online' // Default status - could be enhanced with real status tracking
+            id: name,
+            name,
+            avatar: '👤',
+            callsToday: totals.calls,
+            validCallsRate: totals.calls > 0 ? Math.min(100, Math.round((totals.valid / totals.calls) * 100)) : 0,
+            casesCreated: totals.cases,
+            averageCallTime: totals.timedCalls === 0 ? '0 min' : avgMinutes > 0 ? `${avgMinutes} min` : '< 1 min',
+            rating: totals.ratingCount > 0 ? Math.round((totals.ratingSum / totals.ratingCount) * 10) / 10 : 0,
+            status: 'online'
           }
         })
-      )
-      } else {
-        // If no officers found, create sample data with realistic metrics matching current data
-        const sampleOfficers = [
-          { name: 'Egenia Maplupe', calls: 2, cases: 0, avgTime: '8 min', rating: 4.5 },
-          { name: 'Ryan Jimu', calls: 2, cases: 1, avgTime: '12 min', rating: 4.2 },
-          { name: 'Sacha Mupunga', calls: 1, cases: 0, avgTime: '5 min', rating: 4.0 }
-        ]
-        
-        officerPerformance = sampleOfficers.map((officer, index) => ({
-          id: `officer_${index}`,
-          name: officer.name,
-          avatar: '👤',
-          callsToday: officer.calls,
-          validCallsRate: officer.calls > 0 ? 100 : 0,
-          casesCreated: officer.cases,
-          averageCallTime: officer.avgTime,
-          rating: officer.rating,
-          status: 'online'
-        }))
-      }
+        .sort((a, b) => b.callsToday - a.callsToday)
 
       const performanceData = {
         teamMetrics: {
