@@ -1815,9 +1815,9 @@ export default function EmployeesPage() {
           setSelectedEmployee(null)
         }
       }}>
-        <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-saywhat-orange to-saywhat-red bg-clip-text text-transparent">
+        <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] overflow-y-auto pt-10">
+          <DialogHeader className="sr-only">
+            <DialogTitle>
               Edit Employee
             </DialogTitle>
             <DialogDescription className="sr-only">
@@ -1848,9 +1848,9 @@ export default function EmployeesPage() {
       {/* Create Employee Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] overflow-y-auto p-0">
-          <div className="p-6">
-            <DialogHeader className="pb-4">
-              <DialogTitle className="text-2xl font-bold text-saywhat-black">Add New Employee</DialogTitle>
+          <div className="p-4 pt-10">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Add New Employee</DialogTitle>
               <DialogDescription className="sr-only">
                 Create a new employee record and optional user account.
               </DialogDescription>
