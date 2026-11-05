@@ -959,6 +959,7 @@ export default function CallCentreDataSummaryPage() {
               )}
             </div>
 
+            <div className="space-y-6">
             {/* Calls by Gender */}
             <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
             <h3 className="text-lg font-semibold text-black mb-4 border-b border-gray-200 pb-2">Calls Distribution by Gender</h3>
@@ -1023,7 +1024,6 @@ export default function CallCentreDataSummaryPage() {
               </div>
             )}
           </div>
-        </div>
 
         {/* Age group × Key population (Zero ↔ Invalid) */}
         {ageKeyPopulationCrossTab && ageKeyPopulationCrossTab.rows.some(r => r.rowTotal > 0) ? (
@@ -1071,6 +1071,8 @@ export default function CallCentreDataSummaryPage() {
             </table>
           </div>
         ) : null}
+            </div>
+        </div>
 
         {/* Case Management Overview */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
