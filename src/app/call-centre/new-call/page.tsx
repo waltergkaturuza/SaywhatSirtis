@@ -32,6 +32,7 @@ export default function NewCallEntryPage() {
   const [referralLoading, setReferralLoading] = useState(false)
   const [showOtherReferral, setShowOtherReferral] = useState(false)
   const [otherReferralText, setOtherReferralText] = useState('')
+  const [providerSearch, setProviderSearch] = useState('')
 
   // Auto-generated fields
   const currentDateTime = new Date()
@@ -390,59 +391,56 @@ export default function NewCallEntryPage() {
 
       <div>
                 <h3 className="text-lg font-semibold text-saywhat-dark mb-4">Service Providers Directory</h3>
+        <input
+          type="search"
+          value={providerSearch}
+          onChange={(e) => setProviderSearch(e.target.value)}
+          placeholder="Search providers or services"
+          className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
+        />
         <div className="space-y-2 text-sm max-h-96 overflow-y-auto">
-          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
-            <div className="font-medium text-saywhat-dark">Zimbabwe AIDS Council (ZAC)</div>
-            <div className="text-saywhat-grey">+263 4 252 505</div>
-            <div className="text-xs text-gray-500">HIV/AIDS Support & Testing</div>
-          </div>
-          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
-            <div className="font-medium text-saywhat-dark">Musasa Project</div>
-            <div className="text-saywhat-grey">+263 4 720 738</div>
-            <div className="text-xs text-gray-500">GBV Support & Legal Aid</div>
-          </div>
-          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
-            <div className="font-medium text-saywhat-dark">Zimbabwe Women Lawyers Association</div>
-            <div className="text-saywhat-grey">+263 4 792 632</div>
-            <div className="text-xs text-gray-500">Legal Assistance</div>
-          </div>
-          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
-            <div className="font-medium text-saywhat-dark">Family AIDS Caring Trust (FACT)</div>
-            <div className="text-saywhat-grey">+263 4 741 288</div>
-            <div className="text-xs text-gray-500">HIV Counselling & Support</div>
-          </div>
-          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
-            <div className="font-medium text-saywhat-dark">Friendship Bench</div>
-            <div className="text-saywhat-grey">+263 4 708 835</div>
-            <div className="text-xs text-gray-500">Mental Health Support</div>
-          </div>
-          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
-            <div className="font-medium text-saywhat-dark">Childline Zimbabwe</div>
-            <div className="text-saywhat-grey">116 (Toll Free)</div>
-            <div className="text-xs text-gray-500">Child Protection Services</div>
-          </div>
-          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
-            <div className="font-medium text-saywhat-dark">Adult Rape Clinic</div>
-            <div className="text-saywhat-grey">+263 4 791 378</div>
-            <div className="text-xs text-gray-500">Sexual Assault Support</div>
-          </div>
-          <div className="p-3 bg-saywhat-light-grey rounded-lg border">
-            <div className="font-medium text-saywhat-dark">Population Services International (PSI)</div>
-            <div className="text-saywhat-grey">+263 4 369 660</div>
-            <div className="text-xs text-gray-500">Reproductive Health Services</div>
-          </div>
+          {referralLoading ? (
+            <p className="py-4 text-center text-xs text-gray-500">Loading service providers...</p>
+          ) : (() => {
+            const query = providerSearch.trim().toLowerCase()
+            const providers = referralOrganizations.filter((org) =>
+              !query ||
+              String(org.name || '').toLowerCase().includes(query) ||
+              String(org.category || '').toLowerCase().includes(query) ||
+              String(org.province || '').toLowerCase().includes(query) ||
+              (Array.isArray(org.focusAreas) && org.focusAreas.some((area: string) => area.toLowerCase().includes(query)))
+            )
+            if (providers.length === 0) {
+              return (
+                <p className="py-4 text-center text-xs text-gray-500">
+                  {referralOrganizations.length === 0 ? 'No service providers are in the directory yet.' : 'No providers match your search.'}
+                </p>
+              )
+            }
+            return providers.map((org) => (
+              <div key={org.id} className="p-3 bg-saywhat-light-grey rounded-lg border">
+                <div className="font-medium text-saywhat-dark">{org.name}</div>
+                {org.contact?.phone && (
+                  <a href={`tel:${String(org.contact.phone).replace(/\s/g, '')}`} className="block text-saywhat-grey hover:text-orange-700">
+                    {org.contact.phone}
+                  </a>
+                )}
+                {org.contact?.email && <div className="truncate text-xs text-gray-600" title={org.contact.email}>{org.contact.email}</div>}
+                <div className="text-xs text-gray-500">
+                  {[org.category, org.province].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+            ))
+          })()}
           <div className="p-3 bg-red-50 rounded-lg border border-red-200">
             <div className="font-medium text-red-900">Emergency Services</div>
             <div className="text-red-700">Police: 999 | Medical: 994</div>
             <div className="text-xs text-red-600">24/7 Emergency Response</div>
           </div>
         </div>
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <p className="text-xs text-blue-700">
-            <strong>Note:</strong> This directory contains over 50 service providers. 
-            Contact your supervisor to add or update provider information.
-          </p>
-        </div>
+        <Link href="/call-centre/referral-directory" className="mt-3 inline-block text-xs font-medium text-orange-700 hover:text-orange-800">
+          Open the full Referral Directory
+        </Link>
       </div>
     </div>
   )
