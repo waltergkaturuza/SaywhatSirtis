@@ -122,3 +122,77 @@ ORDER BY p."createdAt" DESC;
 -- SET "officerName" = 'Full Name Of Officer', "updatedAt" = NOW()
 -- WHERE "callNumber" = '0004215/2026'
 --   AND "officerName" ILIKE 'current officer';
+
+-- 9. Confidence check: the named calls saved immediately before and after each placeholder call.
+--    High   = the same officer saved the call before and the call after, both within 30 minutes
+--    Medium = one neighbouring call within 10 minutes
+--    Low    = anything else (check with the officers or the shift roster)
+WITH placeholder AS (
+  SELECT id, "callNumber", "caseNumber", "createdAt"
+  FROM call_records
+  WHERE "officerName" ILIKE 'current officer'
+),
+neighbours AS (
+  SELECT p.id, p."callNumber", p."caseNumber", p."createdAt",
+         prev."officerName" AS prev_officer, prev."callNumber" AS prev_call,
+         ROUND(EXTRACT(EPOCH FROM (p."createdAt" - prev."createdAt")) / 60) AS prev_minutes,
+         nxt."officerName" AS next_officer, nxt."callNumber" AS next_call,
+         ROUND(EXTRACT(EPOCH FROM (nxt."createdAt" - p."createdAt")) / 60) AS next_minutes
+  FROM placeholder p
+  LEFT JOIN LATERAL (
+    SELECT c."officerName", c."callNumber", c."createdAt" FROM call_records c
+    WHERE c."createdAt" < p."createdAt"
+      AND c."officerName" IS NOT NULL AND TRIM(c."officerName") <> '' AND c."officerName" NOT ILIKE 'current officer'
+    ORDER BY c."createdAt" DESC LIMIT 1
+  ) prev ON TRUE
+  LEFT JOIN LATERAL (
+    SELECT c."officerName", c."callNumber", c."createdAt" FROM call_records c
+    WHERE c."createdAt" > p."createdAt"
+      AND c."officerName" IS NOT NULL AND TRIM(c."officerName") <> '' AND c."officerName" NOT ILIKE 'current officer'
+    ORDER BY c."createdAt" ASC LIMIT 1
+  ) nxt ON TRUE
+)
+SELECT "callNumber", "caseNumber", "createdAt",
+       prev_officer, prev_call, prev_minutes,
+       next_officer, next_call, next_minutes,
+       CASE
+         WHEN prev_officer = next_officer AND prev_minutes <= 30 AND next_minutes <= 30 THEN 'High'
+         WHEN LEAST(COALESCE(prev_minutes, 99999), COALESCE(next_minutes, 99999)) <= 10 THEN 'Medium'
+         ELSE 'Low'
+       END AS confidence,
+       CASE
+         WHEN prev_officer = next_officer THEN prev_officer
+         WHEN COALESCE(prev_minutes, 99999) <= COALESCE(next_minutes, 99999) THEN prev_officer
+         ELSE next_officer
+       END AS suggested_officer
+FROM neighbours
+ORDER BY confidence, "createdAt" DESC;
+
+-- 10. Optional bulk fix for High-confidence matches only. Remove the leading "--" to run it.
+--     Review step 9 first; Medium and Low rows should be confirmed one by one with step 8.
+-- WITH placeholder AS (
+--   SELECT id, "createdAt" FROM call_records WHERE "officerName" ILIKE 'current officer'
+-- ),
+-- matches AS (
+--   SELECT p.id, prev."officerName" AS officer
+--   FROM placeholder p
+--   JOIN LATERAL (
+--     SELECT c."officerName", c."createdAt" FROM call_records c
+--     WHERE c."createdAt" < p."createdAt"
+--       AND c."officerName" IS NOT NULL AND TRIM(c."officerName") <> '' AND c."officerName" NOT ILIKE 'current officer'
+--     ORDER BY c."createdAt" DESC LIMIT 1
+--   ) prev ON TRUE
+--   JOIN LATERAL (
+--     SELECT c."officerName", c."createdAt" FROM call_records c
+--     WHERE c."createdAt" > p."createdAt"
+--       AND c."officerName" IS NOT NULL AND TRIM(c."officerName") <> '' AND c."officerName" NOT ILIKE 'current officer'
+--     ORDER BY c."createdAt" ASC LIMIT 1
+--   ) nxt ON TRUE
+--   WHERE prev."officerName" = nxt."officerName"
+--     AND p."createdAt" - prev."createdAt" <= INTERVAL '30 minutes'
+--     AND nxt."createdAt" - p."createdAt" <= INTERVAL '30 minutes'
+-- )
+-- UPDATE call_records c
+-- SET "officerName" = m.officer, "updatedAt" = NOW()
+-- FROM matches m
+-- WHERE c.id = m.id AND c."officerName" ILIKE 'current officer';
