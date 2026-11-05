@@ -19,6 +19,7 @@ import {
   CheckCircleIcon
 } from "@heroicons/react/24/outline"
 import { CreateReferralDialog } from "@/components/call-centre/create-referral-dialog"
+import { hasAdminAccess } from "@/lib/admin-auth"
 
 type ReferralOrganization = {
   id: string
@@ -67,6 +68,7 @@ export default function ReferralDirectoryPage() {
   const [notice, setNotice] = useState("")
 
   const canAccess = Boolean(session?.user?.permissions?.includes("callcentre.access"))
+  const canManage = hasAdminAccess(session) || Boolean(session?.user?.permissions?.includes("callcentre.admin"))
 
   const loadReferrals = useCallback(async () => {
     const response = await fetch("/api/call-centre/referral-records")
@@ -173,15 +175,26 @@ export default function ReferralDirectoryPage() {
         ]
       }}
       actions={
-        <button
-          type="button"
-          onClick={() => setDialogOpen(true)}
-          disabled={organizations.length === 0}
-          className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
-        >
-          <PlusIcon className="h-4 w-4" />
-          Create Referral
-        </button>
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <Link
+              href="/call-centre/referral-directory/organisations"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <BuildingOfficeIcon className="h-4 w-4" />
+              Manage Organisations
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => setDialogOpen(true)}
+            disabled={organizations.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Create Referral
+          </button>
+        </div>
       }
     >
       <div className="space-y-6">

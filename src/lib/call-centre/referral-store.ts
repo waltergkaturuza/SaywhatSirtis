@@ -1,4 +1,6 @@
+import type { Session } from 'next-auth'
 import { prisma } from '@/lib/prisma'
+import { hasAdminAccess } from '@/lib/admin-auth'
 import { referralDirectory } from '@/data/referral-directory'
 
 type CallCentreSession = {
@@ -125,6 +127,56 @@ export function canUseCallCentre(session: CallCentreSession) {
       permissions.includes(permission)
     ) || roles.some((role) => ['admin', 'manager', 'advance_user_1'].includes(role))
   )
+}
+
+export function canManageReferralDirectory(session: Session | null | undefined) {
+  return hasAdminAccess(session) || Boolean(session?.user?.permissions?.includes('callcentre.admin'))
+}
+
+const listFrom = (value: unknown, max = 30) => {
+  const items = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/[\n,]/) : []
+  return [...new Set(items.map((item) => String(item).trim()).filter(Boolean))].slice(0, max).map((item) => item.slice(0, 120))
+}
+
+const optionalText = (value: unknown, max = 500) => {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed ? trimmed.slice(0, max) : null
+}
+
+export function parseOrganizationInput(body: Record<string, unknown>) {
+  const errors: Record<string, string> = {}
+  const name = optionalText(body.name, 200)
+  const email = optionalText(body.email, 200)
+  const website = optionalText(body.website, 200)
+  const phones = listFrom(body.phones, 10)
+
+  if (!name) errors.name = 'Enter the organisation name'
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email address'
+  if (website && !/^(https?:\/\/)?[\w-]+(\.[\w-]+)+([/?#].*)?$/i.test(website)) errors.website = 'Enter a valid website address'
+  if (phones.some((phone) => !/^[+\d][\d\s()-]{5,}$/.test(phone))) errors.phones = 'Phone numbers may only contain digits, spaces, brackets, dashes and a leading +'
+
+  return {
+    errors,
+    data: {
+      name: name || '',
+      description: optionalText(body.description, 1000),
+      focusAreas: listFrom(body.focusAreas),
+      categories: listFrom(body.categories),
+      address: optionalText(body.address, 300),
+      city: optionalText(body.city, 120),
+      province: optionalText(body.province, 120),
+      phones,
+      email,
+      website,
+      isActive: body.isActive === undefined ? true : body.isActive === true
+    }
+  }
+}
+
+export function organizationIdFromName(name: string) {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'organisation'
+  return `${slug}-${Math.random().toString(36).slice(2, 7)}`
 }
 
 export function toOrganizationDto(org: {
