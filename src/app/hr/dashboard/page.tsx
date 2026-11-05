@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import SirtisCopilot from "@/components/ui/sirtis-copilot"
+import { ModuleSidebar } from "@/components/layout/module-sidebar"
 import EmployeeReports from "@/app/hr/employees/reports/page"
 import {
   UserGroupIcon,
@@ -286,27 +287,19 @@ export default function HRDashboard() {
       </div>
 
       <div className="flex flex-col lg:flex-row lg:items-start">
-        <aside className="shrink-0 border-b border-gray-200 bg-white lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:w-56 lg:border-b-0 lg:border-r">
-          <div className="px-3 py-3">
-            <p className="px-2 text-xs font-medium text-gray-500">HR Management</p>
-            <nav className="mt-2 flex gap-1 overflow-x-auto lg:flex-col">
-              {hrModules.map((module) => {
-                const active = module.href === "/hr/analytics"
-                return (
-                  <Link
-                    key={module.href}
-                    href={module.href === "/hr/analytics" ? "/hr/dashboard" : module.href}
-                    className={`whitespace-nowrap rounded-md px-3 py-2 text-sm ${
-                      active ? "bg-orange-500 text-white" : "text-gray-700 hover:bg-orange-50"
-                    }`}
-                  >
-                    {module.title}
-                  </Link>
-                )
-              })}
-            </nav>
-          </div>
-        </aside>
+        <ModuleSidebar
+          title="HR Management"
+          className="lg:top-16 lg:h-[calc(100vh-4rem)]"
+          items={hrModules.map((module) => {
+            const href = module.href === "/hr/analytics" ? "/hr/dashboard" : module.href
+            return {
+              href,
+              name: module.title,
+              icon: module.icon,
+              active: href === "/hr/dashboard" ? (path: string) => path === "/hr/dashboard" : undefined
+            }
+          })}
+        />
 
         <div className="min-w-0 flex-1">
           <EmployeeReports />
