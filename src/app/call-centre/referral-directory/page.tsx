@@ -106,7 +106,13 @@ export default function ReferralDirectoryPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedProvince, setSelectedProvince] = useState("all")
-  const [showFilters, setShowFilters] = useState(false)
+  const [referralSearch, setReferralSearch] = useState("")
+  const [referralStatus, setReferralStatus] = useState("all")
+  const [referralUrgency, setReferralUrgency] = useState("all")
+  const [referralSource, setReferralSource] = useState("all")
+  const [referralOrganization, setReferralOrganization] = useState("all")
+  const [referralFrom, setReferralFrom] = useState("")
+  const [referralTo, setReferralTo] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [notice, setNotice] = useState("")
   const [viewing, setViewing] = useState<ReferralRecord | null>(null)
@@ -179,6 +185,59 @@ export default function ReferralDirectoryPage() {
     })
   }, [organizations, searchQuery, selectedCategory, selectedProvince])
 
+  const referralStatuses = useMemo(() => [...new Set(referrals.map((item) => item.status))].sort(), [referrals])
+  const referralOrganizations = useMemo(
+    () => [...new Set(referrals.map((item) => item.organizationName).filter(Boolean))].sort(),
+    [referrals]
+  )
+
+  const filteredReferrals = useMemo(() => {
+    const query = referralSearch.trim().toLowerCase()
+    const from = referralFrom ? new Date(`${referralFrom}T00:00:00`) : null
+    const to = referralTo ? new Date(`${referralTo}T23:59:59.999`) : null
+    return referrals.filter((item) => {
+      if (
+        query &&
+        ![item.referralNumber, item.clientName, item.caseNumber, item.organizationName, item.createdByName]
+          .some((value) => String(value || "").toLowerCase().includes(query))
+      ) {
+        return false
+      }
+      if (referralStatus !== "all" && item.status !== referralStatus) return false
+      if (referralUrgency !== "all" && item.urgency !== referralUrgency) return false
+      if (referralSource !== "all" && (item.source === "CALL" ? "CALL" : "MANUAL") !== referralSource) return false
+      if (referralOrganization !== "all" && item.organizationName !== referralOrganization) return false
+      const created = new Date(item.createdAt)
+      if (from && created < from) return false
+      if (to && created > to) return false
+      return true
+    })
+  }, [referrals, referralSearch, referralStatus, referralUrgency, referralSource, referralOrganization, referralFrom, referralTo])
+
+  const referralFiltersActive =
+    Boolean(referralSearch || referralFrom || referralTo) ||
+    [referralStatus, referralUrgency, referralSource, referralOrganization].some((value) => value !== "all")
+  const organizationFiltersActive = Boolean(searchQuery) || selectedCategory !== "all" || selectedProvince !== "all"
+
+  const clearReferralFilters = () => {
+    setReferralSearch("")
+    setReferralStatus("all")
+    setReferralUrgency("all")
+    setReferralSource("all")
+    setReferralOrganization("all")
+    setReferralFrom("")
+    setReferralTo("")
+  }
+
+  const clearOrganizationFilters = () => {
+    setSearchQuery("")
+    setSelectedCategory("all")
+    setSelectedProvince("all")
+  }
+
+  const filterControl =
+    "h-9 rounded-md border border-gray-300 bg-white px-2 text-xs text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
+
   const copyToClipboard = (text: string) => {
     void navigator.clipboard.writeText(text)
   }
@@ -242,8 +301,8 @@ export default function ReferralDirectoryPage() {
       }
     >
       <div className="space-y-6">
-        <div className="flex items-end justify-between gap-4 border-b border-gray-200">
-          <div className="flex gap-2">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-200">
+          <div className="flex shrink-0 gap-2">
             {[
               { id: "organizations" as const, label: "Organisations" },
               { id: "referrals" as const, label: "Referrals made" }
@@ -260,6 +319,77 @@ export default function ReferralDirectoryPage() {
               </button>
             ))}
           </div>
+
+          <div className="mb-2 flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+            <div className="relative min-w-[12rem] flex-1 lg:max-w-xs">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="search"
+                value={view === "organizations" ? searchQuery : referralSearch}
+                onChange={(e) => (view === "organizations" ? setSearchQuery(e.target.value) : setReferralSearch(e.target.value))}
+                placeholder={view === "organizations" ? "Search name, focus area, service" : "Search referral, client, case, officer"}
+                className={`${filterControl} w-full pl-7`}
+              />
+            </div>
+
+            {view === "organizations" ? (
+              <>
+                <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className={filterControl} aria-label="Category">
+                  <option value="all">All categories</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+                <select value={selectedProvince} onChange={(e) => setSelectedProvince(e.target.value)} className={filterControl} aria-label="Province">
+                  <option value="all">All provinces</option>
+                  {provinces.map((province) => (
+                    <option key={province} value={province}>{province}</option>
+                  ))}
+                </select>
+                {organizationFiltersActive && (
+                  <button type="button" onClick={clearOrganizationFilters} className="h-9 rounded-md px-2 text-xs font-medium text-orange-700 hover:bg-orange-50">
+                    Clear
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <select value={referralOrganization} onChange={(e) => setReferralOrganization(e.target.value)} className={`${filterControl} max-w-[11rem]`} aria-label="Organisation">
+                  <option value="all">All organisations</option>
+                  {referralOrganizations.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+                <select value={referralStatus} onChange={(e) => setReferralStatus(e.target.value)} className={filterControl} aria-label="Status">
+                  <option value="all">All statuses</option>
+                  {referralStatuses.map((value) => (
+                    <option key={value} value={value}>{statusLabel(value)}</option>
+                  ))}
+                </select>
+                <select value={referralUrgency} onChange={(e) => setReferralUrgency(e.target.value)} className={filterControl} aria-label="Urgency">
+                  <option value="all">All urgency</option>
+                  <option value="URGENT">Urgent</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
+                <select value={referralSource} onChange={(e) => setReferralSource(e.target.value)} className={filterControl} aria-label="Source">
+                  <option value="all">All sources</option>
+                  <option value="CALL">From call record</option>
+                  <option value="MANUAL">Referral form</option>
+                </select>
+                <input type="date" value={referralFrom} onChange={(e) => setReferralFrom(e.target.value)} className={filterControl} aria-label="Created from" title="Created from" />
+                <span className="text-xs text-gray-400">to</span>
+                <input type="date" value={referralTo} onChange={(e) => setReferralTo(e.target.value)} className={filterControl} aria-label="Created to" title="Created to" />
+                {referralFiltersActive && (
+                  <button type="button" onClick={clearReferralFilters} className="h-9 rounded-md px-2 text-xs font-medium text-orange-700 hover:bg-orange-50">
+                    Clear
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
           <div className="mb-2 flex shrink-0 items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-2 shadow-sm">
             {view === "organizations" ? (
               <BuildingOfficeIcon className="h-6 w-6 text-orange-600" />
@@ -268,14 +398,16 @@ export default function ReferralDirectoryPage() {
             )}
             <div>
               <p className="text-xl font-semibold leading-tight text-gray-900">
-                {view === "organizations" ? filteredOrganizations.length : referrals.length}
+                {view === "organizations" ? filteredOrganizations.length : filteredReferrals.length}
               </p>
               <p className="text-xs text-gray-500">
                 {view === "organizations"
                   ? filteredOrganizations.length === organizations.length
                     ? "Organisations"
                     : `of ${organizations.length} organisations`
-                  : referrals.length === 1 ? "Referral made" : "Referrals made"}
+                  : filteredReferrals.length === referrals.length
+                    ? referrals.length === 1 ? "Referral made" : "Referrals made"
+                    : `of ${referrals.length} referrals`}
               </p>
             </div>
           </div>
@@ -297,63 +429,6 @@ export default function ReferralDirectoryPage() {
 
         {view === "organizations" && (
           <>
-            <div className="bg-white rounded-lg border p-4">
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search organizations, focus areas, or services..."
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  <FunnelIcon className="h-5 w-5 mr-2" />
-                  Filters
-                </button>
-              </div>
-
-              {showFilters && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                      <select
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                      >
-                        <option value="all">All Categories</option>
-                        {categories.map((category) => (
-                          <option key={category} value={category}>{category}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Province</label>
-                      <select
-                        value={selectedProvince}
-                        onChange={(e) => setSelectedProvince(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                      >
-                        <option value="all">All Provinces</option>
-                        {provinces.map((province) => (
-                          <option key={province} value={province}>{province}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {loading ? (
               <div className="py-12 text-center text-sm text-gray-500">Loading organisations...</div>
             ) : (
@@ -521,6 +596,17 @@ export default function ReferralDirectoryPage() {
                   Create Referral
                 </button>
               </div>
+            ) : filteredReferrals.length === 0 ? (
+              <div className="py-12 text-center">
+                <p className="text-sm text-gray-500">No referrals match these filters.</p>
+                <button
+                  type="button"
+                  onClick={clearReferralFilters}
+                  className="mt-3 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Clear filters
+                </button>
+              </div>
             ) : (
               <table className="w-full table-fixed">
                 <colgroup>
@@ -541,7 +627,7 @@ export default function ReferralDirectoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {referrals.map((referral) => (
+                  {filteredReferrals.map((referral) => (
                     <tr key={referral.id} className="hover:bg-orange-50">
                       <td className="max-w-0 overflow-hidden px-3 py-2">
                         <div className="truncate text-sm font-medium text-gray-900" title={referral.referralNumber}>{referral.referralNumber}</div>
