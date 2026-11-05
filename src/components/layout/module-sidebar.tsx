@@ -11,6 +11,8 @@ export type ModuleSidebarItem = {
   name: string
   icon: ComponentType<{ className?: string; strokeWidth?: number }>
   active?: (path: string) => boolean
+  isActive?: boolean
+  onSelect?: () => void
 }
 
 type ModuleSidebarProps = {
@@ -48,23 +50,17 @@ export function ModuleSidebar({ title, items, defaultCollapsed = true, className
 
       <nav className="flex gap-1 overflow-x-auto p-2 lg:flex-col lg:overflow-x-visible lg:overflow-y-auto">
         {items.map((item) => {
-          const isActive = item.active ? item.active(pathname) : pathname === item.href || pathname.startsWith(`${item.href}/`)
+          const isActive = item.isActive ?? (item.active ? item.active(pathname) : pathname === item.href || pathname.startsWith(`${item.href}/`))
           const Icon = item.icon
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed ? item.name : undefined}
-              aria-label={item.name}
-              aria-current={isActive ? 'page' : undefined}
-              className={cn(
-                'group relative flex shrink-0 items-center rounded-lg border-l-4 py-2.5 text-sm font-bold transition-colors duration-200',
-                collapsed ? 'justify-center px-2.5' : 'px-3',
-                isActive
-                  ? 'border-green-600 bg-green-50 text-green-700'
-                  : 'border-transparent text-green-600 hover:border-green-600 hover:bg-green-50 hover:text-green-700'
-              )}
-            >
+          const className = cn(
+            'group relative flex shrink-0 items-center rounded-lg border-l-4 py-2.5 text-left text-sm font-bold transition-colors duration-200',
+            collapsed ? 'justify-center px-2.5' : 'px-3',
+            isActive
+              ? 'border-green-600 bg-green-50 text-green-700'
+              : 'border-transparent text-green-600 hover:border-green-600 hover:bg-green-50 hover:text-green-700'
+          )
+          const content = (
+            <>
               <Icon
                 className={cn(
                   'h-6 w-6 shrink-0 transition-colors duration-200',
@@ -74,6 +70,35 @@ export function ModuleSidebar({ title, items, defaultCollapsed = true, className
                 strokeWidth={2.5}
               />
               <span className={cn('truncate', collapsed && 'sr-only')}>{item.name}</span>
+            </>
+          )
+
+          if (item.onSelect) {
+            return (
+              <button
+                key={item.href}
+                type="button"
+                onClick={item.onSelect}
+                title={collapsed ? item.name : undefined}
+                aria-label={item.name}
+                aria-current={isActive ? 'page' : undefined}
+                className={className}
+              >
+                {content}
+              </button>
+            )
+          }
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              title={collapsed ? item.name : undefined}
+              aria-label={item.name}
+              aria-current={isActive ? 'page' : undefined}
+              className={className}
+            >
+              {content}
             </Link>
           )
         })}
