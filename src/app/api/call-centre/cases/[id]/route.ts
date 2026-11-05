@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection';
 import { canonicalCaseStatus, caseDateKey, recordCaseHistory, trackChange } from '@/lib/case-audit';
 import { syncCallReferral } from '@/lib/call-centre/referral-sync';
+import { isPlaceholderOfficer } from '@/lib/call-centre/officer-names';
 
 const CATEGORY_CODES = new Set(['INQUIRY', 'CASE', 'GENERAL'])
 
@@ -275,7 +276,13 @@ export async function PUT(
     trackChange(changes, 'callerProvince', 'Province', call.callerProvince, valueOrCurrent(body.clientProvince ?? body.callerProvince, call.callerProvince))
     trackChange(changes, 'status', 'Status', canonicalCaseStatus(call.status) || 'OPEN', nextStatus)
     trackChange(changes, 'priority', 'Priority', priorityBaseline, nextPriority)
-    trackChange(changes, 'assignedOfficer', 'Assigned Officer', call.assignedOfficer, valueOrCurrent(body.assignedOfficer, call.assignedOfficer))
+    trackChange(
+      changes,
+      'assignedOfficer',
+      'Assigned Officer',
+      call.assignedOfficer,
+      isPlaceholderOfficer(body.assignedOfficer) ? call.assignedOfficer : valueOrCurrent(body.assignedOfficer, call.assignedOfficer)
+    )
     trackChange(changes, 'purpose', 'Case Type/Purpose', call.purpose, nextPurpose)
     trackChange(changes, 'summary', 'Summary', call.summary, valueOrCurrent(body.summary, call.summary))
     trackChange(changes, 'description', 'Description', call.description, valueOrCurrent(body.description, call.description))
@@ -328,7 +335,9 @@ export async function PUT(
         resolution: nextResolution,
         status: nextStatus,
         priority: nextPriority,
-        assignedOfficer: valueOrCurrent(body.assignedOfficer, call.assignedOfficer),
+        assignedOfficer: isPlaceholderOfficer(body.assignedOfficer)
+          ? call.assignedOfficer
+          : valueOrCurrent(body.assignedOfficer, call.assignedOfficer),
         followUpRequired: body.followUpRequired !== undefined ? body.followUpRequired : call.followUpRequired,
         followUpDate: nextFollowUp,
         callEndTime: nextCallEndTime,

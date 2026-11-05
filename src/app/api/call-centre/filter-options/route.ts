@@ -58,7 +58,8 @@ export async function GET(request: NextRequest) {
         SELECT DISTINCT "officerName" as "officerName"
         FROM call_records
         WHERE "officerName" IS NOT NULL 
-          AND "officerName" != 'N/A'
+          AND TRIM("officerName") <> ''
+          AND LOWER(TRIM("officerName")) NOT IN ('n/a', 'current officer', 'unknown officer', 'unknown user')
         ORDER BY "officerName" ASC
         LIMIT 100
       `,
