@@ -613,7 +613,9 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, trigger }) {
       const now = Date.now()
-      const idleLimit = 30 * 60 * 1000
+      // Longer than the 30-minute browser limit: the browser refreshes lastActivity only every few minutes,
+      // so the countdown warning must be able to finish before the server ends the session.
+      const idleLimit = 35 * 60 * 1000
 
       if (user) {
         token.id = user.id
