@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection'
 import { canonicalCaseStatus, recordCaseHistory, trackChange, type CaseChange } from '@/lib/case-audit'
 import { syncCallReferral } from '@/lib/call-centre/referral-sync'
+import { isPlaceholderOfficer } from '@/lib/call-centre/officer-names'
 
 export async function PUT(
   request: NextRequest,
@@ -103,6 +104,13 @@ export async function PUT(
       updateData.resolvedAt = existingCall.updatedAt;
     } else if (!nextIsFinished && wasFinished) {
       updateData.resolvedAt = null;
+    }
+
+    const becomesCase = String(updateData.isCase || '').toUpperCase() === 'YES'
+    if (becomesCase && isPlaceholderOfficer(existingCall.assignedOfficer)) {
+      updateData.assignedOfficer = !isPlaceholderOfficer(existingCall.officerName)
+        ? existingCall.officerName
+        : session.user.name || session.user.email
     }
 
     // Handle duration update - convert to callEndTime if callStartTime exists

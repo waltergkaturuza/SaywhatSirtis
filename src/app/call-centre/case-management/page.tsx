@@ -36,6 +36,14 @@ interface CaseData {
   description: string
 }
 
+interface OfficerWorkload {
+  officer: string
+  value: string
+  total: number
+  active: number
+  overdue: number
+}
+
 interface CaseStats {
   totalCases: number
   openCases: number
@@ -44,6 +52,7 @@ interface CaseStats {
   resolvedCases: number
   closedCases: number
   overdueCases: number
+  activeCases?: number
 }
 
 export default function CaseManagementPage() {
@@ -65,6 +74,7 @@ export default function CaseManagementPage() {
     closedCases: 0,
     overdueCases: 0,
   })
+  const [workload, setWorkload] = useState<OfficerWorkload[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(true)
   const [filterOptions, setFilterOptions] = useState({
@@ -126,6 +136,7 @@ export default function CaseManagementPage() {
       if (data.stats) {
         setStats(data.stats)
       }
+      setWorkload(Array.isArray(data.workload) ? data.workload : [])
       setError('')
     } catch (fetchError) {
       console.error('Error fetching cases:', fetchError)
@@ -205,9 +216,12 @@ export default function CaseManagementPage() {
   }
 
   const safeCases = ensureArray<CaseData>(cases)
-  const officers = filterOptions.officers.length > 0
-    ? filterOptions.officers
-    : [...new Set(safeCases.map(c => c.officer).filter(Boolean))]
+  const workloadOfficers = workload.filter((item) => item.value !== 'unassigned').map((item) => item.value)
+  const officers = workloadOfficers.length > 0
+    ? [...workloadOfficers].sort((a, b) => a.localeCompare(b))
+    : filterOptions.officers.length > 0
+      ? filterOptions.officers
+      : [...new Set(safeCases.map(c => c.officer).filter(Boolean))] as string[]
 
   const filteredCases = cases
 
@@ -270,7 +284,7 @@ export default function CaseManagementPage() {
             <div className="text-sm text-blue-800">Total Cases</div>
           </div>
           <div className="bg-yellow-50 p-3 rounded">
-            <div className="text-2xl font-bold text-yellow-600">{stats.openCases + stats.inProgressCases + stats.pendingCases}</div>
+            <div className="text-2xl font-bold text-yellow-600">{stats.activeCases ?? stats.openCases + stats.inProgressCases + stats.pendingCases}</div>
             <div className="text-sm text-yellow-800">Active Cases</div>
           </div>
           <div className="bg-emerald-50 p-3 rounded">
@@ -289,22 +303,51 @@ export default function CaseManagementPage() {
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Officer Workload</h3>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Officer Workload</h3>
+          {filters.officer !== 'all' && (
+            <button
+              type="button"
+              onClick={() => setFilters({ ...filters, officer: 'all' })}
+              className="text-xs font-medium text-blue-600 hover:text-blue-800"
+            >
+              Show all
+            </button>
+          )}
+        </div>
+        <p className="mb-3 text-xs text-gray-500">
+          Click an officer to list their cases. Totals: {workload.reduce((sum, item) => sum + item.active, 0)} active,{' '}
+          {workload.reduce((sum, item) => sum + item.overdue, 0)} overdue.
+        </p>
         <div className="space-y-2">
-          {officers.map((officer) => {
-            const officerCases = safeFilter(cases, (c: CaseData) => c.officer === officer && c.status !== 'closed' && c.status !== 'resolved')
-            const overdueCount = safeFilter(cases, (c: CaseData) => c.officer === officer && c.isOverdue).length
-            
+          {workload.length === 0 && <p className="text-xs text-gray-500">No cases to show.</p>}
+          {workload.map((item) => {
+            const selected = filters.officer === item.value
+            const unassigned = item.value === 'unassigned'
             return (
-              <div key={officer} className="p-2 border rounded">
-                <div className="font-medium text-sm">{officer}</div>
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => {
+                  setActiveTab('all')
+                  setFilters({ ...filters, officer: selected ? 'all' : item.value })
+                }}
+                aria-pressed={selected}
+                className={`w-full rounded border p-2 text-left transition-colors ${
+                  selected
+                    ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                    : unassigned
+                      ? 'border-amber-300 bg-amber-50 hover:bg-amber-100'
+                      : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="font-medium text-sm">{item.officer}</div>
                 <div className="text-xs text-gray-500">
-                  Active: {officerCases.length}
-                  {overdueCount > 0 && (
-                    <span className="text-red-600 ml-2">Overdue: {overdueCount}</span>
-                  )}
+                  Active: {item.active}
+                  <span className={`ml-2 ${item.overdue > 0 ? 'text-red-600' : 'text-gray-400'}`}>Overdue: {item.overdue}</span>
+                  <span className="ml-2 text-gray-400">Total: {item.total}</span>
                 </div>
-              </div>
+              </button>
             )
           })}
         </div>
@@ -380,6 +423,7 @@ export default function CaseManagementPage() {
                   disabled={filterOptionsLoading}
                 >
                   <option value="all">All Officers</option>
+                  <option value="unassigned">Unassigned</option>
                   {officers.map((officer) => (
                     <option key={officer} value={officer}>
                       {officer}

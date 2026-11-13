@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma, checkDatabaseConnection } from '@/lib/db-connection';
+import { assignDefaultCaseOfficersOnce, isPlaceholderOfficer } from '@/lib/call-centre/officer-names';
 
 const OPEN_STATUSES = ['OPEN', 'Open', 'open'];
 const IN_PROGRESS_STATUSES = ['IN_PROGRESS', 'IN PROGRESS', 'In Progress', 'in_progress', 'in-progress'];
@@ -88,10 +89,25 @@ function transformCallToCase(call: {
   };
 }
 
-function buildBaseConditions(searchParams: URLSearchParams) {
+const UNASSIGNED_OFFICER = 'unassigned';
+
+const unassignedCondition = {
+  OR: [
+    { assignedOfficer: null },
+    { assignedOfficer: '' },
+    { assignedOfficer: { equals: 'Current Officer', mode: 'insensitive' } },
+  ],
+};
+
+const unfinishedCondition = {
+  OR: [{ status: null }, { status: { notIn: FINISHED_STATUSES } }],
+};
+
+function buildBaseConditions(searchParams: URLSearchParams, options: { includeOfficer?: boolean } = {}) {
+  const includeOfficer = options.includeOfficer ?? true;
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
-  const officer = searchParams.get('officer');
+  const officer = includeOfficer ? searchParams.get('officer') : null;
   const province = searchParams.get('province');
   const priority = searchParams.get('priority');
   const search = searchParams.get('search');
@@ -110,7 +126,9 @@ function buildBaseConditions(searchParams: URLSearchParams) {
     },
   ];
 
-  if (officer && officer !== 'all') {
+  if (officer === UNASSIGNED_OFFICER) {
+    andConditions.push(unassignedCondition);
+  } else if (officer && officer !== 'all') {
     andConditions.push({ assignedOfficer: officer });
   }
   if (province) {
@@ -154,7 +172,7 @@ function buildTabCondition(tab: string) {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return [
-      { status: { notIn: FINISHED_STATUSES } },
+      unfinishedCondition,
       {
         OR: [
           { callStartTime: { lt: sevenDaysAgo } },
@@ -202,8 +220,11 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '500'), 1000);
     const skip = (page - 1) * limit;
 
+    await assignDefaultCaseOfficersOnce();
+
     const tab = searchParams.get('tab') || 'all';
     const baseConditions = buildBaseConditions(searchParams);
+    const workloadConditions = buildBaseConditions(searchParams, { includeOfficer: false });
     const tabConditions = buildTabCondition(tab);
     const where = { AND: [...baseConditions, ...tabConditions] };
     const statsWhere = { AND: baseConditions };
@@ -230,7 +251,7 @@ export async function GET(request: NextRequest) {
       resolvedAt: true,
     };
 
-    const [calls, totalCount, totalAllCount, openCount, inProgressCount, pendingCount, resolvedCount, closedCount, overdueCount] =
+    const [calls, totalCount, totalAllCount, openCount, inProgressCount, pendingCount, resolvedCount, closedCount, overdueCount, workloadRows, activeCount] =
       await Promise.all([
         prisma.call_records.findMany({
           where,
@@ -242,7 +263,7 @@ export async function GET(request: NextRequest) {
         prisma.call_records.count({ where }),
         prisma.call_records.count({ where: statsWhere }),
         prisma.call_records.count({
-          where: { AND: [...baseConditions, { status: { in: OPEN_STATUSES } }] },
+          where: { AND: [...baseConditions, { OR: [{ status: null }, { status: { in: OPEN_STATUSES } }] }] },
         }),
         prisma.call_records.count({
           where: { AND: [...baseConditions, { status: { in: IN_PROGRESS_STATUSES } }] },
@@ -260,7 +281,7 @@ export async function GET(request: NextRequest) {
           where: {
             AND: [
               ...baseConditions,
-              { status: { notIn: FINISHED_STATUSES } },
+              unfinishedCondition,
               {
                 OR: [
                   { callStartTime: { lt: sevenDaysAgo } },
@@ -270,9 +291,35 @@ export async function GET(request: NextRequest) {
             ],
           },
         }),
+        prisma.call_records.findMany({
+          where: { AND: workloadConditions },
+          select: { assignedOfficer: true, status: true, callStartTime: true, createdAt: true },
+        }),
+        prisma.call_records.count({
+          where: { AND: [...baseConditions, unfinishedCondition] },
+        }),
       ]);
 
     const cases = calls.map(transformCallToCase);
+
+    const workloadByOfficer = new Map<string, { officer: string; value: string; total: number; active: number; overdue: number }>();
+    for (const row of workloadRows) {
+      const unassigned = isPlaceholderOfficer(row.assignedOfficer);
+      const officer = unassigned ? 'Unassigned' : String(row.assignedOfficer).trim();
+      const key = unassigned ? UNASSIGNED_OFFICER : officer;
+      const entry = workloadByOfficer.get(key) || { officer, value: key, total: 0, active: 0, overdue: 0 };
+      entry.total += 1;
+      if (!isFinishedStatus(row.status)) {
+        entry.active += 1;
+        if (new Date(row.callStartTime ?? row.createdAt) < sevenDaysAgo) entry.overdue += 1;
+      }
+      workloadByOfficer.set(key, entry);
+    }
+    const workload = [...workloadByOfficer.values()].sort((a, b) => {
+      if (a.value === UNASSIGNED_OFFICER) return -1;
+      if (b.value === UNASSIGNED_OFFICER) return 1;
+      return b.overdue - a.overdue || b.active - a.active || a.officer.localeCompare(b.officer);
+    });
 
     return NextResponse.json({
       success: true,
@@ -288,7 +335,9 @@ export async function GET(request: NextRequest) {
         resolvedCases: resolvedCount,
         closedCases: closedCount,
         overdueCases: overdueCount,
+        activeCases: activeCount,
       },
+      workload,
     });
   } catch (error) {
     console.error('Error fetching cases:', error);

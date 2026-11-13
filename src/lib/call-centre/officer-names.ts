@@ -14,6 +14,29 @@ export function officerLabel(value: string | null | undefined) {
   return isPlaceholderOfficer(value) ? UNKNOWN_OFFICER_LABEL : String(value).trim()
 }
 
+let defaultAssignmentPromise: Promise<void> | null = null
+
+async function assignDefaultCaseOfficers() {
+  await prisma.$executeRawUnsafe(`
+    UPDATE call_records
+    SET "assignedOfficer" = TRIM("officerName")
+    WHERE UPPER(COALESCE("isCase", '')) = 'YES'
+      AND (COALESCE(TRIM("assignedOfficer"), '') = '' OR LOWER(TRIM("assignedOfficer")) = 'current officer')
+      AND COALESCE(TRIM("officerName"), '') <> ''
+      AND LOWER(TRIM("officerName")) NOT IN ('current officer', 'unknown officer', 'unknown user', 'n/a')
+  `)
+}
+
+export function assignDefaultCaseOfficersOnce() {
+  if (!defaultAssignmentPromise) {
+    defaultAssignmentPromise = assignDefaultCaseOfficers().catch((error) => {
+      defaultAssignmentPromise = null
+      console.error('Failed to assign default case officers:', error)
+    })
+  }
+  return defaultAssignmentPromise
+}
+
 let repairPromise: Promise<void> | null = null
 
 async function repairPlaceholderOfficers() {
