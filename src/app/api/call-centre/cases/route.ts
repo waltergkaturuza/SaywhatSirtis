@@ -164,6 +164,12 @@ function buildBaseConditions(searchParams: URLSearchParams, options: { includeOf
 }
 
 function buildTabCondition(tab: string) {
+  if (tab === 'active') {
+    return [unfinishedCondition];
+  }
+  if (tab === 'open') {
+    return [{ OR: [{ status: null }, { status: { in: OPEN_STATUSES } }] }];
+  }
   const tabStatuses = TAB_STATUS_MAP[tab];
   if (tabStatuses) {
     return [{ status: { in: tabStatuses } }];

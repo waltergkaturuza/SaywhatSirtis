@@ -308,7 +308,10 @@ export default function CaseManagementPage() {
           {filters.officer !== 'all' && (
             <button
               type="button"
-              onClick={() => setFilters({ ...filters, officer: 'all' })}
+              onClick={() => {
+                setFilters({ ...filters, officer: 'all' })
+                setActiveTab('all')
+              }}
               className="text-xs font-medium text-blue-600 hover:text-blue-800"
             >
               Show all
@@ -316,7 +319,7 @@ export default function CaseManagementPage() {
           )}
         </div>
         <p className="mb-3 text-xs text-gray-500">
-          Click an officer to list their cases. Totals: {workload.reduce((sum, item) => sum + item.active, 0)} active,{' '}
+          Click an officer for their overdue cases, or click Active, Overdue, or Total. Totals: {workload.reduce((sum, item) => sum + item.active, 0)} active,{' '}
           {workload.reduce((sum, item) => sum + item.overdue, 0)} overdue.
         </p>
         <div className="space-y-2">
@@ -324,16 +327,46 @@ export default function CaseManagementPage() {
           {workload.map((item) => {
             const selected = filters.officer === item.value
             const unassigned = item.value === 'unassigned'
+            const showOfficer = (tab: string) => {
+              setActiveTab(tab)
+              setFilters({ ...filters, officer: item.value })
+            }
+            const chip = (tab: string, label: string, count: number, tone: string) => {
+              const current = selected && activeTab === tab
+              return (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    showOfficer(tab)
+                  }}
+                  aria-pressed={current}
+                  className={`rounded px-1.5 py-0.5 text-xs ${current ? 'bg-blue-600 text-white' : `${tone} hover:bg-gray-100`}`}
+                >
+                  {label}: {count}
+                </button>
+              )
+            }
             return (
-              <button
+              <div
                 key={item.value}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => {
-                  setActiveTab('all')
-                  setFilters({ ...filters, officer: selected ? 'all' : item.value })
+                  if (selected) {
+                    setFilters({ ...filters, officer: 'all' })
+                    setActiveTab('all')
+                  } else {
+                    showOfficer(item.overdue > 0 ? 'overdue' : 'active')
+                  }
                 }}
-                aria-pressed={selected}
-                className={`w-full rounded border p-2 text-left transition-colors ${
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    showOfficer(item.overdue > 0 ? 'overdue' : 'active')
+                  }
+                }}
+                className={`w-full cursor-pointer rounded border p-2 text-left transition-colors ${
                   selected
                     ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
                     : unassigned
@@ -342,12 +375,12 @@ export default function CaseManagementPage() {
                 }`}
               >
                 <div className="font-medium text-sm">{item.officer}</div>
-                <div className="text-xs text-gray-500">
-                  Active: {item.active}
-                  <span className={`ml-2 ${item.overdue > 0 ? 'text-red-600' : 'text-gray-400'}`}>Overdue: {item.overdue}</span>
-                  <span className="ml-2 text-gray-400">Total: {item.total}</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {chip('active', 'Active', item.active, 'text-gray-600')}
+                  {chip('overdue', 'Overdue', item.overdue, item.overdue > 0 ? 'text-red-600' : 'text-gray-400')}
+                  {chip('all', 'Total', item.total, 'text-gray-500')}
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>
@@ -554,6 +587,7 @@ export default function CaseManagementPage() {
             <nav className="-mb-px flex flex-wrap gap-x-8 gap-y-2">
               {[
                 { key: 'all', label: 'All Cases', count: stats.totalCases },
+                { key: 'active', label: 'Active', count: stats.activeCases ?? stats.openCases + stats.inProgressCases + stats.pendingCases },
                 { key: 'resolved', label: 'Resolved', count: stats.resolvedCases },
                 { key: 'closed', label: 'Closed', count: stats.closedCases },
                 { key: 'open', label: 'Open', count: stats.openCases },
