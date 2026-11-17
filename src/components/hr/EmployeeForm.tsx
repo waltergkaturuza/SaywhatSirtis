@@ -1521,12 +1521,28 @@ export function EmployeeForm({ mode, employeeData, onSubmit, onCancel, isLoading
   const renderStep5 = () => {
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-6">Access Level</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Requested access</h3>
+        <p className="text-sm text-gray-600 mb-6">
+          This is the access role you are asking the administrator to grant. HR does not create the password.
+          The administrator sets the password and can keep this role or change it before the employee can sign in.
+        </p>
+        {employeeData?.accountStatus === 'ACTIVE' && (
+          <p className="text-sm text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-md px-3 py-2 mb-4">
+            This employee can already sign in
+            {employeeData.grantedRole ? ` as ${String(employeeData.grantedRole).replace(/_/g, ' ')}` : ''}.
+            Saving a different role here sends a new request. It does not change the live login.
+          </p>
+        )}
+        {employeeData?.accountStatus === 'PENDING_ACCOUNT' && (
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2 mb-4">
+            Waiting for the administrator to create the login.
+          </p>
+        )}
 
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-4">
-              User Role & Access Level *
+              Requested role
             </label>
             
             {loadingRoles ? (

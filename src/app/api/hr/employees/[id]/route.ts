@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sanitizeInput } from '@/lib/api-utils'
+import { accessConfigForRole, loginAccountStatus } from '@/lib/access-role'
 
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -90,6 +91,15 @@ export async function GET(
             lastName: true,
             email: true,
             position: true
+          }
+        },
+        users: {
+          select: {
+            id: true,
+            role: true,
+            isActive: true,
+            passwordHash: true,
+            email: true
           }
         },
         departments: {
@@ -209,6 +219,9 @@ export async function GET(
       // NEW ACCESS/SECURITY FIELDS - map snake_case to camelCase for frontend
       accessLevel: employee.access_level,
       userRole: employee.user_role,
+      requestedRole: employee.user_role,
+      grantedRole: employee.users?.passwordHash ? employee.users.role : null,
+      accountStatus: loginAccountStatus(employee),
       systemAccess: employee.system_access,
       documentSecurityClearance: employee.document_security_clearance,
       
@@ -428,30 +441,19 @@ export async function PUT(
     if (formData.initialTrainingCompleted !== undefined) updateData.initial_training_completed = formData.initialTrainingCompleted
     
     // NEW ACCESS/SECURITY FIELDS - map camelCase to snake_case
-    if (formData.accessLevel !== undefined) updateData.access_level = formData.accessLevel
+    if (formData.accessLevel !== undefined && !existingEmployee.userId) updateData.access_level = formData.accessLevel
     if (formData.userRole !== undefined) {
       updateData.user_role = formData.userRole
-      
-      // Automatically calculate access level and document security clearance based on role
-      const getAccessLevelFromRole = (role: string) => {
-        const roleMap: Record<string, { accessLevel: string, documentLevel: string }> = {
-          'BASIC_USER_1': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
-          'BASIC_USER_2': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
-          'ADVANCE_USER_1': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
-          'ADVANCE_USER_2': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
-          'HR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
-          'SUPERUSER': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
-          'SYSTEM_ADMINISTRATOR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' }
-        }
-        return roleMap[role] || { accessLevel: 'BASIC', documentLevel: 'PUBLIC' }
+      if (!existingEmployee.userId) {
+        const roleConfig = accessConfigForRole(formData.userRole)
+        updateData.access_level = roleConfig.accessLevel
+        updateData.document_security_clearance = roleConfig.documentLevel
       }
-      
-      const roleConfig = getAccessLevelFromRole(formData.userRole)
-      updateData.access_level = roleConfig.accessLevel
-      updateData.document_security_clearance = roleConfig.documentLevel
     }
     if (formData.systemAccess !== undefined) updateData.system_access = toStringArray(formData.systemAccess)
-    if (formData.documentSecurityClearance !== undefined) updateData.document_security_clearance = formData.documentSecurityClearance
+    if (formData.documentSecurityClearance !== undefined && !existingEmployee.userId) {
+      updateData.document_security_clearance = formData.documentSecurityClearance
+    }
     
     // NEW ONBOARDING FIELDS - map camelCase to snake_case
     if (formData.contractSigned !== undefined) updateData.contract_signed = formData.contractSigned
@@ -541,12 +543,11 @@ export async function PUT(
     if (formData.firstName !== undefined) userUpdateData.firstName = formData.firstName
     if (formData.lastName !== undefined) userUpdateData.lastName = formData.lastName
     if (formData.email !== undefined) userUpdateData.email = formData.email.toLowerCase().trim()
-    if (formData.userRole !== undefined) userUpdateData.role = formData.userRole // Sync role to user account
     if (formData.position !== undefined) userUpdateData.position = formData.position
     if (formData.department !== undefined) userUpdateData.department = formData.department
 
     // Only update users table if there are fields to sync
-    if (Object.keys(userUpdateData).length > 0) {
+    if (existingEmployee.userId && Object.keys(userUpdateData).length > 0) {
       try {
         console.log(`Syncing user data for employee ${requestId}:`, userUpdateData)
         await prisma.users.update({
@@ -902,31 +903,20 @@ export async function PATCH(
     if (formData.trainingCompleted !== undefined) updateData.training_completed = formData.trainingCompleted
     if (formData.initialTrainingCompleted !== undefined) updateData.initial_training_completed = formData.initialTrainingCompleted
 
-    // Access & Security - Missing fields
-    if (formData.accessLevel !== undefined) updateData.access_level = formData.accessLevel
+    // Access & Security. HR records the requested role. A live login role is changed by the administrator.
+    if (formData.accessLevel !== undefined && !existingEmployee.userId) updateData.access_level = formData.accessLevel
     if (formData.userRole !== undefined) {
       updateData.user_role = formData.userRole
-      
-      // Automatically calculate access level and document security clearance based on role
-      const getAccessLevelFromRole = (role: string) => {
-        const roleMap: Record<string, { accessLevel: string, documentLevel: string }> = {
-          'BASIC_USER_1': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
-          'BASIC_USER_2': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
-          'ADVANCE_USER_1': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
-          'ADVANCE_USER_2': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
-          'HR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
-          'SUPERUSER': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
-          'SYSTEM_ADMINISTRATOR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' }
-        }
-        return roleMap[role] || { accessLevel: 'BASIC', documentLevel: 'PUBLIC' }
+      if (!existingEmployee.userId) {
+        const roleConfig = accessConfigForRole(formData.userRole)
+        updateData.access_level = roleConfig.accessLevel
+        updateData.document_security_clearance = roleConfig.documentLevel
       }
-      
-      const roleConfig = getAccessLevelFromRole(formData.userRole)
-      updateData.access_level = roleConfig.accessLevel
-      updateData.document_security_clearance = roleConfig.documentLevel
     }
     if (formData.systemAccess !== undefined) updateData.system_access = toStringArray(formData.systemAccess)
-    if (formData.documentSecurityClearance !== undefined) updateData.document_security_clearance = formData.documentSecurityClearance
+    if (formData.documentSecurityClearance !== undefined && !existingEmployee.userId) {
+      updateData.document_security_clearance = formData.documentSecurityClearance
+    }
 
     // Onboarding Fields - Missing fields
     if (formData.contractSigned !== undefined) updateData.contract_signed = formData.contractSigned
@@ -957,7 +947,6 @@ export async function PATCH(
     if (formData.firstName) userUpdateData.firstName = sanitizeInput(formData.firstName)
     if (formData.lastName) userUpdateData.lastName = sanitizeInput(formData.lastName)
     if (formData.email) userUpdateData.email = formData.email.toLowerCase().trim()
-    if (formData.userRole) userUpdateData.role = formData.userRole // Sync role to user account
     if (formData.position) userUpdateData.position = sanitizeInput(formData.position)
     if (formData.department) userUpdateData.department = formData.department ? sanitizeInput(formData.department) : null
 

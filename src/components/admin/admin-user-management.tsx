@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { 
   UsersIcon, 
   MagnifyingGlassIcon, 
-  PlusIcon, 
   EllipsisVerticalIcon,
   TrashIcon,
   PencilIcon,
@@ -41,6 +40,7 @@ interface User {
   isSystemUser?: boolean
   isEmployee?: boolean
   employeeStatus?: string
+  requestedRole?: string | null
   roles: Array<{
     role: {
       name: string
@@ -50,6 +50,18 @@ interface User {
   permissions?: string[]
 }
 
+interface PendingEmployee {
+  id: string
+  employeeId: string
+  firstName: string
+  lastName: string
+  email: string
+  department: string
+  position: string
+  requestedRole: string
+  hasLoginShell: boolean
+}
+
 interface UserManagementProps {
   className?: string
 }
@@ -57,6 +69,12 @@ interface UserManagementProps {
 export function AdminUserManagement({ className = '' }: UserManagementProps) {
   // User Management with Edit functionality
   const [users, setUsers] = useState<User[]>([])
+  const [pendingEmployees, setPendingEmployees] = useState<PendingEmployee[]>([])
+  const [activateTarget, setActivateTarget] = useState<PendingEmployee | null>(null)
+  const [activateRole, setActivateRole] = useState('BASIC_USER_1')
+  const [activatePassword, setActivatePassword] = useState('')
+  const [activating, setActivating] = useState(false)
+  const [activateError, setActivateError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -99,6 +117,7 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
       console.log('✅ Users fetched successfully:', data)
       console.log('📊 Setting users array:', data.data?.users || [])
       setUsers(data.data?.users || [])
+      setPendingEmployees(data.data?.pendingEmployees || [])
       setError(null) // Clear any previous errors
     } catch (err) {
       console.error('❌ Error fetching users:', err)
@@ -284,6 +303,42 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
     }
   }
 
+  const handleActivateLogin = async () => {
+    if (!activateTarget) return
+    if (!activatePassword.trim() || activatePassword.length < 6) {
+      setActivateError('Enter a password of at least 6 characters. It must also meet the system password rules.')
+      return
+    }
+    try {
+      setActivating(true)
+      setActivateError(null)
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'activate_login',
+          employeeId: activateTarget.id,
+          role: activateRole,
+          password: activatePassword,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        const detail = Array.isArray(data.details) ? ` ${data.details.join(' ')}` : ''
+        throw new Error((data.error || 'Failed to create login') + detail)
+      }
+      await fetchUsers()
+      setActivateTarget(null)
+      setActivatePassword('')
+      setSuccessMessage(data.message || 'Login created')
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      setActivateError(err instanceof Error ? err.message : 'Failed to create login')
+    } finally {
+      setActivating(false)
+    }
+  }
+
   const resetForm = () => {
     setShowCreateModal(false)
     setShowAddDialog(false)
@@ -424,32 +479,10 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
           <UsersIcon className="h-8 w-8 text-indigo-600" />
           <div>
             <h2 className="text-xl font-semibold text-gray-900">User Management</h2>
-            <p className="text-sm text-gray-600">Manage system users and their permissions</p>
+            <p className="text-sm text-gray-600">Issue logins for employees created by HR, and change access levels</p>
           </div>
         </div>
         <div className="flex space-x-3">
-          <button
-            onClick={() => {
-              setError(null) // Clear any errors
-              setEditingUserId(null)
-              setNewUser({
-                firstName: '',
-                lastName: '',
-                email: '',
-                department: '',
-                position: '',
-                employeeId: '',
-                password: '',
-                role: 'BASIC_USER_1'
-              })
-              setShowAddDialog(true)
-            }}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center space-x-2"
-          >
-            <PlusIcon className="h-5 w-5" />
-            <span>Add User</span>
-          </button>
-          
           <button
             onClick={handleMigrateRoles}
             disabled={migrating}
@@ -495,8 +528,8 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
               <UserPlusIcon className="h-6 w-6 text-yellow-600" />
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">New This Month</p>
-              <p className="text-lg font-semibold text-gray-900">3</p>
+              <p className="text-sm font-medium text-gray-600">Waiting for login</p>
+              <p className="text-lg font-semibold text-gray-900">{pendingEmployees.length}</p>
             </div>
           </div>
         </div>
@@ -511,6 +544,42 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Waiting for a login</h3>
+            <p className="text-xs text-gray-500">HR has created these employees. Set the password and confirm or change the access role.</p>
+          </div>
+          <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-full">{pendingEmployees.length}</span>
+        </div>
+        {pendingEmployees.length === 0 ? (
+          <p className="px-4 py-6 text-sm text-gray-500">No employees are waiting. New people appear here after HR saves them.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {pendingEmployees.map((employee) => (
+              <div key={employee.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-gray-900">{employee.firstName} {employee.lastName}</p>
+                  <p className="truncate text-xs text-gray-500">{employee.email} · {employee.position} · {employee.department}</p>
+                  <p className="text-xs text-indigo-700">HR requested {employee.requestedRole.replace(/_/g, ' ')}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setActivateTarget(employee)
+                    setActivateRole(employee.requestedRole || 'BASIC_USER_1')
+                    setActivatePassword('')
+                    setActivateError(null)
+                  }}
+                  className="shrink-0 bg-indigo-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-indigo-700"
+                >
+                  Create login
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -601,6 +670,11 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                     <div className="truncate text-sm text-gray-900" title={roleNames}>
                       {roleNames}
                     </div>
+                    {user.requestedRole && user.requestedRole !== user.role && (
+                      <div className="truncate text-xs text-amber-700" title={`HR requested ${user.requestedRole}`}>
+                        HR requested {user.requestedRole.replace(/_/g, ' ')}
+                      </div>
+                    )}
                   </td>
                   <td className="max-w-0 px-2 py-2 overflow-hidden">
                     <div className="truncate text-sm text-gray-900" title={user.department}>{user.department}</div>
@@ -679,16 +753,71 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
           <UsersIcon className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
           <p className="mt-1 text-sm text-gray-500">
-            {searchTerm || selectedRole ? 'Try adjusting your filters' : 'Get started by adding a new user'}
+            {searchTerm || selectedRole ? 'Try adjusting your filters' : 'Logins appear here after you create them for an employee'}
           </p>
         </div>
       )}
+
+      <Dialog open={!!activateTarget} onOpenChange={(open) => { if (!open) setActivateTarget(null) }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create login</DialogTitle>
+          </DialogHeader>
+          {activateTarget && (
+            <div className="space-y-4">
+              <div className="rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                <p className="font-medium text-gray-900">{activateTarget.firstName} {activateTarget.lastName}</p>
+                <p>{activateTarget.email}</p>
+                <p>{activateTarget.position} · {activateTarget.department}</p>
+                <p className="mt-1 text-indigo-700">HR requested {activateTarget.requestedRole.replace(/_/g, ' ')}</p>
+              </div>
+              {activateError && (
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2">{activateError}</p>
+              )}
+              <div>
+                <Label htmlFor="activateRole">Access level</Label>
+                <Select value={activateRole} onValueChange={setActivateRole}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[9999] bg-white">
+                    <SelectItem value="BASIC_USER_1">Basic User 1</SelectItem>
+                    <SelectItem value="BASIC_USER_2">Basic User 2</SelectItem>
+                    <SelectItem value="ADVANCE_USER_1">Advanced User 1</SelectItem>
+                    <SelectItem value="ADVANCE_USER_2">Advanced User 2</SelectItem>
+                    <SelectItem value="HR">HR Manager</SelectItem>
+                    <SelectItem value="SYSTEM_ADMINISTRATOR">System Administrator</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-xs text-gray-500">You can keep HR’s request or choose a different access level.</p>
+              </div>
+              <div>
+                <Label htmlFor="activatePassword">Temporary password</Label>
+                <Input
+                  id="activatePassword"
+                  type="password"
+                  value={activatePassword}
+                  onChange={(e) => setActivatePassword(e.target.value)}
+                  className="mt-1"
+                  placeholder="Enter a temporary password"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setActivateTarget(null)} disabled={activating}>Cancel</Button>
+                <Button type="button" onClick={handleActivateLogin} disabled={activating || !activatePassword}>
+                  {activating ? 'Saving...' : 'Create login'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Create User Modal */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingUserId ? 'Edit User' : 'Add New User'}</DialogTitle>
+            <DialogTitle>{editingUserId ? 'Change access' : 'Add New User'}</DialogTitle>
           </DialogHeader>
           
           {/* Error Display */}
@@ -723,6 +852,7 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                   }}
                   className={`mt-1 ${fieldErrors.firstName ? 'border-red-500' : ''}`}
                   placeholder="Enter first name"
+                  disabled={!!editingUserId}
                 />
                 {fieldErrors.firstName && (
                   <p className="text-red-500 text-sm mt-1">{fieldErrors.firstName}</p>
@@ -741,6 +871,7 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                   }}
                   className={`mt-1 ${fieldErrors.lastName ? 'border-red-500' : ''}`}
                   placeholder="Enter last name"
+                  disabled={!!editingUserId}
                 />
                 {fieldErrors.lastName && (
                   <p className="text-red-500 text-sm mt-1">{fieldErrors.lastName}</p>
@@ -760,6 +891,7 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                   }}
                   className={`mt-1 ${fieldErrors.email ? 'border-red-500' : ''}`}
                   placeholder="user@saywhat.org"
+                  disabled={!!editingUserId}
                 />
                 {fieldErrors.email && (
                   <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>
@@ -773,11 +905,12 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                   onChange={(e) => setNewUser({...newUser, employeeId: e.target.value})}
                   className="mt-1"
                   placeholder="EMP001"
+                  disabled={!!editingUserId}
                 />
               </div>
               <div>
                 <Label htmlFor="department">Department</Label>
-                <Select value={newUser.department} onValueChange={(value) => setNewUser({...newUser, department: value})}>
+                <Select value={newUser.department} onValueChange={(value) => setNewUser({...newUser, department: value})} disabled={!!editingUserId}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
@@ -798,6 +931,7 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                   onChange={(e) => setNewUser({...newUser, position: e.target.value})}
                   className="mt-1"
                   placeholder="Enter position"
+                  disabled={!!editingUserId}
                 />
               </div>
               <div>
@@ -860,7 +994,7 @@ export function AdminUserManagement({ className = '' }: UserManagementProps) {
                 ) : (
                   <UserPlusIcon className="h-4 w-4 mr-2" />
                 )}
-                {savingUser ? 'Saving...' : editingUserId ? 'Update User' : 'Create User'}
+                {savingUser ? 'Saving...' : editingUserId ? 'Save access' : 'Create User'}
               </Button>
             </div>
             </form>

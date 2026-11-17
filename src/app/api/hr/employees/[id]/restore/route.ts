@@ -39,6 +39,13 @@ export async function PATCH(
       )
     }
 
+    if (existingEmployee.userId) {
+      await prisma.users.update({
+        where: { id: existingEmployee.userId },
+        data: { isActive: true, updatedAt: new Date() },
+      })
+    }
+
     // Restore the employee
     const restoredEmployee = await prisma.employees.update({
       where: { id: employeeId },

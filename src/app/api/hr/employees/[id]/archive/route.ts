@@ -53,7 +53,7 @@ export async function PATCH(
         status: 'ARCHIVED',
         archived_at: new Date(),
         archive_reason: body.reason || 'Other',
-        access_revoked: true, // Automatically revoke access when archiving
+        access_revoked: true,
         updatedAt: new Date()
       },
       include: {
@@ -64,6 +64,15 @@ export async function PATCH(
         }
       }
     })
+
+    if (existingEmployee.userId) {
+      await prisma.users.update({
+        where: { id: existingEmployee.userId },
+        data: { isActive: false, updatedAt: new Date() },
+      }).catch((error) => {
+        console.error('Failed to disable login for archived employee:', error)
+      })
+    }
 
     // Create audit log entry for archiving
     try {

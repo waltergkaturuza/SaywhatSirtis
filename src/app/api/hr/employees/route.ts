@@ -14,7 +14,7 @@ import {
   HttpStatus,
   ErrorCodes
 } from '@/lib/api-utils'
-import emailService from '@/lib/email-service'
+import { accessConfigForRole, loginAccountStatus } from '@/lib/access-role'
 
 export async function GET() {
   try {
@@ -95,6 +95,7 @@ export async function GET() {
               email: true,
               role: true,
               isActive: true,
+              passwordHash: true,
               createdAt: true,
               updatedAt: true
             }
@@ -161,9 +162,12 @@ export async function GET() {
           email: emp.users.email
         } : null,
         isSystemUser: !!emp.users,
+        accountStatus: loginAccountStatus(emp),
+        requestedRole: emp.user_role || null,
+        grantedRole: emp.users?.passwordHash ? emp.users.role : null,
         
-        // Role and security information
-        userRole: emp.users?.role || emp.user_role || 'EMPLOYEE', // Actual role from user account
+        // Role and security information. Granted login role wins once a password exists.
+        userRole: (emp.users?.passwordHash ? emp.users.role : null) || emp.user_role || 'EMPLOYEE',
         accessLevel: emp.access_level || 'BASIC',
         documentSecurityClearance: emp.document_security_clearance || 'PUBLIC',
         systemAccess: emp.system_access || [],
@@ -275,6 +279,8 @@ export async function POST(request: Request) {
         select: {
           id: true,
           email: true,
+          role: true,
+          passwordHash: true,
         },
       })
     )
@@ -522,26 +528,11 @@ export async function POST(request: Request) {
       }
       
       const userRole = formData.role || formData.userRole || 'BASIC_USER_1'
-      const permissions = formData.permissions || {}
-      
-      const getAccessLevelFromRole = (role: string) => {
-        const roleMap: Record<string, { accessLevel: string, documentLevel: string }> = {
-          'BASIC_USER_1': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
-          'BASIC_USER_2': { accessLevel: 'BASIC', documentLevel: 'CONFIDENTIAL' },
-          'ADVANCE_USER_1': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
-          'ADVANCE_USER_2': { accessLevel: 'ADVANCED', documentLevel: 'SECRET' },
-          'HR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
-          'SUPERUSER': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' },
-          'SYSTEM_ADMINISTRATOR': { accessLevel: 'FULL', documentLevel: 'TOP_SECRET' }
-        }
-        return roleMap[role] || { accessLevel: 'BASIC', documentLevel: 'PUBLIC' }
-      }
-      
-      const roleConfig = getAccessLevelFromRole(userRole)
+      const grantedRole = reuseUserId && existingUser?.passwordHash ? existingUser.role || userRole : userRole
+      const roleConfig = accessConfigForRole(grantedRole)
 
-      let targetUserId: string
+      let targetUserId: string | null = null
       let linkedExistingUser = false
-      let newUser: { id: string; email: string } | null = null
 
       if (reuseUserId) {
         linkedExistingUser = true
@@ -552,28 +543,12 @@ export async function POST(request: Request) {
             lastName: sanitizedData.lastName,
             department: sanitizedData.department,
             position: sanitizedData.position,
-            role: userRole as any,
+            employeeId: sanitizedData.employeeId,
             supervisorId: supervisorUserId ?? null,
             updatedAt: new Date(),
           },
         })
         targetUserId = reuseUserId
-      } else {
-        const created = await tx.users.create({
-          data: {
-            id: randomUUID(),
-            email: sanitizedData.email,
-            firstName: sanitizedData.firstName,
-            lastName: sanitizedData.lastName,
-            department: sanitizedData.department,
-            position: sanitizedData.position,
-            role: userRole as any,
-            supervisorId: supervisorUserId,
-            updatedAt: new Date()
-          }
-        })
-        newUser = { id: created.id, email: created.email }
-        targetUserId = created.id
       }
 
       // Create employee record
@@ -724,36 +699,24 @@ export async function POST(request: Request) {
       }
 
         return {
-          newUser,
           newEmployee,
           educationQualification,
           certificationQualifications,
           jobDescriptionRecord,
           linkedExistingUser,
+          loginReady: Boolean(reuseUserId && existingUser?.passwordHash),
         }
       })
     )
 
     const {
-      newUser,
       newEmployee,
       educationQualification,
       certificationQualifications,
       jobDescriptionRecord,
       linkedExistingUser,
+      loginReady,
     } = result
-
-    // Welcome email only for brand-new logins (admin-pre-created users already received credentials)
-    if (newUser && newEmployee.email && !linkedExistingUser) {
-      emailService.sendWelcomeEmail(
-        newEmployee.email,
-        newEmployee.firstName || 'User',
-        newEmployee.email
-      ).catch(err => {
-        console.error('Failed to send welcome email to employee:', err);
-        // Don't fail employee creation if email fails
-      });
-    }
 
     const response = createSuccessResponse(
       {
@@ -765,6 +728,8 @@ export async function POST(request: Request) {
         position: newEmployee.position,
         status: newEmployee.status,
         linkedExistingUserAccount: linkedExistingUser,
+        loginReady,
+        accountStatus: loginReady ? 'ACTIVE' : 'PENDING_ACCOUNT',
         qualifications: {
           education: educationQualification,
           certifications: certificationQualifications,
@@ -772,9 +737,11 @@ export async function POST(request: Request) {
         },
       },
       {
-        message: linkedExistingUser
-          ? `Employee profile created and linked to the existing user account for ${newEmployee.email}.`
-          : `Employee ${newEmployee.firstName} ${newEmployee.lastName} created successfully with ${certificationQualifications.length} certifications`,
+        message: loginReady
+          ? `Employee profile created and linked to the existing login for ${newEmployee.email}.`
+          : linkedExistingUser
+            ? `Employee profile linked to ${newEmployee.email}. The administrator still needs to set a password.`
+            : `Employee ${newEmployee.firstName} ${newEmployee.lastName} created. The administrator can now set the password and access level.`,
       }
     )
 

@@ -8,6 +8,7 @@ import { securityService } from "@/lib/security-service"
 import AuditLogger from "@/lib/audit-logger"
 import emailService from "@/lib/email-service"
 import { hasAdminAccess as checkAdminAccess } from "@/lib/admin-auth"
+import { accessConfigForRole } from "@/lib/access-role"
 
 // Helper functions for role management - aligned with HR module definitions
 function getRoleDisplayName(role: string): string {
@@ -207,6 +208,7 @@ export async function GET(request: Request) {
             salary: true,
             is_supervisor: true,
             is_reviewer: true,
+            user_role: true,
             createdAt: true,
             updatedAt: true
           }
@@ -273,6 +275,7 @@ export async function GET(request: Request) {
         // Clear distinction between system access and employment
         isSystemUser: true, // All users in this list have system access
         isEmployee: isEmployee,
+        requestedRole: employeeData?.user_role || null,
         employeeStatus: employeeData?.status || (isEmployee ? 'UNKNOWN' : 'NOT_EMPLOYEE'),
         
         // Legacy role structure for backward compatibility
@@ -286,10 +289,43 @@ export async function GET(request: Request) {
       }
     })
 
+    const pendingEmployees = await prisma.employees.findMany({
+      where: {
+        status: { not: 'ARCHIVED' },
+        OR: [
+          { userId: null },
+          { users: { passwordHash: null } },
+        ],
+      },
+      select: {
+        id: true,
+        employeeId: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        department: true,
+        position: true,
+        user_role: true,
+        userId: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
     return NextResponse.json({
       success: true,
       data: {
         users: transformedUsers,
+        pendingEmployees: pendingEmployees.map((employee) => ({
+          id: employee.id,
+          employeeId: employee.employeeId,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          email: employee.email,
+          department: employee.department || 'Unassigned',
+          position: employee.position,
+          requestedRole: employee.user_role || 'BASIC_USER_1',
+          hasLoginShell: Boolean(employee.userId),
+        })),
         total: transformedUsers.length,
         page: 1,
         totalPages: 1
@@ -344,9 +380,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "User not found" }, { status: 404 })
           }
 
+          const nextActive = !user.isActive
           const updatedUser = await prisma.users.update({
             where: { id: userId },
-            data: { isActive: !user.isActive },
+            data: { isActive: nextActive },
             select: {
               id: true,
               email: true,
@@ -359,6 +396,11 @@ export async function POST(request: NextRequest) {
               lastLogin: true,
               createdAt: true,
             }
+          })
+
+          await prisma.employees.updateMany({
+            where: { userId },
+            data: { access_revoked: !nextActive, updatedAt: new Date() },
           })
 
           const transformedUser = {
@@ -396,163 +438,129 @@ export async function POST(request: NextRequest) {
           )
         }
 
-      case 'create_user':
+      case 'activate_login':
         try {
-          // Validate required fields
-          if (!userData.email || !userData.firstName || !userData.lastName) {
+          const employeeRecordId = requestBody.employeeId || userData.employeeId
+          const role = userData.role || 'BASIC_USER_1'
+          const password = userData.password
+
+          if (!employeeRecordId || !password) {
             return NextResponse.json(
-              { error: "Missing required fields: email, firstName, and lastName are required" },
+              { error: "Choose an employee and enter a password" },
               { status: 400 }
             )
           }
 
-          // Validate email format
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-          if (!emailRegex.test(userData.email)) {
+          const passwordValidation = securityService.validatePasswordStrength(password)
+          if (!passwordValidation.isValid) {
             return NextResponse.json(
-              { error: "Invalid email format" },
+              {
+                error: "Password does not meet security requirements",
+                details: passwordValidation.errors,
+              },
               { status: 400 }
             )
           }
 
-          // Check if user already exists
-          const existingUser = await prisma.users.findUnique({
-            where: { email: userData.email }
+          const employee = await prisma.employees.findUnique({
+            where: { id: employeeRecordId },
+            include: {
+              users: {
+                select: { id: true, passwordHash: true, isActive: true },
+              },
+            },
           })
 
-          if (existingUser) {
+          if (!employee) {
+            return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+          }
+          if (employee.status === 'ARCHIVED') {
+            return NextResponse.json({ error: "Archived employees cannot be given a login" }, { status: 400 })
+          }
+          if (employee.users?.passwordHash && employee.users.isActive) {
             return NextResponse.json(
-              { error: "User with this email already exists" },
+              { error: "This employee already has a login. Change the access level from the user list." },
               { status: 409 }
             )
           }
 
-          // Enforce password policy if password is provided
-          if (userData.password) {
-            const passwordValidation = securityService.validatePasswordStrength(userData.password);
-            if (!passwordValidation.isValid) {
-              return NextResponse.json(
-                { 
-                  error: "Password does not meet security requirements",
-                  details: passwordValidation.errors
-                },
-                { status: 400 }
-              );
-            }
+          const emailOwner = await prisma.users.findUnique({
+            where: { email: employee.email },
+            include: { employees: { select: { id: true } } },
+          })
+          if (emailOwner?.employees && emailOwner.employees.id !== employee.id) {
+            return NextResponse.json(
+              { error: "This email is already used by another employee login" },
+              { status: 409 }
+            )
           }
 
-          // Hash the password (use 12 rounds for better security)
-          const hashedPassword = userData.password 
-            ? await bcrypt.hash(userData.password, 12)
-            : null
+          const hashedPassword = await bcrypt.hash(password, 10)
+          const roleConfig = accessConfigForRole(role)
+          const loginUser = emailOwner
+            ? await prisma.users.update({
+                where: { id: emailOwner.id },
+                data: {
+                  firstName: employee.firstName,
+                  lastName: employee.lastName,
+                  department: employee.department || 'Unassigned',
+                  position: employee.position,
+                  employeeId: employee.employeeId,
+                  role: role as any,
+                  passwordHash: hashedPassword,
+                  isActive: true,
+                  updatedAt: new Date(),
+                },
+              })
+            : await prisma.users.create({
+                data: {
+                  id: randomUUID(),
+                  email: employee.email,
+                  firstName: employee.firstName,
+                  lastName: employee.lastName,
+                  department: employee.department || 'Unassigned',
+                  position: employee.position,
+                  employeeId: employee.employeeId,
+                  role: role as any,
+                  passwordHash: hashedPassword,
+                  isActive: true,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                },
+              })
 
-          // Create new user
-          const newUser = await prisma.users.create({
+          await prisma.employees.update({
+            where: { id: employee.id },
             data: {
-              id: randomUUID(),
-              email: userData.email,
-              firstName: userData.firstName,
-              lastName: userData.lastName,
-              role: userData.role || 'BASIC_USER_1',
-              department: userData.department || 'Unassigned',
-              position: userData.position || 'No Position',
-              passwordHash: hashedPassword,
-              isActive: true,
-              createdAt: new Date(),
+              userId: loginUser.id,
+              access_level: roleConfig.accessLevel,
+              document_security_clearance: roleConfig.documentLevel,
+              access_revoked: false,
               updatedAt: new Date(),
             },
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              role: true,
-              department: true,
-              position: true,
-              isActive: true,
-              createdAt: true,
-            }
           })
 
-          // Log user creation in audit trail
-          const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-          const userAgent = request.headers.get('user-agent') || 'unknown';
-          
-          await AuditLogger.logCreate(
-            session?.user?.id || 'system',
-            'User Management',
-            newUser.id,
-            {
-              email: newUser.email,
-              firstName: newUser.firstName,
-              lastName: newUser.lastName,
-              role: newUser.role,
-              department: newUser.department,
-              createdBy: session?.user?.email || 'system'
-            },
-            ipAddress,
-            userAgent
-          ).catch(err => console.error('Failed to log user creation:', err));
-
-          // Send welcome email to new user
-          if (userData.password) {
-            // Send welcome email with temporary password
-            emailService.sendWelcomeEmail(
-              newUser.email,
-              newUser.firstName || 'User',
-              newUser.email,
-              userData.password
-            ).catch(err => {
-              console.error('Failed to send welcome email:', err);
-              // Don't fail user creation if email fails
-            });
-          } else {
-            // Send welcome email without password (user will need to set it)
-            emailService.sendWelcomeEmail(
-              newUser.email,
-              newUser.firstName || 'User',
-              newUser.email
-            ).catch(err => {
-              console.error('Failed to send welcome email:', err);
-              // Don't fail user creation if email fails
-            });
-          }
-
-          const transformedUser = {
-            id: newUser.id,
-            firstName: newUser.firstName,
-            lastName: newUser.lastName,
-            email: newUser.email,
-            role: newUser.role,
-            department: newUser.department,
-            position: newUser.position,
-            employeeId: newUser.id,
-            isActive: newUser.isActive,
-            lastLogin: null,
-            createdAt: newUser.createdAt.toISOString(),
-            updatedAt: newUser.createdAt.toISOString(),
-            roles: [{
-              role: {
-                name: newUser.role || 'BASIC_USER_1',
-                description: getRoleDisplayName(newUser.role || 'BASIC_USER_1')
-              }
-            }],
-            permissions: getCombinedPermissions(newUser.role || 'BASIC_USER_1', newUser.department || '')
-          }
+          emailService.sendWelcomeEmail(
+            loginUser.email,
+            loginUser.firstName || employee.firstName,
+            loginUser.email,
+            password
+          ).catch((err) => console.error('Failed to send welcome email:', err))
 
           return NextResponse.json({
             success: true,
-            user: transformedUser,
-            message: "User created successfully"
+            message: `Login created for ${employee.firstName} ${employee.lastName}`,
           })
         } catch (error) {
-          console.error("Error creating user:", error)
-          return NextResponse.json(
-            { error: "Failed to create user" },
-            { status: 500 }
-          )
+          console.error("Error activating employee login:", error)
+          return NextResponse.json({ error: "Failed to create login" }, { status: 500 })
         }
 
+      case 'create_user':
+        return NextResponse.json(
+          { error: "Create the employee in HR first. Logins are issued from the waiting list." },
+          { status: 400 }
+        )
       case 'update_user':
         try {
           if (!userId) {
@@ -588,8 +596,16 @@ export async function POST(request: NextRequest) {
 
           // Hash password if provided
           if (userData.password && userData.password.trim()) {
-            console.log('🔒 Password update requested for user:', userId)
-            console.log('🔒 Password length:', userData.password.length)
+            const passwordValidation = securityService.validatePasswordStrength(userData.password)
+            if (!passwordValidation.isValid) {
+              return NextResponse.json(
+                {
+                  error: "Password does not meet security requirements",
+                  details: passwordValidation.errors,
+                },
+                { status: 400 }
+              )
+            }
             updateData.passwordHash = await bcrypt.hash(userData.password, 10)
             console.log('🔒 Password hashed successfully, hash length:', updateData.passwordHash.length)
           } else {
@@ -619,6 +635,19 @@ export async function POST(request: NextRequest) {
               updatedAt: true,
             }
           })
+
+          if (updatedUser.role) {
+            const roleConfig = accessConfigForRole(updatedUser.role)
+            await prisma.employees.updateMany({
+              where: { userId },
+              data: {
+                access_level: roleConfig.accessLevel,
+                document_security_clearance: roleConfig.documentLevel,
+                ...(updatedUser.isActive ? { access_revoked: false } : {}),
+                updatedAt: new Date(),
+              },
+            })
+          }
 
           const transformedUser = {
             id: updatedUser.id,
@@ -676,7 +705,15 @@ export async function POST(request: NextRequest) {
             )
           }
 
-          // Delete user
+          await prisma.employees.updateMany({
+            where: { userId },
+            data: {
+              userId: null,
+              access_revoked: true,
+              updatedAt: new Date(),
+            },
+          })
+
           await prisma.users.delete({
             where: { id: userId }
           })

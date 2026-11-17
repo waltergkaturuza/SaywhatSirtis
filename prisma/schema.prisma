@@ -606,7 +606,7 @@ model document_category_folders {
 
 model employees {
   id                                    String                     @id
-  userId                                String                     @unique
+  userId                                String?                    @unique
   employeeId                            String                     @unique
   firstName                             String
   lastName                              String
@@ -685,7 +685,7 @@ model employees {
   reviewer                              employees?                 @relation("reviewerToemployees", fields: [reviewer_id], references: [id])
   other_employees                       employees[]                @relation("employeesToemployees")
   reviewed_employees                    employees[]                @relation("reviewerToemployees")
-  users                                 users                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  users                                 users?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
   job_descriptions                      job_descriptions?
   notifications                         notifications[]
   performance_achievements              performance_achievements[]

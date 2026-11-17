@@ -532,7 +532,10 @@ export default function EmployeesPage() {
       
       // Access & Security (updated)
       accessLevel: dbData.accessLevel || dbData.access_level || "basic",
-      userRole: dbData.userRole || dbData.user_role || "",
+      userRole: dbData.requestedRole || dbData.userRole || dbData.user_role || "",
+      requestedRole: dbData.requestedRole || dbData.user_role || "",
+      grantedRole: dbData.grantedRole || "",
+      accountStatus: dbData.accountStatus || "",
       securityClearance: dbData.securityClearance || "none",
       documentSecurityClearance: dbData.documentSecurityClearance || dbData.document_security_clearance || dbData.securityClearance || "PUBLIC",
       systemAccess: asTextList(firstDefined(dbData.systemAccess, dbData.system_access, [])),
@@ -762,12 +765,9 @@ export default function EmployeesPage() {
         await fetchEmployees()
         setShowCreateModal(false)
         console.log('Employee created successfully')
-        const linked = result?.data?.linkedExistingUserAccount
         showSuccessNotification(
-          linked
-            ? result?.message ||
-                'Employee profile created and linked to the existing user account for this email.'
-            : result?.message || 'Employee created successfully!'
+          result?.message ||
+            'Employee created. The administrator can now set the password and access level.'
         )
       } else {
         // Handle different error types
@@ -1066,6 +1066,9 @@ export default function EmployeesPage() {
                           <div className="truncate text-sm font-semibold text-saywhat-black" title={employee.name}>{employee.name}</div>
                           <div className="truncate text-sm text-saywhat-grey font-medium" title={employee.position}>{employee.position}</div>
                           <div className="truncate text-xs text-saywhat-orange font-medium" title={`ID: ${employee.employeeId}`}>ID: {employee.employeeId}</div>
+                          <div className={`truncate text-xs font-medium ${employee.accountStatus === 'ACTIVE' ? 'text-green-700' : employee.accountStatus === 'DISABLED' ? 'text-red-700' : 'text-amber-700'}`}>
+                            {employee.accountStatus === 'ACTIVE' ? 'Can sign in' : employee.accountStatus === 'DISABLED' ? 'Login switched off' : 'Waiting for login'}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -1559,14 +1562,35 @@ export default function EmployeesPage() {
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div>
-                        <Label className="text-sm font-medium text-gray-700">User Role</Label>
+                        <Label className="text-sm font-medium text-gray-700">Login</Label>
                         <p className="mt-1 text-sm text-gray-900 font-medium">
-                          {selectedEmployee.userRole ? 
-                            selectedEmployee.userRole.replace(/_/g, ' ').toUpperCase() : 
-                            'Not set'}
+                          {selectedEmployee.accountStatus === 'ACTIVE'
+                            ? 'Active'
+                            : selectedEmployee.accountStatus === 'DISABLED'
+                              ? 'Switched off'
+                              : 'Waiting for the administrator'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Granted access</Label>
+                        <p className="mt-1 text-sm text-gray-900 font-medium">
+                          {selectedEmployee.grantedRole
+                            ? selectedEmployee.grantedRole.replace(/_/g, ' ').toUpperCase()
+                            : 'Not granted yet'}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          Determines system module access permissions
+                          The role the administrator has applied to the login
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Requested access</Label>
+                        <p className="mt-1 text-sm text-gray-900 font-medium">
+                          {(selectedEmployee.requestedRole || selectedEmployee.userRole)
+                            ? (selectedEmployee.requestedRole || selectedEmployee.userRole).replace(/_/g, ' ').toUpperCase()
+                            : 'Not set'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          The role HR asked the administrator to grant
                         </p>
                       </div>
                       <div>
