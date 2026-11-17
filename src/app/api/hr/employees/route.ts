@@ -478,7 +478,7 @@ export async function POST(request: Request) {
       const supervisorAsEmployee = await executeQuery(async (prisma) => prisma.employees.findUnique({ where: { id: provided }, select: { id: true, userId: true } }))
       if (supervisorAsEmployee) {
         supervisorEmployeeId = supervisorAsEmployee.id
-        supervisorUserId = supervisorAsEmployee.userId
+        supervisorUserId = supervisorAsEmployee.userId ?? undefined
       } else {
         // Try match as users.id then find linked employee
         const supervisorUser = await executeQuery(async (prisma) => prisma.users.findUnique({ where: { id: provided }, select: { id: true } }))
@@ -486,7 +486,7 @@ export async function POST(request: Request) {
           const linkedEmployee = await executeQuery(async (prisma) => prisma.employees.findUnique({ where: { userId: supervisorUser.id }, select: { id: true, userId: true } }))
           if (linkedEmployee) {
             supervisorEmployeeId = linkedEmployee.id
-            supervisorUserId = linkedEmployee.userId
+            supervisorUserId = linkedEmployee.userId ?? undefined
           } else {
             const { response, status } = createErrorResponse('Supervisor employee record not found', HttpStatus.BAD_REQUEST, { code: ErrorCodes.VALIDATION_ERROR, message: 'Provided supervisor user has no employee record' })
             return NextResponse.json(response, { status })
