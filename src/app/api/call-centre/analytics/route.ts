@@ -244,13 +244,11 @@ export async function GET(request: NextRequest) {
       percentage: Math.round(((type._count.id / Math.max(1, totalCallsCount)) * 100) * 10) / 10
     }))
 
-    const monthlyVolume = dailyTrends
-      .filter(() => useMonthly)
-      .map(point => ({
-        month: point.day,
-        calls: point.calls,
-        resolved: point.resolved
-      }))
+    const monthlyVolume = dailyTrends.map(point => ({
+      month: point.day,
+      calls: point.calls,
+      resolved: point.resolved
+    }))
 
     // Prepare comprehensive analytics data
     const analytics = {
