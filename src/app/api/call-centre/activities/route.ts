@@ -147,6 +147,7 @@ export async function GET(request: NextRequest) {
         
         recentActivities.push({
           id: `call_${call.id}`,
+          recordId: call.id,
           title: call.isCase === 'YES' ? 'New Case Created' : 'Call Received',
           description: `${purpose} from ${callerName}`,
           officer: officer,
@@ -184,6 +185,7 @@ export async function GET(request: NextRequest) {
         
         recentActivities.push({
           id: `case_update_${caseRecord.id}`,
+          recordId: caseRecord.id,
           title: 'Case Updated',
           description: `Case ${caseNumber}: ${purpose}`,
           officer: officer,

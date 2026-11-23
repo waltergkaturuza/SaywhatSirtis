@@ -14,6 +14,7 @@ import {
 
 interface RecentActivity {
   id: string
+  recordId?: string
   type: 'call' | 'case'
   title: string
   description: string
@@ -127,23 +128,39 @@ const RecentActivities: React.FC = () => {
             <div>
               <h2 className="text-xl font-semibold text-saywhat-dark mb-4">Recent Activities</h2>
               <div className="space-y-4">
-                {activitiesData.recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-shrink-0">
-                      {getStatusIcon(activity.status)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                      <p className="text-sm text-gray-600 truncate">{activity.description}</p>
-                      <div className="flex items-center mt-1 text-xs text-gray-500">
-                        <UserIcon className="h-4 w-4 mr-1" />
-                        <span>{activity.officer}</span>
-                        <span className="mx-2">•</span>
-                        <span>{activity.time}</span>
+                {activitiesData.recentActivities.map((activity) => {
+                  const href = activity.recordId ? `/call-centre/cases/${activity.recordId}` : null
+                  const row = (
+                    <>
+                      <div className="flex-shrink-0">
+                        {getStatusIcon(activity.status)}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                        <p className="text-sm text-gray-600 truncate">{activity.description}</p>
+                        <div className="flex items-center mt-1 text-xs text-gray-500">
+                          <UserIcon className="h-4 w-4 mr-1" />
+                          <span>{activity.officer}</span>
+                          <span className="mx-2">•</span>
+                          <span>{activity.time}</span>
+                        </div>
+                      </div>
+                    </>
+                  )
+                  return href ? (
+                    <Link
+                      key={activity.id}
+                      href={href}
+                      className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg transition-colors hover:bg-orange-50"
+                    >
+                      {row}
+                    </Link>
+                  ) : (
+                    <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                      {row}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
