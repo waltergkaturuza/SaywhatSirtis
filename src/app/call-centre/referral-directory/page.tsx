@@ -1,7 +1,7 @@
 "use client"
 
 import { ModulePage } from "@/components/layout/enhanced-layout"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import {
@@ -88,6 +88,84 @@ const emailsOf = (org: ReferralOrganization) =>
 const websitesOf = (org: ReferralOrganization) =>
   org.contact.websites?.length ? org.contact.websites : org.contact.website ? [org.contact.website] : []
 
+function MultiCheckFilter({
+  label,
+  allLabel,
+  options,
+  selected,
+  onChange,
+  className = ""
+}: {
+  label: string
+  allLabel: string
+  options: { value: string; label: string }[]
+  selected: string[]
+  onChange: (next: string[]) => void
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", close)
+    return () => document.removeEventListener("mousedown", close)
+  }, [open])
+
+  const summary =
+    selected.length === 0
+      ? allLabel
+      : selected.length === 1
+        ? options.find((option) => option.value === selected[0])?.label || selected[0]
+        : `${selected.length} selected`
+
+  const toggle = (value: string) => {
+    onChange(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value])
+  }
+
+  return (
+    <div ref={rootRef} className={`relative ${className}`}>
+      <button
+        type="button"
+        aria-label={label}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-2 text-left text-xs text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
+      >
+        <span className="truncate">{summary}</span>
+        <span className="shrink-0 text-gray-400">▾</span>
+      </button>
+      {open && (
+        <div className="absolute z-30 mt-1 max-h-72 w-72 overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+          <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+            <input
+              type="checkbox"
+              className="h-3.5 w-3.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+              checked={selected.length === 0}
+              onChange={() => onChange([])}
+            />
+            {allLabel}
+          </label>
+          {options.map((option) => (
+            <label key={option.value} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-gray-800 hover:bg-orange-50">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                checked={selected.includes(option.value)}
+                onChange={() => toggle(option.value)}
+              />
+              <span className="truncate">{option.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const urgencyStyle: Record<string, string> = {
   LOW: "bg-gray-100 text-gray-800",
   MEDIUM: "bg-blue-100 text-blue-800",
@@ -107,10 +185,10 @@ export default function ReferralDirectoryPage() {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedProvince, setSelectedProvince] = useState("all")
   const [referralSearch, setReferralSearch] = useState("")
-  const [referralStatus, setReferralStatus] = useState("all")
-  const [referralUrgency, setReferralUrgency] = useState("all")
-  const [referralSource, setReferralSource] = useState("all")
-  const [referralOrganization, setReferralOrganization] = useState("all")
+  const [referralStatus, setReferralStatus] = useState<string[]>([])
+  const [referralUrgency, setReferralUrgency] = useState<string[]>([])
+  const [referralSource, setReferralSource] = useState<string[]>([])
+  const [referralOrganization, setReferralOrganization] = useState<string[]>([])
   const [referralFrom, setReferralFrom] = useState("")
   const [referralTo, setReferralTo] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -203,10 +281,11 @@ export default function ReferralDirectoryPage() {
       ) {
         return false
       }
-      if (referralStatus !== "all" && item.status !== referralStatus) return false
-      if (referralUrgency !== "all" && item.urgency !== referralUrgency) return false
-      if (referralSource !== "all" && (item.source === "CALL" ? "CALL" : "MANUAL") !== referralSource) return false
-      if (referralOrganization !== "all" && item.organizationName !== referralOrganization) return false
+      if (referralStatus.length > 0 && !referralStatus.includes(item.status)) return false
+      if (referralUrgency.length > 0 && !referralUrgency.includes(item.urgency)) return false
+      const source = item.source === "CALL" ? "CALL" : "MANUAL"
+      if (referralSource.length > 0 && !referralSource.includes(source)) return false
+      if (referralOrganization.length > 0 && !referralOrganization.includes(item.organizationName)) return false
       const created = new Date(item.createdAt)
       if (from && created < from) return false
       if (to && created > to) return false
@@ -216,15 +295,15 @@ export default function ReferralDirectoryPage() {
 
   const referralFiltersActive =
     Boolean(referralSearch || referralFrom || referralTo) ||
-    [referralStatus, referralUrgency, referralSource, referralOrganization].some((value) => value !== "all")
+    [referralStatus, referralUrgency, referralSource, referralOrganization].some((value) => value.length > 0)
   const organizationFiltersActive = Boolean(searchQuery) || selectedCategory !== "all" || selectedProvince !== "all"
 
   const clearReferralFilters = () => {
     setReferralSearch("")
-    setReferralStatus("all")
-    setReferralUrgency("all")
-    setReferralSource("all")
-    setReferralOrganization("all")
+    setReferralStatus([])
+    setReferralUrgency([])
+    setReferralSource([])
+    setReferralOrganization([])
     setReferralFrom("")
     setReferralTo("")
   }
@@ -354,30 +433,46 @@ export default function ReferralDirectoryPage() {
               </>
             ) : (
               <>
-                <select value={referralOrganization} onChange={(e) => setReferralOrganization(e.target.value)} className={`${filterControl} max-w-[11rem]`} aria-label="Organisation">
-                  <option value="all">All organisations</option>
-                  {referralOrganizations.map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-                <select value={referralStatus} onChange={(e) => setReferralStatus(e.target.value)} className={filterControl} aria-label="Status">
-                  <option value="all">All statuses</option>
-                  {referralStatuses.map((value) => (
-                    <option key={value} value={value}>{statusLabel(value)}</option>
-                  ))}
-                </select>
-                <select value={referralUrgency} onChange={(e) => setReferralUrgency(e.target.value)} className={filterControl} aria-label="Urgency">
-                  <option value="all">All urgency</option>
-                  <option value="URGENT">Urgent</option>
-                  <option value="HIGH">High</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="LOW">Low</option>
-                </select>
-                <select value={referralSource} onChange={(e) => setReferralSource(e.target.value)} className={filterControl} aria-label="Source">
-                  <option value="all">All sources</option>
-                  <option value="CALL">From call record</option>
-                  <option value="MANUAL">Referral form</option>
-                </select>
+                <MultiCheckFilter
+                  label="Organisation"
+                  allLabel="All organisations"
+                  options={referralOrganizations.map((name) => ({ value: name, label: name }))}
+                  selected={referralOrganization}
+                  onChange={setReferralOrganization}
+                  className="w-44"
+                />
+                <MultiCheckFilter
+                  label="Status"
+                  allLabel="All statuses"
+                  options={referralStatuses.map((value) => ({ value, label: statusLabel(value) }))}
+                  selected={referralStatus}
+                  onChange={setReferralStatus}
+                  className="w-36"
+                />
+                <MultiCheckFilter
+                  label="Urgency"
+                  allLabel="All urgency"
+                  options={[
+                    { value: "URGENT", label: "Urgent" },
+                    { value: "HIGH", label: "High" },
+                    { value: "MEDIUM", label: "Medium" },
+                    { value: "LOW", label: "Low" }
+                  ]}
+                  selected={referralUrgency}
+                  onChange={setReferralUrgency}
+                  className="w-32"
+                />
+                <MultiCheckFilter
+                  label="Source"
+                  allLabel="All sources"
+                  options={[
+                    { value: "CALL", label: "From call record" },
+                    { value: "MANUAL", label: "Referral form" }
+                  ]}
+                  selected={referralSource}
+                  onChange={setReferralSource}
+                  className="w-36"
+                />
                 <input type="date" value={referralFrom} onChange={(e) => setReferralFrom(e.target.value)} className={filterControl} aria-label="Created from" title="Created from" />
                 <span className="text-xs text-gray-400">to</span>
                 <input type="date" value={referralTo} onChange={(e) => setReferralTo(e.target.value)} className={filterControl} aria-label="Created to" title="Created to" />
